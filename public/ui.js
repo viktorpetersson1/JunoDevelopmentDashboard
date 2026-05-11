@@ -208,10 +208,17 @@ function renderTopbar() {
       <button class="btn small secondary" id="sign-out-btn">Sign out</button>
     </div>
   </header>
-  <button id="assistant-launcher" class="assistant-launcher" title="Ask Juno (LLM assistant)">✨ Ask Juno</button>
+  <button id="assistant-launcher" class="assistant-launcher" title="Ask Juno — LLM assistant">
+    ${JUNO_AI_ICON}<span>Ask Juno</span>
+  </button>
   <div id="assistant-panel" class="assistant-panel" style="display:none;"></div>
   `;
 }
+
+// Juno AI sparkle — inspired by Claude's mark, recolored to Juno black via currentColor
+const JUNO_AI_ICON = `<svg class="juno-ai-icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+  <path d="M12 1.5c.55 4.95 1.55 5.95 6.5 6.5-4.95.55-5.95 1.55-6.5 6.5-.55-4.95-1.55-5.95-6.5-6.5 4.95-.55 5.95-1.55 6.5-6.5zM19 14c.25 2.5.95 3.2 3.45 3.45-2.5.25-3.2.95-3.45 3.45-.25-2.5-.95-3.2-3.45-3.45 2.5-.25 3.2-.95 3.45-3.45zM6 16c.2 2 .8 2.6 2.8 2.8-2 .2-2.6.8-2.8 2.8-.2-2-.8-2.6-2.8-2.8 2-.2 2.6-.8 2.8-2.8z"/>
+</svg>`;
 
 function attachTopbarEvents() {
   for (const btn of document.querySelectorAll(".topbar nav button")) {
@@ -1633,11 +1640,12 @@ function renderAssistantPanel() {
   const quotaText = quota ? `${quota.query_count}/${quota.daily_limit} today` : "";
   panel.innerHTML = `
     <div class="assistant-header">
-      <div>
+      <div class="assistant-title">
+        <span class="juno-ai-icon-wrap">${JUNO_AI_ICON}</span>
         <strong>Ask Juno</strong>
         <span class="muted" style="font-size:11px;margin-left:6px;">${quotaText}</span>
       </div>
-      <button class="link-btn" id="assistant-close">Close</button>
+      <button class="link-btn" id="assistant-close" aria-label="Close assistant">✕</button>
     </div>
     <div class="assistant-modes">
       <button class="btn small ${assistantState.mode === "query" ? "" : "secondary"}" data-mode="query">Question</button>
