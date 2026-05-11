@@ -1,0 +1,32 @@
+# Render Blueprint for Juno Financial Dashboard
+# Deploys this folder as a static site at https://juno-financial-dashboard.onrender.com
+# Apply via: https://render.com/docs/blueprint-spec — push to a Git repo and connect.
+services:
+  - type: web
+    name: juno-financial-dashboard
+    runtime: static
+    plan: free
+    region: oregon
+    buildCommand: ""               # no build — pure static HTML + ES modules
+    staticPublishPath: .
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: "public, max-age=300, must-revalidate"
+      - path: /*.html
+        name: Cache-Control
+        value: "no-cache, no-store, must-revalidate"
+      # Security headers
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: X-Frame-Options
+        value: SAMEORIGIN
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+    routes:
+      - type: rewrite
+        source: /
+        destination: /index.html

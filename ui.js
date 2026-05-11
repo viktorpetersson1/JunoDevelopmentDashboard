@@ -1,0 +1,2426 @@
+// DOM rendering and event wiring.
+
+import { state, notify, save, updateGlobal, updateScenario,
+  toggleProjectExclusion, updateProject, addProject, removeProject,
+  setView, setTheme, resetToBaseline,
+  saveCurrentScenario, deleteScenario, loadScenario,
+  cloneProject, importProjectsFromCSV, reorderProject,
+  clearAuditLog, canEdit, isSuperAdmin } from "./state.js";
+import { aggregatePortfolio, calcProject, fyOf, monteCarlo } from "./engine.js";
+import { EXCEL_BENCHMARK } from "./data.js";
+import {
+  signIn, signUp, signOut, sendPasswordReset,
+  fetchAllProfiles, updateUserRole,
+} from "./supabase.js";
+
+// ---------- formatting helpers ----------
+
+const fmt = {
+  usd: (n) => n == null || isNaN(n) ? "—" : (n < 0 ? `($${Math.round(-n).toLocaleString()})` : `$${Math.round(n).toLocaleString()}`),
+  usdM: (n) => {
+    if (n == null || isNaN(n)) return "—";
+    const abs = Math.abs(n);
+    const v = abs >= 1e6 ? `$${(abs/1e6).toFixed(1)}M` : abs >= 1e3 ? `$${(abs/1e3).toFixed(0)}k` : `$${Math.round(abs)}`;
+    return n < 0 ? `(${v})` : v;
+  },
+  usdSigned: (n) => n == null || isNaN(n) ? "—" : (n < 0 ? `($${Math.round(-n).toLocaleString()})` : Math.round(n).toLocaleString()),
+  pct: (n, d=1) => n == null || isNaN(n) ? "—" : `${(n*100).toFixed(d)}%`,
+  num: (n, d=0) => n == null || isNaN(n) ? "—" : Number(n).toLocaleString(undefined, {maximumFractionDigits: d}),
+  ym: (ym) => ym || "—",
+  ymShort: (ym) => { if (!ym) return "—"; const [y,m]=ym.split("-"); return `${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][parseInt(m,10)-1]} ${y.slice(2)}`; },
+  months: (n) => n == null ? "—" : `${n} mo`,
+};
+
+// ---------- chart instances cache ----------
+
+const charts = {};
+function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
+
+// ---------- root render ----------
+
+const root = () => document.getElementById("app-root");
+
+export function render() {
+  document.documentElement.dataset.theme = state.ui.theme;
+
+  // Auth gate: while auth is loading, show a quiet splash
+  if (state.auth.loading) {
+    root().innerHTML = `<div class="auth-splash">
+      <div class="auth-card">
+        <div class="brand">JUNO <span>Financial dashboard</span></div>
+        <div class="muted" style="margin-top:8px;">Loading…</div>
+      </div>
+    </div>`;
+    return;
+  }
+  // Not signed in: show the login screen
+  if (!state.auth.user) {
+    renderAuthScreen();
+    return;
+  }
+  // Signed in: full app
+  const result = aggregatePortfolio(state.projects, state.globals, state.scenario);
+  const topbar = renderTopbar();
+  const main = renderView(result);
+  const footer = renderFooter();
+  root().innerHTML = topbar + main + footer;
+  attachTopbarEvents();
+  attachViewEvents(result);
+  renderCharts(result);
+}
+
+function renderAuthScreen() {
+  const mode = window.__authMode || "signin";
+  const isSignin = mode === "signin";
+  const isReset = mode === "reset";
+  root().innerHTML = `
+    <div class="auth-splash">
+      <div class="auth-card">
+        <div class="brand">JUNO <span>Financial dashboard</span></div>
+        <h2 style="margin:16px 0 6px;font-size:18px;">${isReset ? "Reset password" : isSignin ? "Sign in" : "Create account"}</h2>
+        <div class="muted" style="margin-bottom:16px;font-size:12px;">${
+          isReset ? "We'll send you a reset link." :
+          isSignin ? "Use your email + password." :
+          "First user to sign up becomes super-admin. Others start as viewer."}</div>
+        <form id="auth-form" class="form-grid">
+          ${!isReset ? `<div class="form-row full"><label>Email</label><input class="input" type="email" id="auth-email" autocomplete="email" required></div>` : `<div class="form-row full"><label>Email</label><input class="input" type="email" id="auth-email" autocomplete="email" required></div>`}
+          ${!isReset ? `<div class="form-row full"><label>Password</label><input class="input" type="password" id="auth-password" autocomplete="${isSignin ? "current-password" : "new-password"}" required minlength="8"></div>` : ""}
+          ${!isSignin && !isReset ? `<div class="form-row full"><label>Display name</label><input class="input" type="text" id="auth-display-name" placeholder="How you appear to others"></div>` : ""}
+          <div class="form-row full">
+            <button class="btn" type="submit" style="width:100%;">${isReset ? "Send reset link" : isSignin ? "Sign in" : "Create account"}</button>
+          </div>
+        </form>
+        <div id="auth-message" class="note" style="display:none;margin-top:12px;"></div>
+        <div class="row between" style="margin-top:16px;font-size:12px;">
+          ${isSignin
+            ? `<button class="link-btn" data-auth-switch="signup">Need an account?</button><button class="link-btn" data-auth-switch="reset">Forgot password?</button>`
+            : isReset
+              ? `<button class="link-btn" data-auth-switch="signin">Back to sign in</button>`
+              : `<button class="link-btn" data-auth-switch="signin">Already have an account? Sign in</button>`}
+        </div>
+      </div>
+    </div>
+  `;
+  // Wire form
+  const form = document.getElementById("auth-form");
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("auth-email").value.trim();
+    const password = document.getElementById("auth-password")?.value;
+    const displayName = document.getElementById("auth-display-name")?.value;
+    const msg = document.getElementById("auth-message");
+    msg.style.display = "block";
+    msg.classList.remove("neg", "warn");
+    msg.innerText = "Working…";
+    try {
+      if (isReset) {
+        await sendPasswordReset(email);
+        msg.classList.add("warn");
+        msg.innerText = `Reset link sent to ${email}. Check your inbox.`;
+      } else if (isSignin) {
+        await signIn(email, password);
+        msg.innerText = "Signed in.";
+        // onAuthStateChange will trigger a render
+      } else {
+        await signUp(email, password, displayName);
+        msg.classList.add("warn");
+        msg.innerText = `Account created. Check your email to confirm, then come back and sign in.`;
+        window.__authMode = "signin";
+        setTimeout(() => render(), 1500);
+      }
+    } catch (err) {
+      msg.classList.add("neg");
+      msg.innerText = err?.message || String(err);
+    }
+  });
+  for (const btn of document.querySelectorAll("[data-auth-switch]")) {
+    btn.addEventListener("click", () => {
+      window.__authMode = btn.dataset.authSwitch;
+      render();
+    });
+  }
+}
+
+// ---------- topbar ----------
+
+function renderTopbar() {
+  const item = (k, label) =>
+    `<button data-view="${k}" class="${state.ui.view === k ? "active" : ""}">${label}</button>`;
+  const sync = state.sync.status;
+  const syncBadge = {
+    idle: `<span class="sync-badge muted" title="No save in progress">●</span>`,
+    loading: `<span class="sync-badge muted" title="Loading from server">⟳</span>`,
+    pending: `<span class="sync-badge warn" title="Unsaved changes (will autosave shortly)">●</span>`,
+    saving: `<span class="sync-badge warn" title="Saving to server">⟳</span>`,
+    saved: `<span class="sync-badge pos" title="Saved to server${state.sync.last_saved_at ? ` at ${state.sync.last_saved_at.toLocaleTimeString()}` : ""}">✓</span>`,
+    error: `<span class="sync-badge neg" title="Save failed: ${state.sync.last_error || ""}">!</span>`,
+    offline: `<span class="sync-badge neg" title="Offline — changes cached locally">⌽</span>`,
+  }[sync] || "";
+  const role = state.auth.profile?.role || "viewer";
+  const roleBadge = `<span class="badge ${role === "super_admin" ? "sold" : role === "editor" ? "committed" : "pipeline"}" style="font-size:9px;">${role.replace("_", " ")}</span>`;
+  const userEmail = state.auth.user?.email || "";
+  const userDisplay = state.auth.profile?.display_name || userEmail.split("@")[0];
+
+  return `
+  <header class="topbar">
+    <div class="brand">JUNO <span>Financial dashboard</span></div>
+    <nav>
+      ${item("portfolio", "Portfolio")}
+      ${item("projects", "Projects")}
+      ${item("project_detail", "Project detail")}
+      ${item("cashflow", "Cash flow")}
+      ${item("pipeline", "Pipeline")}
+      ${item("waterfall", "Waterfall")}
+      ${item("scenario", "Scenario")}
+      ${item("sensitivity", "Sensitivity")}
+      ${item("risk", "Risk")}
+      ${item("activity", "Activity")}
+      ${isSuperAdmin() ? item("users", "Users") : ""}
+      ${item("settings", "Settings")}
+    </nav>
+    <div class="spacer"></div>
+    <div class="actions">
+      ${syncBadge}
+      <span class="muted" style="font-size:11px;">Scenario: <strong style="color:var(--fg);">${state.scenario.name}</strong></span>
+      <div class="user-chip" title="${userEmail}">
+        <span style="font-size:11px;">${userDisplay}</span>
+        ${roleBadge}
+      </div>
+      <button class="btn small secondary" id="theme-toggle">${state.ui.theme === "light" ? "Dark" : "Light"}</button>
+      <button class="btn small secondary" id="sign-out-btn">Sign out</button>
+    </div>
+  </header>`;
+}
+
+function attachTopbarEvents() {
+  for (const btn of document.querySelectorAll(".topbar nav button")) {
+    btn.addEventListener("click", () => setView(btn.dataset.view));
+  }
+  document.getElementById("theme-toggle")?.addEventListener("click",
+    () => setTheme(state.ui.theme === "light" ? "dark" : "light"));
+  document.getElementById("sign-out-btn")?.addEventListener("click", async () => {
+    if (confirm("Sign out?")) await signOut();
+  });
+}
+
+// ---------- main view dispatcher ----------
+
+function renderView(result) {
+  let html = `<main class="main">`;
+  if (!canEdit()) {
+    html += `<div class="readonly-banner">
+      You are signed in as <strong>viewer</strong>. You can browse all data but cannot edit. Ask the super-admin to upgrade your role if you need to make changes.
+    </div>`;
+  }
+  switch (state.ui.view) {
+    case "portfolio": html += renderPortfolio(result); break;
+    case "projects": html += renderProjectsList(result); break;
+    case "project_detail": html += renderProjectDetail(result); break;
+    case "cashflow": html += renderCashflow(result); break;
+    case "pipeline": html += renderPipeline(result); break;
+    case "waterfall": html += renderWaterfall(result); break;
+    case "scenario": html += renderScenario(result); break;
+    case "sensitivity": html += renderSensitivity(result); break;
+    case "risk": html += renderRisk(result); break;
+    case "activity": html += renderActivity(); break;
+    case "users": html += renderUsers(); break;
+    case "settings": html += renderSettings(); break;
+    default: html += `<div class="note neg">Unknown view: ${state.ui.view}</div>`;
+  }
+  html += `</main>`;
+  return html;
+}
+
+// ---------- Portfolio view ----------
+
+function renderPortfolio(r) {
+  const k = r.kpis;
+  const g = state.globals;
+  const profitCls = k.total_profit_before_tax >= 0 ? "pos" : "neg";
+  // Risk threshold checks
+  const alerts = [];
+  if (k.peak_equity_required > g.risk_peak_equity_threshold)
+    alerts.push({ severity: "warn", msg: `Peak equity ${fmt.usdM(k.peak_equity_required)} exceeds threshold ${fmt.usdM(g.risk_peak_equity_threshold)}` });
+  if (k.max_debt_outstanding > g.risk_max_debt_threshold)
+    alerts.push({ severity: "warn", msg: `Max debt ${fmt.usdM(k.max_debt_outstanding)} exceeds threshold ${fmt.usdM(g.risk_max_debt_threshold)}` });
+  if (k.moic_gross < g.risk_min_moic && k.total_equity_in > 0)
+    alerts.push({ severity: "neg", msg: `MOIC ${k.moic_gross.toFixed(2)}x below threshold ${g.risk_min_moic.toFixed(2)}x` });
+  if (k.irr_annual != null && k.irr_annual < g.risk_min_irr_annual)
+    alerts.push({ severity: "neg", msg: `IRR ${fmt.pct(k.irr_annual)} below threshold ${fmt.pct(g.risk_min_irr_annual)}` });
+  const portfolioMargin = k.total_sales > 0 ? k.total_profit_before_tax / k.total_sales : 0;
+  if (portfolioMargin < g.risk_min_margin_pct)
+    alerts.push({ severity: "neg", msg: `Portfolio profit margin ${fmt.pct(portfolioMargin)} below threshold ${fmt.pct(g.risk_min_margin_pct)}` });
+
+  const alertBanner = alerts.length ? `
+    <div class="note ${alerts.some(a => a.severity === "neg") ? "neg" : "warn"} mb-12">
+      <strong>${alerts.length} risk threshold${alerts.length === 1 ? "" : "s"} breached:</strong>
+      <ul style="margin:4px 0 0 18px;padding:0;">
+        ${alerts.map(a => `<li>${a.msg}</li>`).join("")}
+      </ul>
+    </div>` : "";
+
+  // KPI card classes based on thresholds
+  const peakEqCls = k.peak_equity_required > g.risk_peak_equity_threshold ? "warn" : "";
+  const maxDebtCls = k.max_debt_outstanding > g.risk_max_debt_threshold ? "warn" : "";
+  const moicCls = k.moic_gross < g.risk_min_moic ? "neg" : (k.moic_gross > 2 ? "pos" : "");
+  const irrCls = k.irr_annual != null && k.irr_annual < g.risk_min_irr_annual ? "neg" : "";
+
+  const totalProjects = state.projects.length;
+  const soldCount = state.projects.filter(p => p.status === "sold").length;
+  return `
+    <div class="section-title">Portfolio overview · ${state.scenario.name} · ${k.active_project_count} of ${totalProjects} projects active${soldCount > 0 ? ` (${soldCount} sold, excluded from forecast)` : ""}</div>
+    ${alertBanner}
+    <div class="kpi-row">
+      ${kpiCard("Peak equity required", fmt.usdM(k.peak_equity_required), `Month: ${fmt.ymShort(k.peak_equity_month)}`, peakEqCls)}
+      ${kpiCard("Max debt outstanding", fmt.usdM(k.max_debt_outstanding), `Month: ${fmt.ymShort(k.max_debt_month)}`, maxDebtCls)}
+      ${kpiCard("Total sales (gross)", fmt.usdM(k.total_sales), `${k.active_project_count} projects`)}
+      ${kpiCard("Profit (pre-tax)", fmt.usdM(k.total_profit_before_tax), `Across model horizon`, profitCls)}
+      ${state.globals.apply_tax ? kpiCard("Profit (after tax)", fmt.usdM(k.total_profit_after_tax), `Tax: ${fmt.usdM(k.total_tax)} @ ${fmt.pct(k.effective_tax_rate)}`, k.total_profit_after_tax >= 0 ? "pos" : "neg") : ""}
+      ${kpiCard("Gross MOIC", `${k.moic_gross.toFixed(2)}x`, `Equity in: ${fmt.usdM(k.total_equity_in)}`, moicCls)}
+      ${kpiCard("Annualized IRR", k.irr_annual == null ? "—" : fmt.pct(k.irr_annual), `Equity cash flow basis`, irrCls)}
+      ${kpiCard("Simple payback", k.payback_months == null ? "—" : fmt.months(k.payback_months), `Until equity returned ≥ drawn`)}
+    </div>
+
+    <div class="panel-row">
+      <div class="panel">
+        <h3>Monthly cash flow</h3>
+        <div class="panel-subtitle">Sales positive · costs negative · stacked by category</div>
+        <div class="chart-frame"><canvas id="chart-cashflow"></canvas></div>
+      </div>
+      <div class="panel">
+        <h3>Cumulative debt vs equity</h3>
+        <div class="panel-subtitle">Running balances across the horizon</div>
+        <div class="chart-frame"><canvas id="chart-balances"></canvas></div>
+      </div>
+    </div>
+
+    <div class="panel mb-24">
+      <h3>Development yield metrics</h3>
+      <div class="panel-subtitle">Real-estate development KPIs for benchmarking against market cap rates and competing strategies.</div>
+      <div class="kpi-row">
+        ${kpiCard("Yield on cost", fmt.pct(k.portfolio_yield_on_cost), "Profit / all-in cost (incl. financing)", k.portfolio_yield_on_cost >= 0.15 ? "pos" : k.portfolio_yield_on_cost >= 0.08 ? "" : "neg")}
+        ${kpiCard("Revenue multiple", `${k.portfolio_revenue_multiple.toFixed(2)}x`, "Sales / all-in cost")}
+        ${kpiCard("Profit per sqft", `$${Math.round(k.portfolio_profit_per_sqft).toLocaleString()}`, `Total ${fmt.num(k.total_sqft)} sqft built`)}
+        ${kpiCard("Effective margin", fmt.pct(k.total_sales > 0 ? k.total_profit_before_tax / k.total_sales : 0), "Profit / sales (pre-tax)")}
+      </div>
+    </div>
+
+    <div class="panel mb-24">
+      <h3>Annual P&L roll-up</h3>
+      <div class="panel-subtitle">Source: matches Juno Forecast cols BA–BD (FY26–FY29)</div>
+      ${renderAnnualTable(r)}
+    </div>
+  `;
+}
+
+function kpiCard(label, value, meta = "", cls = "") {
+  return `<div class="kpi ${cls}"><div class="label">${label}</div><div class="value">${value}</div><div class="meta">${meta}</div></div>`;
+}
+
+function renderAnnualTable(r) {
+  const years = Object.keys(r.annual).sort();
+  if (!years.length) return `<div class="note">No data in model window.</div>`;
+  const rows = [
+    ["Sales", "sales", "pos"],
+    ["Land cost", "land", "neg"],
+    ["Construction", "build", "neg"],
+    ["Kingshaus", "kingshaus", "neg"],
+    ["Soft costs", "soft", "neg"],
+    ["Overheads", "opex", "neg"],
+    ["Financing", "interest", "neg"],
+    ["Profit before tax", "profit_before_tax", "bold"],
+    ...(state.globals.apply_tax ? [
+      ["NOL used (carryforward)", "nol_used", "muted"],
+      ["Taxable profit", "taxable_profit", ""],
+      ["Tax", "tax", "neg"],
+      ["NOL balance carryforward", "nol_balance", "muted"],
+      ["Profit after tax", "profit_after_tax", "bold"],
+    ] : []),
+  ];
+  let html = `<div class="scroll-x"><table class="tbl"><thead><tr><th>USD</th>${years.map(y => `<th>${y}</th>`).join("")}<th>Total</th></tr></thead><tbody>`;
+  for (const [label, key, cls] of rows) {
+    let total = 0;
+    let rowHtml = `<tr><td>${label}</td>`;
+    for (const y of years) {
+      const v = r.annual[y][key];
+      total += v;
+      rowHtml += `<td class="num ${cls === "bold" ? "" : (v < 0 ? "neg" : "pos")}">${fmt.usdSigned(v)}</td>`;
+    }
+    rowHtml += `<td class="num ${cls === "bold" ? "" : (total < 0 ? "neg" : "pos")}"><strong>${fmt.usdSigned(total)}</strong></td></tr>`;
+    html += rowHtml;
+  }
+  html += `</tbody></table></div>`;
+  return html;
+}
+
+// ---------- Projects list ----------
+
+function renderProjectsList(r) {
+  const rows = r.by_project.map((res) => {
+    const p = state.projects.find((x) => x.id === res.project_id);
+    const excluded = state.scenario.excluded_project_ids.includes(res.project_id);
+    return `<tr draggable="true" data-project-row="${p.id}">
+      <td><span class="drag-handle" title="Drag to reorder">⋮⋮</span> <strong>${p.name}</strong><div class="muted" style="font-size:10.5px;">${p.address}</div></td>
+      <td class="muted"><span class="badge ${excluded ? "excluded" : p.status}">${excluded ? "excluded" : p.status}</span></td>
+      <td>${fmt.ymShort(p.start_date)}</td>
+      <td>${fmt.ymShort(res.sale_date)}</td>
+      <td class="num">${fmt.num(p.villa_sqft)}</td>
+      <td class="num neg">${fmt.usdM(p.land_cost_usd)}</td>
+      <td class="num neg">${fmt.usdM(res.kpis.total_dev_cost)}</td>
+      <td class="num pos">${fmt.usdM(res.kpis.total_sales)}</td>
+      <td class="num ${res.kpis.gross_profit >= 0 ? "pos" : "neg"}">${fmt.usdM(Math.abs(res.kpis.gross_profit))}</td>
+      <td class="num">${fmt.pct(res.kpis.profit_margin_pct)}</td>
+      <td class="num">${(res.kpis.moic || 0).toFixed(2)}x</td>
+      <td class="num">${res.kpis.irr_annual == null ? "—" : fmt.pct(res.kpis.irr_annual)}</td>
+      <td class="num">${fmt.pct(res.kpis.yield_on_cost)}</td>
+      <td class="num">$${Math.round(res.kpis.profit_per_sqft).toLocaleString()}</td>
+      <td>
+        <button class="btn small secondary" data-action="open" data-id="${res.project_id}">Open</button>
+        <button class="btn small ${excluded ? "secondary" : "danger"}" data-action="exclude" data-id="${res.project_id}">${excluded ? "Include" : "Exclude"}</button>
+      </td>
+    </tr>`;
+  }).join("");
+
+  return `
+    <div class="row between mb-12">
+      <div class="section-title" style="margin:0;">Projects (${state.projects.length})</div>
+      <div class="row gap-sm">
+        <button class="btn" id="add-project-btn">+ Add project</button>
+        <button class="btn secondary" id="import-csv-btn">Import CSV</button>
+        <input type="file" id="import-csv-file" accept=".csv,text/csv" style="display:none;">
+      </div>
+    </div>
+    <div class="panel">
+      <div class="scroll-x"><table class="tbl">
+        <thead><tr>
+          <th>Project</th><th>Status</th><th>Start</th><th>Sale</th><th>Sqft</th>
+          <th>Land</th><th>Dev cost</th><th>Sale</th><th>Profit</th><th>Margin</th><th>MOIC</th><th>IRR</th><th>YoC</th><th>$/sqft profit</th><th></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </div>
+  `;
+}
+
+// ---------- Project detail ----------
+
+// Cached takeoffs (lazy-loaded)
+const takeoffCache = {};
+async function loadTakeoff(projectId) {
+  if (takeoffCache[projectId]) return takeoffCache[projectId];
+  if (projectId !== "p2") return null;  // only have 84 SBR takeoff currently
+  try {
+    const res = await fetch(`./data/84sbr_takeoff.json`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    takeoffCache[projectId] = data;
+    return data;
+  } catch (e) { return null; }
+}
+
+async function renderTakeoffPanel(projectId) {
+  const container = document.getElementById("takeoff-panel-container");
+  if (!container) return;
+  const takeoff = await loadTakeoff(projectId);
+  if (!takeoff) { container.style.display = "none"; return; }
+  container.style.display = "";
+  const total = takeoff.categories.reduce((a, c) => a + c.total, 0);
+  const rows = takeoff.categories.map(c => {
+    const pct = (c.total / total * 100).toFixed(1);
+    const lines = c.lines.map(l => `<tr style="background:var(--surface-2);"><td style="padding-left:24px;">${l.code}</td><td>${l.name}</td><td class="num">${fmt.usd(l.amount)}</td></tr>`).join("");
+    return `<tbody class="takeoff-cat"><tr data-toggle-cat><td><strong>${c.name}</strong></td><td class="muted" style="font-size:11px;">${c.lines.length} line items</td><td class="num"><strong>${fmt.usd(c.total)}</strong></td></tr>${lines}</tbody>`;
+  }).join("");
+  container.innerHTML = `
+    <h3>Cost takeoff — ${takeoff.project}</h3>
+    <div class="panel-subtitle">Source: ${takeoff.source} (snapshot ${takeoff.snapshot}) · 21 CSI categories · ${takeoff.categories.reduce((a,c)=>a+c.lines.length,0)} line items · Total $${Math.round(total).toLocaleString()}</div>
+    <div class="scroll-x"><table class="tbl">
+      <thead><tr><th>Category</th><th></th><th>Total</th></tr></thead>
+      ${rows}
+    </table></div>
+    <div class="note mt-16">Click a category row to expand line items. <em>Currently informational only — not yet wired into engine; v6 will use these for per-line monthly spreading.</em></div>
+  `;
+  // Initially hide line item rows
+  container.querySelectorAll("tbody.takeoff-cat tr:not([data-toggle-cat])").forEach(tr => tr.style.display = "none");
+  container.querySelectorAll("tr[data-toggle-cat]").forEach(tr => {
+    tr.style.cursor = "pointer";
+    tr.addEventListener("click", () => {
+      const tbody = tr.parentElement;
+      const lines = Array.from(tbody.querySelectorAll("tr")).slice(1);
+      const hidden = lines[0]?.style.display === "none";
+      lines.forEach(l => l.style.display = hidden ? "" : "none");
+    });
+  });
+}
+
+function renderProjectDetail(r) {
+  const id = state.ui.selected_project_id;
+  const p = state.projects.find((x) => x.id === id);
+  if (!p) return `<div class="note neg">Project not found. Pick one from the list.</div>`;
+  const res = r.by_project.find((x) => x.project_id === id)
+    || calcProject(p, state.globals, state.scenario);
+  const m = res.monthly;
+
+  // Project-specific sensitivity table: ±10% on key drivers
+  const baseProfit = res.kpis.gross_profit;
+  const sensCases = [
+    { label: "Build cost +10%", patch: { build_cost_multiplier: 1.1 } },
+    { label: "Build cost -10%", patch: { build_cost_multiplier: 0.9 } },
+    { label: "Sale price +10%", patch: { sale_price_multiplier: 1.1 } },
+    { label: "Sale price -10%", patch: { sale_price_multiplier: 0.9 } },
+    { label: "Interest +200bps", patch: { interest_rate_delta_bps: 200 } },
+    { label: "Interest -200bps", patch: { interest_rate_delta_bps: -200 } },
+    { label: "Margin → 20%", patch: { margin_override: 0.20 } },
+    { label: "Margin → 30%", patch: { margin_override: 0.30 } },
+  ];
+  const sensRows = sensCases.map((c) => {
+    const altScenario = { ...state.scenario, ...c.patch };
+    const alt = calcProject(p, state.globals, altScenario);
+    const delta = alt.kpis.gross_profit - baseProfit;
+    return `<tr>
+      <td>${c.label}</td>
+      <td class="num">${fmt.usdM(alt.kpis.gross_profit)}</td>
+      <td class="num ${delta >= 0 ? "pos" : "neg"}">${delta >= 0 ? "+" : ""}${fmt.usdM(delta)}</td>
+    </tr>`;
+  }).join("");
+
+  const isExcluded = state.scenario.excluded_project_ids.includes(p.id);
+
+  return `
+    <div class="row between mb-12">
+      <div>
+        <div class="section-title" style="margin:0;">${p.name} <span class="badge ${isExcluded ? "excluded" : p.status}">${isExcluded ? "excluded" : p.status}</span></div>
+        <div class="muted">${p.address}</div>
+      </div>
+      <div class="row gap-sm wrap">
+        <select class="input" id="project-picker" style="max-width:240px;">
+          ${state.projects.map(x => `<option value="${x.id}" ${x.id===id?"selected":""}>${x.name}</option>`).join("")}
+        </select>
+        <div class="row gap-sm" style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:2px;">
+          ${["pipeline","committed","in-build","sold"].map(s => `<button class="btn small ${p.status===s?"":"secondary"}" data-action="set-status" data-id="${p.id}" data-status="${s}">${s}</button>`).join("")}
+        </div>
+        <button class="btn small ${isExcluded ? "secondary" : "danger"}" data-action="exclude" data-id="${p.id}">${isExcluded ? "Include" : "Exclude"}</button>
+        <button class="btn small secondary" data-action="clone" data-id="${p.id}">Clone</button>
+        <button class="btn small danger" data-action="remove" data-id="${p.id}">Delete</button>
+      </div>
+    </div>
+
+    <div class="kpi-row">
+      ${kpiCard("Total cost", fmt.usdM(res.kpis.total_dev_cost), `${fmt.num(res.kpis.total_cost_per_sqft, 0)}/sqft`)}
+      ${kpiCard("Sale price", fmt.usdM(res.kpis.total_sales), `${fmt.num(res.kpis.sale_price_per_sqft, 0)}/sqft`)}
+      ${kpiCard("Gross profit", fmt.usdM(res.kpis.gross_profit), fmt.pct(res.kpis.profit_margin_pct), res.kpis.gross_profit >= 0 ? "pos" : "neg")}
+      ${kpiCard("Financing cost", fmt.usdM(res.kpis.total_interest), `Interest + fees`)}
+      ${kpiCard("MOIC", `${(res.kpis.moic || 0).toFixed(2)}x`, `Equity multiple`)}
+      ${kpiCard("Annualized IRR", res.kpis.irr_annual == null ? "—" : fmt.pct(res.kpis.irr_annual), `Project IRR`)}
+      ${kpiCard("Peak equity", fmt.usdM(res.kpis.peak_equity), `Project-level`)}
+      ${kpiCard("Peak debt", fmt.usdM(res.kpis.peak_debt), `Project-level`)}
+      ${kpiCard("Yield on cost", fmt.pct(res.kpis.yield_on_cost), `Profit / all-in cost`, res.kpis.yield_on_cost >= 0.15 ? "pos" : res.kpis.yield_on_cost >= 0.08 ? "" : "neg")}
+      ${kpiCard("Profit per sqft", `$${Math.round(res.kpis.profit_per_sqft).toLocaleString()}`, `${fmt.num(p.villa_sqft)} sqft villa`)}
+    </div>
+
+    <div class="panel-row">
+      <div class="panel">
+        <h3>Inputs</h3>
+        <div class="panel-subtitle">Blank override fields use global defaults</div>
+        ${renderProjectForm(p, res)}
+      </div>
+      <div class="panel">
+        <h3>Sensitivity (this project)</h3>
+        <div class="panel-subtitle">Profit impact of one-factor changes vs current scenario</div>
+        <table class="tbl">
+          <thead><tr><th>Case</th><th>Profit</th><th>Δ vs current</th></tr></thead>
+          <tbody>${sensRows}</tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel mb-24" id="takeoff-panel-container"></div>
+
+    <div class="panel mb-24">
+      <h3>Monthly cash flow</h3>
+      <div class="panel-subtitle">All values in USD · ${m.dates[0]} to ${m.dates[m.dates.length-1]}</div>
+      <div class="chart-frame"><canvas id="chart-project"></canvas></div>
+    </div>
+
+    <div class="panel mb-24">
+      <h3>Monthly detail grid</h3>
+      <div class="scroll-x">${renderProjectMonthlyTable(res)}</div>
+    </div>
+  `;
+}
+
+function renderProjectForm(p, res) {
+  const f = (key, label, type = "number", step = "any", attrs = "") => {
+    const raw = p[key];
+    const value = raw == null ? "" : raw;
+    const isOverride = ["build_cost_per_sqft","kingshaus_cost_per_sqft","target_margin","interest_rate_apr","ltc_pct"].includes(key);
+    const emptyHint = isOverride && raw == null ? "global default" : "";
+    return `
+      <div class="form-row">
+        <label>${label}${isOverride ? ' <span class="muted" style="font-weight:400;">(override)</span>' : ""}</label>
+        <input class="input ${isOverride && raw == null ? "override-empty" : ""}" data-field="${key}" type="${type}" step="${step}" value="${value}" placeholder="${emptyHint}" ${attrs}>
+      </div>`;
+  };
+  return `
+    <div class="form-grid">
+      <div class="form-row full"><label>Name</label><input class="input" data-field="name" type="text" value="${p.name}"></div>
+      <div class="form-row"><label>Address</label><input class="input" data-field="address" type="text" value="${p.address || ""}"></div>
+      <div class="form-row"><label>Status</label>
+        <select class="input" data-field="status">
+          ${["pipeline","committed","in-build","sold"].map(s => `<option value="${s}" ${p.status===s?"selected":""}>${s}</option>`).join("")}
+        </select>
+      </div>
+      <div class="form-row"><label>Market</label>
+        <select class="input" data-field="market">
+          ${(state.globals.markets || []).map(m => `<option value="${m.id}" ${(p.market || "default") === m.id ? "selected" : ""}>${m.name} (sale ${(m.sale_price_multiplier*100).toFixed(0)}% · build ${(m.build_cost_multiplier*100).toFixed(0)}%)</option>`).join("")}
+        </select>
+      </div>
+      ${f("start_date","Start date","month","1")}
+      ${f("program_months","Program months","number","1")}
+      ${f("villa_sqft","Villa sqft","number","10")}
+      ${f("land_cost_usd","Land cost (USD)","number","1000")}
+      ${f("build_cost_per_sqft","Build $/sqft")}
+      ${f("kingshaus_cost_per_sqft","Kingshaus $/sqft")}
+      ${f("target_margin","Target margin")}
+      ${f("interest_rate_apr","Interest APR")}
+      ${f("ltc_pct","LTC")}
+      ${f("soft_costs_lump_sum","Soft costs lump sum (USD)")}
+      ${f("sale_price_override_usd","Sale price override (USD)")}
+      ${f("sale_price_per_sqft_override","Sale $/sqft override")}
+    </div>
+    <details style="margin-top:16px;">
+      <summary style="cursor:pointer;font-size:12px;color:var(--fg-2);font-weight:500;">Soft cost breakdown (overrides lump sum if any value &gt; 0)</summary>
+      <div class="form-grid" style="margin-top:10px;">
+        ${["build_tools","sabbeth","craft","zero_design","klas_bsv","permits","other"].map(k =>
+          `<div class="form-row"><label>${k.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())} (USD)</label>
+            <input class="input" data-soft="${k}" type="number" step="1000" value="${p.soft_costs?.[k] ?? 0}"></div>`
+        ).join("")}
+      </div>
+    </details>
+    ${p._excel_sale_price ? `<div class="row gap-sm mt-16">
+      <button class="btn small secondary" data-action="use-excel-price" data-id="${p.id}" data-price="${p._excel_sale_price}">Use Excel sale price (${fmt.usdM(p._excel_sale_price)})</button>
+      <button class="btn small secondary" data-action="clear-price-override" data-id="${p.id}">Clear override (use cost-plus-margin)</button>
+    </div>` : ""}
+    ${p._excel_sale_price && res ? `<div class="note mt-16">
+      Excel-reported sale price: <strong>${fmt.usdM(p._excel_sale_price)}</strong>
+      · Dashboard: <strong>${fmt.usdM(res.kpis.total_sales)}</strong>
+      · Variance: <strong class="${res.kpis.total_sales >= p._excel_sale_price ? "" : ""}">${fmt.pct((res.kpis.total_sales - p._excel_sale_price) / p._excel_sale_price, 2)}</strong>
+      <span class="muted" style="margin-left:8px;">See PHASE_4_VALIDATION.md for reconciliation.</span>
+    </div>` : ""}
+  `;
+}
+
+function renderProjectMonthlyTable(res) {
+  const m = res.monthly;
+  const startIdx = m.dates.findIndex(d => d === res.start_date);
+  const saleIdx = m.dates.findIndex(d => d === res.sale_date);
+  const lo = Math.max(0, startIdx - 1);
+  const hi = Math.min(m.dates.length, saleIdx + 2);
+  let html = `<table class="tbl"><thead><tr><th>USD</th>`;
+  for (let i = lo; i < hi; i++) html += `<th>${fmt.ymShort(m.dates[i])}</th>`;
+  html += `</tr></thead><tbody>`;
+  const rows = [
+    ["Sales", "sales"],
+    ["Land cost", "land_cost"],
+    ["Build cost", "build_cost"],
+    ["Kingshaus", "kingshaus"],
+    ["Interest", "interest"],
+    ["Debt drawn", "debt_drawn"],
+    ["Debt repaid", "debt_repaid"],
+    ["Debt balance", "debt_balance"],
+    ["Equity drawn", "equity_drawn"],
+    ["Equity returned", "equity_returned"],
+    ["Equity balance", "equity_balance"],
+  ];
+  for (const [label, key] of rows) {
+    html += `<tr><td>${label}</td>`;
+    for (let i = lo; i < hi; i++) {
+      const v = m[key][i];
+      html += `<td class="num ${v < 0 ? "neg" : v > 0 ? "" : "muted"}">${v === 0 ? "—" : fmt.usdSigned(v)}</td>`;
+    }
+    html += `</tr>`;
+  }
+  html += `</tbody></table>`;
+  return html;
+}
+
+// ---------- Cash flow view (portfolio wide grid) ----------
+
+function renderCashflow(r) {
+  const m = r.monthly;
+  const horizonStart = 0, horizonEnd = m.dates.length;
+  const rows = [
+    ["Sales", "sales"],
+    ["Land cost", "land_cost"],
+    ["Construction", "build_cost"],
+    ["Kingshaus", "kingshaus"],
+    ["Overhead", "overhead"],
+    ["Interest", "interest"],
+    ["Debt drawn", "debt_drawn"],
+    ["Debt repaid", "debt_repaid"],
+    ["Debt balance", "debt_balance"],
+    ["Equity drawn", "equity_drawn"],
+    ["Equity returned", "equity_returned"],
+    ["Equity balance", "equity_balance"],
+    ["Net cash", "net_cash"],
+  ];
+  let html = `<div class="section-title">Portfolio cash flow · 49 months · all USD</div>
+  <div class="panel"><div class="scroll-x"><table class="tbl"><thead><tr><th>USD</th>`;
+  for (let i = horizonStart; i < horizonEnd; i++) html += `<th>${fmt.ymShort(m.dates[i])}</th>`;
+  html += `<th>Total</th></tr></thead><tbody>`;
+  for (const [label, key] of rows) {
+    html += `<tr><td>${label}</td>`;
+    let total = 0;
+    for (let i = horizonStart; i < horizonEnd; i++) {
+      const v = m[key][i];
+      total += v;
+      html += `<td class="num ${v < 0 ? "neg" : v > 0 ? "" : "muted"}">${v === 0 ? "—" : fmt.usdSigned(v)}</td>`;
+    }
+    html += `<td class="num"><strong>${fmt.usdSigned(total)}</strong></td></tr>`;
+  }
+  html += `</tbody></table></div></div>`;
+  return html;
+}
+
+// ---------- Pipeline view ----------
+
+function renderPipeline(r) {
+  // Gantt: 1 row per project, bar from start to sale date
+  const start0 = state.globals.model_start;
+  const N = state.globals.horizon_months;
+  const projects = state.projects;
+
+  let html = `<div class="section-title">Development pipeline · ${start0} to ${r.timeline[N-1]}</div>
+    <div class="panel"><div class="gantt">
+      <div class="gantt-label" style="background:var(--surface);font-weight:600;">Project</div>
+      <div class="gantt-track" style="background:var(--surface);">
+        <div style="position:absolute;left:0;right:0;top:6px;display:flex;justify-content:space-between;font-size:10px;color:var(--fg-3);">
+          ${r.timeline.filter((_,i)=>i%6===0).map(d=>`<span>${fmt.ymShort(d)}</span>`).join("")}
+        </div>
+      </div>`;
+  for (const p of projects) {
+    const startIdx = r.timeline.indexOf(p.start_date);
+    const saleIdx = r.timeline.indexOf(addMonthsHelper(p.start_date, p.program_months));
+    const leftPct = startIdx >= 0 ? (startIdx / N) * 100 : 0;
+    const rightPct = saleIdx >= 0 ? (saleIdx / N) * 100 : 100;
+    const excluded = state.scenario.excluded_project_ids.includes(p.id);
+    const cls = excluded ? "pipeline" : p.status;
+    html += `<div class="gantt-label">${p.name} <span class="badge ${cls}">${excluded ? "excluded" : p.status}</span></div>
+             <div class="gantt-track">
+               <div class="gantt-bar ${cls}" style="left:${leftPct.toFixed(1)}%;width:${(rightPct - leftPct).toFixed(1)}%;">
+                 ${fmt.ymShort(p.start_date)} → ${fmt.ymShort(addMonthsHelper(p.start_date, p.program_months))}
+               </div>
+             </div>`;
+  }
+  html += `</div></div>`;
+  return html;
+}
+
+function addMonthsHelper(s, n) {
+  const [y, m] = s.split("-").map(Number);
+  const total = y * 12 + (m - 1) + n;
+  return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, "0")}`;
+}
+
+// ---------- Waterfall view ----------
+
+function renderWaterfall(r) {
+  const projects = r.by_project;
+  const m = r.monthly;
+  const totalIn = r.kpis.total_equity_in;
+  const totalOut = r.kpis.total_equity_out;
+  const netGain = totalOut - totalIn;
+
+  // Per-project equity timeline rows
+  const projRows = projects.map((res) => {
+    const equityIn = res.monthly.equity_drawn.reduce((a,b)=>a+b,0);
+    const equityOut = res.monthly.equity_returned.reduce((a,b)=>a+b,0);
+    const firstCall = res.monthly.equity_drawn.findIndex(v => v > 0);
+    const lastReturn = res.monthly.equity_returned.findIndex(v => v > 0);
+    const moic = res.kpis.moic || 0;
+    const irr = res.kpis.irr_annual;
+    const hold = (lastReturn >= 0 && firstCall >= 0) ? (lastReturn - firstCall) : null;
+    return `<tr>
+      <td><strong>${res.project_name}</strong></td>
+      <td class="num neg">${fmt.usdM(equityIn)}</td>
+      <td>${firstCall >= 0 ? fmt.ymShort(res.monthly.dates[firstCall]) : "—"}</td>
+      <td class="num pos">${fmt.usdM(equityOut)}</td>
+      <td>${lastReturn >= 0 ? fmt.ymShort(res.monthly.dates[lastReturn]) : "—"}</td>
+      <td>${hold == null ? "—" : `${hold} mo`}</td>
+      <td class="num">${moic.toFixed(2)}x</td>
+      <td class="num">${irr == null ? "—" : fmt.pct(irr)}</td>
+      <td class="num ${equityOut - equityIn >= 0 ? "pos" : "neg"}">${fmt.usdM(Math.abs(equityOut - equityIn))}</td>
+    </tr>`;
+  }).join("");
+
+  // Annual equity flow table
+  const annual = {};
+  for (let i = 0; i < m.dates.length; i++) {
+    const fy = "FY" + m.dates[i].slice(2, 4);
+    if (!annual[fy]) annual[fy] = { drawn: 0, returned: 0 };
+    annual[fy].drawn += m.equity_drawn[i];
+    annual[fy].returned += m.equity_returned[i];
+  }
+  const yearKeys = Object.keys(annual).sort();
+  let cum = 0;
+  const annRows = yearKeys.map(fy => {
+    cum += annual[fy].returned - annual[fy].drawn;
+    return `<tr>
+      <td><strong>${fy}</strong></td>
+      <td class="num neg">${fmt.usdM(annual[fy].drawn)}</td>
+      <td class="num pos">${fmt.usdM(annual[fy].returned)}</td>
+      <td class="num ${annual[fy].returned - annual[fy].drawn >= 0 ? "pos" : "neg"}">${fmt.usdM(Math.abs(annual[fy].returned - annual[fy].drawn))}</td>
+      <td class="num ${cum >= 0 ? "pos" : "neg"}">${fmt.usdM(Math.abs(cum))}</td>
+    </tr>`;
+  }).join("");
+
+  return `
+    <div class="section-title">Investor waterfall · KPC equity flow</div>
+    <div class="kpi-row">
+      ${kpiCard("Total equity in", fmt.usdM(totalIn), "Capital deployed across all projects")}
+      ${kpiCard("Total equity returned", fmt.usdM(totalOut), "Distributions to KPC")}
+      ${kpiCard("Net gain", fmt.usdM(netGain), `${(totalOut/Math.max(1,totalIn)).toFixed(2)}x MOIC`, netGain >= 0 ? "pos" : "neg")}
+      ${kpiCard("Portfolio IRR", r.kpis.irr_annual == null ? "—" : fmt.pct(r.kpis.irr_annual), "Annualized")}
+      ${kpiCard("Payback", r.kpis.payback_months == null ? "—" : fmt.months(r.kpis.payback_months), "Months to recoup deployed equity")}
+      ${kpiCard("Peak deployed", fmt.usdM(r.kpis.peak_equity_required), `Peak in ${fmt.ymShort(r.kpis.peak_equity_month)}`)}
+    </div>
+
+    <div class="panel mb-24">
+      <h3>Equity timeline — cumulative deployed vs returned</h3>
+      <div class="panel-subtitle">Source: matches KPC Equity Flow tab structure</div>
+      <div class="chart-frame"><canvas id="chart-waterfall"></canvas></div>
+    </div>
+
+    <div class="panel-row">
+      <div class="panel">
+        <h3>By project</h3>
+        <div class="scroll-x"><table class="tbl">
+          <thead><tr><th>Project</th><th>Equity in</th><th>First call</th><th>Returned</th><th>Returned at</th><th>Hold</th><th>MOIC</th><th>IRR</th><th>Gain</th></tr></thead>
+          <tbody>${projRows}</tbody>
+        </table></div>
+      </div>
+      <div class="panel">
+        <h3>By fiscal year</h3>
+        <div class="scroll-x"><table class="tbl">
+          <thead><tr><th>FY</th><th>Equity drawn</th><th>Equity returned</th><th>Net</th><th>Cumulative net</th></tr></thead>
+          <tbody>${annRows}</tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <div class="panel mb-24">
+      <h3>Monthly equity movement</h3>
+      <div class="panel-subtitle">Drawn (negative) vs returned (positive) by month</div>
+      <div class="chart-frame"><canvas id="chart-equity-monthly"></canvas></div>
+    </div>
+
+    ${r.waterfall && r.waterfall.length > 0 ? `
+    <div class="panel mb-24">
+      <h3>Equity waterfall — by investor</h3>
+      <div class="panel-subtitle">Per-investor IRR/MOIC, pref/hurdle clearance, and tier-by-tier distribution split.</div>
+      <div class="scroll-x"><table class="tbl">
+        <thead><tr>
+          <th>Investor</th><th>Role</th><th>Share</th>
+          <th>Equity in</th><th>Gross distribution</th><th>Promote</th><th>Net distribution</th>
+          <th>Net MOIC</th><th>IRR</th>
+          <th>Pref/Hurdle</th><th>Status</th>
+        </tr></thead>
+        <tbody>${r.waterfall.map(w => {
+          const statusBadge = w.hurdle_cleared
+            ? `<span class="badge sold">Above hurdle</span>`
+            : w.pref_cleared
+              ? `<span class="badge committed">Pref cleared</span>`
+              : (w.irr_annual == null
+                  ? `<span class="badge pipeline">—</span>`
+                  : `<span class="badge excluded">Below pref</span>`);
+          const promoteCell = w.is_sponsor
+            ? (w.promote_received_from_lps > 0 ? `<span class="pos">+${fmt.usdM(w.promote_received_from_lps)}</span>` : "—")
+            : (w.promote_paid_to_sponsor > 0 ? `<span class="neg">−${fmt.usdM(w.promote_paid_to_sponsor)}</span>` : "—");
+          return `<tr>
+            <td><strong>${w.name}</strong></td>
+            <td>${w.is_sponsor ? '<span class="badge committed">Sponsor (GP)</span>' : '<span class="badge pipeline">LP</span>'}</td>
+            <td class="num">${fmt.pct(w.share)}</td>
+            <td class="num neg">${fmt.usdM(w.equity_in)}</td>
+            <td class="num pos">${fmt.usdM(w.equity_out_gross)}</td>
+            <td class="num">${promoteCell}</td>
+            <td class="num pos">${fmt.usdM(w.net_distribution)}</td>
+            <td class="num">${w.moic.toFixed(2)}x</td>
+            <td class="num">${w.irr_annual == null ? "—" : fmt.pct(w.irr_annual)}</td>
+            <td class="num muted">${fmt.pct(w.preferred_return_pct)} / ${fmt.pct(w.hurdle_pct)}</td>
+            <td>${statusBadge}</td>
+          </tr>`;
+        }).join("")}</tbody>
+      </table></div>
+
+      ${state.globals.apply_tax ? `
+      <h3 class="mt-16">After-tax returns (per investor)</h3>
+      <div class="panel-subtitle">Tax applied to net gain at each investor's configured tax rate. Loss years generate no refund.</div>
+      <div class="scroll-x"><table class="tbl">
+        <thead><tr>
+          <th>Investor</th><th>Tax rate</th><th>Net dist. (pre-tax)</th><th>Tax paid</th><th>Net dist. (after-tax)</th><th>After-tax MOIC</th><th>After-tax IRR</th>
+        </tr></thead>
+        <tbody>${r.waterfall.map(w => `<tr>
+          <td><strong>${w.name}</strong></td>
+          <td class="num">${fmt.pct(w.tax_rate)}</td>
+          <td class="num pos">${fmt.usdM(w.net_distribution)}</td>
+          <td class="num neg">${fmt.usdM(w.tax_paid)}</td>
+          <td class="num pos">${fmt.usdM(w.after_tax_distribution)}</td>
+          <td class="num">${w.after_tax_moic.toFixed(2)}x</td>
+          <td class="num">${w.after_tax_irr_annual == null ? "—" : fmt.pct(w.after_tax_irr_annual)}</td>
+        </tr>`).join("")}</tbody>
+      </table></div>
+      ` : ""}
+
+      <h3 class="mt-16">Distribution tiers (full European waterfall)</h3>
+      <div class="panel-subtitle">5-tier: capital → preferred return → GP catch-up → to hurdle → above-hurdle carry split. GP catch-up sizes so that after tier 2+3a, sponsor has carry % of the cumulative LP pref + catch-up.</div>
+      <div class="scroll-x"><table class="tbl">
+        <thead><tr>
+          <th>Investor</th><th>Hold</th>
+          <th>1. ROC</th><th>2. Pref to LP</th><th>3a. GP catch-up</th><th>3b. To hurdle (LP)</th>
+          <th>4a. Above hurdle to LP</th><th>4b. Carry to GP</th>
+        </tr></thead>
+        <tbody>${r.waterfall.map(w => `<tr>
+          <td><strong>${w.name}</strong></td>
+          <td>${w.tiers.holdYears.toFixed(1)}y</td>
+          <td class="num pos">${fmt.usdM(w.tiers.tier1_return_of_capital)}</td>
+          <td class="num pos">${fmt.usdM(w.tiers.tier2_pref_return)}</td>
+          <td class="num ${w.is_sponsor ? "muted" : ""}">${w.is_sponsor ? "n/a (self)" : fmt.usdM(w.tiers.tier3a_gp_catchup)}</td>
+          <td class="num pos">${fmt.usdM(w.tiers.tier3b_to_hurdle)}</td>
+          <td class="num pos">${fmt.usdM(w.tiers.tier4_to_investor)}</td>
+          <td class="num ${w.is_sponsor ? "muted" : ""}">${w.is_sponsor ? "n/a (self)" : fmt.usdM(w.tiers.tier4_to_sponsor)}</td>
+        </tr>`).join("")}</tbody>
+      </table></div>
+
+      <div class="note mt-16">
+        Tier breakdown uses a simplified European-style waterfall with pref/hurdle thresholds compounded over each investor's holding period. Tier 4 above-hurdle is split <strong>(1 − carry)</strong> to the investor and <strong>carry</strong> to the sponsor. With only one investor (KPC sponsor), there is no actual promote — promote arises when LPs join.
+      </div>
+    </div>` : ""}
+
+    ${r.hypothetical_lp ? `
+    <div class="panel mb-24">
+      <h3>Hypothetical: what if you brought in a co-investor?</h3>
+      <div class="panel-subtitle">Simulates an LP at the specified equity share, with their pref/hurdle/carry assumptions. Adjust in Settings → Investors.</div>
+      <div class="scroll-x"><table class="tbl">
+        <thead><tr>
+          <th>Investor</th><th>Role</th><th>Share</th>
+          <th>Equity in</th><th>Gross dist.</th><th>Promote</th><th>Net dist.</th>
+          <th>Net MOIC</th><th>IRR</th><th>Status</th>
+        </tr></thead>
+        <tbody>${r.hypothetical_lp.map(w => {
+          const statusBadge = w.hurdle_cleared
+            ? `<span class="badge sold">Above hurdle</span>`
+            : w.pref_cleared
+              ? `<span class="badge committed">Pref cleared</span>`
+              : (w.irr_annual == null ? `<span class="badge pipeline">—</span>` : `<span class="badge excluded">Below pref</span>`);
+          const promoteCell = w.is_sponsor
+            ? (w.promote_received_from_lps > 0 ? `<span class="pos">+${fmt.usdM(w.promote_received_from_lps)}</span>` : "—")
+            : (w.promote_paid_to_sponsor > 0 ? `<span class="neg">−${fmt.usdM(w.promote_paid_to_sponsor)}</span>` : "—");
+          return `<tr>
+            <td><strong>${w.name}</strong></td>
+            <td>${w.is_sponsor ? '<span class="badge committed">Sponsor (GP)</span>' : '<span class="badge pipeline">LP</span>'}</td>
+            <td class="num">${fmt.pct(w.share)}</td>
+            <td class="num neg">${fmt.usdM(w.equity_in)}</td>
+            <td class="num pos">${fmt.usdM(w.equity_out_gross)}</td>
+            <td class="num">${promoteCell}</td>
+            <td class="num pos">${fmt.usdM(w.net_distribution)}</td>
+            <td class="num">${w.moic.toFixed(2)}x</td>
+            <td class="num">${w.irr_annual == null ? "—" : fmt.pct(w.irr_annual)}</td>
+            <td>${statusBadge}</td>
+          </tr>`;
+        }).join("")}</tbody>
+      </table></div>
+    </div>` : ""}
+
+    ${r.waterfall && r.waterfall.length > 1 ? `
+    <div class="panel mb-24">
+      <h3>Pro-rata distribution check</h3>
+      <div class="panel-subtitle">Equity shares should sum to 100%.</div>
+      <table class="tbl">
+        <thead><tr><th>Sum of shares</th><th>Total equity in (allocated)</th><th>Total equity out (allocated)</th></tr></thead>
+        <tbody><tr>
+          <td class="num"><strong>${fmt.pct(r.waterfall.reduce((a,w)=>a+w.share, 0))}</strong></td>
+          <td class="num neg">${fmt.usdM(r.waterfall.reduce((a,w)=>a+w.equity_in, 0))}</td>
+          <td class="num pos">${fmt.usdM(r.waterfall.reduce((a,w)=>a+w.equity_out, 0))}</td>
+        </tr></tbody>
+      </table>
+    </div>` : ""}
+  `;
+}
+
+// ---------- Scenario view ----------
+
+function renderScenario(r) {
+  const s = state.scenario;
+  return `
+    <div class="section-title">Scenario controls · ${s.name}</div>
+    <div class="panel-row">
+      <div class="panel">
+        <h3>Active scenario</h3>
+        <div class="form-grid">
+          <div class="form-row full"><label>Scenario name</label><input class="input" id="scn-name" type="text" value="${s.name}"></div>
+          <div class="form-row"><label>Interest rate Δ (bps)</label><input class="input" id="scn-interest-bps" type="number" step="25" value="${s.interest_rate_delta_bps}"></div>
+          <div class="form-row"><label>Build cost ×</label><input class="input" id="scn-build-mult" type="number" step="0.05" value="${s.build_cost_multiplier}"></div>
+          <div class="form-row"><label>Sale price ×</label><input class="input" id="scn-sale-mult" type="number" step="0.05" value="${s.sale_price_multiplier}"></div>
+          <div class="form-row"><label>Margin override</label><input class="input" id="scn-margin" type="number" step="0.01" value="${s.margin_override ?? ""}" placeholder="leave blank for per-project / global"></div>
+          <div class="form-row"><label>Timing shift (months)</label><input class="input" id="scn-timing" type="number" step="1" value="${s.timing_shift_months}"></div>
+        </div>
+        <div class="row mt-16 gap-sm wrap">
+          <button class="btn" id="scn-apply">Apply</button>
+          <button class="btn secondary" id="scn-save">Save as named scenario</button>
+          <button class="btn secondary" id="scn-reset">Reset to base</button>
+          <button class="btn secondary" data-preset="stress">Stress preset</button>
+          <button class="btn secondary" data-preset="optimistic">Optimistic preset</button>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Project exclusions</h3>
+        <div class="panel-subtitle">Toggle off any project to exclude it from portfolio totals</div>
+        ${state.projects.map(p => {
+          const ex = state.scenario.excluded_project_ids.includes(p.id);
+          return `<div class="row between" style="padding:6px 0;border-bottom:1px solid var(--border);">
+            <div><strong>${p.name}</strong> <span class="muted" style="font-size:11px;">${fmt.ymShort(p.start_date)}</span></div>
+            <label class="toggle"><input type="checkbox" data-exclude-id="${p.id}" ${ex ? "" : "checked"}> ${ex ? "Excluded" : "Active"}</label>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>
+
+    <div class="panel mb-24">
+      <h3>Effect of current scenario on KPIs</h3>
+      <div class="panel-subtitle">Comparison vs base case (all-default scenario)</div>
+      ${renderScenarioComparison()}
+    </div>
+
+    ${state.scenarios.length > 0 ? `
+    <div class="panel mb-24">
+      <h3>Saved scenarios — side-by-side KPIs</h3>
+      <div class="panel-subtitle">${state.scenarios.length} saved · Click a cell to load that scenario, × to delete</div>
+      ${renderSavedScenarios()}
+    </div>
+
+    <div class="panel mb-24">
+      <h3>Annual P&L by scenario</h3>
+      <div class="panel-subtitle">Profit before tax per FY for each saved scenario.</div>
+      ${renderScenarioAnnualComparison()}
+    </div>
+
+    <div class="panel mb-24">
+      <h3>Scenario overlay — cumulative equity balance over time</h3>
+      <div class="panel-subtitle">Compare the equity trajectory across all saved scenarios + base + current.</div>
+      <div class="chart-frame tall"><canvas id="chart-scenario-overlay"></canvas></div>
+    </div>
+
+    <div class="panel mb-24">
+      <h3>Scenario overlay — monthly net cash flow</h3>
+      <div class="panel-subtitle">Compare cash flow profiles across scenarios.</div>
+      <div class="chart-frame tall"><canvas id="chart-scenario-cashflow"></canvas></div>
+    </div>` : ""}
+  `;
+}
+
+function renderScenarioAnnualComparison() {
+  const baseScn = { name:"Base", interest_rate_delta_bps:0, build_cost_multiplier:1, sale_price_multiplier:1, margin_override:null, timing_shift_months:0, excluded_project_ids:[] };
+  const scenarios = [baseScn, state.scenario, ...state.scenarios.filter(s => s.name !== state.scenario.name && s.name !== "Base")];
+  const results = scenarios.map(s => ({ scn: s, r: aggregatePortfolio(state.projects, state.globals, s) }));
+  // Collect all FY keys across scenarios
+  const fySet = new Set();
+  for (const x of results) for (const fy of Object.keys(x.r.annual)) fySet.add(fy);
+  const years = Array.from(fySet).sort();
+
+  const metrics = [
+    ["Sales", "sales"],
+    ["Profit before tax", "profit_before_tax"],
+  ];
+  let html = `<div class="scroll-x"><table class="tbl"><thead><tr><th>Scenario</th><th>Metric</th>${years.map(y => `<th>${y}</th>`).join("")}<th>Total</th></tr></thead><tbody>`;
+  for (const x of results) {
+    for (const [label, key] of metrics) {
+      let total = 0;
+      const cells = years.map(y => {
+        const v = x.r.annual[y]?.[key] ?? 0;
+        total += v;
+        return `<td class="num ${v < 0 ? "neg" : v > 0 ? "pos" : "muted"}">${fmt.usdSigned(v)}</td>`;
+      }).join("");
+      const isCurrent = x.scn.name === state.scenario.name;
+      html += `<tr>
+        <td>${isCurrent ? "<strong>" : ""}${x.scn.name}${isCurrent ? " (current)</strong>" : ""}</td>
+        <td>${label}</td>
+        ${cells}
+        <td class="num ${total < 0 ? "neg" : "pos"}"><strong>${fmt.usdSigned(total)}</strong></td>
+      </tr>`;
+    }
+  }
+  html += `</tbody></table></div>`;
+  return html;
+}
+
+function renderSavedScenarios() {
+  const baseScn = { name:"Base", interest_rate_delta_bps:0, build_cost_multiplier:1, sale_price_multiplier:1, margin_override:null, timing_shift_months:0, excluded_project_ids:[] };
+  const scenarios = [baseScn, ...state.scenarios];
+  const results = scenarios.map(s => ({ scn: s, r: aggregatePortfolio(state.projects, state.globals, s) }));
+  const metrics = [
+    ["Total profit pre-tax", r => r.kpis.total_profit_before_tax, "usdM"],
+    ["Total sales", r => r.kpis.total_sales, "usdM"],
+    ["Peak equity", r => r.kpis.peak_equity_required, "usdM"],
+    ["Max debt", r => r.kpis.max_debt_outstanding, "usdM"],
+    ["MOIC", r => r.kpis.moic_gross, "moic"],
+    ["IRR (annual)", r => r.kpis.irr_annual, "pct"],
+    ["Payback (months)", r => r.kpis.payback_months, "months"],
+  ];
+  const fmtFn = {
+    usdM: fmt.usdM,
+    moic: v => v == null ? "—" : `${v.toFixed(2)}x`,
+    pct: v => v == null ? "—" : fmt.pct(v),
+    months: v => v == null ? "—" : `${v} mo`,
+  };
+  let html = `<div class="scroll-x"><table class="tbl"><thead><tr><th>Metric</th>`;
+  for (const x of results) html += `<th>${x.scn.name}${x.scn !== baseScn ? ` <button class="btn small danger" data-delete-scenario="${x.scn.name}" style="margin-left:6px;padding:0 6px;">×</button>` : ""}</th>`;
+  html += `</tr></thead><tbody>`;
+  for (const [label, getter, fmtKey] of metrics) {
+    const base = getter(results[0].r);
+    html += `<tr><td>${label}</td>`;
+    for (const x of results) {
+      const v = getter(x.r);
+      const isCurrent = x.scn === results[0].scn;
+      const cls = isCurrent ? "muted" : (v >= base ? "pos" : "neg");
+      html += `<td class="num ${cls}" data-load-scenario="${x.scn.name}" style="cursor:pointer;">${fmtFn[fmtKey](v)}</td>`;
+    }
+    html += `</tr>`;
+  }
+  html += `</tbody></table></div>`;
+  return html;
+}
+
+function renderScenarioComparison() {
+  const base = aggregatePortfolio(state.projects, state.globals,
+    { name:"Base", interest_rate_delta_bps:0, build_cost_multiplier:1, sale_price_multiplier:1, margin_override:null, timing_shift_months:0, excluded_project_ids:[] });
+  const cur = aggregatePortfolio(state.projects, state.globals, state.scenario);
+  const rows = [
+    ["Total profit (pre-tax)", "total_profit_before_tax"],
+    ["Peak equity required", "peak_equity_required"],
+    ["Max debt outstanding", "max_debt_outstanding"],
+    ["Total sales", "total_sales"],
+    ["Total interest paid", "total_interest"],
+    ["Gross MOIC", "moic_gross"],
+  ];
+  return `<table class="tbl">
+    <thead><tr><th>KPI</th><th>Base case</th><th>${state.scenario.name}</th><th>Δ</th></tr></thead>
+    <tbody>
+      ${rows.map(([label, key]) => {
+        const b = base.kpis[key], c = cur.kpis[key];
+        const isMOIC = key === "moic_gross";
+        const isCount = key === "active_project_count";
+        const d = c - b;
+        return `<tr>
+          <td>${label}</td>
+          <td class="num">${isMOIC ? b.toFixed(2)+"x" : fmt.usdM(b)}</td>
+          <td class="num">${isMOIC ? c.toFixed(2)+"x" : fmt.usdM(c)}</td>
+          <td class="num ${d>=0?"pos":"neg"}">${isMOIC ? (d>=0?"+":"")+d.toFixed(2)+"x" : (d>=0?"+":"")+fmt.usdM(d)}</td>
+        </tr>`;
+      }).join("")}
+    </tbody>
+  </table>`;
+}
+
+// ---------- Sensitivity view ----------
+
+function renderSensitivity(r) {
+  const baseProfit = r.kpis.total_profit_before_tax;
+  // Tornado factors: each factor swung up + down, profit impact
+  const factors = [
+    { name: "Sale price",       low: { sale_price_multiplier: 0.95 }, high: { sale_price_multiplier: 1.05 } },
+    { name: "Build cost",       low: { build_cost_multiplier: 1.10 }, high: { build_cost_multiplier: 0.90 } },
+    { name: "Margin target",    low: { margin_override: 0.20 },        high: { margin_override: 0.30 } },
+    { name: "Interest rate",    low: { interest_rate_delta_bps: 200 }, high: { interest_rate_delta_bps: -200 } },
+    { name: "Timing (months)",  low: { timing_shift_months: 3 },        high: { timing_shift_months: -3 } },
+  ];
+  const tornadoData = factors.map(f => {
+    const lowAlt = aggregatePortfolio(state.projects, state.globals, { ...state.scenario, ...f.low });
+    const highAlt = aggregatePortfolio(state.projects, state.globals, { ...state.scenario, ...f.high });
+    return {
+      label: f.name,
+      low: lowAlt.kpis.total_profit_before_tax - baseProfit,
+      high: highAlt.kpis.total_profit_before_tax - baseProfit,
+    };
+  });
+  // Sort by magnitude of swing (max abs delta) — biggest drivers first
+  tornadoData.sort((a, b) => Math.max(Math.abs(b.low), Math.abs(b.high)) - Math.max(Math.abs(a.low), Math.abs(a.high)));
+  // Expose for the chart renderer
+  if (typeof window !== "undefined") window.__tornadoData = tornadoData;
+
+  // Detailed single-factor table
+  const tests = [
+    { label: "Interest rate +200bps", patch: { interest_rate_delta_bps: 200 } },
+    { label: "Interest rate -200bps", patch: { interest_rate_delta_bps: -200 } },
+    { label: "Build cost +10%", patch: { build_cost_multiplier: 1.1 } },
+    { label: "Build cost -10%", patch: { build_cost_multiplier: 0.9 } },
+    { label: "Sale price +5%", patch: { sale_price_multiplier: 1.05 } },
+    { label: "Sale price -5%", patch: { sale_price_multiplier: 0.95 } },
+    { label: "Margin override 30%", patch: { margin_override: 0.30 } },
+    { label: "Margin override 20%", patch: { margin_override: 0.20 } },
+    { label: "Timing slip +3 months", patch: { timing_shift_months: 3 } },
+    { label: "Timing pull-forward -3 months", patch: { timing_shift_months: -3 } },
+  ];
+  const rows = tests.map((t) => {
+    const altScn = { ...state.scenario, ...t.patch };
+    const alt = aggregatePortfolio(state.projects, state.globals, altScn);
+    const d = alt.kpis.total_profit_before_tax - baseProfit;
+    const deq = alt.kpis.peak_equity_required - r.kpis.peak_equity_required;
+    return `<tr>
+      <td>${t.label}</td>
+      <td class="num">${fmt.usdM(alt.kpis.total_profit_before_tax)}</td>
+      <td class="num ${d>=0?"pos":"neg"}">${(d>=0?"+":"")}${fmt.usdM(d)}</td>
+      <td class="num">${fmt.usdM(alt.kpis.peak_equity_required)}</td>
+      <td class="num ${deq<=0?"pos":"neg"}">${(deq>=0?"+":"")}${fmt.usdM(deq)}</td>
+    </tr>`;
+  }).join("");
+  // Two-way heatmap: interest rate (rows) × build cost multiplier (cols)
+  const irSteps = [-200, -100, 0, 100, 200, 300, 400];
+  const bcSteps = [0.90, 0.95, 1.00, 1.05, 1.10, 1.15];
+  const heatmap = [];
+  let hmMin = Infinity, hmMax = -Infinity;
+  for (const ir of irSteps) {
+    const row = [];
+    for (const bc of bcSteps) {
+      const alt = aggregatePortfolio(state.projects, state.globals,
+        { ...state.scenario, interest_rate_delta_bps: ir, build_cost_multiplier: bc });
+      const v = alt.kpis.total_profit_before_tax;
+      if (v < hmMin) hmMin = v;
+      if (v > hmMax) hmMax = v;
+      row.push(v);
+    }
+    heatmap.push(row);
+  }
+  const cellColor = (v) => {
+    if (v >= 0) {
+      const t = hmMax === 0 ? 0 : v / Math.max(1, hmMax);
+      return `rgba(31, 122, 77, ${0.15 + 0.55 * t})`;
+    } else {
+      const t = hmMin === 0 ? 0 : v / hmMin;
+      return `rgba(179, 38, 30, ${0.15 + 0.55 * t})`;
+    }
+  };
+  const hmRows = irSteps.map((ir, i) => {
+    const cells = bcSteps.map((bc, j) => {
+      const v = heatmap[i][j];
+      const isBase = ir === 0 && bc === 1.0;
+      return `<td class="num" style="background:${cellColor(v)};${isBase ? "border:2px solid var(--accent);" : ""}">${fmt.usdM(v)}</td>`;
+    }).join("");
+    return `<tr><td><strong>${ir >= 0 ? "+" : ""}${ir} bps</strong></td>${cells}</tr>`;
+  }).join("");
+
+  return `
+    <div class="section-title">Sensitivity · single-factor swings vs current scenario</div>
+    <div class="panel mb-24">
+      <h3>Tornado — profit impact ranked by driver</h3>
+      <div class="panel-subtitle">Δ profit at ±5–10% / ±200bps swings on each driver. Red = downside, green = upside.</div>
+      <div class="chart-frame tall"><canvas id="chart-tornado"></canvas></div>
+    </div>
+    <div class="panel mb-24">
+      <h3>Two-way heatmap — Profit at varying interest rate × build cost</h3>
+      <div class="panel-subtitle">Total profit before tax (USD). Rows = interest rate delta. Columns = build cost multiplier. Outlined cell = current scenario.</div>
+      <div class="scroll-x"><table class="tbl">
+        <thead><tr><th>Interest \\ Build</th>${bcSteps.map(bc => `<th>${(bc*100).toFixed(0)}%</th>`).join("")}</tr></thead>
+        <tbody>${hmRows}</tbody>
+      </table></div>
+    </div>
+    <div class="panel">
+      <h3>Detailed swings (table)</h3>
+      <table class="tbl">
+        <thead><tr><th>Stress</th><th>Profit</th><th>Δ profit</th><th>Peak equity</th><th>Δ equity</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ---------- Risk (Monte Carlo) view ----------
+
+const DEFAULT_DISTRIBUTIONS = {
+  build_cost_multiplier: { type: "triangular", min: 0.92, mode: 1.00, max: 1.20, label: "Build cost ×" },
+  sale_price_multiplier: { type: "triangular", min: 0.85, mode: 1.00, max: 1.10, label: "Sale price ×" },
+  interest_rate_delta_bps: { type: "triangular", min: -150, mode: 0, max: 400, label: "Interest Δ (bps)" },
+  timing_shift_months: { type: "triangular", min: -1, mode: 0, max: 6, label: "Timing slip (months)" },
+};
+
+function renderRisk(r) {
+  const mc = window.__mcResult;
+  const distributions = window.__mcDistributions || DEFAULT_DISTRIBUTIONS;
+  const trials = window.__mcTrials || 1000;
+
+  const distRows = Object.entries(distributions).map(([key, d]) => {
+    return `<div class="row gap-sm wrap" style="padding:6px 0;border-bottom:1px solid var(--border);">
+      <div style="flex:2;font-weight:500;font-size:12px;">${d.label || key}</div>
+      <input class="input" style="flex:1;" type="number" step="0.01" data-dist="${key}" data-edge="min" value="${d.min}" placeholder="min">
+      <input class="input" style="flex:1;" type="number" step="0.01" data-dist="${key}" data-edge="mode" value="${d.mode}" placeholder="mode">
+      <input class="input" style="flex:1;" type="number" step="0.01" data-dist="${key}" data-edge="max" value="${d.max}" placeholder="max">
+    </div>`;
+  }).join("");
+
+  const summaryTable = mc ? `
+    <div class="scroll-x"><table class="tbl">
+      <thead><tr><th>Outcome</th><th>Min</th><th>P10</th><th>P25</th><th>P50 (median)</th><th>Mean</th><th>P75</th><th>P90</th><th>Max</th><th>P(loss)</th></tr></thead>
+      <tbody>
+        ${[
+          ["Profit pre-tax", "profit_pre_tax", "usdM"],
+          ["Profit after-tax", "profit_after_tax", "usdM"],
+          ["Peak equity", "peak_equity", "usdM"],
+          ["Max debt", "max_debt", "usdM"],
+          ["MOIC", "moic", "moic"],
+          ["IRR (annual)", "irr_annual", "pct"],
+          ["Yield on cost", "yield_on_cost", "pct"],
+        ].map(([label, key, fmtKey]) => {
+          const s = mc.summary[key];
+          if (!s) return "";
+          const fmtFn = { usdM: fmt.usdM, moic: v => `${v.toFixed(2)}x`, pct: v => fmt.pct(v) }[fmtKey];
+          return `<tr>
+            <td><strong>${label}</strong></td>
+            <td class="num">${fmtFn(s.min)}</td>
+            <td class="num">${fmtFn(s.p10)}</td>
+            <td class="num">${fmtFn(s.p25)}</td>
+            <td class="num"><strong>${fmtFn(s.p50)}</strong></td>
+            <td class="num muted">${fmtFn(s.mean)}</td>
+            <td class="num">${fmtFn(s.p75)}</td>
+            <td class="num">${fmtFn(s.p90)}</td>
+            <td class="num">${fmtFn(s.max)}</td>
+            <td class="num ${s.prob_loss != null && s.prob_loss > 0.10 ? "neg" : s.prob_loss != null ? "pos" : "muted"}">${s.prob_loss != null ? fmt.pct(s.prob_loss, 1) : "—"}</td>
+          </tr>`;
+        }).join("")}
+      </tbody>
+    </table></div>
+  ` : `<div class="note">Configure distributions above and click <strong>Run simulation</strong>. Each trial samples one value from each distribution, runs the full portfolio model, and the results are aggregated into a percentile distribution.</div>`;
+
+  return `
+    <div class="section-title">Risk — Monte Carlo stress test</div>
+
+    <div class="panel-row">
+      <div class="panel">
+        <h3>Driver distributions (triangular)</h3>
+        <div class="panel-subtitle">Each driver samples from a triangular distribution [min, mode, max]. Mode is the most likely value.</div>
+        ${distRows}
+        <div class="row gap-sm mt-16">
+          <input class="input" id="mc-trials" type="number" step="100" min="100" max="10000" value="${trials}" style="max-width:120px;" placeholder="trials">
+          <button class="btn" id="run-mc">Run simulation</button>
+          <button class="btn secondary" id="reset-mc-dist">Reset distributions</button>
+          ${mc ? `<span class="muted" style="font-size:11px;align-self:center;">Last run: ${mc.trials} trials</span>` : ""}
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Quick interpretation</h3>
+        <div class="panel-subtitle">What this means for management decisions.</div>
+        ${mc ? (() => {
+          const profit = mc.summary.profit_pre_tax;
+          const equity = mc.summary.peak_equity;
+          return `
+            <ul style="margin:0;padding-left:16px;font-size:12px;">
+              <li>P10 (downside) profit: <strong>${fmt.usdM(profit.p10)}</strong> — 90% chance you do better.</li>
+              <li>P50 (median) profit: <strong>${fmt.usdM(profit.p50)}</strong> — most likely outcome.</li>
+              <li>P90 (upside) profit: <strong>${fmt.usdM(profit.p90)}</strong> — 10% chance you do better.</li>
+              <li>Range of profit outcomes: ${fmt.usdM(profit.max - profit.min)} (P90 − P10 = ${fmt.usdM(profit.p90 - profit.p10)}).</li>
+              <li>Peak equity stays in <strong>${fmt.usdM(equity.p10)} – ${fmt.usdM(equity.p90)}</strong> in 80% of scenarios.</li>
+              <li>Probability of loss: <strong>${fmt.pct(profit.prob_loss, 1)}</strong>.</li>
+            </ul>
+          `;
+        })() : `<div class="muted" style="font-size:12px;">Run a simulation to see the interpretation.</div>`}
+      </div>
+    </div>
+
+    ${mc ? `
+    <div class="panel mb-24">
+      <h3>Outcome percentiles</h3>
+      <div class="panel-subtitle">${mc.trials.toLocaleString()} simulations × ${state.projects.length} projects × ${state.globals.horizon_months} months.</div>
+      ${summaryTable}
+    </div>
+
+    <div class="panel-row">
+      <div class="panel">
+        <h3>Profit distribution (histogram)</h3>
+        <div class="chart-frame"><canvas id="chart-mc-profit"></canvas></div>
+      </div>
+      <div class="panel">
+        <h3>Peak equity distribution</h3>
+        <div class="chart-frame"><canvas id="chart-mc-equity"></canvas></div>
+      </div>
+    </div>` : ""}
+  `;
+}
+
+function renderMcCharts(isDark) {
+  const mc = window.__mcResult;
+  if (!mc) return;
+
+  for (const [chartId, key, color] of [
+    ["chart-mc-profit", "profit_pre_tax", "#2058a8"],
+    ["chart-mc-equity", "peak_equity", "#b3261e"],
+  ]) {
+    destroyChart(chartId);
+    const ctx = document.getElementById(chartId);
+    if (!ctx) continue;
+    const values = mc.summary[key].sorted;
+    const bins = 20;
+    const min = values[0], max = values[values.length - 1];
+    const binSize = (max - min) / bins;
+    const counts = new Array(bins).fill(0);
+    const labels = [];
+    for (let i = 0; i < bins; i++) {
+      const lo = min + i * binSize;
+      labels.push(fmt.usdM(lo + binSize / 2));
+    }
+    for (const v of values) {
+      let idx = Math.min(bins - 1, Math.floor((v - min) / binSize));
+      counts[idx]++;
+    }
+    charts[chartId] = new Chart(ctx, {
+      type: "bar",
+      data: { labels, datasets: [{ label: "Trials", data: counts, backgroundColor: color }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        scales: { x: { ticks: { autoSkip: true, maxTicksLimit: 10 } }, y: { beginAtZero: true } },
+        plugins: { legend: { display: false } },
+      },
+    });
+  }
+}
+
+// ---------- Users view (super_admin only) ----------
+
+let _usersCache = null;
+async function loadUsers() {
+  _usersCache = await fetchAllProfiles();
+  notify();
+}
+function renderUsers() {
+  if (!isSuperAdmin()) {
+    return `<div class="note neg">You need super-admin privileges to access this view.</div>`;
+  }
+  // Trigger async load if no cache
+  if (_usersCache == null) {
+    _usersCache = [];
+    loadUsers();
+  }
+  const rows = _usersCache.map(u => {
+    const isCurrent = u.id === state.auth.user?.id;
+    const created = new Date(u.created_at).toLocaleDateString();
+    return `<tr>
+      <td>${u.display_name || u.email.split("@")[0]}${isCurrent ? ' <span class="muted" style="font-size:10px;">(you)</span>' : ''}</td>
+      <td class="muted">${u.email}</td>
+      <td>${created}</td>
+      <td>
+        <select class="input" data-set-role="${u.id}" style="max-width:140px;">
+          <option value="viewer" ${u.role === "viewer" ? "selected" : ""}>Viewer (read-only)</option>
+          <option value="editor" ${u.role === "editor" ? "selected" : ""}>Editor</option>
+          <option value="super_admin" ${u.role === "super_admin" ? "selected" : ""}>Super admin</option>
+        </select>
+      </td>
+    </tr>`;
+  }).join("");
+  return `
+    <div class="row between mb-12">
+      <div class="section-title" style="margin:0;">Users · ${_usersCache.length} ${_usersCache.length === 1 ? "person" : "people"}</div>
+      <button class="btn secondary" id="refresh-users">Refresh</button>
+    </div>
+    <div class="panel">
+      <div class="panel-subtitle">As super-admin, you control who can sign in and what they can do. Change a role from the dropdown — it takes effect on their next page load.</div>
+      <div class="scroll-x"><table class="tbl">
+        <thead><tr><th>Name</th><th>Email</th><th>Joined</th><th>Role</th></tr></thead>
+        <tbody>${rows || `<tr><td colspan="4" class="muted center">Loading…</td></tr>`}</tbody>
+      </table></div>
+    </div>
+    <div class="note mt-16">
+      <strong>How to invite someone:</strong> Send them the dashboard URL. They click "Need an account?" on the sign-in screen and create their own account with their email. Their account starts as <strong>Viewer</strong> by default — promote them here once they've signed up.
+    </div>
+  `;
+}
+
+// ---------- Activity view ----------
+
+function renderActivity() {
+  const log = state.audit_log || [];
+  const categoryBadge = (cat) => {
+    const cls = { project: "committed", scenario: "in-build", global: "pipeline" }[cat] || "pipeline";
+    return `<span class="badge ${cls}">${cat}</span>`;
+  };
+  const formatDetail = (d) => {
+    if (!d) return "";
+    if (d.changes) {
+      return Object.entries(d.changes).map(([k, v]) => `<code>${k}</code>: ${formatVal(v.prev)} → ${formatVal(v.next)}`).join("<br>");
+    }
+    if (d.key && "next" in d) {
+      return `<code>${d.key}</code>: ${formatVal(d.prev)} → ${formatVal(d.next)}`;
+    }
+    if (d.patch) {
+      return Object.entries(d.patch).map(([k, v]) => `<code>${k}</code> = ${formatVal(v)}`).join("<br>");
+    }
+    return Object.entries(d).filter(([k]) => k !== "project_id" && k !== "source_id" && k !== "target_id").map(([k, v]) => `${k}: ${formatVal(v)}`).join("<br>");
+  };
+  const formatVal = (v) => {
+    if (v == null) return "<em class='muted'>null</em>";
+    if (typeof v === "boolean") return v ? "true" : "false";
+    if (typeof v === "object") return `<code>${JSON.stringify(v).slice(0, 60)}</code>`;
+    return String(v).slice(0, 60);
+  };
+  const rows = log.map(e => {
+    const d = new Date(e.ts);
+    const timeStr = d.toLocaleString();
+    return `<tr>
+      <td class="muted" style="white-space:nowrap;">${timeStr}</td>
+      <td>${categoryBadge(e.category)}</td>
+      <td>${e.message}</td>
+      <td style="font-size:11px;color:var(--fg-3);">${formatDetail(e.detail)}</td>
+    </tr>`;
+  }).join("");
+  return `
+    <div class="row between mb-12">
+      <div class="section-title" style="margin:0;">Activity log · ${log.length} entries</div>
+      <div class="row gap-sm">
+        <button class="btn secondary" id="export-audit-csv">Export CSV</button>
+        <button class="btn danger" id="clear-audit-log">Clear log</button>
+      </div>
+    </div>
+    <div class="panel">
+      ${log.length === 0
+        ? `<div class="note">No activity logged yet. Make changes to projects, scenarios, or globals — they'll appear here.</div>`
+        : `<div class="scroll-x"><table class="tbl">
+            <thead><tr><th style="width:170px;">Timestamp</th><th>Type</th><th>Action</th><th>Detail</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table></div>`
+      }
+    </div>
+    <div class="hint mt-16">Log keeps the most recent 200 mutations. Persisted to browser localStorage.</div>
+  `;
+}
+
+// ---------- Settings view ----------
+
+function renderSettings() {
+  const g = state.globals;
+  const f = (k, label, type="number", step="any") => `
+    <div class="form-row">
+      <label>${label}</label>
+      <input class="input" data-global="${k}" type="${type}" step="${step}" value="${g[k]}">
+    </div>`;
+  return `
+    <div class="section-title">Global drivers · used as defaults across all projects</div>
+    <div class="panel-row">
+      <div class="panel">
+        <h3>Financial assumptions</h3>
+        <div class="form-grid">
+          ${f("interest_rate_apr","Interest rate APR")}
+          ${f("ltc_pct","LTC (build / Kingshaus / soft)")}
+          ${f("ltc_land_pct","LTC (land)")}
+          ${f("cash_equity_ratio","Cash equity ratio")}
+          ${f("equity_at_closing_pct","Equity at closing")}
+          ${f("default_build_cost_per_sqft","Default build $/sqft")}
+          ${f("default_kingshaus_cost_per_sqft","Default Kingshaus $/sqft")}
+          ${f("target_margin","Target margin")}
+          ${f("default_land_cost_usd","Default land cost (USD)")}
+          ${f("default_program_months","Default program months","number","1")}
+          ${f("annual_opex_usd","Annual OPEX (USD)")}
+          ${f("opex_growth_rate","OPEX growth rate (per year)")}
+          ${f("model_start","Model start (YYYY-MM)","month","1")}
+          ${f("horizon_months","Horizon months","number","1")}
+          ${f("financing_fees_per_project_usd","Financing fees per project (USD)")}
+          ${f("tax_rate_pct","Federal tax rate")}
+          ${f("tax_state_rate_pct","State tax rate")}
+          <div class="form-row">
+            <label>Apply tax</label>
+            <select class="input" data-global-select="apply_tax">
+              <option value="true" ${g.apply_tax?"selected":""}>Yes (show after-tax view)</option>
+              <option value="false" ${!g.apply_tax?"selected":""}>No (pre-tax only)</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>Loss carryforward (NOL)</label>
+            <select class="input" data-global-select="loss_carryforward">
+              <option value="true" ${g.loss_carryforward?"selected":""}>Yes (prior losses offset future profits)</option>
+              <option value="false" ${!g.loss_carryforward?"selected":""}>No (tax each year independently)</option>
+            </select>
+            <div class="hint">US-style NOL: net operating losses carry forward indefinitely to offset future taxable income.</div>
+          </div>
+          <div class="form-row">
+            <label>Fiscal year mode</label>
+            <select class="input" data-global-select="fiscal_year_mode">
+              <option value="calendar" ${g.fiscal_year_mode==="calendar"?"selected":""}>Calendar year (Jan–Dec)</option>
+              <option value="juno13" ${g.fiscal_year_mode==="juno13"?"selected":""}>Juno 13-month (Jan 2030 rolls into FY29)</option>
+            </select>
+            <div class="hint">Excel's Summary tab uses 13-month FY29 (Jan-2029 to Jan-2030). Calendar matches GAAP.</div>
+          </div>
+          <div class="form-row">
+            <label>Capitalize interest</label>
+            <select class="input" data-global-select="capitalize_interest">
+              <option value="false" ${!g.capitalize_interest?"selected":""}>Simple interest (Excel default)</option>
+              <option value="true" ${g.capitalize_interest?"selected":""}>Compound (accrue into principal)</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>Build cost curve</label>
+            <select class="input" data-global-select="build_cost_curve">
+              <option value="linear" ${g.build_cost_curve==="linear"?"selected":""}>Linear (uniform across build window)</option>
+              <option value="front_loaded" ${g.build_cost_curve==="front_loaded"?"selected":""}>Front-loaded (heavier early)</option>
+              <option value="s_curve" ${g.build_cost_curve==="s_curve"?"selected":""}>S-curve (slow start, peak mid, slow finish)</option>
+            </select>
+            <div class="hint">S-curve is typical for construction. Front-loaded models early site work + permits + foundations.</div>
+          </div>
+          ${f("build_cost_realization_pct","Build cost realization %")}
+        </div>
+        <h3 style="margin-top:24px;">Risk thresholds</h3>
+        <div class="panel-subtitle">When breached, KPI cards flash and a banner appears on Portfolio.</div>
+        <div class="form-grid">
+          ${f("risk_peak_equity_threshold","Alert if peak equity exceeds (USD)")}
+          ${f("risk_max_debt_threshold","Alert if max debt exceeds (USD)")}
+          ${f("risk_min_moic","Alert if MOIC below")}
+          ${f("risk_min_irr_annual","Alert if annualized IRR below")}
+          ${f("risk_min_margin_pct","Alert if portfolio margin below")}
+          <div class="form-row">
+            <label>Sold projects in forecast</label>
+            <select class="input" data-global-select="include_sold_projects">
+              <option value="false" ${!g.include_sold_projects?"selected":""}>Exclude (forward forecast only)</option>
+              <option value="true" ${g.include_sold_projects?"selected":""}>Include (lifetime totals)</option>
+            </select>
+            <div class="hint">When a project is marked "sold", auto-exclude it from forward calcs by default.</div>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Data management</h3>
+        <p class="muted" style="font-size:12px;">All state is stored in your browser's localStorage under <code>juno-fd-v1</code>. The Excel baseline is in <code>data.js</code> and was snapshot on 2026-05-10.</p>
+        <div class="row gap-sm wrap">
+          <button class="btn" id="match-excel">Match Excel mode</button>
+          <button class="btn secondary" id="export-json">Export state (JSON)</button>
+          <button class="btn secondary" id="export-cashflow-csv">Export cash flow (CSV)</button>
+          <button class="btn secondary" id="export-projects-csv">Export projects (CSV)</button>
+          <button class="btn secondary" id="export-annual-csv">Export annual P&L (CSV)</button>
+          <button class="btn secondary" id="export-html-report">Export printable HTML report</button>
+          <button class="btn danger" id="reset-baseline">Reset to Excel baseline</button>
+        </div>
+        <div class="hint mt-16">"Match Excel mode" sets Juno 13-month FY + 81% build realization + Excel sale prices on each project (within ~5% of Excel total profit).</div>
+        <div class="divider"></div>
+        <h3>Theme</h3>
+        <div class="row gap-sm">
+          <button class="btn ${state.ui.theme==="light"?"":"secondary"}" data-theme="light">Light</button>
+          <button class="btn ${state.ui.theme==="dark"?"":"secondary"}" data-theme="dark">Dark</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel mb-24">
+      <h3>Markets — sale price + build cost elasticity by region</h3>
+      <div class="panel-subtitle">Each project tags a market. Multipliers apply on top of base $/sqft.</div>
+      <div class="row gap-sm wrap" style="font-size:11px;color:var(--fg-3);font-weight:500;padding:4px 0;border-bottom:1px solid var(--border);">
+        <div style="flex:2;">Market</div>
+        <div style="flex:1;">Sale ×</div>
+        <div style="flex:1;">Build ×</div>
+        <div style="flex:1;">Demand</div>
+        <div style="width:72px;"></div>
+      </div>
+      ${(g.markets || []).map((m, idx) => `
+        <div class="row gap-sm wrap" style="padding:6px 0;border-bottom:1px solid var(--border);">
+          <input class="input" style="flex:2;" type="text" data-market="${idx}" data-field="name" value="${m.name}">
+          <input class="input" style="flex:1;" type="number" step="0.01" data-market="${idx}" data-field="sale_price_multiplier" value="${m.sale_price_multiplier}">
+          <input class="input" style="flex:1;" type="number" step="0.01" data-market="${idx}" data-field="build_cost_multiplier" value="${m.build_cost_multiplier}">
+          <select class="input" style="flex:1;" data-market="${idx}" data-field="demand_outlook">
+            ${["soft","stable","strong"].map(o => `<option value="${o}" ${m.demand_outlook === o ? "selected" : ""}>${o}</option>`).join("")}
+          </select>
+          <button class="btn small danger" data-remove-market="${idx}" ${m.id === "default" ? "disabled" : ""}>Remove</button>
+        </div>
+      `).join("")}
+      <button class="btn small mt-16" id="add-market">+ Add market</button>
+    </div>
+
+    <div class="panel mb-24">
+      <h3>Investors</h3>
+      <div class="panel-subtitle">Capital structure of the equity stack. Total equity share should sum to 100%.</div>
+      <div class="row gap-sm wrap" style="font-size:11px;color:var(--fg-3);font-weight:500;letter-spacing:0.02em;border-bottom:1px solid var(--border);padding-bottom:4px;">
+        <div style="flex:2;">Name</div>
+        <div style="flex:1;">Share</div>
+        <div style="flex:1;">Pref</div>
+        <div style="flex:1;">Hurdle</div>
+        <div style="flex:1;">Carry</div>
+        <div style="flex:1;">Tax rate</div>
+        <div style="flex:1;">Role</div>
+        <div style="width:72px;"></div>
+      </div>
+      ${(g.investors || []).map((inv, idx) => `
+        <div class="row gap-sm wrap" style="padding:8px 0;border-bottom:1px solid var(--border);">
+          <input class="input" style="flex:2;" type="text" data-investor="${idx}" data-field="name" value="${inv.name}" placeholder="Investor name">
+          <input class="input" style="flex:1;" type="number" step="0.01" data-investor="${idx}" data-field="equity_share_pct" value="${inv.equity_share_pct}">
+          <input class="input" style="flex:1;" type="number" step="0.01" data-investor="${idx}" data-field="preferred_return_pct" value="${inv.preferred_return_pct}">
+          <input class="input" style="flex:1;" type="number" step="0.01" data-investor="${idx}" data-field="hurdle_pct" value="${inv.hurdle_pct}">
+          <input class="input" style="flex:1;" type="number" step="0.01" data-investor="${idx}" data-field="carry_pct" value="${inv.carry_pct ?? 0.20}">
+          <input class="input" style="flex:1;" type="number" step="0.01" data-investor="${idx}" data-field="tax_rate_pct" value="${inv.tax_rate_pct ?? 0.255}">
+          <select class="input" style="flex:1;" data-investor="${idx}" data-field="is_sponsor">
+            <option value="true" ${inv.is_sponsor?"selected":""}>Sponsor</option>
+            <option value="false" ${!inv.is_sponsor?"selected":""}>LP</option>
+          </select>
+          <button class="btn small danger" data-remove-investor="${idx}">Remove</button>
+        </div>
+      `).join("")}
+      <button class="btn small mt-16" id="add-investor">+ Add investor</button>
+      <div class="hint mt-16">Equity share sum: ${((g.investors || []).reduce((a,b)=>a+(b.equity_share_pct||0), 0) * 100).toFixed(1)}%</div>
+
+      <h3 style="margin-top:24px;">Hypothetical co-investor</h3>
+      <div class="panel-subtitle">Simulate bringing in an LP at a given equity share. Shows up on the Waterfall view when share > 0.</div>
+      <div class="form-grid">
+        ${f("hypothetical_lp_share_pct","LP equity share")}
+        ${f("hypothetical_lp_pref_pct","LP preferred return")}
+        ${f("hypothetical_lp_hurdle_pct","LP hurdle IRR")}
+        ${f("hypothetical_lp_carry_pct","Sponsor carry on LP excess")}
+      </div>
+    </div>
+
+    <div class="panel mb-24">
+      <h3>Kingshaus unit costs (per villa, from 6 Great Circle reference)</h3>
+      <div class="panel-subtitle">Source: external link <code>[1]6 GC - SE Costs!E5:E11</code> in the original workbook. When the toggle below is on, the engine uses the breakdown total (fixed per villa) instead of <code>$/sqft × sqft</code>.</div>
+      <div class="form-grid">
+        ${Object.entries(g.kingshaus_breakdown_per_villa || {}).map(([k, v]) => `
+          <div class="form-row">
+            <label>${k.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())} (USD)</label>
+            <input class="input" data-kingshaus="${k}" type="number" step="100" value="${v}">
+          </div>
+        `).join("")}
+      </div>
+      <div class="form-row mt-16">
+        <label>Use breakdown total instead of $/sqft</label>
+        <select class="input" data-global-select="use_kingshaus_breakdown">
+          <option value="false" ${!g.use_kingshaus_breakdown?"selected":""}>No (use $/sqft × sqft per project)</option>
+          <option value="true" ${g.use_kingshaus_breakdown?"selected":""}>Yes (use fixed total per villa)</option>
+        </select>
+        <div class="hint">Total: $${Object.values(g.kingshaus_breakdown_per_villa || {}).reduce((a,b)=>a+b, 0).toLocaleString()}/villa.</div>
+      </div>
+    </div>
+
+    <div class="panel mb-24">
+      <h3>Source traceability</h3>
+      <p class="muted" style="font-size:12px;">Each driver maps to a cell in the Excel model. See <code>data.js</code> comments for source pointers.</p>
+      <table class="tbl">
+        <thead><tr><th>Driver</th><th>Excel source</th><th>Default</th><th>Current</th></tr></thead>
+        <tbody>
+          <tr><td>Interest rate APR</td><td>Project 2-11!M16 (each hardcoded)</td><td>9.5%</td><td>${fmt.pct(g.interest_rate_apr)}</td></tr>
+          <tr><td>LTC (build / Kingshaus / soft)</td><td>Project 2-11!M17</td><td>75%</td><td>${fmt.pct(g.ltc_pct)}</td></tr>
+          <tr><td>LTC (land)</td><td>Implicit — calibrated to Excel Juno Forecast row 82 peak $7.7M</td><td>48%</td><td>${fmt.pct(g.ltc_land_pct)}</td></tr>
+          <tr><td>Build $/sqft default</td><td>Summary!D91</td><td>$470</td><td>${fmt.usd(g.default_build_cost_per_sqft)}</td></tr>
+          <tr><td>Target margin</td><td>Summary!D96</td><td>25%</td><td>${fmt.pct(g.target_margin)}</td></tr>
+          <tr><td>Default land cost</td><td>Summary!O42</td><td>$2.2M</td><td>${fmt.usdM(g.default_land_cost_usd)}</td></tr>
+          <tr><td>Default program months</td><td>Summary!F34:O34</td><td>13</td><td>${g.default_program_months}</td></tr>
+          <tr><td>Annual OPEX</td><td>Juno Forecast row 15 (annualized)</td><td>$475k</td><td>${fmt.usd(g.annual_opex_usd)}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ---------- view event wiring ----------
+
+function attachViewEvents(result) {
+  // Projects list row actions
+  for (const btn of document.querySelectorAll("[data-action]")) {
+    const id = btn.dataset.id;
+    const action = btn.dataset.action;
+    btn.addEventListener("click", () => {
+      if (action === "open") setView("project_detail", id);
+      if (action === "exclude") toggleProjectExclusion(id);
+      if (action === "remove") {
+        if (confirm(`Delete project? This cannot be undone.`)) removeProject(id);
+      }
+      if (action === "use-excel-price") {
+        const price = Number(btn.dataset.price);
+        updateProject(id, { sale_price_override_usd: price, sale_price_per_sqft_override: null });
+      }
+      if (action === "clear-price-override") {
+        updateProject(id, { sale_price_override_usd: null, sale_price_per_sqft_override: null });
+      }
+      if (action === "set-status") {
+        updateProject(id, { status: btn.dataset.status });
+      }
+      if (action === "clone") {
+        const newId = cloneProject(id);
+        if (newId) setView("project_detail", newId);
+      }
+    });
+  }
+
+  // Add project button
+  document.getElementById("add-project-btn")?.addEventListener("click", () => {
+    const id = addProject({});
+    setView("project_detail", id);
+  });
+
+  // Monte Carlo distribution editing + run
+  for (const inp of document.querySelectorAll("[data-dist]")) {
+    inp.addEventListener("change", (e) => {
+      const key = e.target.dataset.dist;
+      const edge = e.target.dataset.edge;
+      const val = Number(e.target.value);
+      if (isNaN(val)) return;
+      const current = window.__mcDistributions || { ...DEFAULT_DISTRIBUTIONS };
+      current[key] = { ...(current[key] || DEFAULT_DISTRIBUTIONS[key]), [edge]: val };
+      window.__mcDistributions = current;
+    });
+  }
+  document.getElementById("run-mc")?.addEventListener("click", () => {
+    const trials = Math.max(100, Math.min(10000, Number(document.getElementById("mc-trials")?.value) || 1000));
+    const dist = window.__mcDistributions || { ...DEFAULT_DISTRIBUTIONS };
+    window.__mcTrials = trials;
+    const btn = document.getElementById("run-mc");
+    btn.disabled = true;
+    btn.innerText = "Running...";
+    // Defer to next tick so the button update paints
+    setTimeout(() => {
+      const result = monteCarlo(state.projects, state.globals, state.scenario, dist, trials);
+      window.__mcResult = result;
+      btn.disabled = false;
+      btn.innerText = "Run simulation";
+      render();
+    }, 50);
+  });
+  document.getElementById("reset-mc-dist")?.addEventListener("click", () => {
+    window.__mcDistributions = JSON.parse(JSON.stringify(DEFAULT_DISTRIBUTIONS));
+    window.__mcResult = null;
+    render();
+  });
+
+  // Users view handlers
+  document.getElementById("refresh-users")?.addEventListener("click", async () => {
+    _usersCache = null;
+    await loadUsers();
+  });
+  for (const sel of document.querySelectorAll("[data-set-role]")) {
+    sel.addEventListener("change", async (e) => {
+      const userId = sel.dataset.setRole;
+      const newRole = e.target.value;
+      try {
+        await updateUserRole(userId, newRole);
+        await loadUsers();
+      } catch (err) {
+        alert(`Failed to update role: ${err.message}`);
+      }
+    });
+  }
+
+  // Activity log buttons
+  document.getElementById("clear-audit-log")?.addEventListener("click", () => {
+    if (confirm("Clear the entire activity log? This cannot be undone.")) clearAuditLog();
+  });
+  document.getElementById("export-audit-csv")?.addEventListener("click", () => {
+    const rows = [["Timestamp", "Category", "Action", "Detail"]];
+    for (const e of state.audit_log) {
+      rows.push([e.ts, e.category, e.message, JSON.stringify(e.detail || {})]);
+    }
+    downloadCSV(rows, `juno-activity-log-${new Date().toISOString().slice(0, 10)}.csv`);
+  });
+
+  // Drag-drop project reordering
+  let dragSourceId = null;
+  for (const row of document.querySelectorAll("tr[data-project-row]")) {
+    row.addEventListener("dragstart", (e) => {
+      dragSourceId = row.dataset.projectRow;
+      row.classList.add("dragging");
+      e.dataTransfer.effectAllowed = "move";
+    });
+    row.addEventListener("dragend", () => {
+      row.classList.remove("dragging");
+      document.querySelectorAll(".drag-over-before, .drag-over-after").forEach(r => r.classList.remove("drag-over-before", "drag-over-after"));
+    });
+    row.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      const rect = row.getBoundingClientRect();
+      const isAfter = e.clientY > rect.top + rect.height / 2;
+      row.classList.remove("drag-over-before", "drag-over-after");
+      row.classList.add(isAfter ? "drag-over-after" : "drag-over-before");
+    });
+    row.addEventListener("dragleave", () => {
+      row.classList.remove("drag-over-before", "drag-over-after");
+    });
+    row.addEventListener("drop", (e) => {
+      e.preventDefault();
+      const targetId = row.dataset.projectRow;
+      if (dragSourceId && dragSourceId !== targetId) {
+        const rect = row.getBoundingClientRect();
+        const isAfter = e.clientY > rect.top + rect.height / 2;
+        reorderProject(dragSourceId, targetId, isAfter ? "after" : "before");
+      }
+      dragSourceId = null;
+    });
+  }
+
+  // Import CSV button + file picker
+  document.getElementById("import-csv-btn")?.addEventListener("click", () => document.getElementById("import-csv-file")?.click());
+  document.getElementById("import-csv-file")?.addEventListener("change", async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const text = await file.text();
+    const result = importProjectsFromCSV(text);
+    if (result.ok) {
+      alert(`Imported ${result.added.length} project${result.added.length === 1 ? "" : "s"} from ${file.name}.`);
+    } else {
+      alert(`Import failed: ${result.error}\n\nRequired columns: name, start_date (YYYY-MM), villa_sqft, land_cost_usd.\nOptional: address, status, program_months, build_cost_per_sqft, kingshaus_cost_per_sqft, target_margin, interest_rate_apr, ltc_pct, soft_costs_lump_sum, sale_price_override_usd, sale_price_per_sqft_override.`);
+    }
+    e.target.value = "";
+  });
+
+  // Project detail picker
+  document.getElementById("project-picker")?.addEventListener("change", (e) => setView("project_detail", e.target.value));
+
+  // Project form fields
+  for (const inp of document.querySelectorAll("[data-field]")) {
+    inp.addEventListener("change", (e) => {
+      const id = state.ui.selected_project_id;
+      const field = e.target.dataset.field;
+      let value = e.target.value;
+      if (e.target.type === "number") {
+        value = value === "" ? null : Number(value);
+        if (isNaN(value)) value = null;
+      } else if (e.target.type === "month") {
+        value = value || state.globals.model_start;
+      }
+      // string fields are kept as-is
+      updateProject(id, { [field]: value });
+    });
+  }
+
+  for (const inp of document.querySelectorAll("[data-soft]")) {
+    inp.addEventListener("change", (e) => {
+      const id = state.ui.selected_project_id;
+      const key = e.target.dataset.soft;
+      const value = Number(e.target.value) || 0;
+      const p = state.projects.find(x => x.id === id);
+      const soft = { ...(p?.soft_costs || {}) };
+      soft[key] = value;
+      updateProject(id, { soft_costs: soft });
+    });
+  }
+
+  // Settings: global drivers
+  for (const inp of document.querySelectorAll("[data-global]")) {
+    inp.addEventListener("change", (e) => {
+      const key = e.target.dataset.global;
+      let value = e.target.value;
+      if (e.target.type === "number") {
+        value = Number(value);
+        if (isNaN(value)) return;
+      }
+      updateGlobal(key, value);
+    });
+  }
+  for (const sel of document.querySelectorAll("[data-global-select]")) {
+    sel.addEventListener("change", (e) => {
+      const key = e.target.dataset.globalSelect;
+      let value = e.target.value;
+      if (value === "true") value = true;
+      else if (value === "false") value = false;
+      updateGlobal(key, value);
+    });
+  }
+
+  for (const inp of document.querySelectorAll("[data-kingshaus]")) {
+    inp.addEventListener("change", (e) => {
+      const key = e.target.dataset.kingshaus;
+      const value = Number(e.target.value) || 0;
+      const breakdown = { ...(state.globals.kingshaus_breakdown_per_villa || {}) };
+      breakdown[key] = value;
+      updateGlobal("kingshaus_breakdown_per_villa", breakdown);
+    });
+  }
+
+  for (const inp of document.querySelectorAll("[data-market]")) {
+    inp.addEventListener("change", (e) => {
+      const idx = Number(e.target.dataset.market);
+      const field = e.target.dataset.field;
+      let value = e.target.value;
+      if (e.target.type === "number") value = Number(value) || 0;
+      const markets = [...(state.globals.markets || [])];
+      markets[idx] = { ...markets[idx], [field]: value };
+      updateGlobal("markets", markets);
+    });
+  }
+  for (const btn of document.querySelectorAll("[data-remove-market]")) {
+    btn.addEventListener("click", () => {
+      const idx = Number(btn.dataset.removeMarket);
+      const markets = (state.globals.markets || []).filter((_, i) => i !== idx);
+      updateGlobal("markets", markets);
+    });
+  }
+  document.getElementById("add-market")?.addEventListener("click", () => {
+    const markets = [...(state.globals.markets || []), { id: `m${Date.now()}`, name: "New market", sale_price_multiplier: 1.0, build_cost_multiplier: 1.0, demand_outlook: "stable" }];
+    updateGlobal("markets", markets);
+  });
+
+  for (const inp of document.querySelectorAll("[data-investor]")) {
+    inp.addEventListener("change", (e) => {
+      const idx = Number(e.target.dataset.investor);
+      const field = e.target.dataset.field;
+      let value = e.target.value;
+      if (e.target.type === "number") value = Number(value) || 0;
+      else if (field === "is_sponsor") value = value === "true";
+      const investors = [...(state.globals.investors || [])];
+      investors[idx] = { ...investors[idx], [field]: value };
+      updateGlobal("investors", investors);
+    });
+  }
+  for (const btn of document.querySelectorAll("[data-remove-investor]")) {
+    btn.addEventListener("click", () => {
+      const idx = Number(btn.dataset.removeInvestor);
+      const investors = (state.globals.investors || []).filter((_, i) => i !== idx);
+      updateGlobal("investors", investors);
+    });
+  }
+  document.getElementById("add-investor")?.addEventListener("click", () => {
+    const investors = [...(state.globals.investors || []), { id: `inv${Date.now()}`, name: "New investor", equity_share_pct: 0, preferred_return_pct: 0.08, hurdle_pct: 0.20 }];
+    updateGlobal("investors", investors);
+  });
+
+  // Settings: theme buttons + reset + export
+  for (const btn of document.querySelectorAll("[data-theme]")) {
+    btn.addEventListener("click", () => setTheme(btn.dataset.theme));
+  }
+  document.getElementById("reset-baseline")?.addEventListener("click", () => {
+    if (confirm("Reset all state to Excel baseline?")) resetToBaseline();
+  });
+  document.getElementById("match-excel")?.addEventListener("click", () => {
+    updateGlobal("fiscal_year_mode", "juno13");
+    updateGlobal("build_cost_realization_pct", 0.81);
+    updateGlobal("apply_tax", false);
+    // Apply Excel sale price to all projects that have one
+    for (const p of state.projects) {
+      if (p._excel_sale_price) {
+        updateProject(p.id, { sale_price_override_usd: p._excel_sale_price });
+      }
+    }
+    alert("Match Excel mode applied. Total profit should now be within ~5% of Excel.");
+  });
+  document.getElementById("export-json")?.addEventListener("click", () => {
+    downloadBlob(JSON.stringify({ globals: state.globals, scenario: state.scenario, projects: state.projects }, null, 2),
+      "juno-financial-dashboard-state.json", "application/json");
+  });
+  document.getElementById("export-cashflow-csv")?.addEventListener("click", () => {
+    const r = aggregatePortfolio(state.projects, state.globals, state.scenario);
+    const rows = [["Metric", ...r.timeline, "Total"]];
+    const metrics = [["Sales", "sales"], ["Land", "land_cost"], ["Build", "build_cost"], ["Kingshaus", "kingshaus"], ["Soft", "soft_cost"], ["Overhead", "overhead"], ["Interest", "interest"], ["Debt drawn", "debt_drawn"], ["Debt repaid", "debt_repaid"], ["Debt balance", "debt_balance"], ["Equity drawn", "equity_drawn"], ["Equity returned", "equity_returned"], ["Equity balance", "equity_balance"], ["Net cash", "net_cash"]];
+    for (const [label, key] of metrics) {
+      const series = r.monthly[key];
+      const total = series.reduce((a, b) => a + b, 0);
+      rows.push([label, ...series.map(v => Math.round(v)), Math.round(total)]);
+    }
+    downloadCSV(rows, `juno-cashflow-${state.scenario.name.replace(/\s+/g, "-")}.csv`);
+  });
+  document.getElementById("export-projects-csv")?.addEventListener("click", () => {
+    const r = aggregatePortfolio(state.projects, state.globals, state.scenario);
+    const rows = [["ID", "Name", "Address", "Status", "Start", "Sale", "Sqft", "Land USD", "Build $/sqft", "Total cost", "Sale price", "Profit", "Margin %", "MOIC", "IRR annual %", "Peak equity", "Peak debt"]];
+    for (const p of state.projects) {
+      const res = r.by_project.find(x => x.project_id === p.id);
+      if (!res) continue;
+      rows.push([p.id, p.name, p.address || "", p.status, p.start_date, res.sale_date || "", p.villa_sqft, p.land_cost_usd, p.build_cost_per_sqft ?? state.globals.default_build_cost_per_sqft,
+        Math.round(res.kpis.total_dev_cost), Math.round(res.kpis.total_sales), Math.round(res.kpis.gross_profit),
+        (res.kpis.profit_margin_pct * 100).toFixed(1), (res.kpis.moic || 0).toFixed(2),
+        res.kpis.irr_annual == null ? "" : (res.kpis.irr_annual * 100).toFixed(1),
+        Math.round(res.kpis.peak_equity), Math.round(res.kpis.peak_debt)]);
+    }
+    downloadCSV(rows, `juno-projects-${state.scenario.name.replace(/\s+/g, "-")}.csv`);
+  });
+  document.getElementById("export-html-report")?.addEventListener("click", () => {
+    const r = aggregatePortfolio(state.projects, state.globals, state.scenario);
+    const k = r.kpis;
+    const date = new Date().toISOString().slice(0, 10);
+    const css = `
+      body{font:13px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Roboto,sans-serif;color:#131313;background:#fff;margin:40px;max-width:1000px}
+      h1{font-size:24px;margin:0 0 6px;letter-spacing:-0.02em}h2{font-size:16px;margin:32px 0 12px;border-bottom:1px solid #ddd;padding-bottom:4px}
+      .meta{color:#666;font-size:12px;margin-bottom:32px}
+      .kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
+      .kpi{border:1px solid #ddd;border-radius:8px;padding:12px}
+      .kpi .l{font-size:11px;color:#666;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px}
+      .kpi .v{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
+      table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px;font-variant-numeric:tabular-nums}
+      th,td{padding:5px 8px;border-bottom:1px solid #eee;text-align:right}
+      th:first-child,td:first-child{text-align:left}
+      th{background:#f5f5f0;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:#666;font-weight:600}
+      tr:last-child td{font-weight:600;background:#f5f5f0}
+      .neg{color:#b3261e}.pos{color:#1f7a4d}
+      .footer{margin-top:48px;color:#999;font-size:10px;text-align:center;border-top:1px solid #eee;padding-top:12px}
+      @media print{body{margin:20px}.no-print{display:none}}
+    `;
+    const annual = r.annual;
+    const years = Object.keys(annual).sort();
+    const annualRows = (label, key, neg=false) => {
+      const cells = years.map(y => {
+        const v = annual[y]?.[key] ?? 0;
+        return `<td class="${v < 0 ? "neg" : (v > 0 ? "pos" : "")}">${v < 0 ? "(" + Math.abs(Math.round(v)).toLocaleString() + ")" : Math.round(v).toLocaleString()}</td>`;
+      }).join("");
+      const total = years.reduce((a, y) => a + (annual[y]?.[key] ?? 0), 0);
+      return `<tr><td>${label}</td>${cells}<td class="${total<0?"neg":"pos"}"><strong>${total<0?"("+Math.abs(Math.round(total)).toLocaleString()+")":Math.round(total).toLocaleString()}</strong></td></tr>`;
+    };
+    const projectRows = r.by_project.map(res => {
+      const p = state.projects.find(x => x.id === res.project_id);
+      return `<tr>
+        <td>${p.name}</td>
+        <td>${p.status}</td>
+        <td>${p.start_date}</td>
+        <td>${res.sale_date || ""}</td>
+        <td>${p.villa_sqft.toLocaleString()}</td>
+        <td class="neg">(${Math.round(p.land_cost_usd).toLocaleString()})</td>
+        <td class="pos">${Math.round(res.kpis.total_sales).toLocaleString()}</td>
+        <td class="${res.kpis.gross_profit>=0?'pos':'neg'}">${res.kpis.gross_profit>=0?Math.round(res.kpis.gross_profit).toLocaleString():"("+Math.abs(Math.round(res.kpis.gross_profit)).toLocaleString()+")"}</td>
+        <td>${(res.kpis.profit_margin_pct*100).toFixed(1)}%</td>
+        <td>${(res.kpis.moic||0).toFixed(2)}x</td>
+        <td>${res.kpis.irr_annual==null?"—":(res.kpis.irr_annual*100).toFixed(1)+"%"}</td>
+      </tr>`;
+    }).join("");
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Juno · Portfolio report ${date}</title><style>${css}</style></head><body>
+      <h1>Juno · Portfolio report</h1>
+      <div class="meta">Scenario: ${state.scenario.name} · Generated ${date} · ${state.projects.length - state.scenario.excluded_project_ids.length} active projects · Source: Juno_Cash flow Forecast_20260412_MASTER.xlsx (snapshot 2026-05-10)</div>
+
+      <h2>Headline KPIs</h2>
+      <div class="kpi-grid">
+        <div class="kpi"><div class="l">Peak equity required</div><div class="v">$${(k.peak_equity_required/1e6).toFixed(1)}M</div></div>
+        <div class="kpi"><div class="l">Max debt outstanding</div><div class="v">$${(k.max_debt_outstanding/1e6).toFixed(1)}M</div></div>
+        <div class="kpi"><div class="l">Total sales</div><div class="v">$${(k.total_sales/1e6).toFixed(1)}M</div></div>
+        <div class="kpi"><div class="l">Profit before tax</div><div class="v ${k.total_profit_before_tax<0?'neg':'pos'}">$${(k.total_profit_before_tax/1e6).toFixed(1)}M</div></div>
+        <div class="kpi"><div class="l">Gross MOIC</div><div class="v">${k.moic_gross.toFixed(2)}x</div></div>
+        <div class="kpi"><div class="l">Annualized IRR</div><div class="v">${k.irr_annual==null?"—":(k.irr_annual*100).toFixed(1)+"%"}</div></div>
+      </div>
+
+      <h2>Annual P&L (USD)</h2>
+      <table>
+        <thead><tr><th>USD</th>${years.map(y=>`<th>${y}</th>`).join("")}<th>Total</th></tr></thead>
+        <tbody>
+          ${annualRows("Sales", "sales")}
+          ${annualRows("Land cost", "land")}
+          ${annualRows("Construction", "build")}
+          ${annualRows("Kingshaus", "kingshaus")}
+          ${annualRows("Soft costs", "soft")}
+          ${annualRows("Overhead", "opex")}
+          ${annualRows("Financing", "interest")}
+          ${annualRows("Profit before tax", "profit_before_tax")}
+        </tbody>
+      </table>
+
+      <h2>Project portfolio</h2>
+      <table>
+        <thead><tr><th>Project</th><th>Status</th><th>Start</th><th>Sale</th><th>Sqft</th><th>Land</th><th>Sale</th><th>Profit</th><th>Margin</th><th>MOIC</th><th>IRR</th></tr></thead>
+        <tbody>${projectRows}</tbody>
+      </table>
+
+      <div class="footer">Juno Financial Dashboard · printable HTML report · Print this page or save as PDF using your browser's print function (Ctrl+P / Cmd+P).</div>
+    </body></html>`;
+    downloadBlob(html, `juno-portfolio-report-${date}.html`, "text/html;charset=utf-8");
+  });
+
+  document.getElementById("export-annual-csv")?.addEventListener("click", () => {
+    const r = aggregatePortfolio(state.projects, state.globals, state.scenario);
+    const years = Object.keys(r.annual).sort();
+    const rows = [["FY", "Sales", "Land", "Build", "Kingshaus", "Soft", "Opex", "Interest", "Profit before tax"]];
+    for (const y of years) {
+      const a = r.annual[y];
+      rows.push([y, Math.round(a.sales), Math.round(a.land), Math.round(a.build), Math.round(a.kingshaus), Math.round(a.soft), Math.round(a.opex), Math.round(a.interest), Math.round(a.profit_before_tax)]);
+    }
+    downloadCSV(rows, `juno-annual-pnl-${state.scenario.name.replace(/\s+/g, "-")}.csv`);
+  });
+
+  // Scenario form
+  document.getElementById("scn-apply")?.addEventListener("click", () => {
+    const patch = {
+      name: document.getElementById("scn-name").value || "Custom",
+      interest_rate_delta_bps: Number(document.getElementById("scn-interest-bps").value) || 0,
+      build_cost_multiplier: Number(document.getElementById("scn-build-mult").value) || 1,
+      sale_price_multiplier: Number(document.getElementById("scn-sale-mult").value) || 1,
+      margin_override: document.getElementById("scn-margin").value === "" ? null : Number(document.getElementById("scn-margin").value),
+      timing_shift_months: Number(document.getElementById("scn-timing").value) || 0,
+    };
+    updateScenario(patch);
+  });
+  document.getElementById("scn-reset")?.addEventListener("click", () => {
+    updateScenario({ name:"Base case", interest_rate_delta_bps:0, build_cost_multiplier:1, sale_price_multiplier:1, margin_override:null, timing_shift_months:0 });
+  });
+  document.getElementById("scn-save")?.addEventListener("click", () => {
+    const name = document.getElementById("scn-name").value.trim() || "Unnamed";
+    saveCurrentScenario(name);
+  });
+  for (const td of document.querySelectorAll("[data-load-scenario]")) {
+    td.addEventListener("click", (e) => {
+      if (e.target.tagName === "BUTTON") return;  // delete button handled separately
+      const name = td.dataset.loadScenario;
+      if (name === "Base") {
+        updateScenario({ name:"Base case", interest_rate_delta_bps:0, build_cost_multiplier:1, sale_price_multiplier:1, margin_override:null, timing_shift_months:0 });
+      } else {
+        loadScenario(name);
+      }
+    });
+  }
+  for (const btn of document.querySelectorAll("[data-delete-scenario]")) {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const name = btn.dataset.deleteScenario;
+      if (confirm(`Delete scenario "${name}"?`)) deleteScenario(name);
+    });
+  }
+  for (const btn of document.querySelectorAll("[data-preset]")) {
+    btn.addEventListener("click", () => {
+      if (btn.dataset.preset === "stress") {
+        updateScenario({ name:"Stress", interest_rate_delta_bps:200, build_cost_multiplier:1.1, sale_price_multiplier:0.95, margin_override:null, timing_shift_months:3 });
+      } else if (btn.dataset.preset === "optimistic") {
+        updateScenario({ name:"Optimistic", interest_rate_delta_bps:-100, build_cost_multiplier:0.95, sale_price_multiplier:1.05, margin_override:null, timing_shift_months:0 });
+      }
+    });
+  }
+  for (const cb of document.querySelectorAll("[data-exclude-id]")) {
+    cb.addEventListener("change", () => toggleProjectExclusion(cb.dataset.excludeId));
+  }
+}
+
+// ---------- charts ----------
+
+function renderCharts(result) {
+  const isDark = state.ui.theme === "dark";
+  const fg = isDark ? "#e8e8e3" : "#131313";
+  const grid = isDark ? "#2a2a2a" : "#e8e8e3";
+  Chart.defaults.font.family = '"Inter", system-ui, sans-serif';
+  Chart.defaults.color = fg;
+  Chart.defaults.borderColor = grid;
+
+  if (state.ui.view === "portfolio") {
+    drawCashflowChart(result, isDark);
+    drawBalancesChart(result, isDark);
+  } else if (state.ui.view === "project_detail") {
+    drawProjectChart(result, isDark);
+    renderTakeoffPanel(state.ui.selected_project_id);
+  } else if (state.ui.view === "waterfall") {
+    drawWaterfallChart(result, isDark);
+    drawEquityMonthlyChart(result, isDark);
+  } else if (state.ui.view === "sensitivity") {
+    drawTornadoChart(result, isDark);
+  } else if (state.ui.view === "risk") {
+    renderMcCharts(isDark);
+  } else if (state.ui.view === "scenario") {
+    drawScenarioOverlay(result, isDark);
+    drawScenarioCashflow(result, isDark);
+  }
+}
+
+function drawScenarioOverlay(currentR, isDark) {
+  destroyChart("chart-scenario-overlay");
+  const ctx = document.getElementById("chart-scenario-overlay");
+  if (!ctx || !state.scenarios.length) return;
+  const baseScn = { name:"Base", interest_rate_delta_bps:0, build_cost_multiplier:1, sale_price_multiplier:1, margin_override:null, timing_shift_months:0, excluded_project_ids:[] };
+  const scenarios = [
+    { scn: baseScn, color: "#7a7a73" },
+    { scn: state.scenario, color: "#131313" },
+    ...state.scenarios.map((s, i) => ({ scn: s, color: ["#2058a8", "#1f7a4d", "#b56c00", "#b3261e", "#5a3d8a"][i % 5] })),
+  ];
+  const results = scenarios.map(x => ({ ...x, r: aggregatePortfolio(state.projects, state.globals, x.scn) }));
+  const labels = currentR.timeline.map(d => d.slice(2));
+  charts["chart-scenario-overlay"] = new Chart(ctx, {
+    type: "line",
+    data: { labels, datasets: results.map(x => ({
+      label: x.scn.name === state.scenario.name ? `${x.scn.name} (current)` : x.scn.name,
+      data: x.r.monthly.cum_equity_called,
+      borderColor: x.color,
+      backgroundColor: "transparent",
+      borderWidth: x.scn === state.scenario ? 3 : 2,
+      borderDash: x.scn === baseScn ? [4, 4] : [],
+      tension: 0.1,
+    })) },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: { y: { ticks: { callback: (v) => "$" + (v/1e6).toFixed(1) + "M" } }, x: { ticks: { autoSkip: true, maxTicksLimit: 12 } } },
+      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatTooltip(ctx.parsed.y)}` } } },
+    },
+  });
+}
+
+function drawScenarioCashflow(currentR, isDark) {
+  destroyChart("chart-scenario-cashflow");
+  const ctx = document.getElementById("chart-scenario-cashflow");
+  if (!ctx || !state.scenarios.length) return;
+  const baseScn = { name:"Base", interest_rate_delta_bps:0, build_cost_multiplier:1, sale_price_multiplier:1, margin_override:null, timing_shift_months:0, excluded_project_ids:[] };
+  const scenarios = [
+    { scn: baseScn, color: "#7a7a73" },
+    { scn: state.scenario, color: "#131313" },
+    ...state.scenarios.map((s, i) => ({ scn: s, color: ["#2058a8", "#1f7a4d", "#b56c00", "#b3261e", "#5a3d8a"][i % 5] })),
+  ];
+  const results = scenarios.map(x => ({ ...x, r: aggregatePortfolio(state.projects, state.globals, x.scn) }));
+  const labels = currentR.timeline.map(d => d.slice(2));
+  charts["chart-scenario-cashflow"] = new Chart(ctx, {
+    type: "line",
+    data: { labels, datasets: results.map(x => ({
+      label: x.scn.name === state.scenario.name ? `${x.scn.name} (current)` : x.scn.name,
+      data: x.r.monthly.net_cash,
+      borderColor: x.color,
+      backgroundColor: "transparent",
+      borderWidth: x.scn === state.scenario ? 3 : 2,
+      borderDash: x.scn === baseScn ? [4, 4] : [],
+      tension: 0.1,
+    })) },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: { y: { ticks: { callback: (v) => "$" + (v/1e6).toFixed(1) + "M" } }, x: { ticks: { autoSkip: true, maxTicksLimit: 12 } } },
+      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatTooltip(ctx.parsed.y)}` } } },
+    },
+  });
+}
+
+function drawWaterfallChart(r, isDark) {
+  destroyChart("chart-waterfall");
+  const ctx = document.getElementById("chart-waterfall");
+  if (!ctx) return;
+  const labels = r.timeline.map(d => d.slice(2));
+  const cumIn = [];
+  const cumOut = [];
+  let sIn = 0, sOut = 0;
+  for (let i = 0; i < r.monthly.equity_drawn.length; i++) {
+    sIn += r.monthly.equity_drawn[i];
+    sOut += r.monthly.equity_returned[i];
+    cumIn.push(sIn);
+    cumOut.push(sOut);
+  }
+  charts["chart-waterfall"] = new Chart(ctx, {
+    type: "line",
+    data: { labels, datasets: [
+      { label: "Cumulative equity deployed", data: cumIn, borderColor: "#b3261e", backgroundColor: "rgba(179,38,30,0.08)", fill: true, tension: 0.1 },
+      { label: "Cumulative equity returned", data: cumOut, borderColor: "#1f7a4d", backgroundColor: "rgba(31,122,77,0.08)", fill: true, tension: 0.1 },
+    ]},
+    options: { responsive: true, maintainAspectRatio: false,
+      scales: { y: { ticks: { callback: (v) => "$" + (v/1e6).toFixed(1) + "M" } }, x: { ticks: { autoSkip: true, maxTicksLimit: 12 } } },
+      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatTooltip(ctx.parsed.y)}` } } },
+    },
+  });
+}
+
+function drawEquityMonthlyChart(r, isDark) {
+  destroyChart("chart-equity-monthly");
+  const ctx = document.getElementById("chart-equity-monthly");
+  if (!ctx) return;
+  const labels = r.timeline.map(d => d.slice(2));
+  charts["chart-equity-monthly"] = new Chart(ctx, {
+    type: "bar",
+    data: { labels, datasets: [
+      { label: "Equity drawn", data: r.monthly.equity_drawn.map(v => -v), backgroundColor: "#b3261e" },
+      { label: "Equity returned", data: r.monthly.equity_returned, backgroundColor: "#1f7a4d" },
+    ]},
+    options: { responsive: true, maintainAspectRatio: false,
+      scales: { x: { stacked: true, ticks: { autoSkip: true, maxTicksLimit: 12 } }, y: { stacked: true, ticks: { callback: (v) => "$" + (v/1e6).toFixed(1) + "M" } } },
+      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatTooltip(ctx.parsed.y)}` } } },
+    },
+  });
+}
+
+function drawTornadoChart(r, isDark) {
+  destroyChart("chart-tornado");
+  const ctx = document.getElementById("chart-tornado");
+  if (!ctx) return;
+  // Window-level access — computed once when sensitivity renders
+  const data = window.__tornadoData || [];
+  if (!data.length) return;
+  charts["chart-tornado"] = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: data.map(d => d.label),
+      datasets: [
+        { label: "Downside", data: data.map(d => d.low), backgroundColor: "#b3261e" },
+        { label: "Upside", data: data.map(d => d.high), backgroundColor: "#1f7a4d" },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, indexAxis: "y",
+      scales: { x: { stacked: false, ticks: { callback: (v) => "$" + (v/1e6).toFixed(1) + "M" } }, y: { stacked: false } },
+      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatTooltip(ctx.parsed.x)}` } } },
+    },
+  });
+}
+
+function drawCashflowChart(r, isDark) {
+  destroyChart("chart-cashflow");
+  const ctx = document.getElementById("chart-cashflow");
+  if (!ctx) return;
+  const labels = r.timeline.map(d => d.slice(2)); // YY-MM
+  const m = r.monthly;
+  charts["chart-cashflow"] = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        { label: "Sales", data: m.sales, backgroundColor: "#1f7a4d" },
+        { label: "Land", data: m.land_cost, backgroundColor: "#b3261e" },
+        { label: "Build", data: m.build_cost, backgroundColor: "#e07a5f" },
+        { label: "Kingshaus", data: m.kingshaus, backgroundColor: "#b56c00" },
+        { label: "Overhead", data: m.overhead, backgroundColor: "#7a7a73" },
+        { label: "Interest", data: m.interest, backgroundColor: "#5a3d8a" },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: { x: { stacked: true, ticks: { autoSkip: true, maxTicksLimit: 12 } }, y: { stacked: true, ticks: { callback: (v) => "$" + (v/1e6).toFixed(1) + "M" } } },
+      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatTooltip(ctx.parsed.y)}` } } },
+    },
+  });
+}
+
+function drawBalancesChart(r, isDark) {
+  destroyChart("chart-balances");
+  const ctx = document.getElementById("chart-balances");
+  if (!ctx) return;
+  const labels = r.timeline.map(d => d.slice(2));
+  charts["chart-balances"] = new Chart(ctx, {
+    type: "line",
+    data: { labels, datasets: [
+      { label: "Cumulative debt", data: r.monthly.debt_balance, borderColor: "#b3261e", backgroundColor: "rgba(179,38,30,0.08)", fill: true, tension: 0.1 },
+      { label: "Cumulative equity", data: r.monthly.equity_balance, borderColor: "#2058a8", backgroundColor: "rgba(32,88,168,0.08)", fill: true, tension: 0.1 },
+    ]},
+    options: { responsive: true, maintainAspectRatio: false,
+      scales: { y: { ticks: { callback: (v) => "$" + (v/1e6).toFixed(1) + "M" } }, x: { ticks: { autoSkip: true, maxTicksLimit: 12 } } },
+      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatTooltip(ctx.parsed.y)}` } } },
+    },
+  });
+}
+
+function drawProjectChart(r, isDark) {
+  destroyChart("chart-project");
+  const ctx = document.getElementById("chart-project");
+  if (!ctx) return;
+  const id = state.ui.selected_project_id;
+  const res = r.by_project.find((x) => x.project_id === id);
+  if (!res) return;
+  const labels = res.monthly.dates.map(d => d.slice(2));
+  charts["chart-project"] = new Chart(ctx, {
+    type: "bar",
+    data: { labels, datasets: [
+      { label: "Sales", data: res.monthly.sales, backgroundColor: "#1f7a4d" },
+      { label: "Land", data: res.monthly.land_cost, backgroundColor: "#b3261e" },
+      { label: "Build", data: res.monthly.build_cost, backgroundColor: "#e07a5f" },
+      { label: "Kingshaus", data: res.monthly.kingshaus, backgroundColor: "#b56c00" },
+      { label: "Interest", data: res.monthly.interest, backgroundColor: "#5a3d8a" },
+    ]},
+    options: { responsive: true, maintainAspectRatio: false,
+      scales: { x: { stacked: true, ticks: { autoSkip: true, maxTicksLimit: 12 } }, y: { stacked: true, ticks: { callback: (v) => "$" + (v/1e6).toFixed(1) + "M" } } },
+      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatTooltip(ctx.parsed.y)}` } } },
+    },
+  });
+}
+
+function formatTooltip(v) {
+  if (v == null) return "—";
+  return v < 0 ? `($${Math.round(-v).toLocaleString()})` : `$${Math.round(v).toLocaleString()}`;
+}
+
+// ---------- download helpers ----------
+
+function downloadBlob(content, filename, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function downloadCSV(rows, filename) {
+  const escape = (v) => {
+    const s = String(v ?? "");
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const csv = rows.map(row => row.map(escape).join(",")).join("\n");
+  downloadBlob(csv, filename, "text/csv;charset=utf-8");
+}
+
+// ---------- footer ----------
+
+function renderFooter() {
+  return `<footer class="footer">
+    Source: <span class="mono">Juno_Cash flow Forecast_20260412_MASTER.xlsx</span> · snapshot 2026-05-10 · v1 prototype (read-only audit, dashboard rebuilds calculation from first principles)
+  </footer>`;
+}

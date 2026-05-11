@@ -1,0 +1,553 @@
+{
+  "project": "84 SBR (Project 2)",
+  "source": "Construction costs 84SB tab",
+  "snapshot": "2026-05-10",
+  "categories": [
+    {
+      "name": "Production of panels (Kingshaus)",
+      "total": 649874.55,
+      "lines": [
+        {
+          "code": "000 - 0115",
+          "name": "US Engineer - Craft",
+          "amount": 60000
+        },
+        {
+          "code": "000 - 0120",
+          "name": "Zero Design",
+          "amount": 10000
+        },
+        {
+          "code": "000 - 0125",
+          "name": "Panel Materials",
+          "amount": 88136.45
+        },
+        {
+          "code": "000 - 0130",
+          "name": "Windows - Hajom (excl. VAT)",
+          "amount": 109708.18
+        },
+        {
+          "code": "000 - 0135",
+          "name": "Fa&ccedil;ade Material",
+          "amount": 34210.09
+        },
+        {
+          "code": "000 - 0140",
+          "name": "Klas / BSV",
+          "amount": 20000
+        },
+        {
+          "code": "000 - 0145",
+          "name": "Granflo - Production",
+          "amount": 86515
+        },
+        {
+          "code": "000 - 0150",
+          "name": "Granflo - Assembly",
+          "amount": 75897.55
+        },
+        {
+          "code": "000 - 0155",
+          "name": "Logistics",
+          "amount": 165407.27
+        }
+      ]
+    },
+    {
+      "name": "Carpentry & wood",
+      "total": 583881.88,
+      "lines": [
+        {
+          "code": "06-3105",
+          "name": "Framing Lumber (All)",
+          "amount": 140000
+        },
+        {
+          "code": "06-3160",
+          "name": "Framing Labor",
+          "amount": 160000
+        },
+        {
+          "code": "06-4862",
+          "name": "Exterior M&amp;L",
+          "amount": 24427.33
+        },
+        {
+          "code": "06-5250",
+          "name": "Interior Trim Labor",
+          "amount": 30000
+        },
+        {
+          "code": "06-5255",
+          "name": "Interior Trim Material",
+          "amount": 38000
+        },
+        {
+          "code": "06-5280",
+          "name": "Millwork 1",
+          "amount": 177272.73
+        },
+        {
+          "code": "06-5940",
+          "name": "Wood Stairs &amp; Railings",
+          "amount": 14181.82
+        }
+      ]
+    },
+    {
+      "name": "General requirements",
+      "total": 259339.09,
+      "lines": [
+        {
+          "code": "01-1110",
+          "name": "Blueprints",
+          "amount": 1000
+        },
+        {
+          "code": "01-1225",
+          "name": "Fence & Security",
+          "amount": 1430
+        },
+        {
+          "code": "01-8510",
+          "name": "Contingency",
+          "amount": 0
+        },
+        {
+          "code": "01-9010",
+          "name": "Temporary Toilet",
+          "amount": 2000
+        },
+        {
+          "code": "01-9015",
+          "name": "Demo",
+          "amount": 20000
+        },
+        {
+          "code": "01-9015",
+          "name": "Dumpster/Waste Removal",
+          "amount": 17727.27
+        },
+        {
+          "code": "01-9020",
+          "name": "Temporary Office / storage",
+          "amount": 8000
+        },
+        {
+          "code": "01-9050",
+          "name": "Equipment Rental",
+          "amount": 66359.09
+        },
+        {
+          "code": "01-9060",
+          "name": "General Labor",
+          "amount": 0
+        },
+        {
+          "code": "01-9065",
+          "name": "General Cleaning",
+          "amount": 0
+        },
+        {
+          "code": "01-9075",
+          "name": "Final Clean Up",
+          "amount": 2954.55
+        },
+        {
+          "code": "01-9800",
+          "name": "Protect Completed Work",
+          "amount": 2954.55
+        },
+        {
+          "code": "01-9900",
+          "name": "Punchlist",
+          "amount": 0
+        },
+        {
+          "code": "01-9975",
+          "name": "Site Super Cost",
+          "amount": 112095.45
+        },
+        {
+          "code": "01-9990",
+          "name": "Misc Costs",
+          "amount": 21272.73
+        },
+        {
+          "code": "01-1120",
+          "name": "Surveys",
+          "amount": 3545.45
+        }
+      ]
+    },
+    {
+      "name": "Earthwork",
+      "total": 244409.82,
+      "lines": [
+        {
+          "code": "31-1210",
+          "name": "Lot Clearing",
+          "amount": 23636.36
+        },
+        {
+          "code": "31-1250",
+          "name": "Dry Wells",
+          "amount": 22591.64
+        },
+        {
+          "code": "31-1600",
+          "name": "Solar System",
+          "amount": 65000
+        },
+        {
+          "code": "31-2010",
+          "name": "Excavation &amp; Backfill",
+          "amount": 10500
+        },
+        {
+          "code": "31-2020",
+          "name": "Earth Hauling",
+          "amount": 25000
+        },
+        {
+          "code": "31-6190",
+          "name": "Landscaping &amp; Final Grade",
+          "amount": 90000
+        },
+        {
+          "code": "31-6210",
+          "name": "Driveway M &amp; L",
+          "amount": 7681.82
+        }
+      ]
+    },
+    {
+      "name": "Thermal & moisture protection",
+      "total": 234909.64,
+      "lines": [
+        {
+          "code": "07-2200",
+          "name": "Water Proofing - House",
+          "amount": 9312.73
+        },
+        {
+          "code": "07-3510",
+          "name": "Gutters &amp; Downspouts",
+          "amount": 14181.82
+        },
+        {
+          "code": "07-3520",
+          "name": "Metal Edging &amp; Flashing",
+          "amount": 6500
+        },
+        {
+          "code": "07-4010",
+          "name": "Roofing Material",
+          "amount": 36636.36
+        },
+        {
+          "code": "07-4020",
+          "name": "Roofing Labor",
+          "amount": 40181.82
+        },
+        {
+          "code": "07-4030",
+          "name": "Roofing M&amp;L",
+          "amount": 19500
+        },
+        {
+          "code": "07-4720",
+          "name": "Wall Clog &amp; Roof Insulation",
+          "amount": 58596.91
+        },
+        {
+          "code": "07-4825",
+          "name": "Siding - Labor",
+          "amount": 50000
+        }
+      ]
+    },
+    {
+      "name": "Finishes",
+      "total": 186000,
+      "lines": [
+        {
+          "code": "09-5050",
+          "name": "Drywall - M &amp; L",
+          "amount": 52000
+        },
+        {
+          "code": "09-5150",
+          "name": "Hardwood Flooring",
+          "amount": 65000
+        },
+        {
+          "code": "09-5310",
+          "name": "Tile - Material",
+          "amount": 7000
+        },
+        {
+          "code": "09-5320",
+          "name": "Tiles Installation - Labor",
+          "amount": 7000
+        },
+        {
+          "code": "09-5910",
+          "name": "Interior Painting - M &amp; L",
+          "amount": 55000
+        }
+      ]
+    },
+    {
+      "name": "Special construction",
+      "total": 185000,
+      "lines": [
+        {
+          "code": "13-6634",
+          "name": "Swimming Pool",
+          "amount": 125000
+        },
+        {
+          "code": "13-6645",
+          "name": "Pool House",
+          "amount": 60000
+        }
+      ]
+    },
+    {
+      "name": "Electrical (CSI 2014)",
+      "total": 153636.36,
+      "lines": [
+        {
+          "code": "26-3710",
+          "name": "Electrical M &amp; L",
+          "amount": 130000
+        },
+        {
+          "code": "26-5710",
+          "name": "Electrical Fixtures",
+          "amount": 23636.36
+        }
+      ]
+    },
+    {
+      "name": "Concrete & foundation",
+      "total": 150000,
+      "lines": [
+        {
+          "code": "03-2105",
+          "name": "Foundation",
+          "amount": 150000
+        }
+      ]
+    },
+    {
+      "name": "Plumbing",
+      "total": 140071.45,
+      "lines": [
+        {
+          "code": "22-3610",
+          "name": "Rough Plumbing",
+          "amount": 100454.55
+        },
+        {
+          "code": "22-5610",
+          "name": "Plumbing Fixtures",
+          "amount": 39616.91
+        }
+      ]
+    },
+    {
+      "name": "HVAC",
+      "total": 120000,
+      "lines": [
+        {
+          "code": "23-3830",
+          "name": "HVAC, Boiler, Radiant - M&amp;L",
+          "amount": 120000
+        }
+      ]
+    },
+    {
+      "name": "Utilities",
+      "total": 83457.18,
+      "lines": [
+        {
+          "code": "33-1410",
+          "name": "Temporary Electrical &amp; Service",
+          "amount": 22000
+        },
+        {
+          "code": "33-1430",
+          "name": "Water Service",
+          "amount": 18639
+        },
+        {
+          "code": "33-1440",
+          "name": "Septic System",
+          "amount": 35218.18
+        },
+        {
+          "code": "33-1460",
+          "name": "Propane Tank &amp; Install",
+          "amount": 7600
+        }
+      ]
+    },
+    {
+      "name": "Masonry",
+      "total": 80000,
+      "lines": [
+        {
+          "code": "04-4190",
+          "name": "Masonry - Other",
+          "amount": 80000
+        }
+      ]
+    },
+    {
+      "name": "Doors & windows",
+      "total": 73727.27,
+      "lines": [
+        {
+          "code": "08-4510",
+          "name": "Windows &amp; Exterior Doors",
+          "amount": 43000
+        },
+        {
+          "code": "08-4550",
+          "name": "Interior Doors - Material",
+          "amount": 15363.64
+        },
+        {
+          "code": "08-4555",
+          "name": "Interior Door Hardware",
+          "amount": 4727.27
+        },
+        {
+          "code": "08-5980",
+          "name": "Frameless Shower Door",
+          "amount": 10636.36
+        }
+      ]
+    },
+    {
+      "name": "Furnishings",
+      "total": 57272.73,
+      "lines": [
+        {
+          "code": "12-5435",
+          "name": "Countertops",
+          "amount": 36000
+        },
+        {
+          "code": "12-5440",
+          "name": "Cabinet Hardware",
+          "amount": 4136.36
+        },
+        {
+          "code": "12-5460",
+          "name": "Countertops - Other",
+          "amount": 17136.36
+        }
+      ]
+    },
+    {
+      "name": "Equipment",
+      "total": 34000,
+      "lines": [
+        {
+          "code": "11-5595",
+          "name": "Appliances",
+          "amount": 34000
+        }
+      ]
+    },
+    {
+      "name": "Metals",
+      "total": 33000,
+      "lines": [
+        {
+          "code": "05-3010",
+          "name": "Structural Steel",
+          "amount": 33000
+        }
+      ]
+    },
+    {
+      "name": "Procurement & contracting",
+      "total": 29854.11,
+      "lines": [
+        {
+          "code": "00-1010",
+          "name": "Building Permits",
+          "amount": 11854.11
+        },
+        {
+          "code": "00-9993",
+          "name": "Insurance",
+          "amount": 18000
+        }
+      ]
+    },
+    {
+      "name": "Exterior improvements",
+      "total": 28744,
+      "lines": [
+        {
+          "code": "32 - 6345",
+          "name": "Cold Plunge",
+          "amount": 10399
+        },
+        {
+          "code": "32 - 6335",
+          "name": "Sauna",
+          "amount": 13495
+        },
+        {
+          "code": "32-6325",
+          "name": "Out Door Shower",
+          "amount": 4850
+        }
+      ]
+    },
+    {
+      "name": "Other (27)",
+      "total": 26500,
+      "lines": [
+        {
+          "code": "27-5740",
+          "name": "Alarm &amp; Security",
+          "amount": 6500
+        },
+        {
+          "code": "27-6245",
+          "name": "A/V",
+          "amount": 20000
+        }
+      ]
+    },
+    {
+      "name": "Specialties",
+      "total": 25000,
+      "lines": [
+        {
+          "code": "10-4120",
+          "name": "Fireplace Surrounds",
+          "amount": 7500
+        },
+        {
+          "code": "10-4125",
+          "name": "Fireplace Gas or Wood",
+          "amount": 12500
+        },
+        {
+          "code": "10-4200",
+          "name": "Wine Room",
+          "amount": 5000
+        }
+      ]
+    }
+  ]
+}

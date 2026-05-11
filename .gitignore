@@ -1,0 +1,23 @@
+# Confidential — never commit the working Excel copy or any extracted state
+audit/_source_readonly.xlsx
+audit/initial_state.json
+audit/seed.sql
+
+# Generated audit JSON snapshots
+audit/*.json
+!audit/84sbr_takeoff.json
+
+# Python caches
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Render local
+.render/
