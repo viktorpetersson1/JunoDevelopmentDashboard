@@ -79,6 +79,10 @@ export function render() {
   attachTopbarEvents();
   attachViewEvents(result);
   renderCharts(result);
+  // If the assistant was open before this re-render, re-mount it
+  if (document.body.classList.contains("assistant-open")) {
+    renderAssistantPanel();
+  }
 }
 
 function renderAuthScreen() {
@@ -219,15 +223,17 @@ function attachTopbarEvents() {
     if (confirm("Sign out?")) await signOut();
   });
 
-  // v12.5 — Ask Juno launcher
+  // v12.5 — Ask Juno launcher (toggle docked right sidebar)
   document.getElementById("assistant-launcher")?.addEventListener("click", async () => {
     const panel = document.getElementById("assistant-panel");
     if (!panel) return;
     if (panel.style.display === "none") {
       await refreshAssistantQuota();
       renderAssistantPanel();
+      document.body.classList.add("assistant-open");
     } else {
       panel.style.display = "none";
+      document.body.classList.remove("assistant-open");
     }
   });
 }
@@ -1646,7 +1652,10 @@ function renderAssistantPanel() {
   `;
   panel.style.display = "flex";
 
-  document.getElementById("assistant-close").onclick = () => { panel.style.display = "none"; };
+  document.getElementById("assistant-close").onclick = () => {
+    panel.style.display = "none";
+    document.body.classList.remove("assistant-open");
+  };
   for (const btn of panel.querySelectorAll("[data-mode]")) {
     btn.addEventListener("click", () => { assistantState.mode = btn.dataset.mode; renderAssistantPanel(); });
   }
