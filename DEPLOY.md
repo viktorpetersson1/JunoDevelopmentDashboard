@@ -13,7 +13,7 @@ The dashboard is a pure static site (HTML + ES modules + Chart.js via CDN). It r
 Manual setup without blueprint:
 - **Type**: Static Site
 - **Build command**: *(empty)*
-- **Publish directory**: `.`
+- **Publish directory**: `public` (the app lives in this subfolder; everything else is docs/config)
 - **Custom domain**: configure in Render dashboard if needed.
 
 ## Option 2 — Netlify / Vercel / GitHub Pages / S3

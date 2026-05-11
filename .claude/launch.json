@@ -4,7 +4,7 @@
     {
       "name": "juno-financial-dashboard",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8765", "--directory", "C:\\Dev\\juno-financial-dashboard"],
+      "runtimeArgs": ["-m", "http.server", "8765", "--directory", "C:\\Dev\\juno-financial-dashboard\\public"],
       "port": 8765
     }
   ]

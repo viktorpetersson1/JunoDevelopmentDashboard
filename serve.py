@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 PORT = 8765
-DIR = str(Path(__file__).resolve().parent)
+DIR = str(Path(__file__).resolve().parent / "public")
 
 class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):

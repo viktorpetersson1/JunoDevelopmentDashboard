@@ -8,7 +8,7 @@ services:
     plan: free
     region: oregon
     buildCommand: ""               # no build — pure static HTML + ES modules
-    staticPublishPath: .
+    staticPublishPath: ./public
     headers:
       - path: /*
         name: Cache-Control
