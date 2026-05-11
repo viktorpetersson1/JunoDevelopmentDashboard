@@ -5,12 +5,14 @@ import { state, notify, save, updateGlobal, updateScenario,
   setView, setTheme, resetToBaseline,
   saveCurrentScenario, deleteScenario, loadScenario,
   cloneProject, importProjectsFromCSV, reorderProject,
-  clearAuditLog, canEdit, isSuperAdmin } from "./state.js";
+  clearAuditLog, canEdit, isSuperAdmin,
+  canSeeFinancials, isRestrictedViewer } from "./state.js";
 import { aggregatePortfolio, calcProject, fyOf, monteCarlo } from "./engine.js";
-import { EXCEL_BENCHMARK } from "./data.js";
+import { EXCEL_BENCHMARK, LIFECYCLE_STAGES, STAGE_GROUP_COLORS } from "./data.js";
 import {
   signIn, signUp, signOut, sendPasswordReset,
   fetchAllProfiles, updateUserRole,
+  askAssistant, fetchPendingSuggestions, reviewSuggestion, fetchMyLlmQuota,
 } from "./supabase.js";
 
 // ---------- formatting helpers ----------
@@ -35,6 +37,16 @@ const fmt = {
 
 const charts = {};
 function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
+
+// v12.1 — stage badge helper
+function stageBadge(project, excluded = false) {
+  if (excluded) return `<span class="badge excluded">excluded</span>`;
+  const stageId = project.stage || "sourcing";
+  const stages = LIFECYCLE_STAGES;
+  const stage = stages.find(s => s.id === stageId) || stages[0];
+  const color = STAGE_GROUP_COLORS[stage.group] || "#7a7a73";
+  return `<span class="badge" style="background:${color}22;color:${color};border:1px solid ${color}55;" title="${stage.description}">${stage.label}</span>`;
+}
 
 // ---------- root render ----------
 
@@ -161,22 +173,24 @@ function renderTopbar() {
   const userEmail = state.auth.user?.email || "";
   const userDisplay = state.auth.profile?.display_name || userEmail.split("@")[0];
 
+  const fin = canSeeFinancials();
   return `
   <header class="topbar">
     <div class="brand">JUNO <span>Financial dashboard</span></div>
     <nav>
-      ${item("portfolio", "Portfolio")}
+      ${item("portfolio", fin ? "Portfolio" : "Overview")}
       ${item("projects", "Projects")}
       ${item("project_detail", "Project detail")}
-      ${item("cashflow", "Cash flow")}
+      ${fin ? item("cashflow", "Cash flow") : ""}
       ${item("pipeline", "Pipeline")}
-      ${item("waterfall", "Waterfall")}
-      ${item("scenario", "Scenario")}
-      ${item("sensitivity", "Sensitivity")}
-      ${item("risk", "Risk")}
+      ${fin ? item("waterfall", "Waterfall") : ""}
+      ${fin ? item("scenario", "Scenario") : ""}
+      ${fin ? item("sensitivity", "Sensitivity") : ""}
+      ${fin ? item("risk", "Risk") : ""}
       ${item("activity", "Activity")}
+      ${canEdit() ? item("suggestions", "Suggestions") : ""}
       ${isSuperAdmin() ? item("users", "Users") : ""}
-      ${item("settings", "Settings")}
+      ${fin ? item("settings", "Settings") : ""}
     </nav>
     <div class="spacer"></div>
     <div class="actions">
@@ -189,7 +203,10 @@ function renderTopbar() {
       <button class="btn small secondary" id="theme-toggle">${state.ui.theme === "light" ? "Dark" : "Light"}</button>
       <button class="btn small secondary" id="sign-out-btn">Sign out</button>
     </div>
-  </header>`;
+  </header>
+  <button id="assistant-launcher" class="assistant-launcher" title="Ask Juno (LLM assistant)">✨ Ask Juno</button>
+  <div id="assistant-panel" class="assistant-panel" style="display:none;"></div>
+  `;
 }
 
 function attachTopbarEvents() {
@@ -201,19 +218,40 @@ function attachTopbarEvents() {
   document.getElementById("sign-out-btn")?.addEventListener("click", async () => {
     if (confirm("Sign out?")) await signOut();
   });
+
+  // v12.5 — Ask Juno launcher
+  document.getElementById("assistant-launcher")?.addEventListener("click", async () => {
+    const panel = document.getElementById("assistant-panel");
+    if (!panel) return;
+    if (panel.style.display === "none") {
+      await refreshAssistantQuota();
+      renderAssistantPanel();
+    } else {
+      panel.style.display = "none";
+    }
+  });
 }
 
 // ---------- main view dispatcher ----------
 
+// Views that show financial detail — restricted viewers redirected to overview if they land here
+const FINANCIAL_VIEWS = new Set(["cashflow", "waterfall", "scenario", "sensitivity", "risk", "settings"]);
+
 function renderView(result) {
   let html = `<main class="main">`;
-  if (!canEdit()) {
+  if (isRestrictedViewer()) {
+    html += `<div class="readonly-banner" style="border-left-color:var(--info);background:rgba(32,88,168,0.10);">
+      You are signed in as <strong>basic viewer</strong>. You can see project information and lifecycle status, but financial detail is hidden. Ask the super-admin to upgrade your role if you need access to budgets, profits, or returns.
+    </div>`;
+    // Force restricted viewers off any financial view
+    if (FINANCIAL_VIEWS.has(state.ui.view)) state.ui.view = "portfolio";
+  } else if (!canEdit()) {
     html += `<div class="readonly-banner">
       You are signed in as <strong>viewer</strong>. You can browse all data but cannot edit. Ask the super-admin to upgrade your role if you need to make changes.
     </div>`;
   }
   switch (state.ui.view) {
-    case "portfolio": html += renderPortfolio(result); break;
+    case "portfolio": html += isRestrictedViewer() ? renderBasicOverview(result) : renderPortfolio(result); break;
     case "projects": html += renderProjectsList(result); break;
     case "project_detail": html += renderProjectDetail(result); break;
     case "cashflow": html += renderCashflow(result); break;
@@ -223,12 +261,57 @@ function renderView(result) {
     case "sensitivity": html += renderSensitivity(result); break;
     case "risk": html += renderRisk(result); break;
     case "activity": html += renderActivity(); break;
+    case "suggestions": html += renderSuggestions(); break;
     case "users": html += renderUsers(); break;
     case "settings": html += renderSettings(); break;
     default: html += `<div class="note neg">Unknown view: ${state.ui.view}</div>`;
   }
   html += `</main>`;
   return html;
+}
+
+// v12.2 — restricted-viewer overview. Just project counts by stage, no money.
+function renderBasicOverview(r) {
+  const stages = LIFECYCLE_STAGES;
+  const byStage = {};
+  for (const s of stages) byStage[s.id] = [];
+  for (const p of state.projects) {
+    const stageId = p.stage || "sourcing";
+    if (byStage[stageId]) byStage[stageId].push(p);
+  }
+  const groupCards = {};
+  for (const s of stages) {
+    if (!groupCards[s.group]) groupCards[s.group] = { count: 0, projects: [], stages: [] };
+    groupCards[s.group].count += byStage[s.id].length;
+    groupCards[s.group].projects.push(...byStage[s.id]);
+    groupCards[s.group].stages.push(s);
+  }
+  return `
+    <div class="section-title">Project pipeline overview · ${state.projects.length} projects</div>
+    <div class="kpi-row">
+      ${Object.entries(groupCards).map(([group, data]) => `
+        <div class="kpi" style="border-left:4px solid ${STAGE_GROUP_COLORS[group] || "#7a7a73"};">
+          <div class="label">${group.replace("-", " ").toUpperCase()}</div>
+          <div class="value">${data.count}</div>
+          <div class="meta">${data.stages.map(s => s.label).join(", ")}</div>
+        </div>
+      `).join("")}
+    </div>
+    <div class="panel">
+      <h3>Project list</h3>
+      <div class="scroll-x"><table class="tbl">
+        <thead><tr><th>Project</th><th>Address</th><th>Stage</th><th>Start</th><th>Listing date</th><th>Closing date</th></tr></thead>
+        <tbody>${state.projects.map(p => `<tr>
+          <td><strong>${p.name}</strong></td>
+          <td class="muted">${p.address || "—"}</td>
+          <td>${stageBadge(p)}</td>
+          <td>${fmt.ymShort(p.start_date)}</td>
+          <td>${p.listing_date || "—"}</td>
+          <td>${p.closing_date || "—"}</td>
+        </tr>`).join("")}</tbody>
+      </table></div>
+    </div>
+  `;
 }
 
 // ---------- Portfolio view ----------
@@ -305,6 +388,21 @@ function renderPortfolio(r) {
       </div>
     </div>
 
+    ${(() => {
+      const s = k.sales_metrics;
+      if (!s || s.sold_count === 0) return `<div class="panel mb-24"><h3>Sales-cycle metrics</h3><div class="muted" style="font-size:12px;">No closed sales yet. As projects move through pre-sales → under contract → sold, fill in listing/closing dates and prices on each Project detail to populate these.</div></div>`;
+      return `<div class="panel mb-24">
+        <h3>Sales-cycle metrics</h3>
+        <div class="panel-subtitle">Based on ${s.sold_count} closed sale${s.sold_count === 1 ? "" : "s"}.</div>
+        <div class="kpi-row">
+          ${kpiCard("Closed sales", s.sold_count, `Total proceeds: ${fmt.usdM(s.total_actual_sales)}`)}
+          ${kpiCard("Avg days on market", s.avg_dom == null ? "—" : `${Math.round(s.avg_dom)}d`, "List → under contract")}
+          ${kpiCard("Avg listing → close", s.avg_listing_to_close == null ? "—" : `${Math.round(s.avg_listing_to_close)}d`, "List → closed")}
+          ${kpiCard("Price-to-listing", s.avg_price_to_listing_ratio == null ? "—" : fmt.pct(s.avg_price_to_listing_ratio - 1, 1) + " vs ask", `${s.avg_price_to_listing_ratio?.toFixed(3)}× listing`, s.avg_price_to_listing_ratio >= 1 ? "pos" : "neg")}
+        </div>
+      </div>`;
+    })()}
+
     <div class="panel mb-24">
       <h3>Annual P&L roll-up</h3>
       <div class="panel-subtitle">Source: matches Juno Forecast cols BA–BD (FY26–FY29)</div>
@@ -361,7 +459,7 @@ function renderProjectsList(r) {
     const excluded = state.scenario.excluded_project_ids.includes(res.project_id);
     return `<tr draggable="true" data-project-row="${p.id}">
       <td><span class="drag-handle" title="Drag to reorder">⋮⋮</span> <strong>${p.name}</strong><div class="muted" style="font-size:10.5px;">${p.address}</div></td>
-      <td class="muted"><span class="badge ${excluded ? "excluded" : p.status}">${excluded ? "excluded" : p.status}</span></td>
+      <td class="muted">${stageBadge(p, excluded)}</td>
       <td>${fmt.ymShort(p.start_date)}</td>
       <td>${fmt.ymShort(res.sale_date)}</td>
       <td class="num">${fmt.num(p.villa_sqft)}</td>
@@ -488,16 +586,16 @@ function renderProjectDetail(r) {
   return `
     <div class="row between mb-12">
       <div>
-        <div class="section-title" style="margin:0;">${p.name} <span class="badge ${isExcluded ? "excluded" : p.status}">${isExcluded ? "excluded" : p.status}</span></div>
+        <div class="section-title" style="margin:0;">${p.name} ${stageBadge(p, isExcluded)}</div>
         <div class="muted">${p.address}</div>
       </div>
       <div class="row gap-sm wrap">
         <select class="input" id="project-picker" style="max-width:240px;">
           ${state.projects.map(x => `<option value="${x.id}" ${x.id===id?"selected":""}>${x.name}</option>`).join("")}
         </select>
-        <div class="row gap-sm" style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:2px;">
-          ${["pipeline","committed","in-build","sold"].map(s => `<button class="btn small ${p.status===s?"":"secondary"}" data-action="set-status" data-id="${p.id}" data-status="${s}">${s}</button>`).join("")}
-        </div>
+        <select class="input" data-field="stage" style="max-width:200px;">
+          ${(state.globals.lifecycle_stages || LIFECYCLE_STAGES).map(s => `<option value="${s.id}" ${(p.stage || "sourcing") === s.id ? "selected" : ""}>${s.label}</option>`).join("")}
+        </select>
         <button class="btn small ${isExcluded ? "secondary" : "danger"}" data-action="exclude" data-id="${p.id}">${isExcluded ? "Include" : "Exclude"}</button>
         <button class="btn small secondary" data-action="clone" data-id="${p.id}">Clone</button>
         <button class="btn small danger" data-action="remove" data-id="${p.id}">Delete</button>
@@ -541,11 +639,70 @@ function renderProjectDetail(r) {
       <div class="chart-frame"><canvas id="chart-project"></canvas></div>
     </div>
 
+    ${renderActualsVariance(p, res)}
+
     <div class="panel mb-24">
       <h3>Monthly detail grid</h3>
       <div class="scroll-x">${renderProjectMonthlyTable(res)}</div>
     </div>
   `;
+}
+
+// v12.3 — budget vs actual variance for this project
+function renderActualsVariance(p, res) {
+  const actuals = p.actuals || {};
+  const anyActuals = Object.values(actuals).some(v => v > 0);
+  if (!anyActuals) {
+    return `<div class="panel mb-24">
+      <h3>Budget vs actual</h3>
+      <div class="muted" style="font-size:12px;">No actual costs recorded yet. Open the <strong>Actuals</strong> section in the Inputs panel above and fill in amounts paid to date.</div>
+    </div>`;
+  }
+  const land_forecast = -res.monthly.land_cost.reduce((a, b) => a + b, 0);
+  const build_forecast = -res.monthly.build_cost.reduce((a, b) => a + b, 0);
+  const king_forecast = -res.monthly.kingshaus.reduce((a, b) => a + b, 0);
+  const soft_forecast = -res.monthly.soft_cost.reduce((a, b) => a + b, 0);
+  const fin_forecast = -res.monthly.interest.reduce((a, b) => a + b, 0);
+  const rows = [
+    ["Land",         land_forecast,  actuals.land || 0],
+    ["Construction", build_forecast, actuals.construction || 0],
+    ["Kingshaus",    king_forecast,  actuals.kingshaus || 0],
+    ["Soft costs",   soft_forecast,  actuals.soft || 0],
+    ["Financing",    fin_forecast,   actuals.financing || 0],
+  ];
+  const totalF = rows.reduce((a, r) => a + r[1], 0);
+  const totalA = rows.reduce((a, r) => a + r[2], 0);
+  return `<div class="panel mb-24">
+    <h3>Budget vs actual</h3>
+    <div class="panel-subtitle">Forecast comes from the model. Actual = what you've actually spent. Variance is actual − forecast (positive = over budget).</div>
+    <div class="scroll-x"><table class="tbl">
+      <thead><tr><th>Line</th><th>Forecast</th><th>Actual</th><th>Variance ($)</th><th>Variance (%)</th><th>% of forecast spent</th></tr></thead>
+      <tbody>
+        ${rows.map(([label, f, a]) => {
+          const v = a - f;
+          const vPct = f > 0 ? v / f : 0;
+          const spent = f > 0 ? a / f : 0;
+          const cls = v <= 0 ? "pos" : "neg";
+          return `<tr>
+            <td>${label}</td>
+            <td class="num">${fmt.usdM(f)}</td>
+            <td class="num">${fmt.usdM(a)}</td>
+            <td class="num ${cls}">${(v >= 0 ? "+" : "")}${fmt.usdM(Math.abs(v))}</td>
+            <td class="num ${cls}">${fmt.pct(vPct)}</td>
+            <td class="num">${fmt.pct(spent)}</td>
+          </tr>`;
+        }).join("")}
+        <tr>
+          <td><strong>Total dev cost</strong></td>
+          <td class="num"><strong>${fmt.usdM(totalF)}</strong></td>
+          <td class="num"><strong>${fmt.usdM(totalA)}</strong></td>
+          <td class="num ${totalA - totalF <= 0 ? "pos" : "neg"}"><strong>${(totalA - totalF >= 0 ? "+" : "")}${fmt.usdM(Math.abs(totalA - totalF))}</strong></td>
+          <td class="num ${totalA - totalF <= 0 ? "pos" : "neg"}"><strong>${fmt.pct(totalF > 0 ? (totalA - totalF) / totalF : 0)}</strong></td>
+          <td class="num"><strong>${fmt.pct(totalF > 0 ? totalA / totalF : 0)}</strong></td>
+        </tr>
+      </tbody>
+    </table></div>
+  </div>`;
 }
 
 function renderProjectForm(p, res) {
@@ -587,6 +744,25 @@ function renderProjectForm(p, res) {
       ${f("sale_price_override_usd","Sale price override (USD)")}
       ${f("sale_price_per_sqft_override","Sale $/sqft override")}
     </div>
+    <details style="margin-top:16px;" ${(p.listing_date || p.closing_date) ? "open" : ""}>
+      <summary style="cursor:pointer;font-size:12px;color:var(--fg-2);font-weight:500;">Sales tracking (fill in as the deal progresses)</summary>
+      <div class="form-grid" style="margin-top:10px;">
+        ${f("listing_date","Listing date","date","1")}
+        ${f("listing_price_usd","Listing price (USD)")}
+        ${f("under_contract_date","Under contract date","date","1")}
+        ${f("closing_date","Closing date","date","1")}
+        ${f("actual_sale_price_usd","Actual sale price (USD)")}
+      </div>
+    </details>
+    <details style="margin-top:16px;" ${(p.actuals && Object.values(p.actuals).some(v => v > 0)) ? "open" : ""}>
+      <summary style="cursor:pointer;font-size:12px;color:var(--fg-2);font-weight:500;">Actuals — cost paid to date (vs forecast)</summary>
+      <div class="form-grid" style="margin-top:10px;">
+        ${["land","construction","kingshaus","soft","financing"].map(k =>
+          `<div class="form-row"><label>${k.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())} actual (USD)</label>
+            <input class="input" data-actual="${k}" type="number" step="1000" value="${p.actuals?.[k] ?? 0}"></div>`
+        ).join("")}
+      </div>
+    </details>
     <details style="margin-top:16px;">
       <summary style="cursor:pointer;font-size:12px;color:var(--fg-2);font-weight:500;">Soft cost breakdown (overrides lump sum if any value &gt; 0)</summary>
       <div class="form-grid" style="margin-top:10px;">
@@ -704,7 +880,7 @@ function renderPipeline(r) {
     const rightPct = saleIdx >= 0 ? (saleIdx / N) * 100 : 100;
     const excluded = state.scenario.excluded_project_ids.includes(p.id);
     const cls = excluded ? "pipeline" : p.status;
-    html += `<div class="gantt-label">${p.name} <span class="badge ${cls}">${excluded ? "excluded" : p.status}</span></div>
+    html += `<div class="gantt-label">${p.name} ${stageBadge(p, excluded)}</div>
              <div class="gantt-track">
                <div class="gantt-bar ${cls}" style="left:${leftPct.toFixed(1)}%;width:${(rightPct - leftPct).toFixed(1)}%;">
                  ${fmt.ymShort(p.start_date)} → ${fmt.ymShort(addMonthsHelper(p.start_date, p.program_months))}
@@ -1404,8 +1580,9 @@ function renderUsers() {
       <td class="muted">${u.email}</td>
       <td>${created}</td>
       <td>
-        <select class="input" data-set-role="${u.id}" style="max-width:140px;">
-          <option value="viewer" ${u.role === "viewer" ? "selected" : ""}>Viewer (read-only)</option>
+        <select class="input" data-set-role="${u.id}" style="max-width:160px;">
+          <option value="viewer_basic" ${u.role === "viewer_basic" ? "selected" : ""}>Basic viewer (no $)</option>
+          <option value="viewer" ${u.role === "viewer" ? "selected" : ""}>Viewer (full read)</option>
           <option value="editor" ${u.role === "editor" ? "selected" : ""}>Editor</option>
           <option value="super_admin" ${u.role === "super_admin" ? "selected" : ""}>Super admin</option>
         </select>
@@ -1426,6 +1603,126 @@ function renderUsers() {
     </div>
     <div class="note mt-16">
       <strong>How to invite someone:</strong> Send them the dashboard URL. They click "Need an account?" on the sign-in screen and create their own account with their email. Their account starts as <strong>Viewer</strong> by default — promote them here once they've signed up.
+    </div>
+  `;
+}
+
+// ---------- LLM assistant chat panel ----------
+
+const assistantState = { messages: [], busy: false, quota: null, mode: "query" };
+
+async function refreshAssistantQuota() {
+  try { assistantState.quota = await fetchMyLlmQuota(); } catch { /* ignore */ }
+}
+
+function renderAssistantPanel() {
+  const panel = document.getElementById("assistant-panel");
+  if (!panel) return;
+  const messagesHtml = assistantState.messages.map(m => {
+    if (m.role === "user") return `<div class="msg user"><div class="bubble user-bubble">${escapeHtml(m.content)}</div></div>`;
+    if (m.role === "error") return `<div class="msg"><div class="bubble error-bubble">${escapeHtml(m.content)}</div></div>`;
+    return `<div class="msg"><div class="bubble assistant-bubble">${escapeHtml(m.content).replace(/\n/g, "<br>")}${m.suggestion_id ? `<div class="muted mt-16" style="font-size:11px;">Suggestion #${m.suggestion_id} routed to admin for review.</div>` : ""}</div></div>`;
+  }).join("");
+  const quota = assistantState.quota;
+  const quotaText = quota ? `${quota.query_count}/${quota.daily_limit} today` : "";
+  panel.innerHTML = `
+    <div class="assistant-header">
+      <div>
+        <strong>Ask Juno</strong>
+        <span class="muted" style="font-size:11px;margin-left:6px;">${quotaText}</span>
+      </div>
+      <button class="link-btn" id="assistant-close">Close</button>
+    </div>
+    <div class="assistant-modes">
+      <button class="btn small ${assistantState.mode === "query" ? "" : "secondary"}" data-mode="query">Question</button>
+      <button class="btn small ${assistantState.mode === "suggest" ? "" : "secondary"}" data-mode="suggest">Suggest a change</button>
+    </div>
+    <div class="assistant-body">${messagesHtml || `<div class="muted" style="font-size:12px;padding:8px;">Ask anything about projects, financial assumptions, the pipeline. The assistant only uses data you have access to.<br><br>${assistantState.mode === "suggest" ? "<strong>Suggest mode:</strong> describe a change you'd like to make. It will be routed to an admin for approval — nothing is applied automatically." : "<strong>Question mode:</strong> get summaries, comparisons, or explanations of the current model."}</div>`}</div>
+    <form id="assistant-form" class="assistant-input">
+      <textarea id="assistant-input" rows="2" placeholder="${assistantState.mode === "suggest" ? "Describe the change you'd like to suggest…" : "Ask a question about projects, scenarios, or financials…"}" ${assistantState.busy ? "disabled" : ""}></textarea>
+      <button type="submit" class="btn" ${assistantState.busy ? "disabled" : ""}>${assistantState.busy ? "Thinking…" : "Send"}</button>
+    </form>
+    <div class="assistant-footer muted">Powered by Anthropic Claude · ${quota ? `~${(quota.cost_usd * 1).toFixed(4)} USD spent today` : ""}</div>
+  `;
+  panel.style.display = "flex";
+
+  document.getElementById("assistant-close").onclick = () => { panel.style.display = "none"; };
+  for (const btn of panel.querySelectorAll("[data-mode]")) {
+    btn.addEventListener("click", () => { assistantState.mode = btn.dataset.mode; renderAssistantPanel(); });
+  }
+  const form = document.getElementById("assistant-form");
+  const inp = document.getElementById("assistant-input");
+  inp?.focus();
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const message = inp.value.trim();
+    if (!message || assistantState.busy) return;
+    assistantState.messages.push({ role: "user", content: message });
+    assistantState.busy = true;
+    inp.value = "";
+    renderAssistantPanel();
+    try {
+      const result = await askAssistant(message, assistantState.mode);
+      assistantState.messages.push({ role: "assistant", content: result.response, suggestion_id: result.suggestion_id });
+      assistantState.quota = { query_count: result.quota_used, daily_limit: result.quota_limit, cost_usd: (assistantState.quota?.cost_usd || 0) + (result.cost_estimate_usd || 0) };
+    } catch (err) {
+      assistantState.messages.push({ role: "error", content: err?.message || String(err) });
+    } finally {
+      assistantState.busy = false;
+      renderAssistantPanel();
+      // Scroll to bottom
+      const body = document.querySelector(".assistant-body");
+      if (body) body.scrollTop = body.scrollHeight;
+    }
+  });
+}
+
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+
+// ---------- Suggestions view (admin queue) ----------
+
+let _suggestionsCache = null;
+async function loadSuggestions() {
+  _suggestionsCache = await fetchPendingSuggestions();
+  notify();
+}
+function renderSuggestions() {
+  if (!canEdit()) return `<div class="note neg">You need editor or super-admin role to review suggestions.</div>`;
+  if (_suggestionsCache == null) { _suggestionsCache = []; loadSuggestions(); }
+  const rows = _suggestionsCache.map(s => {
+    const statusBadge = {
+      pending:  `<span class="badge committed">Pending</span>`,
+      approved: `<span class="badge in-build">Approved</span>`,
+      applied:  `<span class="badge sold">Applied</span>`,
+      rejected: `<span class="badge excluded">Rejected</span>`,
+    }[s.status] || `<span class="badge pipeline">${s.status}</span>`;
+    return `<tr>
+      <td>${new Date(s.created_at).toLocaleString()}</td>
+      <td>${s.user_email || "—"}</td>
+      <td style="max-width:340px;">${escapeHtml(s.original_message).slice(0, 200)}</td>
+      <td style="max-width:340px;font-size:11px;color:var(--fg-2);">${escapeHtml(s.llm_summary).slice(0, 240)}</td>
+      <td>${statusBadge}</td>
+      <td>
+        ${s.status === "pending" ? `
+          <button class="btn small" data-sug-action="approve" data-sug-id="${s.id}">Approve</button>
+          <button class="btn small danger" data-sug-action="reject" data-sug-id="${s.id}">Reject</button>
+        ` : ""}
+        ${s.status === "approved" ? `<button class="btn small" data-sug-action="apply" data-sug-id="${s.id}">Mark applied</button>` : ""}
+        ${s.proposed_patch ? `<details><summary class="muted" style="cursor:pointer;font-size:11px;">Show patch</summary><pre style="font-size:10px;max-width:300px;overflow-x:auto;">${escapeHtml(JSON.stringify(s.proposed_patch, null, 2))}</pre></details>` : ""}
+      </td>
+    </tr>`;
+  }).join("");
+  return `
+    <div class="row between mb-12">
+      <div class="section-title" style="margin:0;">Suggestions · ${_suggestionsCache.length} total</div>
+      <button class="btn secondary" id="refresh-suggestions">Refresh</button>
+    </div>
+    <div class="panel">
+      <div class="panel-subtitle">Changes proposed by users via the Ask Juno assistant in "Suggest a change" mode. Nothing is applied automatically — review, then either approve + apply manually, or reject.</div>
+      <div class="scroll-x"><table class="tbl">
+        <thead><tr><th>When</th><th>From</th><th>Request</th><th>Assistant summary</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>${rows || `<tr><td colspan="6" class="muted center">No suggestions yet. Use Ask Juno → Suggest a change to create one.</td></tr>`}</tbody>
+      </table></div>
     </div>
   `;
 }
@@ -1782,6 +2079,32 @@ function attachViewEvents(result) {
     _usersCache = null;
     await loadUsers();
   });
+
+  // Suggestions view handlers
+  document.getElementById("refresh-suggestions")?.addEventListener("click", async () => {
+    _suggestionsCache = null;
+    await loadSuggestions();
+  });
+  for (const btn of document.querySelectorAll("[data-sug-action]")) {
+    btn.addEventListener("click", async () => {
+      const id = Number(btn.dataset.sugId);
+      const action = btn.dataset.sugAction;
+      try {
+        if (action === "approve") await reviewSuggestion(id, "approved");
+        else if (action === "reject") {
+          const reason = prompt("Reason for rejection (optional):") || null;
+          await reviewSuggestion(id, "rejected", reason);
+        } else if (action === "apply") {
+          if (!confirm("Mark this suggestion as applied? You should have already made the actual change in the dashboard.")) return;
+          await reviewSuggestion(id, "applied");
+        }
+        _suggestionsCache = null;
+        await loadSuggestions();
+      } catch (e) {
+        alert(`Failed: ${e.message}`);
+      }
+    });
+  }
   for (const sel of document.querySelectorAll("[data-set-role]")) {
     sel.addEventListener("change", async (e) => {
       const userId = sel.dataset.setRole;
@@ -1885,6 +2208,18 @@ function attachViewEvents(result) {
       const soft = { ...(p?.soft_costs || {}) };
       soft[key] = value;
       updateProject(id, { soft_costs: soft });
+    });
+  }
+  // v12.3 actuals
+  for (const inp of document.querySelectorAll("[data-actual]")) {
+    inp.addEventListener("change", (e) => {
+      const id = state.ui.selected_project_id;
+      const key = e.target.dataset.actual;
+      const value = Number(e.target.value) || 0;
+      const p = state.projects.find(x => x.id === id);
+      const actuals = { ...(p?.actuals || {}) };
+      actuals[key] = value;
+      updateProject(id, { actuals });
     });
   }
 

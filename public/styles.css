@@ -471,6 +471,93 @@ tr.drag-over-after td { border-bottom: 2px solid var(--accent); }
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
+/* ---------- LLM assistant ---------- */
+
+.assistant-launcher {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  border: none;
+  padding: 10px 14px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+}
+.assistant-launcher:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2); }
+
+.assistant-panel {
+  position: fixed;
+  right: 20px;
+  bottom: 70px;
+  width: 420px;
+  max-width: calc(100vw - 40px);
+  height: 600px;
+  max-height: calc(100vh - 100px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 99;
+}
+.assistant-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.assistant-modes {
+  display: flex;
+  gap: 6px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.assistant-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12.5px;
+}
+.msg { display: flex; }
+.msg.user { justify-content: flex-end; }
+.bubble {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  max-width: 85%;
+  line-height: 1.45;
+}
+.user-bubble { background: var(--accent); color: var(--accent-fg); border-bottom-right-radius: 2px; }
+.assistant-bubble { background: var(--surface-2); border: 1px solid var(--border); border-bottom-left-radius: 2px; }
+.error-bubble { background: rgba(179, 38, 30, 0.10); color: var(--neg); border: 1px solid rgba(179, 38, 30, 0.3); }
+.assistant-input { display: flex; gap: 6px; padding: 10px 14px; border-top: 1px solid var(--border); }
+.assistant-input textarea {
+  flex: 1;
+  background: var(--surface);
+  color: var(--fg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 12px;
+  resize: vertical;
+  min-height: 36px;
+  max-height: 100px;
+}
+.assistant-footer { font-size: 10px; text-align: center; padding: 4px 14px 8px; color: var(--fg-3); }
+
 /* ---------- responsive ---------- */
 
 @media (max-width: 900px) {

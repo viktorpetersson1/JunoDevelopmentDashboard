@@ -134,16 +134,17 @@ export async function updateMyDisplayName(displayName) {
 
 export async function fetchFinancialState() {
   const supabase = await getSupabase();
-  const { data, error } = await supabase
-    .from("financial_state")
-    .select("state, version, updated_at, updated_by")
-    .eq("id", 1)
-    .maybeSingle();
+  // v12.2 — use the redaction RPC so viewer_basic gets a stripped state.
+  // Full-access roles get the full state via the same function.
+  const { data, error } = await supabase.rpc("get_state_for_current_user");
   if (error) {
-    console.warn("fetchFinancialState failed:", error.message);
-    return null;
+    console.warn("fetchFinancialState (rpc) failed:", error.message);
+    // Fallback: try direct read (will fail for viewer_basic but work for others)
+    const direct = await supabase.from("financial_state").select("state, version, updated_at, updated_by").eq("id", 1).maybeSingle();
+    return direct.data || null;
   }
-  return data;
+  if (!data) return null;
+  return { state: data, version: data?._redacted ? 0 : 1, updated_at: new Date().toISOString(), redacted: !!data?._redacted };
 }
 
 export async function saveFinancialState(state, opts = {}) {
@@ -267,6 +268,55 @@ export function scheduleAutoSave(getStateFn, delay = AUTOSAVE_DEBOUNCE_MS) {
     })();
     await _saveInflight;
   }, delay);
+}
+
+// ---------- LLM assistant ----------
+
+export async function askAssistant(message, mode = "query") {
+  const supabase = await getSupabase();
+  const { data, error } = await supabase.functions.invoke("assistant", {
+    body: { message, mode },
+  });
+  if (error) {
+    // Try to parse a JSON error body from the function
+    const detail = error?.context?.response ? await error.context.response.text().catch(() => null) : null;
+    throw new Error(detail ? `${error.message}: ${detail}` : error.message);
+  }
+  if (data?.error) throw new Error(data.error);
+  return data;
+}
+
+export async function fetchPendingSuggestions(limit = 50) {
+  const supabase = await getSupabase();
+  const { data, error } = await supabase
+    .from("llm_suggestions")
+    .select("id, user_email, original_message, llm_summary, proposed_patch, status, reviewed_at, applied_at, rejection_reason, created_at")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) return [];
+  return data || [];
+}
+
+export async function reviewSuggestion(id, decision, rejectionReason = null) {
+  const supabase = await getSupabase();
+  const user = await getCurrentUser();
+  const update = {
+    status: decision,                       // 'approved' | 'rejected' | 'applied'
+    reviewed_by: user?.id,
+    reviewed_at: new Date().toISOString(),
+  };
+  if (decision === "applied") update.applied_at = new Date().toISOString();
+  if (decision === "rejected" && rejectionReason) update.rejection_reason = rejectionReason;
+  const { data, error } = await supabase.from("llm_suggestions").update(update).eq("id", id).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function fetchMyLlmQuota() {
+  const supabase = await getSupabase();
+  const { data, error } = await supabase.rpc("my_llm_quota_today");
+  if (error) return { query_count: 0, cost_usd: 0, daily_limit: 30 };
+  return data?.[0] || { query_count: 0, cost_usd: 0, daily_limit: 30 };
 }
 
 // ---------- realtime (optional, for multi-user updates) ----------

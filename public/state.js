@@ -45,6 +45,14 @@ export function canEdit() {
 export function isSuperAdmin() {
   return state.auth.profile?.role === "super_admin";
 }
+// v12.2 — can the current user see financial detail (money, profit, IRR)?
+export function canSeeFinancials() {
+  const role = state.auth.profile?.role;
+  return role === "viewer" || role === "editor" || role === "super_admin";
+}
+export function isRestrictedViewer() {
+  return state.auth.profile?.role === "viewer_basic";
+}
 
 const AUDIT_MAX = 200;
 export function logEvent(category, message, detail) {
@@ -283,6 +291,21 @@ export function addProject(seed = {}) {
     },
     sale_price_override_usd: seed.sale_price_override_usd ?? null,
     sale_price_per_sqft_override: seed.sale_price_per_sqft_override ?? null,
+    stage: seed.stage ?? "sourcing",                   // v12.1
+    // v12.4 — actual sales tracking (populated as project moves through lifecycle)
+    listing_date: seed.listing_date ?? null,
+    under_contract_date: seed.under_contract_date ?? null,
+    closing_date: seed.closing_date ?? null,
+    listing_price_usd: seed.listing_price_usd ?? null,
+    actual_sale_price_usd: seed.actual_sale_price_usd ?? null,
+    // v12.3 — actual cost tracking
+    actuals: seed.actuals ?? {
+      land: 0,                  // actual land cost paid
+      construction: 0,          // actual construction spend to date
+      kingshaus: 0,             // actual Kingshaus spend
+      soft: 0,                  // actual soft costs spent
+      financing: 0,             // actual financing costs paid
+    },
   });
   state.ui.selected_project_id = id;
   state.ui.view = "project_detail";

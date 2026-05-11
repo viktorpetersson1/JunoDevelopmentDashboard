@@ -297,12 +297,19 @@ export function calcProject(project, globals, scenario) {
 
 // ---------- portfolio aggregation ----------
 
+// v12.1 — stages in the "closed" group are sold/archived/historical
+const CLOSED_STAGES = ["sold", "archived"];
+export function isClosed(project) {
+  if (project.stage) return CLOSED_STAGES.includes(project.stage);
+  return project.status === "sold";  // legacy fallback
+}
+
 export function aggregatePortfolio(projects, globals, scenario) {
-  // Filter out excluded + (optionally) sold projects (they're historical, exclude from forward forecast)
-  const includeSold = globals.include_sold_projects ?? false;
+  // Filter out excluded + (optionally) closed projects (they're historical)
+  const includeClosed = globals.include_sold_projects ?? false;
   const active = projects.filter(
     (p) => !scenario.excluded_project_ids.includes(p.id)
-      && (includeSold || p.status !== "sold")
+      && (includeClosed || !isClosed(p))
   );
   const projectResults = active.map((p) => calcProject(p, globals, scenario));
   const N = globals.horizon_months;
@@ -479,6 +486,23 @@ export function aggregatePortfolio(projects, globals, scenario) {
       portfolio_profit_per_sqft: (() => {
         const totalSqft = active.reduce((a, p) => a + (p.villa_sqft || 0), 0);
         return totalSqft > 0 ? totalProfit / totalSqft : 0;
+      })(),
+      // v12.4 sales-cycle metrics — only counts projects with actual closing data
+      sales_metrics: (() => {
+        const sold = projects.filter(p => p.closing_date && p.listing_date);
+        if (!sold.length) return { sold_count: 0, avg_dom: null, avg_listing_to_close: null, avg_price_to_listing_ratio: null, total_actual_sales: 0 };
+        const days = (a, b) => Math.round((new Date(b) - new Date(a)) / (24 * 3600 * 1000));
+        const dom = sold.map(p => p.under_contract_date ? days(p.listing_date, p.under_contract_date) : days(p.listing_date, p.closing_date));
+        const ltc = sold.map(p => days(p.listing_date, p.closing_date));
+        const priceRatio = sold.filter(p => p.listing_price_usd && p.actual_sale_price_usd).map(p => p.actual_sale_price_usd / p.listing_price_usd);
+        const avg = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+        return {
+          sold_count: sold.length,
+          avg_dom: avg(dom),
+          avg_listing_to_close: avg(ltc),
+          avg_price_to_listing_ratio: avg(priceRatio),
+          total_actual_sales: projects.reduce((a, p) => a + (p.actual_sale_price_usd || 0), 0),
+        };
       })(),
       total_equity_in: totalEquityCalled > 0 ? totalEquityCalled : totalEquityIn,
       total_equity_out: totalEquityReturned > 0 ? totalEquityReturned : totalEquityOut,

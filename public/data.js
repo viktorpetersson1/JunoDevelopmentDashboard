@@ -1,6 +1,29 @@
 // Seed data extracted from Juno_Cash flow Forecast_20260412_MASTER.xlsx (snapshot 2026-05-10).
 // Each value carries a source pointer for traceability.
 
+// v12.1 — full development lifecycle. Each project moves through these in order.
+export const LIFECYCLE_STAGES = [
+  { id: "sourcing",         label: "Sourcing",          group: "pre-deal",      description: "Identifying / underwriting potential sites" },
+  { id: "land_control",     label: "Land control",      group: "pre-deal",      description: "PSA signed, in due-diligence period" },
+  { id: "entitlement",      label: "Entitlement",       group: "pre-build",     description: "Zoning, variances, site plan approval" },
+  { id: "design",           label: "Design",            group: "pre-build",     description: "Schematic → DD → CDs with architect" },
+  { id: "permitting",       label: "Permitting",        group: "pre-build",     description: "Building permits in review" },
+  { id: "pre_construction", label: "Pre-construction",  group: "build",         description: "GMP signed, subs lined up, ready to mobilize" },
+  { id: "construction",     label: "Construction",      group: "build",         description: "On site, vertical build in progress" },
+  { id: "pre_sales",        label: "Pre-sales",         group: "go-to-market",  description: "Listed, marketing live, awaiting offers" },
+  { id: "under_contract",   label: "Under contract",    group: "go-to-market",  description: "Buyer signed, in attorney review / contingency" },
+  { id: "sold",             label: "Sold",              group: "closed",        description: "Closed, proceeds received" },
+  { id: "archived",         label: "Archived",          group: "closed",        description: "Killed / abandoned / paused indefinitely" },
+];
+
+export const STAGE_GROUP_COLORS = {
+  "pre-deal":      "#7a7a73",
+  "pre-build":     "#2058a8",
+  "build":         "#b56c00",
+  "go-to-market":  "#5a3d8a",
+  "closed":        "#1f7a4d",
+};
+
 export const BASELINE_GLOBALS = {
   interest_rate_apr: 0.095,                // source: Project 2-11!M16 (all hardcoded 9.5%)
   ltc_pct: 0.75,                            // source: Project 2-11!M17 — used for build + kingshaus + soft
@@ -72,7 +95,7 @@ export const BASELINE_PROJECTS = [
     id: "p2",
     name: "84 SBR (Project 2)",
     address: "84 Springs Beach Road",
-    status: "committed",
+    status: "committed", stage: "design",
     start_date: "2026-03",
     program_months: 13,
     villa_sqft: 7796,
@@ -90,7 +113,7 @@ export const BASELINE_PROJECTS = [
     id: "p3",
     name: "Project 3 - TBC",
     address: "Site to be confirmed",
-    status: "pipeline",
+    status: "pipeline", stage: "sourcing",
     start_date: "2026-09",
     program_months: 13,
     villa_sqft: 6500,
@@ -109,7 +132,7 @@ export const BASELINE_PROJECTS = [
     name: "Hands Creek (Project 4)",
     address: "Hands Creek, East Hampton",
     market: "east_hampton",
-    status: "committed",
+    status: "committed", stage: "design",
     start_date: "2026-12",
     program_months: 13,
     villa_sqft: 7500,
@@ -127,7 +150,7 @@ export const BASELINE_PROJECTS = [
     id: "p5",
     name: "Project 5",
     address: "TBC",
-    status: "pipeline",
+    status: "pipeline", stage: "sourcing",
     start_date: "2027-03",
     program_months: 13,
     villa_sqft: 4600,
@@ -145,7 +168,7 @@ export const BASELINE_PROJECTS = [
     id: "p6",
     name: "Project 6",
     address: "TBC",
-    status: "pipeline",
+    status: "pipeline", stage: "sourcing",
     start_date: "2027-08",
     program_months: 13,
     villa_sqft: 5500,
