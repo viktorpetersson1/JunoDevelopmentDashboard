@@ -1637,7 +1637,10 @@ function renderAssistantPanel() {
     return `<div class="msg"><div class="bubble assistant-bubble">${escapeHtml(m.content).replace(/\n/g, "<br>")}${m.suggestion_id ? `<div class="muted mt-16" style="font-size:11px;">Suggestion #${m.suggestion_id} routed to admin for review.</div>` : ""}</div></div>`;
   }).join("");
   const quota = assistantState.quota;
-  const quotaText = quota ? `${quota.query_count}/${quota.daily_limit} today` : "";
+  // v12.5 — quota is unlimited; only show today's usage (count + spend) as a soft indicator
+  const quotaText = (quota && quota.query_count > 0)
+    ? `${quota.query_count} ${quota.query_count === 1 ? "query" : "queries"} today`
+    : "";
   panel.innerHTML = `
     <div class="assistant-header">
       <div class="assistant-title">
@@ -1681,7 +1684,7 @@ function renderAssistantPanel() {
     try {
       const result = await askAssistant(message, assistantState.mode);
       assistantState.messages.push({ role: "assistant", content: result.response, suggestion_id: result.suggestion_id });
-      assistantState.quota = { query_count: result.quota_used, daily_limit: result.quota_limit, cost_usd: (assistantState.quota?.cost_usd || 0) + (result.cost_estimate_usd || 0) };
+      assistantState.quota = { query_count: result.queries_today, cost_usd: result.cost_today_usd };
     } catch (err) {
       assistantState.messages.push({ role: "error", content: err?.message || String(err) });
     } finally {

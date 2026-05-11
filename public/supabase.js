@@ -316,10 +316,12 @@ export async function reviewSuggestion(id, decision, rejectionReason = null) {
 }
 
 export async function fetchMyLlmQuota() {
+  // Quota removed — this just returns today's usage telemetry
   const supabase = await getSupabase();
   const { data, error } = await supabase.rpc("my_llm_quota_today");
-  if (error) return { query_count: 0, cost_usd: 0, daily_limit: 30 };
-  return data?.[0] || { query_count: 0, cost_usd: 0, daily_limit: 30 };
+  if (error) return { query_count: 0, cost_usd: 0 };
+  const row = data?.[0] || {};
+  return { query_count: row.query_count || 0, cost_usd: Number(row.cost_usd) || 0 };
 }
 
 // ---------- realtime (optional, for multi-user updates) ----------

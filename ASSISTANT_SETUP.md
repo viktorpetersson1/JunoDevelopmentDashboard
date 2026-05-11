@@ -51,7 +51,7 @@ Key design choices:
 
 - **API key never reaches the browser.** Lives only in Supabase secrets.
 - **All queries logged** to `llm_query_log` with user, query, response, tokens, cost. Super-admin can pull this any time.
-- **Per-user daily quota**: 30 queries/day. Configurable in the Edge Function (`DAILY_QUERY_LIMIT`).
+- **Per-user daily quota**: unlimited. The `llm_rate_limit` table still tracks daily query count + cost per user for telemetry, but the Edge Function does not enforce a cap. To re-introduce a cap, set a `DAILY_QUERY_LIMIT` constant in the function and add the check back.
 - **Role-aware context**: viewer_basic gets a stripped state (no money). Editor/admin gets the full state.
 - **System prompt** forbids ignoring instructions, making up numbers, or modifying data directly. Suggestions go through the approval queue.
 - **Token budget per request**: ~5k input + 1k output = ~$0.03/query.
@@ -59,10 +59,10 @@ Key design choices:
 ## Cost estimate
 
 Per query: ~$0.03 (Claude Sonnet 4.5: $3/M input, $15/M output).
-Per user per day at full quota: 30 × $0.03 = $0.90.
-For 10 users hitting the cap every day: $9/day = ~$270/month.
 
-In practice users will run far below the cap. Realistic spend: $5–30/month for a 5-person team.
+There is no daily cap so spend scales linearly with usage. Realistic spend for a small exec team using the assistant a few times per day: **$5–30/month**. Heavy usage (50+ queries/day across multiple users): **$50–150/month**. Monitor via Anthropic dashboard or by querying the `llm_rate_limit` table.
+
+If you want to re-introduce a cap, the `DAILY_QUERY_LIMIT` enforcement is a 5-line addition to the Edge Function.
 
 If you want to use a cheaper model (Claude Haiku at ~$0.80/M input + $4/M output), edit the Edge Function and change `MODEL` to `claude-haiku-4-5-20251201` or similar.
 
