@@ -187,12 +187,25 @@ export async function bootstrap() {
   notify();
 }
 
-// Trigger save: local immediately, server debounced (only if user can edit)
+// Trigger save: local immediately, server debounced (only if user can edit).
+// v13.1 — passes the expected version + a conflict handler that reloads server state.
 export function save() {
   writeLocalCache();
   if (_suppressAutoSave) return;
-  if (!canEdit()) return;  // viewers don't push state
-  scheduleAutoSave(snapshotForPersistence);
+  if (!canEdit()) return;
+  scheduleAutoSave(
+    snapshotForPersistence,
+    () => state.sync.server_version,
+    async (serverVersion) => {
+      console.warn(`Concurrent edit: server is at v${serverVersion}, you were at v${state.sync.server_version}. Reloading from server.`);
+      const remote = await fetchFinancialState();
+      if (remote?.state) {
+        applyStateBlob(remote.state);
+        state.sync.server_version = remote.version || 0;
+        notify();
+      }
+    },
+  );
 }
 
 // Read-only export of current snapshot (e.g., for JSON download)

@@ -50,9 +50,10 @@ export const BASELINE_GLOBALS = {
   opex_growth_rate: 0.0,                    // v3: per-year escalation (Excel ramps from $396k→$515k = ~9% YoY)
   model_start: "2026-01",
   horizon_months: 49,                       // source: Juno Forecast cols C-AY = Jan-26 to Jan-30
+  excel_baseline_snapshot: "2026-05-10",    // I7/I10: when the dashboard was last reconciled to Excel
   capitalize_interest: false,               // v2: Excel computes simple interest on cumulative balance — set true to compound
   financing_fees_per_project_usd: 350000,   // v2: origination + closing + legal + title + appraisal (Excel project rows 65-70 ≈ $350k flat)
-  fiscal_year_mode: "calendar",             // v2: "calendar" (Jan-Dec) or "juno13" (Jan-Jan, 13-month FY29)
+  fiscal_year_mode: "juno13",               // I1: Juno's actual FY rolls Jan-2030 into FY29 (the Excel convention). User can switch to "calendar" in Settings if they want the 5-column view.
   build_cost_curve: "linear",               // v3: "linear" / "front_loaded" / "s_curve" — controls how build cost spreads across the construction window
   build_cost_realization_pct: 1.0,          // v7: portion of project build budget actually allocated to the monthly grid (Excel grid under-allocates to ~0.81)
   // v4 risk thresholds — KPI cards flash a warning when crossed
@@ -223,6 +224,17 @@ export const BASELINE_PROJECTS = [
     _excel_sale_price: 6775393, _excel_total_cost_per_sqft: 986,
   },
 ];
+
+// v13.1 — Auto-populate `sale_price_override_usd` from `_excel_sale_price` on baseline projects.
+// Sale price is otherwise derived from cost × (1+margin), which means cost shocks raise sale price
+// proportionally — producing visibly wrong sensitivity intuition ("build cost up → profit up").
+// For the seed projects we have Excel-benchmark sale prices that represent market-set pricing.
+// Users can still clear the override on new projects they create from scratch.
+for (const p of BASELINE_PROJECTS) {
+  if (p.sale_price_override_usd == null && p._excel_sale_price) {
+    p.sale_price_override_usd = p._excel_sale_price;
+  }
+}
 
 // Excel-reported annual P&L for validation in Phase 4.
 export const EXCEL_BENCHMARK = {

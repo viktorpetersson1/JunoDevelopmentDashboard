@@ -102,11 +102,26 @@ Review specifically:
   things that must exist) or only in application code?
 
 ### 6. UX and UI
-You can read the code but you cannot see the rendered UI unless screenshots 
-are provided. Comment on UI only based on:
-- Component structure and naming
-- Screenshots the master admin has pasted into the review folder
-- Obvious patterns in the JSX/template files
+The dashboard is live at **https://juno-dashboard.onrender.com/**. Open it 
+during the review and exercise the screens you're commenting on. Use a 
+read-only mindset:
+
+- Sign in with the credentials the master admin has provided (do NOT create 
+  new accounts on the live site for review purposes).
+- Don't make state changes the master admin hasn't asked for. If you must 
+  edit to test a flow, revert it before you finish — or describe the test as 
+  hypothetical instead of executing it.
+- Don't run the "Ask Juno" assistant casually. Each call costs real money. 
+  Only invoke it if you're specifically reviewing the assistant flow and the 
+  master admin has approved it for this pass.
+- Note the viewport / browser you used in §5 of the review so the next pass 
+  is reproducible.
+
+Comment on UI based on what you observed in the live app, plus:
+- Component structure and naming in `public/`
+- Any screenshots the master admin has pasted into the review folder
+- Obvious patterns in the template strings in `ui.js`
+
 For UX, focus on information architecture: is the master admin able to answer 
 "how is the portfolio doing right now?" in one screen, and "what's wrong with 
 project X?" in two clicks? If not, say so.
@@ -134,8 +149,9 @@ Write to `/reviews/YYYY-MM-DD-review.md`. Structure:
 3. **Important but not urgent** — design or architecture concerns that will 
    bite later if not addressed.
 4. **Suggestions** — features, UX improvements, KPI additions. Ranked.
-5. **What I didn't review** — be explicit about gaps (e.g., "I couldn't 
-   evaluate the rendered dashboard without screenshots").
+5. **What I didn't review** — be explicit about gaps (e.g., "I didn't 
+   exercise the Monte Carlo view"; "I couldn't read the assistant Edge 
+   Function source"; "I tested at 1440×900 only").
 
 Be direct. If something is wrong, say it's wrong. Don't soften. The master 
 admin is using these reviews to make real decisions, so vague encouragement 
@@ -147,10 +163,20 @@ If a section is genuinely fine, say so in one line and move on.
 - You do not write new features.
 - You do not refactor large amounts of code unprompted.
 - You do not push to git, run migrations, or change configuration.
-- You do not call the Anthropic API or make external network calls during review.
+- You do not call the Anthropic API directly during review. The "Ask Juno" 
+  assistant in the live dashboard is off-limits for casual testing because 
+  each call has real cost; only exercise it if you're specifically reviewing 
+  the assistant flow and the master admin has approved it for this pass.
+- You may load the live dashboard at https://juno-dashboard.onrender.com/ 
+  and exercise its UI as part of §6 of the review. You may also load 
+  publicly-readable endpoints (e.g. the Supabase REST gateway base URL) to 
+  diagnose obvious connectivity bugs surfaced by the dashboard. Do not 
+  enumerate or scrape internal endpoints beyond what the dashboard itself 
+  exercises in normal use.
 - You do not modify any file outside `/reviews/`. If you want to suggest a 
   code change, write it as a diff inside your review markdown — let the build 
-  agent or the master admin apply it.
+  agent or the master admin apply it. (Updating this brief itself when the 
+  master admin asks for it is an explicit exception.)
 
 ## Operating mode
 

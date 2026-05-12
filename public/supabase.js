@@ -137,50 +137,49 @@ export async function updateMyDisplayName(displayName) {
 
 export async function fetchFinancialState() {
   const supabase = await getSupabase();
-  // v12.2 — use the redaction RPC so viewer_basic gets a stripped state.
-  // Full-access roles get the full state via the same function.
+  // The RPC now returns columns: state, version, updated_at, redacted.
+  // viewer_basic gets a stripped state with version still tagged for optimistic-concurrency tracking.
   const { data, error } = await supabase.rpc("get_state_for_current_user");
   if (error) {
     console.warn("fetchFinancialState (rpc) failed:", error.message);
-    // Fallback: try direct read (will fail for viewer_basic but work for others)
-    const direct = await supabase.from("financial_state").select("state, version, updated_at, updated_by").eq("id", 1).maybeSingle();
-    return direct.data || null;
+    return null;
   }
-  if (!data) return null;
-  return { state: data, version: data?._redacted ? 0 : 1, updated_at: new Date().toISOString(), redacted: !!data?._redacted };
+  // Supabase RPC returns an array of rows for SETOF/RETURNS TABLE functions
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row || !row.state) return null;
+  return {
+    state: row.state,
+    version: row.version || 0,
+    updated_at: row.updated_at,
+    redacted: !!row.redacted,
+  };
 }
 
+// v13.1 — atomic save via the save_financial_state RPC.
+// The caller passes the version it last loaded. If the server's version has moved (another editor
+// saved in the meantime), the RPC returns conflict=true and DOES NOT overwrite. The client must
+// reload + reapply.
 export async function saveFinancialState(state, opts = {}) {
   const supabase = await getSupabase();
   const user = await getCurrentUser();
   if (!user) throw new Error("Not authenticated — sign in to save changes");
 
-  // Read current version to do optimistic concurrency
-  const current = await fetchFinancialState();
-  const newVersion = (current?.version ?? 0) + 1;
-
-  // Write the new state
-  const { data, error } = await supabase
-    .from("financial_state")
-    .update({ state, version: newVersion, updated_by: user.id, updated_at: new Date().toISOString() })
-    .eq("id", 1)
-    .select("state, version, updated_at, updated_by")
-    .single();
+  const expectedVersion = opts.expectedVersion ?? null;
+  const { data, error } = await supabase.rpc("save_financial_state", {
+    new_state: state,
+    expected_version: expectedVersion,
+    description: opts.description || null,
+  });
   if (error) throw error;
 
-  // Append to history (best-effort; we don't fail the save if history insert fails)
-  try {
-    await supabase.from("state_history").insert({
-      state,
-      version: newVersion,
-      description: opts.description || null,
-      created_by: user.id,
-    });
-  } catch (e) {
-    console.warn("state_history insert failed:", e?.message);
+  const row = Array.isArray(data) ? data[0] : data;
+  if (row?.conflict) {
+    const err = new Error(`CONCURRENT_EDIT: server is at version ${row.server_version}, you started from ${expectedVersion}. Reload to merge.`);
+    err.conflict = true;
+    err.serverVersion = row.server_version;
+    throw err;
   }
-
-  return data;
+  return { version: row?.new_version, conflict: false };
 }
 
 // ---------- history ----------
@@ -251,7 +250,10 @@ function notifyStatus(status, detail) {
   for (const fn of _saveListeners) fn(status, detail);
 }
 
-export function scheduleAutoSave(getStateFn, delay = AUTOSAVE_DEBOUNCE_MS) {
+// v13.1 — autosave with optimistic-concurrency.
+// getVersionFn(): returns the version the client thinks is current.
+// onConflict(serverVersion): called when the server has a newer version (client should reload state).
+export function scheduleAutoSave(getStateFn, getVersionFn, onConflict, delay = AUTOSAVE_DEBOUNCE_MS) {
   if (_saveTimer) clearTimeout(_saveTimer);
   notifyStatus("pending");
   _saveTimer = setTimeout(async () => {
@@ -260,11 +262,18 @@ export function scheduleAutoSave(getStateFn, delay = AUTOSAVE_DEBOUNCE_MS) {
     notifyStatus("saving");
     _saveInflight = (async () => {
       try {
-        await saveFinancialState(getStateFn());
-        notifyStatus("saved", { ts: new Date() });
+        const result = await saveFinancialState(getStateFn(), {
+          expectedVersion: getVersionFn ? getVersionFn() : null,
+        });
+        notifyStatus("saved", { ts: new Date(), newVersion: result.version });
       } catch (e) {
-        notifyStatus("error", { message: e?.message || String(e) });
-        console.error("autosave failed:", e);
+        if (e?.conflict && typeof onConflict === "function") {
+          notifyStatus("conflict", { serverVersion: e.serverVersion });
+          try { await onConflict(e.serverVersion); } catch { /* ignore */ }
+        } else {
+          notifyStatus("error", { message: e?.message || String(e) });
+          console.error("autosave failed:", e);
+        }
       } finally {
         _saveInflight = null;
       }

@@ -169,6 +169,7 @@ function renderTopbar() {
     pending: `<span class="sync-badge warn" title="Unsaved changes (will autosave shortly)">●</span>`,
     saving: `<span class="sync-badge warn" title="Saving to server">⟳</span>`,
     saved: `<span class="sync-badge pos" title="Saved to server${state.sync.last_saved_at ? ` at ${state.sync.last_saved_at.toLocaleTimeString()}` : ""}">✓</span>`,
+    conflict: `<span class="sync-badge warn" title="Another editor saved changes — reloading from server">⇄</span>`,
     error: `<span class="sync-badge neg" title="Save failed: ${state.sync.last_error || ""}">!</span>`,
     offline: `<span class="sync-badge neg" title="Offline — changes cached locally">⌽</span>`,
   }[sync] || "";
@@ -228,6 +229,14 @@ function attachTopbarEvents() {
     () => setTheme(state.ui.theme === "light" ? "dark" : "light"));
   document.getElementById("sign-out-btn")?.addEventListener("click", async () => {
     if (confirm("Sign out?")) await signOut();
+  });
+
+  // C2 — heatmap is lazy. Wire the "Compute heatmap" button when the Sensitivity view is open.
+  document.getElementById("compute-heatmap")?.addEventListener("click", (e) => {
+    e.target.disabled = true;
+    e.target.innerText = "Computing…";
+    // Defer to next tick so the button can repaint
+    setTimeout(() => computeAndRenderHeatmap(), 30);
   });
 
   // v12.5 — Ask Juno launcher (toggle docked right sidebar)
@@ -418,7 +427,7 @@ function renderPortfolio(r) {
 
     <div class="panel mb-24">
       <h3>Annual P&L roll-up</h3>
-      <div class="panel-subtitle">Source: matches Juno Forecast cols BA–BD (FY26–FY29)</div>
+      <div class="panel-subtitle">Fiscal-year mode: <strong>${state.globals.fiscal_year_mode === "juno13" ? "Juno 13-month" : "Calendar (Jan–Dec)"}</strong>${state.globals.fiscal_year_mode === "juno13" ? " — matches Juno Forecast cols BA–BD" : " — Jan 2030 shows as a partial FY30 column"}. Toggle in Settings.</div>
       ${renderAnnualTable(r)}
     </div>
   `;
@@ -571,8 +580,14 @@ function renderProjectDetail(r) {
     || calcProject(p, state.globals, state.scenario);
   const m = res.monthly;
 
-  // Project-specific sensitivity table: ±10% on key drivers
+  // v13.1 — Sensitivity table.
+  // Sale price is PINNED at the current sale price (an override) so cost shocks don't perversely
+  // raise the sale price via cost-plus-margin pricing. Margin override cases are excluded for
+  // the same reason — they'd no-op against a fixed sale price.
   const baseProfit = res.kpis.gross_profit;
+  const pinnedSale = p.sale_price_override_usd ?? res.kpis.total_sales;
+  // Build a copy of the project with sale price pinned for sensitivity calcs
+  const projForSens = { ...p, sale_price_override_usd: pinnedSale };
   const sensCases = [
     { label: "Build cost +10%", patch: { build_cost_multiplier: 1.1 } },
     { label: "Build cost -10%", patch: { build_cost_multiplier: 0.9 } },
@@ -580,12 +595,12 @@ function renderProjectDetail(r) {
     { label: "Sale price -10%", patch: { sale_price_multiplier: 0.9 } },
     { label: "Interest +200bps", patch: { interest_rate_delta_bps: 200 } },
     { label: "Interest -200bps", patch: { interest_rate_delta_bps: -200 } },
-    { label: "Margin → 20%", patch: { margin_override: 0.20 } },
-    { label: "Margin → 30%", patch: { margin_override: 0.30 } },
+    { label: "Timing slip +3 months", patch: { timing_shift_months: 3 } },
+    { label: "Timing pull -3 months", patch: { timing_shift_months: -3 } },
   ];
   const sensRows = sensCases.map((c) => {
     const altScenario = { ...state.scenario, ...c.patch };
-    const alt = calcProject(p, state.globals, altScenario);
+    const alt = calcProject(projForSens, state.globals, altScenario);
     const delta = alt.kpis.gross_profit - baseProfit;
     return `<tr>
       <td>${c.label}</td>
@@ -734,9 +749,9 @@ function renderProjectForm(p, res) {
     <div class="form-grid">
       <div class="form-row full"><label>Name</label><input class="input" data-field="name" type="text" value="${p.name}"></div>
       <div class="form-row"><label>Address</label><input class="input" data-field="address" type="text" value="${p.address || ""}"></div>
-      <div class="form-row"><label>Status</label>
-        <select class="input" data-field="status">
-          ${["pipeline","committed","in-build","sold"].map(s => `<option value="${s}" ${p.status===s?"selected":""}>${s}</option>`).join("")}
+      <div class="form-row"><label>Lifecycle stage</label>
+        <select class="input" data-field="stage">
+          ${LIFECYCLE_STAGES.map(s => `<option value="${s.id}" ${(p.stage || "sourcing") === s.id ? "selected" : ""}>${s.label}</option>`).join("")}
         </select>
       </div>
       <div class="form-row"><label>Market</label>
@@ -1014,13 +1029,11 @@ function renderWaterfall(r) {
           <th>Pref/Hurdle</th><th>Status</th>
         </tr></thead>
         <tbody>${r.waterfall.map(w => {
-          const statusBadge = w.hurdle_cleared
-            ? `<span class="badge sold">Above hurdle</span>`
-            : w.pref_cleared
-              ? `<span class="badge committed">Pref cleared</span>`
-              : (w.irr_annual == null
-                  ? `<span class="badge pipeline">—</span>`
-                  : `<span class="badge excluded">Below pref</span>`);
+          // I6 — show pref + hurdle status both, not just whichever is the highest tier cleared.
+          const statusBadge = w.irr_annual == null
+            ? `<span class="badge pipeline">—</span>`
+            : `<span class="badge ${w.pref_cleared ? "sold" : "excluded"}" style="font-size:9px;">Pref ${w.pref_cleared ? "✓" : "✗"}</span>
+               <span class="badge ${w.hurdle_cleared ? "sold" : "excluded"}" style="font-size:9px;margin-left:4px;">Hurdle ${w.hurdle_cleared ? "✓" : "✗"}</span>`;
           const promoteCell = w.is_sponsor
             ? (w.promote_received_from_lps > 0 ? `<span class="pos">+${fmt.usdM(w.promote_received_from_lps)}</span>` : "—")
             : (w.promote_paid_to_sponsor > 0 ? `<span class="neg">−${fmt.usdM(w.promote_paid_to_sponsor)}</span>` : "—");
@@ -1076,11 +1089,25 @@ function renderWaterfall(r) {
           <td class="num pos">${fmt.usdM(w.tiers.tier3b_to_hurdle)}</td>
           <td class="num pos">${fmt.usdM(w.tiers.tier4_to_investor)}</td>
           <td class="num ${w.is_sponsor ? "muted" : ""}">${w.is_sponsor ? "n/a (self)" : fmt.usdM(w.tiers.tier4_to_sponsor)}</td>
+        </tr>
+        <tr style="background:var(--surface-2);font-weight:500;">
+          <td>${w.name} — sum check</td>
+          <td></td>
+          <td colspan="6" class="num">
+            ${(() => {
+              const summed = (w.tiers.tier1_return_of_capital || 0) + (w.tiers.tier2_pref_return || 0)
+                + (w.tiers.tier3a_gp_catchup || 0) + (w.tiers.tier3b_to_hurdle || 0)
+                + (w.tiers.tier4_to_investor || 0) + (w.tiers.tier4_to_sponsor || 0);
+              const gross = w.equity_out_gross || w.tiers.grossDistribution || 0;
+              const ok = Math.abs(summed - gross) < 1;
+              return `Σ all tiers = ${fmt.usdM(summed)} ${ok ? "✓ matches" : "<span class=\"neg\">≠"} gross distribution ${fmt.usdM(gross)}${ok ? "" : "</span>"}`;
+            })()}
+          </td>
         </tr>`).join("")}</tbody>
       </table></div>
 
       <div class="note mt-16">
-        Tier breakdown uses a simplified European-style waterfall with pref/hurdle thresholds compounded over each investor's holding period. Tier 4 above-hurdle is split <strong>(1 − carry)</strong> to the investor and <strong>carry</strong> to the sponsor. With only one investor (KPC sponsor), there is no actual promote — promote arises when LPs join.
+        Tier breakdown uses a European-style waterfall with pref/hurdle thresholds compounded over each investor's holding period. Tier 4 above-hurdle is split <strong>(1 − carry)</strong> to the investor and <strong>carry</strong> to the sponsor. <strong>Sum check</strong> confirms tier columns reconcile to gross distribution — even for the sole-sponsor case where GP catch-up and carry are paid to the same entity.
       </div>
     </div>` : ""}
 
@@ -1311,31 +1338,40 @@ function renderScenarioComparison() {
 
 // ---------- Sensitivity view ----------
 
+// v13.1 — helper: produce a projects array with sale prices pinned so cost shocks don't
+// perversely raise sale price via cost-plus-margin. Sensitivity must compare like-for-like.
+function projectsWithPinnedSalePrice(projects, baselineResult) {
+  return projects.map(p => {
+    const projRes = baselineResult?.by_project?.find(x => x.project_id === p.id);
+    const pinnedSale = p.sale_price_override_usd ?? projRes?.kpis?.total_sales ?? null;
+    return pinnedSale ? { ...p, sale_price_override_usd: pinnedSale } : p;
+  });
+}
+
 function renderSensitivity(r) {
   const baseProfit = r.kpis.total_profit_before_tax;
-  // Tornado factors: each factor swung up + down, profit impact
+  // Pin sale prices so build-cost / interest / timing shocks don't move sale price via cost-plus.
+  const pinnedProjects = projectsWithPinnedSalePrice(state.projects, r);
+
+  // Tornado factors. "Margin target" intentionally excluded — with sale prices pinned, margin shocks no-op.
   const factors = [
     { name: "Sale price",       low: { sale_price_multiplier: 0.95 }, high: { sale_price_multiplier: 1.05 } },
     { name: "Build cost",       low: { build_cost_multiplier: 1.10 }, high: { build_cost_multiplier: 0.90 } },
-    { name: "Margin target",    low: { margin_override: 0.20 },        high: { margin_override: 0.30 } },
     { name: "Interest rate",    low: { interest_rate_delta_bps: 200 }, high: { interest_rate_delta_bps: -200 } },
     { name: "Timing (months)",  low: { timing_shift_months: 3 },        high: { timing_shift_months: -3 } },
   ];
   const tornadoData = factors.map(f => {
-    const lowAlt = aggregatePortfolio(state.projects, state.globals, { ...state.scenario, ...f.low });
-    const highAlt = aggregatePortfolio(state.projects, state.globals, { ...state.scenario, ...f.high });
+    const lowAlt = aggregatePortfolio(pinnedProjects, state.globals, { ...state.scenario, ...f.low });
+    const highAlt = aggregatePortfolio(pinnedProjects, state.globals, { ...state.scenario, ...f.high });
     return {
       label: f.name,
       low: lowAlt.kpis.total_profit_before_tax - baseProfit,
       high: highAlt.kpis.total_profit_before_tax - baseProfit,
     };
   });
-  // Sort by magnitude of swing (max abs delta) — biggest drivers first
   tornadoData.sort((a, b) => Math.max(Math.abs(b.low), Math.abs(b.high)) - Math.max(Math.abs(a.low), Math.abs(a.high)));
-  // Expose for the chart renderer
   if (typeof window !== "undefined") window.__tornadoData = tornadoData;
 
-  // Detailed single-factor table
   const tests = [
     { label: "Interest rate +200bps", patch: { interest_rate_delta_bps: 200 } },
     { label: "Interest rate -200bps", patch: { interest_rate_delta_bps: -200 } },
@@ -1343,14 +1379,12 @@ function renderSensitivity(r) {
     { label: "Build cost -10%", patch: { build_cost_multiplier: 0.9 } },
     { label: "Sale price +5%", patch: { sale_price_multiplier: 1.05 } },
     { label: "Sale price -5%", patch: { sale_price_multiplier: 0.95 } },
-    { label: "Margin override 30%", patch: { margin_override: 0.30 } },
-    { label: "Margin override 20%", patch: { margin_override: 0.20 } },
     { label: "Timing slip +3 months", patch: { timing_shift_months: 3 } },
     { label: "Timing pull-forward -3 months", patch: { timing_shift_months: -3 } },
   ];
   const rows = tests.map((t) => {
     const altScn = { ...state.scenario, ...t.patch };
-    const alt = aggregatePortfolio(state.projects, state.globals, altScn);
+    const alt = aggregatePortfolio(pinnedProjects, state.globals, altScn);
     const d = alt.kpis.total_profit_before_tax - baseProfit;
     const deq = alt.kpis.peak_equity_required - r.kpis.peak_equity_required;
     return `<tr>
@@ -1361,40 +1395,26 @@ function renderSensitivity(r) {
       <td class="num ${deq<=0?"pos":"neg"}">${(deq>=0?"+":"")}${fmt.usdM(deq)}</td>
     </tr>`;
   }).join("");
-  // Two-way heatmap: interest rate (rows) × build cost multiplier (cols)
-  const irSteps = [-200, -100, 0, 100, 200, 300, 400];
-  const bcSteps = [0.90, 0.95, 1.00, 1.05, 1.10, 1.15];
-  const heatmap = [];
-  let hmMin = Infinity, hmMax = -Infinity;
-  for (const ir of irSteps) {
-    const row = [];
-    for (const bc of bcSteps) {
-      const alt = aggregatePortfolio(state.projects, state.globals,
-        { ...state.scenario, interest_rate_delta_bps: ir, build_cost_multiplier: bc });
-      const v = alt.kpis.total_profit_before_tax;
-      if (v < hmMin) hmMin = v;
-      if (v > hmMax) hmMax = v;
-      row.push(v);
-    }
-    heatmap.push(row);
-  }
-  const cellColor = (v) => {
-    if (v >= 0) {
-      const t = hmMax === 0 ? 0 : v / Math.max(1, hmMax);
-      return `rgba(31, 122, 77, ${0.15 + 0.55 * t})`;
+
+  // C2 fix: heatmap is HEAVY (42 portfolio recomputes). Only build it when the user asks for it.
+  const hmRendered = window.__sensitivityHeatmap || null;
+  let hmHtml = "";
+  if (hmRendered) {
+    const { hmRows: rowsHtml, signature } = hmRendered;
+    // Stale-check: regenerate if scenario changed since cached
+    const currentSig = `${state.scenario.name}|${JSON.stringify(state.scenario)}|${state.projects.length}`;
+    if (signature !== currentSig) {
+      delete window.__sensitivityHeatmap;
+      hmHtml = renderHeatmapPlaceholder();
     } else {
-      const t = hmMin === 0 ? 0 : v / hmMin;
-      return `rgba(179, 38, 30, ${0.15 + 0.55 * t})`;
+      hmHtml = `<div class="scroll-x"><table class="tbl">
+        <thead><tr><th>Interest \\ Build</th>${[0.90, 0.95, 1.00, 1.05, 1.10, 1.15].map(bc => `<th>${(bc*100).toFixed(0)}%</th>`).join("")}</tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table></div>`;
     }
-  };
-  const hmRows = irSteps.map((ir, i) => {
-    const cells = bcSteps.map((bc, j) => {
-      const v = heatmap[i][j];
-      const isBase = ir === 0 && bc === 1.0;
-      return `<td class="num" style="background:${cellColor(v)};${isBase ? "border:2px solid var(--accent);" : ""}">${fmt.usdM(v)}</td>`;
-    }).join("");
-    return `<tr><td><strong>${ir >= 0 ? "+" : ""}${ir} bps</strong></td>${cells}</tr>`;
-  }).join("");
+  } else {
+    hmHtml = renderHeatmapPlaceholder();
+  }
 
   return `
     <div class="section-title">Sensitivity · single-factor swings vs current scenario</div>
@@ -1406,10 +1426,7 @@ function renderSensitivity(r) {
     <div class="panel mb-24">
       <h3>Two-way heatmap — Profit at varying interest rate × build cost</h3>
       <div class="panel-subtitle">Total profit before tax (USD). Rows = interest rate delta. Columns = build cost multiplier. Outlined cell = current scenario.</div>
-      <div class="scroll-x"><table class="tbl">
-        <thead><tr><th>Interest \\ Build</th>${bcSteps.map(bc => `<th>${(bc*100).toFixed(0)}%</th>`).join("")}</tr></thead>
-        <tbody>${hmRows}</tbody>
-      </table></div>
+      ${hmHtml}
     </div>
     <div class="panel">
       <h3>Detailed swings (table)</h3>
@@ -1419,6 +1436,43 @@ function renderSensitivity(r) {
       </table>
     </div>
   `;
+}
+
+function renderHeatmapPlaceholder() {
+  return `<div style="text-align:center;padding:24px;">
+    <div class="muted" style="font-size:12px;margin-bottom:12px;">Two-way heatmap is heavy to compute (42 portfolio recomputes). Run it when you want to see the grid.</div>
+    <button class="btn" id="compute-heatmap">Compute heatmap</button>
+  </div>`;
+}
+
+function computeAndRenderHeatmap() {
+  const baselineR = aggregatePortfolio(state.projects, state.globals, state.scenario);
+  const pinnedProjects = projectsWithPinnedSalePrice(state.projects, baselineR);
+  const irSteps = [-200, -100, 0, 100, 200, 300, 400];
+  const bcSteps = [0.90, 0.95, 1.00, 1.05, 1.10, 1.15];
+  let hmMin = Infinity, hmMax = -Infinity;
+  const heatmap = irSteps.map(ir => bcSteps.map(bc => {
+    const alt = aggregatePortfolio(pinnedProjects, state.globals,
+      { ...state.scenario, interest_rate_delta_bps: ir, build_cost_multiplier: bc });
+    const v = alt.kpis.total_profit_before_tax;
+    if (v < hmMin) hmMin = v;
+    if (v > hmMax) hmMax = v;
+    return v;
+  }));
+  const cellColor = (v) => v >= 0
+    ? `rgba(31, 122, 77, ${0.15 + 0.55 * (hmMax === 0 ? 0 : v / Math.max(1, hmMax))})`
+    : `rgba(179, 38, 30, ${0.15 + 0.55 * (hmMin === 0 ? 0 : v / hmMin)})`;
+  const hmRows = irSteps.map((ir, i) => {
+    const cells = bcSteps.map((bc, j) => {
+      const v = heatmap[i][j];
+      const isBase = ir === 0 && bc === 1.0;
+      return `<td class="num" style="background:${cellColor(v)};${isBase ? "border:2px solid var(--accent);" : ""}">${fmt.usdM(v)}</td>`;
+    }).join("");
+    return `<tr><td><strong>${ir >= 0 ? "+" : ""}${ir} bps</strong></td>${cells}</tr>`;
+  }).join("");
+  const signature = `${state.scenario.name}|${JSON.stringify(state.scenario)}|${state.projects.length}`;
+  window.__sensitivityHeatmap = { hmRows, signature };
+  notify();
 }
 
 // ---------- Risk (Monte Carlo) view ----------
@@ -1801,7 +1855,7 @@ function renderActivity() {
           </table></div>`
       }
     </div>
-    <div class="hint mt-16">Log keeps the most recent 200 mutations. Persisted to browser localStorage.</div>
+    <div class="hint mt-16">Log keeps the most recent 200 mutations. Server-side authoritative log lives in the Supabase <code>activity_log</code> table — super-admin can pull it any time.</div>
   `;
 }
 
@@ -1898,7 +1952,7 @@ function renderSettings() {
       </div>
       <div class="panel">
         <h3>Data management</h3>
-        <p class="muted" style="font-size:12px;">All state is stored in your browser's localStorage under <code>juno-fd-v1</code>. The Excel baseline is in <code>data.js</code> and was snapshot on 2026-05-10.</p>
+        <p class="muted" style="font-size:12px;">State is persisted to the Juno Supabase project (<code>financial_state</code> table, single canonical row, versioned in <code>state_history</code>). A local cache in your browser's <code>juno-fd-v1</code> localStorage keeps the last-known state for offline reads. The Excel baseline lives in <code>data.js</code> and was reconciled on 2026-05-10.</p>
         <div class="row gap-sm wrap">
           <button class="btn" id="match-excel">Match Excel mode</button>
           <button class="btn secondary" id="export-json">Export state (JSON)</button>
@@ -2618,12 +2672,17 @@ function drawWaterfallChart(r, isDark) {
   const cumIn = [];
   const cumOut = [];
   let sIn = 0, sOut = 0;
+  let maxVal = 0;
   for (let i = 0; i < r.monthly.equity_drawn.length; i++) {
     sIn += r.monthly.equity_drawn[i];
     sOut += r.monthly.equity_returned[i];
     cumIn.push(sIn);
     cumOut.push(sOut);
+    if (sIn > maxVal) maxVal = sIn;
+    if (sOut > maxVal) maxVal = sOut;
   }
+  // I4 — bound the y-axis to ~10% headroom over the actual peak instead of letting Chart.js auto-scale to 2× the data.
+  const suggestedMax = maxVal > 0 ? maxVal * 1.1 : 1;
   charts["chart-waterfall"] = new Chart(ctx, {
     type: "line",
     data: { labels, datasets: [
@@ -2631,7 +2690,10 @@ function drawWaterfallChart(r, isDark) {
       { label: "Cumulative equity returned", data: cumOut, borderColor: "#1f7a4d", backgroundColor: "rgba(31,122,77,0.08)", fill: true, tension: 0.1 },
     ]},
     options: { responsive: true, maintainAspectRatio: false,
-      scales: { y: { ticks: { callback: (v) => "$" + (v/1e6).toFixed(1) + "M" } }, x: { ticks: { autoSkip: true, maxTicksLimit: 12 } } },
+      scales: {
+        y: { beginAtZero: true, suggestedMax, ticks: { callback: (v) => "$" + (v/1e6).toFixed(1) + "M" } },
+        x: { ticks: { autoSkip: true, maxTicksLimit: 12 } },
+      },
       plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatTooltip(ctx.parsed.y)}` } } },
     },
   });
@@ -2775,7 +2837,12 @@ function downloadCSV(rows, filename) {
 // ---------- footer ----------
 
 function renderFooter() {
+  // I7/I10 — footer now reflects the actual state-of-truth and dynamic version + last-save info
+  const version = state.sync.server_version || 0;
+  const lastSaved = state.sync.last_saved_at ? state.sync.last_saved_at.toLocaleString() : "—";
+  const baseline = state.globals.excel_baseline_snapshot || "2026-05-10";
   return `<footer class="footer">
-    Source: <span class="mono">Juno_Cash flow Forecast_20260412_MASTER.xlsx</span> · snapshot 2026-05-10 · v1 prototype (read-only audit, dashboard rebuilds calculation from first principles)
+    System of record: Juno Supabase · canonical state version v${version} · last saved ${lastSaved}
+    <span class="muted" style="margin-left:8px;">Excel-baseline reconciled ${baseline}.</span>
   </footer>`;
 }

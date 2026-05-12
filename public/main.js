@@ -14,8 +14,12 @@ bootstrap();
 // 3. Wire sync status indicator
 onSaveStatusChange((status, detail) => {
   state.sync.status = status;
-  if (status === "saved") state.sync.last_saved_at = detail?.ts || new Date();
+  if (status === "saved") {
+    state.sync.last_saved_at = detail?.ts || new Date();
+    if (detail?.newVersion != null) state.sync.server_version = detail.newVersion;
+  }
   if (status === "error") state.sync.last_error = detail?.message;
+  if (status === "conflict") state.sync.last_error = `Concurrent edit (server v${detail?.serverVersion})`;
   // Trigger a re-render via the state subscription system
   import("./state.js").then(s => s.notify());
 });

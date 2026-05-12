@@ -140,11 +140,14 @@ button.btn.small { padding: 4px 8px; font-size: 12px; }
 /* ---------- KPI cards ---------- */
 
 .kpi-row {
+  /* I8 — use a 4-column grid that wraps cleanly, instead of auto-fit (which strands the last card alone in a row of 8). */
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 12px;
   margin-bottom: 24px;
 }
+@media (max-width: 1300px) { .kpi-row { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 980px)  { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
 .kpi {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -238,7 +241,11 @@ table.tbl td.neg { color: var(--neg); }
 table.tbl td.muted { color: var(--fg-3); }
 table.tbl tfoot td { font-weight: 600; background: var(--surface-2); border-top: 2px solid var(--border-strong); }
 
-.scroll-x { overflow-x: auto; }
+.scroll-x { overflow-x: auto; max-width: 100%; }
+
+/* I3 — prevent the page itself from overflowing horizontally. Wide tables stay confined to .scroll-x. */
+html, body { overflow-x: hidden; }
+.main { max-width: 100vw; }
 
 .drag-handle {
   display: inline-block;

@@ -632,35 +632,53 @@ export function monteCarlo(projects, globals, scenario, distributions, trials = 
 // Returns the periodic (monthly) rate that makes NPV = 0.
 // Annualized = (1 + monthlyIRR)^12 - 1.
 // Equity cash flow convention: negative = equity contributed (outflow); positive = distribution (inflow).
+// Monthly IRR via bisection.
+// Returns null (rather than nonsense) when:
+//   - the series has no sign change
+//   - the total magnitude is below floor (~$1k) so IRR is meaningless
+//   - bisection terminates at the bracket edges (didn't converge to a real root)
+//   - the resulting annualized rate would exceed ±300% (clearly a numerical artifact, not a real IRR)
 export function monthlyIRR(equityCashFlows, opts = {}) {
-  const { maxIter = 200, tol = 1e-9, lo = -0.99, hi = 10 } = opts;
-  const npv = (r) => equityCashFlows.reduce((acc, cf, i) => acc + cf / Math.pow(1 + r, i), 0);
-  // Need a sign change in CFs and a meaningful series
+  const { maxIter = 200, tol = 1e-9, lo = -0.99, hi = 1.0, minMagnitude = 1000 } = opts;
+  if (!Array.isArray(equityCashFlows) || equityCashFlows.length < 2) return null;
+  const positives = equityCashFlows.filter(cf => cf > 0).reduce((a, b) => a + b, 0);
+  const negatives = equityCashFlows.filter(cf => cf < 0).reduce((a, b) => a + b, 0);
+  if (positives <= minMagnitude || -negatives <= minMagnitude) return null;
   if (equityCashFlows.every(cf => cf >= 0) || equityCashFlows.every(cf => cf <= 0)) return null;
-  // Bisection between two rates with opposite NPV signs.
+
+  const npv = (r) => equityCashFlows.reduce((acc, cf, i) => acc + cf / Math.pow(1 + r, i), 0);
   let a = lo, b = hi, fa = npv(a), fb = npv(b);
   if (fa * fb > 0) {
-    // Expand range
     let found = false;
-    for (let r of [-0.5, -0.1, 0, 0.05, 0.5, 1, 5]) {
+    for (const r of [-0.5, -0.1, 0, 0.05, 0.2, 0.5, 0.8]) {
       const f = npv(r);
       if (f * fa < 0) { b = r; fb = f; found = true; break; }
       if (f * fb < 0) { a = r; fa = f; found = true; break; }
     }
     if (!found) return null;
   }
+  let mid = (a + b) / 2;
   for (let i = 0; i < maxIter; i++) {
-    const mid = (a + b) / 2;
+    mid = (a + b) / 2;
     const fm = npv(mid);
-    if (Math.abs(fm) < tol || (b - a) < tol) return mid;
+    if (Math.abs(fm) < tol || (b - a) < tol) {
+      // Reject pathological values near the bracket edges (didn't converge to a real root)
+      if (mid <= lo + 1e-6 || mid >= hi - 1e-6) return null;
+      return mid;
+    }
     if (fa * fm < 0) { b = mid; fb = fm; } else { a = mid; fa = fm; }
   }
-  return (a + b) / 2;
+  // Did not converge — likely a pathological cash flow shape
+  if (mid <= lo + 1e-6 || mid >= hi - 1e-6) return null;
+  return mid;
 }
 
 export function annualizedIRR(monthlyRate) {
-  if (monthlyRate == null) return null;
-  return Math.pow(1 + monthlyRate, 12) - 1;
+  if (monthlyRate == null || !isFinite(monthlyRate)) return null;
+  const annual = Math.pow(1 + monthlyRate, 12) - 1;
+  // Sanity clamp: real-world IRRs above 300% annualized are virtually always numerical artifacts
+  if (!isFinite(annual) || annual > 3.0 || annual < -0.999) return null;
+  return annual;
 }
 
 // Build the equity cash flow series for a project (or portfolio) for IRR.
