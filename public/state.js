@@ -32,6 +32,7 @@ export const state = {
     view: "portfolio",
     selected_project_id: "p2",
     theme: "light",
+    mobileMoreOpen: false,  // v13: tracks whether the mobile "More" drawer is open
   },
 };
 
@@ -319,6 +320,7 @@ export function addProject(seed = {}) {
       soft: 0,                  // actual soft costs spent
       financing: 0,             // actual financing costs paid
     },
+    contingency_used_usd: seed.contingency_used_usd ?? 0,  // v13: actual contingency drawn (change orders, surprises)
   });
   state.ui.selected_project_id = id;
   state.ui.view = "project_detail";

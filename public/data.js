@@ -28,6 +28,7 @@ export const BASELINE_GLOBALS = {
   interest_rate_apr: 0.095,                // source: Project 2-11!M16 (all hardcoded 9.5%)
   ltc_pct: 0.75,                            // source: Project 2-11!M17 — used for build + kingshaus + soft
   ltc_land_pct: 0.48,                       // v6.1: implicit Excel LTC on land cost is ~45-50% (Excel calibration: peak equity ~$7.7M).
+  contingency_pct: 0.05,                    // v13: standard residential contingency on hard costs (5%, typical range 5-10%)
   cash_equity_ratio: 0.25,                  // source: Project 2-11!M19
   equity_at_closing_pct: 0.75,              // source: Project 2-11!M18 (0.75; P2 = 1.00)
   default_build_cost_per_sqft: 470,         // source: Summary!D91

@@ -478,6 +478,26 @@ tr.drag-over-after td { border-bottom: 2px solid var(--accent); }
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
+/* ---------- scenario indicator (warns when not Base) ---------- */
+
+body.scenario-active .topbar {
+  background: linear-gradient(180deg, rgba(181, 108, 0, 0.10) 0%, var(--surface) 100%);
+  border-bottom-color: rgba(181, 108, 0, 0.4);
+}
+body.scenario-active .topbar::before {
+  content: "Scenario active";
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 2px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--warn);
+}
+body.scenario-active .topbar { position: relative; }
+
 /* ---------- LLM assistant ---------- */
 
 .assistant-launcher {
@@ -663,6 +683,115 @@ body.assistant-open .assistant-launcher {
   .gantt {
     grid-template-columns: 120px 1fr;
   }
+  .topbar nav { display: none; }
+  .topbar .actions span.muted { display: none; }
+  .topbar .user-chip span:first-child { display: none; }
+  .main { padding-bottom: 80px; }                     /* leave room for bottom tab */
+  body.assistant-open .assistant-panel { bottom: 60px; }
+  /* Hide the floating Ask AI launcher when bottom-tab is shown to avoid overlap */
+  .assistant-launcher { bottom: 70px; }
+}
+
+/* Bottom-tab nav: visible only at ≤560px */
+.bottom-tab-nav {
+  display: none;
+}
+@media (max-width: 560px) {
+  .bottom-tab-nav {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    height: 60px;
+    z-index: 90;
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.05);
+  }
+  .bottom-tab-nav button {
+    background: transparent;
+    border: none;
+    color: var(--fg-3);
+    font: inherit;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 6px 4px;
+    font-size: 10px;
+    font-weight: 500;
+  }
+  .bottom-tab-nav button.active {
+    color: var(--fg);
+    background: var(--surface-2);
+  }
+  .bottom-tab-nav .bt-icon { font-size: 18px; line-height: 1; }
+  .bottom-tab-nav .bt-label { font-size: 10px; }
+  .mobile-more-drawer {
+    position: fixed;
+    bottom: 60px; left: 0; right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -4px 16px rgba(0,0,0,0.10);
+    z-index: 89;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    padding: 1px;
+    max-height: 50vh;
+    overflow-y: auto;
+  }
+  .mobile-more-item {
+    background: var(--surface);
+    border: none;
+    padding: 14px;
+    font: inherit;
+    color: var(--fg);
+    text-align: left;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .mobile-more-item:hover { background: var(--surface-2); }
+}
+
+/* Mobile project cards (Projects view) — only at ≤560px, the table re-flows as stacked cards */
+@media (max-width: 560px) {
+  .projects-table-mobile-cards table.tbl,
+  .projects-table-mobile-cards table.tbl tbody,
+  .projects-table-mobile-cards table.tbl tr,
+  .projects-table-mobile-cards table.tbl td {
+    display: block;
+    width: 100%;
+  }
+  .projects-table-mobile-cards table.tbl thead { display: none; }
+  .projects-table-mobile-cards table.tbl tr {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+  .projects-table-mobile-cards table.tbl td {
+    padding: 4px 0;
+    text-align: left !important;
+    border: none;
+    font-size: 12px;
+  }
+  .projects-table-mobile-cards table.tbl td:before {
+    content: attr(data-label) ": ";
+    font-weight: 600;
+    color: var(--fg-3);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    display: block;
+    margin-top: 2px;
+  }
+  .projects-table-mobile-cards table.tbl td:first-child:before { content: ""; }
+  .projects-table-mobile-cards table.tbl td:first-child { font-size: 14px; font-weight: 600; }
 }
 
 .note {

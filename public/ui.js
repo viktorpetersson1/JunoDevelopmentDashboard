@@ -54,6 +54,10 @@ const root = () => document.getElementById("app-root");
 
 export function render() {
   document.documentElement.dataset.theme = state.ui.theme;
+  // v13 — tint the chrome when scenario is not Base so an exec can't miss it
+  const scenarioName = (state.scenario?.name || "Base case").trim().toLowerCase();
+  const isBaseScenario = scenarioName === "base case" || scenarioName === "base";
+  document.body.classList.toggle("scenario-active", !isBaseScenario);
 
   // Auth gate: while auth is loading, show a quiet splash
   if (state.auth.loading) {
@@ -174,7 +178,8 @@ function renderTopbar() {
     offline: `<span class="sync-badge neg" title="Offline — changes cached locally">⌽</span>`,
   }[sync] || "";
   const role = state.auth.profile?.role || "viewer";
-  const roleBadge = `<span class="badge ${role === "super_admin" ? "sold" : role === "editor" ? "committed" : "pipeline"}" style="font-size:9px;">${role.replace("_", " ")}</span>`;
+  const roleLabel = { super_admin: "Owner", editor: "Editor", viewer: "Viewer", viewer_basic: "Basic viewer" }[role] || role;
+  const roleBadge = `<span class="badge ${role === "super_admin" ? "sold" : role === "editor" ? "committed" : "pipeline"}" style="font-size:9px;">${roleLabel}</span>`;
   const userEmail = state.auth.user?.email || "";
   const userDisplay = state.auth.profile?.display_name || userEmail.split("@")[0];
 
@@ -191,8 +196,8 @@ function renderTopbar() {
       ${fin ? item("waterfall", "Waterfall") : ""}
       ${fin ? item("scenario", "Scenario") : ""}
       ${fin ? item("sensitivity", "Sensitivity") : ""}
-      ${fin ? item("risk", "Risk") : ""}
-      ${item("activity", "Activity")}
+      ${fin ? item("risk", "Stress test") : ""}
+      ${item("activity", "History")}
       ${canEdit() ? item("suggestions", "Suggestions") : ""}
       ${isSuperAdmin() ? item("users", "Users") : ""}
       ${fin ? item("settings", "Settings") : ""}
@@ -209,11 +214,87 @@ function renderTopbar() {
       <button class="btn small secondary" id="sign-out-btn">Sign out</button>
     </div>
   </header>
-  <button id="assistant-launcher" class="assistant-launcher" title="Ask Juno — LLM assistant">
-    ${JUNO_AI_ICON}<span>Ask Juno</span>
+  <button id="assistant-launcher" class="assistant-launcher" title="Ask AI — LLM assistant">
+    ${JUNO_AI_ICON}<span>Ask AI</span>
   </button>
   <div id="assistant-panel" class="assistant-panel" style="display:none;"></div>
+  ${renderBottomTabNav()}
   `;
+}
+
+// v13 — bottom-tab nav for mobile (hidden ≥561px via CSS)
+function renderBottomTabNav() {
+  const fin = canSeeFinancials();
+  const v = state.ui.view;
+  const items = [
+    { key: "portfolio",      label: "Today",    icon: "◐", shown: true },
+    { key: "projects",       label: "Projects", icon: "▤", shown: true },
+    { key: "cashflow",       label: "Money",    icon: "$", shown: fin },
+    { key: "more",           label: "More",     icon: "⋯", shown: true },
+  ].filter(i => i.shown).slice(0, 4);
+  const moreOpen = state.ui.mobileMoreOpen;
+  return `<nav class="bottom-tab-nav">
+    ${items.map(i => {
+      const active = (i.key === "more" ? moreOpen : v === i.key) ? "active" : "";
+      return `<button data-mobile-tab="${i.key}" class="${active}"><span class="bt-icon">${i.icon}</span><span class="bt-label">${i.label}</span></button>`;
+    }).join("")}
+  </nav>
+  ${moreOpen ? `<div class="mobile-more-drawer">
+    ${["project_detail","cashflow","pipeline","waterfall","scenario","sensitivity","risk","activity","suggestions","users","settings"].map(k => {
+      const label = { project_detail: "Project detail", cashflow: "Cash flow", pipeline: "Pipeline", waterfall: "Waterfall", scenario: "Scenario", sensitivity: "Sensitivity", risk: "Stress test", activity: "History", suggestions: "Suggestions", users: "Users", settings: "Settings" }[k];
+      if (k === "users" && !isSuperAdmin()) return "";
+      if (k === "suggestions" && !canEdit()) return "";
+      if (!fin && ["cashflow","waterfall","scenario","sensitivity","risk","settings"].includes(k)) return "";
+      return `<button data-mobile-tab="${k}" class="mobile-more-item">${label}</button>`;
+    }).join("")}
+  </div>` : ""}
+  `;
+}
+
+// ---------- Web Worker dispatcher (heavy compute) ----------
+
+let _worker = null;
+let _workerJobs = new Map();
+function getWorker() {
+  if (_worker) return _worker;
+  try {
+    _worker = new Worker("./worker.js", { type: "module" });
+    _worker.addEventListener("message", (e) => {
+      const { id, type, result, message, current, total } = e.data;
+      const job = _workerJobs.get(id);
+      if (!job) return;
+      if (type === "progress") {
+        job.onProgress?.({ current, total });
+      } else if (type === "result") {
+        _workerJobs.delete(id);
+        job.resolve(result);
+      } else if (type === "error") {
+        _workerJobs.delete(id);
+        job.reject(new Error(message));
+      }
+    });
+    _worker.addEventListener("error", (e) => {
+      console.warn("Worker error:", e.message);
+    });
+  } catch (e) {
+    console.warn("Worker init failed (falling back to main thread):", e.message);
+    _worker = null;
+  }
+  return _worker;
+}
+
+function runInWorker(jobType, payload, onProgress) {
+  return new Promise((resolve, reject) => {
+    const w = getWorker();
+    if (!w) {
+      // Fallback: run synchronously on main thread (will block, but at least work)
+      reject(new Error("Worker unavailable"));
+      return;
+    }
+    const id = `${jobType}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    _workerJobs.set(id, { resolve, reject, onProgress });
+    w.postMessage({ id, type: jobType, ...payload });
+  });
 }
 
 // Juno AI sparkle — inspired by Claude's mark, recolored to Juno black via currentColor
@@ -225,6 +306,19 @@ function attachTopbarEvents() {
   for (const btn of document.querySelectorAll(".topbar nav button")) {
     btn.addEventListener("click", () => setView(btn.dataset.view));
   }
+  // v13 — bottom-tab nav (mobile)
+  for (const btn of document.querySelectorAll("[data-mobile-tab]")) {
+    btn.addEventListener("click", () => {
+      const k = btn.dataset.mobileTab;
+      if (k === "more") {
+        state.ui.mobileMoreOpen = !state.ui.mobileMoreOpen;
+        notify();
+      } else {
+        state.ui.mobileMoreOpen = false;
+        setView(k);
+      }
+    });
+  }
   document.getElementById("theme-toggle")?.addEventListener("click",
     () => setTheme(state.ui.theme === "light" ? "dark" : "light"));
   document.getElementById("sign-out-btn")?.addEventListener("click", async () => {
@@ -234,9 +328,13 @@ function attachTopbarEvents() {
   // C2 — heatmap is lazy. Wire the "Compute heatmap" button when the Sensitivity view is open.
   document.getElementById("compute-heatmap")?.addEventListener("click", (e) => {
     e.target.disabled = true;
-    e.target.innerText = "Computing…";
-    // Defer to next tick so the button can repaint
-    setTimeout(() => computeAndRenderHeatmap(), 30);
+    e.target.innerText = "Starting…";
+    // Worker-based, async + non-blocking
+    computeAndRenderHeatmap().catch(err => {
+      console.warn("Heatmap compute failed:", err);
+      e.target.disabled = false;
+      e.target.innerText = "Compute heatmap";
+    });
   });
 
   // v12.5 — Ask Juno launcher (toggle docked right sidebar)
@@ -404,9 +502,11 @@ function renderPortfolio(r) {
       <div class="panel-subtitle">Real-estate development KPIs for benchmarking against market cap rates and competing strategies.</div>
       <div class="kpi-row">
         ${kpiCard("Yield on cost", fmt.pct(k.portfolio_yield_on_cost), "Profit / all-in cost (incl. financing)", k.portfolio_yield_on_cost >= 0.15 ? "pos" : k.portfolio_yield_on_cost >= 0.08 ? "" : "neg")}
+        ${kpiCard("Cash-on-cash", k.cash_on_cash == null ? "—" : fmt.pct(k.cash_on_cash), "Annualized equity return", k.cash_on_cash >= 0.15 ? "pos" : k.cash_on_cash >= 0.08 ? "" : "neg")}
         ${kpiCard("Revenue multiple", `${k.portfolio_revenue_multiple.toFixed(2)}x`, "Sales / all-in cost")}
         ${kpiCard("Profit per sqft", `$${Math.round(k.portfolio_profit_per_sqft).toLocaleString()}`, `Total ${fmt.num(k.total_sqft)} sqft built`)}
         ${kpiCard("Effective margin", fmt.pct(k.total_sales > 0 ? k.total_profit_before_tax / k.total_sales : 0), "Profit / sales (pre-tax)")}
+        ${kpiCard("Contingency burn", fmt.pct(k.contingency.burn_pct), `${fmt.usdM(k.contingency.used_usd)} of ${fmt.usdM(k.contingency.budget_usd)} budget`, k.contingency.burn_pct >= 0.80 ? "neg" : k.contingency.burn_pct >= 0.50 ? "warn" : "pos")}
       </div>
     </div>
 
@@ -480,21 +580,21 @@ function renderProjectsList(r) {
     const p = state.projects.find((x) => x.id === res.project_id);
     const excluded = state.scenario.excluded_project_ids.includes(res.project_id);
     return `<tr draggable="true" data-project-row="${p.id}">
-      <td><span class="drag-handle" title="Drag to reorder">⋮⋮</span> <strong>${p.name}</strong><div class="muted" style="font-size:10.5px;">${p.address}</div></td>
-      <td class="muted">${stageBadge(p, excluded)}</td>
-      <td>${fmt.ymShort(p.start_date)}</td>
-      <td>${fmt.ymShort(res.sale_date)}</td>
-      <td class="num">${fmt.num(p.villa_sqft)}</td>
-      <td class="num neg">${fmt.usdM(p.land_cost_usd)}</td>
-      <td class="num neg">${fmt.usdM(res.kpis.total_dev_cost)}</td>
-      <td class="num pos">${fmt.usdM(res.kpis.total_sales)}</td>
-      <td class="num ${res.kpis.gross_profit >= 0 ? "pos" : "neg"}">${fmt.usdM(Math.abs(res.kpis.gross_profit))}</td>
-      <td class="num">${fmt.pct(res.kpis.profit_margin_pct)}</td>
-      <td class="num">${(res.kpis.moic || 0).toFixed(2)}x</td>
-      <td class="num">${res.kpis.irr_annual == null ? "—" : fmt.pct(res.kpis.irr_annual)}</td>
-      <td class="num">${fmt.pct(res.kpis.yield_on_cost)}</td>
-      <td class="num">$${Math.round(res.kpis.profit_per_sqft).toLocaleString()}</td>
-      <td>
+      <td data-label="Project"><span class="drag-handle" title="Drag to reorder">⋮⋮</span> <strong>${p.name}</strong><div class="muted" style="font-size:10.5px;">${p.address}</div></td>
+      <td data-label="Stage" class="muted">${stageBadge(p, excluded)}</td>
+      <td data-label="Start">${fmt.ymShort(p.start_date)}</td>
+      <td data-label="Sale">${fmt.ymShort(res.sale_date)}</td>
+      <td data-label="Sqft" class="num">${fmt.num(p.villa_sqft)}</td>
+      <td data-label="Land" class="num neg">${fmt.usdM(p.land_cost_usd)}</td>
+      <td data-label="Dev cost" class="num neg">${fmt.usdM(res.kpis.total_dev_cost)}</td>
+      <td data-label="Sale price" class="num pos">${fmt.usdM(res.kpis.total_sales)}</td>
+      <td data-label="Profit" class="num ${res.kpis.gross_profit >= 0 ? "pos" : "neg"}">${fmt.usdM(Math.abs(res.kpis.gross_profit))}</td>
+      <td data-label="Margin" class="num">${fmt.pct(res.kpis.profit_margin_pct)}</td>
+      <td data-label="MOIC" class="num">${(res.kpis.moic || 0).toFixed(2)}x</td>
+      <td data-label="IRR" class="num">${res.kpis.irr_annual == null ? "—" : fmt.pct(res.kpis.irr_annual)}</td>
+      <td data-label="YoC" class="num">${fmt.pct(res.kpis.yield_on_cost)}</td>
+      <td data-label="$/sqft profit" class="num">$${Math.round(res.kpis.profit_per_sqft).toLocaleString()}</td>
+      <td data-label="Actions">
         <button class="btn small secondary" data-action="open" data-id="${res.project_id}">Open</button>
         <button class="btn small ${excluded ? "secondary" : "danger"}" data-action="exclude" data-id="${res.project_id}">${excluded ? "Include" : "Exclude"}</button>
       </td>
@@ -510,10 +610,10 @@ function renderProjectsList(r) {
         <input type="file" id="import-csv-file" accept=".csv,text/csv" style="display:none;">
       </div>
     </div>
-    <div class="panel">
+    <div class="panel projects-table-mobile-cards">
       <div class="scroll-x"><table class="tbl">
         <thead><tr>
-          <th>Project</th><th>Status</th><th>Start</th><th>Sale</th><th>Sqft</th>
+          <th>Project</th><th>Stage</th><th>Start</th><th>Sale</th><th>Sqft</th>
           <th>Land</th><th>Dev cost</th><th>Sale</th><th>Profit</th><th>Margin</th><th>MOIC</th><th>IRR</th><th>YoC</th><th>$/sqft profit</th><th></th>
         </tr></thead>
         <tbody>${rows}</tbody>
@@ -789,6 +889,8 @@ function renderProjectForm(p, res) {
           `<div class="form-row"><label>${k.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())} actual (USD)</label>
             <input class="input" data-actual="${k}" type="number" step="1000" value="${p.actuals?.[k] ?? 0}"></div>`
         ).join("")}
+        <div class="form-row"><label>Contingency drawn (USD)</label>
+          <input class="input" data-field="contingency_used_usd" type="number" step="1000" value="${p.contingency_used_usd ?? 0}"></div>
       </div>
     </details>
     <details style="margin-top:16px;">
@@ -1439,32 +1541,65 @@ function renderSensitivity(r) {
 }
 
 function renderHeatmapPlaceholder() {
+  const progress = window.__heatmapProgress;
+  if (progress) {
+    return `<div style="text-align:center;padding:24px;">
+      <div class="muted" style="font-size:12px;margin-bottom:12px;">Computing… ${progress.current} / ${progress.total} scenarios</div>
+      <div style="height:4px;background:var(--surface-3);border-radius:2px;max-width:240px;margin:0 auto;overflow:hidden;">
+        <div style="height:100%;width:${(progress.current / progress.total * 100).toFixed(0)}%;background:var(--accent);transition:width 0.1s;"></div>
+      </div>
+    </div>`;
+  }
   return `<div style="text-align:center;padding:24px;">
-    <div class="muted" style="font-size:12px;margin-bottom:12px;">Two-way heatmap is heavy to compute (42 portfolio recomputes). Run it when you want to see the grid.</div>
+    <div class="muted" style="font-size:12px;margin-bottom:12px;">Two-way heatmap is heavy to compute (42 portfolio recomputes). Runs in a background worker so the UI stays responsive.</div>
     <button class="btn" id="compute-heatmap">Compute heatmap</button>
   </div>`;
 }
 
-function computeAndRenderHeatmap() {
+async function computeAndRenderHeatmap() {
   const baselineR = aggregatePortfolio(state.projects, state.globals, state.scenario);
   const pinnedProjects = projectsWithPinnedSalePrice(state.projects, baselineR);
   const irSteps = [-200, -100, 0, 100, 200, 300, 400];
   const bcSteps = [0.90, 0.95, 1.00, 1.05, 1.10, 1.15];
-  let hmMin = Infinity, hmMax = -Infinity;
-  const heatmap = irSteps.map(ir => bcSteps.map(bc => {
-    const alt = aggregatePortfolio(pinnedProjects, state.globals,
-      { ...state.scenario, interest_rate_delta_bps: ir, build_cost_multiplier: bc });
-    const v = alt.kpis.total_profit_before_tax;
-    if (v < hmMin) hmMin = v;
-    if (v > hmMax) hmMax = v;
-    return v;
-  }));
+  window.__heatmapProgress = { current: 0, total: irSteps.length * bcSteps.length };
+  notify();
+  let result;
+  try {
+    result = await runInWorker(
+      "heatmap",
+      {
+        projects: pinnedProjects,
+        globals: state.globals,
+        scenario: state.scenario,
+        axes: {
+          rows: { key: "interest_rate_delta_bps", values: irSteps },
+          cols: { key: "build_cost_multiplier",  values: bcSteps },
+        },
+      },
+      (p) => { window.__heatmapProgress = p; notify(); }
+    );
+  } catch (err) {
+    // Fallback: main-thread compute
+    let hmMin = Infinity, hmMax = -Infinity;
+    const grid = irSteps.map(ir => bcSteps.map(bc => {
+      const alt = aggregatePortfolio(pinnedProjects, state.globals,
+        { ...state.scenario, interest_rate_delta_bps: ir, build_cost_multiplier: bc });
+      const v = alt.kpis.total_profit_before_tax;
+      if (v < hmMin) hmMin = v;
+      if (v > hmMax) hmMax = v;
+      return v;
+    }));
+    result = { grid, hmMin, hmMax, rows: irSteps, cols: bcSteps };
+  } finally {
+    window.__heatmapProgress = null;
+  }
+  const { grid, hmMin, hmMax } = result;
   const cellColor = (v) => v >= 0
     ? `rgba(31, 122, 77, ${0.15 + 0.55 * (hmMax === 0 ? 0 : v / Math.max(1, hmMax))})`
     : `rgba(179, 38, 30, ${0.15 + 0.55 * (hmMin === 0 ? 0 : v / hmMin)})`;
   const hmRows = irSteps.map((ir, i) => {
     const cells = bcSteps.map((bc, j) => {
-      const v = heatmap[i][j];
+      const v = grid[i][j];
       const isBase = ir === 0 && bc === 1.0;
       return `<td class="num" style="background:${cellColor(v)};${isBase ? "border:2px solid var(--accent);" : ""}">${fmt.usdM(v)}</td>`;
     }).join("");
@@ -1699,7 +1834,7 @@ function renderAssistantPanel() {
     <div class="assistant-header">
       <div class="assistant-title">
         <span class="juno-ai-icon-wrap">${JUNO_AI_ICON}</span>
-        <strong>Ask Juno</strong>
+        <strong>Ask AI</strong>
         <span class="muted" style="font-size:11px;margin-left:6px;">${quotaText}</span>
       </div>
       <button class="link-btn" id="assistant-close" aria-label="Close assistant">✕</button>
@@ -1877,6 +2012,7 @@ function renderSettings() {
           ${f("interest_rate_apr","Interest rate APR")}
           ${f("ltc_pct","LTC (build / Kingshaus / soft)")}
           ${f("ltc_land_pct","LTC (land)")}
+          ${f("contingency_pct","Contingency % of hard costs")}
           ${f("cash_equity_ratio","Cash equity ratio")}
           ${f("equity_at_closing_pct","Equity at closing")}
           ${f("default_build_cost_per_sqft","Default build $/sqft")}
@@ -2126,21 +2262,28 @@ function attachViewEvents(result) {
       window.__mcDistributions = current;
     });
   }
-  document.getElementById("run-mc")?.addEventListener("click", () => {
+  document.getElementById("run-mc")?.addEventListener("click", async () => {
     const trials = Math.max(100, Math.min(10000, Number(document.getElementById("mc-trials")?.value) || 1000));
     const dist = window.__mcDistributions || { ...DEFAULT_DISTRIBUTIONS };
     window.__mcTrials = trials;
     const btn = document.getElementById("run-mc");
     btn.disabled = true;
-    btn.innerText = "Running...";
-    // Defer to next tick so the button update paints
-    setTimeout(() => {
-      const result = monteCarlo(state.projects, state.globals, state.scenario, dist, trials);
+    btn.innerText = `0 / ${trials}`;
+    try {
+      const result = await runInWorker(
+        "monte_carlo",
+        { projects: state.projects, globals: state.globals, scenario: state.scenario, distributions: dist, trials },
+        ({ current, total }) => { btn.innerText = `${current.toLocaleString()} / ${total.toLocaleString()}`; }
+      );
       window.__mcResult = result;
+    } catch (err) {
+      // Fallback: main-thread compute (still uses chunked engine but blocks UI)
+      window.__mcResult = monteCarlo(state.projects, state.globals, state.scenario, dist, trials);
+    } finally {
       btn.disabled = false;
       btn.innerText = "Run simulation";
       render();
-    }, 50);
+    }
   });
   document.getElementById("reset-mc-dist")?.addEventListener("click", () => {
     window.__mcDistributions = JSON.parse(JSON.stringify(DEFAULT_DISTRIBUTIONS));

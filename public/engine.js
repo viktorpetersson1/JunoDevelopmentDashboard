@@ -487,6 +487,35 @@ export function aggregatePortfolio(projects, globals, scenario) {
         const totalSqft = active.reduce((a, p) => a + (p.villa_sqft || 0), 0);
         return totalSqft > 0 ? totalProfit / totalSqft : 0;
       })(),
+      // v13 — cash-on-cash return: annualized equity distributions / equity in.
+      // Uses the equity_called series for "in" and equity_returned series for "out".
+      cash_on_cash: (() => {
+        const totalIn = totalEquityCalled > 0 ? totalEquityCalled : totalEquityIn;
+        const totalOut = totalEquityReturned > 0 ? totalEquityReturned : totalEquityOut;
+        if (totalIn <= 0) return 0;
+        // Average hold years across the equity curve. Approximation: midpoint of horizon weighted.
+        const holdYears = Math.max(0.5, (paybackIdx >= 0 ? paybackIdx + 1 : N) / 12);
+        const cumulativeReturn = (totalOut / totalIn);
+        // Annualize: (multiple)^(1/years) - 1
+        return cumulativeReturn > 0 ? Math.pow(cumulativeReturn, 1 / holdYears) - 1 : -1;
+      })(),
+      // v13 — contingency budget + used + burn rate
+      contingency: (() => {
+        const cpct = globals.contingency_pct ?? 0.05;
+        // Budget = contingency % of hard costs (build + Kingshaus) per active project
+        const budget = active.reduce((sum, p) => {
+          const eff = (p.build_cost_per_sqft ?? globals.default_build_cost_per_sqft) * (p.villa_sqft || 0);
+          const king = (p.kingshaus_cost_per_sqft ?? globals.default_kingshaus_cost_per_sqft) * (p.villa_sqft || 0);
+          return sum + (eff + king) * cpct;
+        }, 0);
+        const used = active.reduce((sum, p) => sum + (p.contingency_used_usd || 0), 0);
+        return {
+          budget_usd: budget,
+          used_usd: used,
+          remaining_usd: Math.max(0, budget - used),
+          burn_pct: budget > 0 ? used / budget : 0,
+        };
+      })(),
       // v12.4 sales-cycle metrics — only counts projects with actual closing data
       sales_metrics: (() => {
         const sold = projects.filter(p => p.closing_date && p.listing_date);
