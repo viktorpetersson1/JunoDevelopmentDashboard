@@ -64,12 +64,35 @@ export const BASELINE_GLOBALS = {
   risk_min_irr_annual: 0.20,                 // alert if annualized IRR < 20%
   risk_min_margin_pct: 0.15,                 // alert if portfolio profit margin < 15%
   include_sold_projects: false,              // v4: include "sold" projects in forward forecast (off by default)
-  // v5/v8: investor capital structure — defines who owns what share of the equity stack
-  // is_sponsor = receives GP promote on top of pro-rata returns from other investors' over-hurdle profits
-  // carry_pct = sponsor's share of profits above the hurdle (the "promote")
+  // v14.1 — Juno's actual capital structure (corrected from the original "KPC at 100% equity with promote" stub).
+  //
+  // True equity = the 7 individuals listed below, each at their cap-table %. They own the Juno entity,
+  // which owns the projects. There is NO GP/LP split, NO carry, NO preferred return — profits distribute
+  // pro-rata to ownership share. (Carry/hurdle/pref left at 0 so the existing waterfall engine still
+  // computes correct pro-rata splits with no promote tier active.)
+  //
+  // What the existing engine calls "equity" (the portion not covered by senior LTC debt) is actually
+  // SUBORDINATED DEBT from KPC's family holding company — see `kpc_loc` below. Phase 2 (Capital screen)
+  // will properly model that as a distinct debt tier with its own drawdown timeline and 6% interest cost.
   investors: [
-    { id: "kpc", name: "KPC Confidencia", equity_share_pct: 1.00, preferred_return_pct: 0.08, hurdle_pct: 0.20, carry_pct: 0.20, is_sponsor: true, tax_rate_pct: 0.255 },
+    { id: "peter",  name: "Peter",  equity_share_pct: 0.380, preferred_return_pct: 0, hurdle_pct: 0, carry_pct: 0, is_sponsor: false, tax_rate_pct: 0.255 },
+    { id: "lars",   name: "Lars",   equity_share_pct: 0.300, preferred_return_pct: 0, hurdle_pct: 0, carry_pct: 0, is_sponsor: false, tax_rate_pct: 0.255 },
+    { id: "viktor", name: "Viktor", equity_share_pct: 0.170, preferred_return_pct: 0, hurdle_pct: 0, carry_pct: 0, is_sponsor: true,  tax_rate_pct: 0.255 },
+    { id: "philip", name: "Philip", equity_share_pct: 0.050, preferred_return_pct: 0, hurdle_pct: 0, carry_pct: 0, is_sponsor: false, tax_rate_pct: 0.255 },
+    { id: "missy",  name: "Missy",  equity_share_pct: 0.050, preferred_return_pct: 0, hurdle_pct: 0, carry_pct: 0, is_sponsor: false, tax_rate_pct: 0.255 },
+    { id: "massi",  name: "Massi",  equity_share_pct: 0.025, preferred_return_pct: 0, hurdle_pct: 0, carry_pct: 0, is_sponsor: false, tax_rate_pct: 0.255 },
+    { id: "mark",   name: "Mark",   equity_share_pct: 0.025, preferred_return_pct: 0, hurdle_pct: 0, carry_pct: 0, is_sponsor: false, tax_rate_pct: 0.255 },
   ],
+  // v14.1 — KPC family holding company line of credit. Subordinated debt that fills the gap between
+  // the senior construction loan and total project cost. Treated as DEBT in the financial model
+  // (not equity). Phase 2 will integrate this into the engine as its own capital tier.
+  kpc_loc: {
+    facility_size_usd: 6000000,           // $6M total facility across the entire pipeline
+    interest_rate_apr: 0.06,              // 6% APR
+    capitalize_interest: true,            // interest accrues to balance during construction, repaid at sale
+    seniority: "subordinated",            // junior to construction loan, senior to equity
+    provider: "KPC (family holding co)",
+  },
   hypothetical_lp_share_pct: 0.0,           // v8: hypothetical co-investor for "what if I brought in an LP" analysis
   hypothetical_lp_pref_pct: 0.08,
   hypothetical_lp_hurdle_pct: 0.20,
