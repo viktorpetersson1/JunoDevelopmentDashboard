@@ -1,38 +1,39 @@
 :root {
-  --bg: #f7f7f5;
+  /* Phase 0 — warm stone background, deep slate accent. State colors reserved for semantic status only. */
+  --bg: #faf6ec;
   --surface: #ffffff;
-  --surface-2: #f1f1ee;
-  --surface-3: #e8e8e3;
-  --border: #d9d9d3;
-  --border-strong: #c2c2bb;
-  --fg: #131313;
-  --fg-2: #4a4a45;
-  --fg-3: #7a7a73;
-  --accent: #131313;
+  --surface-2: #f1ecdf;
+  --surface-3: #e3dcc8;
+  --border: #ddd4bf;
+  --border-strong: #c2b8a0;
+  --fg: #1e293b;
+  --fg-2: #475569;
+  --fg-3: #78716c;
+  --accent: #334155;
   --accent-fg: #ffffff;
-  --pos: #1f7a4d;
-  --neg: #b3261e;
-  --info: #2058a8;
-  --warn: #b56c00;
+  --pos: #15803d;
+  --neg: #9f1239;
+  --info: #1d4ed8;
+  --warn: #a16207;
   --radius: 10px;
   --radius-sm: 6px;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.03);
+  --shadow: 0 1px 2px rgba(30, 41, 59, 0.04), 0 0 0 1px rgba(30, 41, 59, 0.03);
   --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --mono: "JetBrains Mono", "SF Mono", Consolas, monospace;
 }
 
 :root[data-theme="dark"] {
-  --bg: #0e0e0e;
-  --surface: #161616;
-  --surface-2: #1d1d1d;
-  --surface-3: #252525;
-  --border: #2a2a2a;
-  --border-strong: #3a3a3a;
-  --fg: #e8e8e3;
-  --fg-2: #b3b3aa;
-  --fg-3: #7a7a73;
-  --accent: #e8e8e3;
-  --accent-fg: #131313;
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --surface-2: #273449;
+  --surface-3: #334155;
+  --border: #334155;
+  --border-strong: #475569;
+  --fg: #f1ecdf;
+  --fg-2: #cbd5e1;
+  --fg-3: #94a3b8;
+  --accent: #f1ecdf;
+  --accent-fg: #1e293b;
   --pos: #4ade80;
   --neg: #f87171;
   --info: #60a5fa;
@@ -96,6 +97,33 @@ body {
 .topbar nav button.active { background: var(--surface-3); color: var(--fg); }
 .topbar .spacer { flex: 1; }
 .topbar .actions { display: flex; gap: 8px; align-items: center; }
+
+/* Phase 0 — sub-nav strip for sections that still expose legacy sub-views.
+   Will be retired in later phases as those views are merged into the parent screen. */
+.subnav {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 6px 24px;
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  position: sticky;
+  top: 49px;
+  z-index: 49;
+  font-size: 12px;
+}
+.subnav button {
+  background: transparent;
+  border: none;
+  color: var(--fg-3);
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.subnav button:hover { color: var(--fg-2); background: var(--surface-2); }
+.subnav button.active { color: var(--fg); background: var(--surface-3); }
 
 button.btn {
   background: var(--accent);

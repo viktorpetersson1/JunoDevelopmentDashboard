@@ -163,9 +163,50 @@ function renderAuthScreen() {
 
 // ---------- topbar ----------
 
+// Phase 0 — exec-team IA. 6 top-level sections; legacy views surface as sub-nav children.
+// `fin` (canSeeFinancials) gates Forecast / Capital / Risks at the section level.
+// Later phases will fold sub-views into the parent screens and retire the sub-nav strip.
+const NAV_SECTIONS = [
+  { key: "portfolio", label: "Portfolio", default: "portfolio", financial: false,
+    subviews: [] },
+  { key: "projects",  label: "Projects",  default: "projects",  financial: false,
+    subviews: [
+      { view: "projects",       label: "All projects" },
+      { view: "project_detail", label: "Project detail" },
+      { view: "pipeline",       label: "Pipeline" },
+    ] },
+  { key: "forecast",  label: "Forecast",  default: "cashflow",  financial: true,
+    subviews: [
+      { view: "cashflow", label: "Cash flow" },
+      { view: "scenario", label: "Scenarios" },
+    ] },
+  { key: "capital",   label: "Capital",   default: "waterfall", financial: true,
+    subviews: [
+      { view: "waterfall", label: "Waterfall" },
+    ] },
+  { key: "risks",     label: "Risks",     default: "risk",      financial: true,
+    subviews: [
+      { view: "risk",        label: "Stress test" },
+      { view: "sensitivity", label: "Sensitivity" },
+    ] },
+  { key: "settings",  label: "Settings",  default: "settings",  financial: false,
+    subviews: [
+      { view: "settings",    label: "General",     gate: "fin"  },
+      { view: "activity",    label: "History",     gate: null   },
+      { view: "suggestions", label: "Suggestions", gate: "edit" },
+      { view: "users",       label: "Users",       gate: "owner"},
+    ] },
+];
+
+function sectionForView(view) {
+  for (const s of NAV_SECTIONS) {
+    if (s.default === view) return s;
+    if (s.subviews.some(sv => sv.view === view)) return s;
+  }
+  return NAV_SECTIONS[0];
+}
+
 function renderTopbar() {
-  const item = (k, label) =>
-    `<button data-view="${k}" class="${state.ui.view === k ? "active" : ""}">${label}</button>`;
   const sync = state.sync.status;
   const syncBadge = {
     idle: `<span class="sync-badge muted" title="No save in progress">●</span>`,
@@ -184,23 +225,18 @@ function renderTopbar() {
   const userDisplay = state.auth.profile?.display_name || userEmail.split("@")[0];
 
   const fin = canSeeFinancials();
+  const currentSection = sectionForView(state.ui.view);
+  const sectionBtn = (s) => {
+    if (s.financial && !fin) return "";
+    const label = s.key === "portfolio" && !fin ? "Overview" : s.label;
+    return `<button data-section="${s.key}" class="${currentSection.key === s.key ? "active" : ""}">${label}</button>`;
+  };
+
   return `
   <header class="topbar">
     <div class="brand">JUNO <span>Financial dashboard</span></div>
     <nav>
-      ${item("portfolio", fin ? "Portfolio" : "Overview")}
-      ${item("projects", "Projects")}
-      ${item("project_detail", "Project detail")}
-      ${fin ? item("cashflow", "Cash flow") : ""}
-      ${item("pipeline", "Pipeline")}
-      ${fin ? item("waterfall", "Waterfall") : ""}
-      ${fin ? item("scenario", "Scenario") : ""}
-      ${fin ? item("sensitivity", "Sensitivity") : ""}
-      ${fin ? item("risk", "Stress test") : ""}
-      ${item("activity", "History")}
-      ${canEdit() ? item("suggestions", "Suggestions") : ""}
-      ${isSuperAdmin() ? item("users", "Users") : ""}
-      ${fin ? item("settings", "Settings") : ""}
+      ${NAV_SECTIONS.map(sectionBtn).join("")}
     </nav>
     <div class="spacer"></div>
     <div class="actions">
@@ -214,12 +250,31 @@ function renderTopbar() {
       <button class="btn small secondary" id="sign-out-btn">Sign out</button>
     </div>
   </header>
+  ${renderSubnav(currentSection, fin)}
   <button id="assistant-launcher" class="assistant-launcher" title="Ask AI — LLM assistant">
     ${JUNO_AI_ICON}<span>Ask AI</span>
   </button>
   <div id="assistant-panel" class="assistant-panel" style="display:none;"></div>
   ${renderBottomTabNav()}
   `;
+}
+
+function renderSubnav(section, fin) {
+  if (!section.subviews.length) return "";
+  const owner = isSuperAdmin();
+  const editor = canEdit();
+  const visible = section.subviews.filter(sv => {
+    if (sv.gate === "fin"   && !fin)    return false;
+    if (sv.gate === "edit"  && !editor) return false;
+    if (sv.gate === "owner" && !owner)  return false;
+    return true;
+  });
+  if (visible.length <= 1) return "";
+  return `<div class="subnav">
+    ${visible.map(sv =>
+      `<button data-view="${sv.view}" class="${state.ui.view === sv.view ? "active" : ""}">${sv.label}</button>`
+    ).join("")}
+  </div>`;
 }
 
 // v13 — bottom-tab nav for mobile (hidden ≥561px via CSS)
@@ -303,7 +358,15 @@ const JUNO_AI_ICON = `<svg class="juno-ai-icon" viewBox="0 0 24 24" width="14" h
 </svg>`;
 
 function attachTopbarEvents() {
-  for (const btn of document.querySelectorAll(".topbar nav button")) {
+  // Top nav: section buttons route to the section's default view
+  for (const btn of document.querySelectorAll(".topbar nav button[data-section]")) {
+    btn.addEventListener("click", () => {
+      const section = NAV_SECTIONS.find(s => s.key === btn.dataset.section);
+      if (section) setView(section.default);
+    });
+  }
+  // Sub-nav: direct view buttons
+  for (const btn of document.querySelectorAll(".subnav button[data-view]")) {
     btn.addEventListener("click", () => setView(btn.dataset.view));
   }
   // v13 — bottom-tab nav (mobile)

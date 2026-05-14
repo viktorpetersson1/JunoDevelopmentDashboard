@@ -90,6 +90,14 @@ export const BASELINE_GLOBALS = {
   loss_carryforward: true,                  // v8.2: prior-year losses offset future taxable profits (US-style NOL)
 };
 
+// Phase 0 — underwriting taxonomy. Every project carries these fields explicitly
+// (rather than implicit defaults) so the new Project Summary header can show them.
+export const ASSET_TYPES = [
+  { id: "spec_home",   label: "Spec home" },
+  { id: "ground_up",   label: "Ground-up development" },
+  { id: "renovation",  label: "Renovation / value-add" },
+];
+
 // 10 active pipeline projects from the Excel model.
 // `null` for build_cost_per_sqft etc. means "use global default".
 export const BASELINE_PROJECTS = [
@@ -97,6 +105,7 @@ export const BASELINE_PROJECTS = [
     id: "p2",
     name: "84 SBR (Project 2)",
     address: "84 Springs Beach Road",
+    entity_spv: "Juno SPV 2 LLC", market: "south_hampton", asset_type: "spec_home",
     status: "committed", stage: "design",
     start_date: "2026-03",
     program_months: 13,
@@ -115,6 +124,7 @@ export const BASELINE_PROJECTS = [
     id: "p3",
     name: "Project 3 - TBC",
     address: "Site to be confirmed",
+    entity_spv: null, market: "hamptons", asset_type: "spec_home",
     status: "pipeline", stage: "sourcing",
     start_date: "2026-09",
     program_months: 13,
@@ -133,7 +143,7 @@ export const BASELINE_PROJECTS = [
     id: "p4",
     name: "Hands Creek (Project 4)",
     address: "Hands Creek, East Hampton",
-    market: "east_hampton",
+    entity_spv: "Juno SPV 4 LLC", market: "east_hampton", asset_type: "spec_home",
     status: "committed", stage: "design",
     start_date: "2026-12",
     program_months: 13,
@@ -152,6 +162,7 @@ export const BASELINE_PROJECTS = [
     id: "p5",
     name: "Project 5",
     address: "TBC",
+    entity_spv: null, market: "hamptons", asset_type: "spec_home",
     status: "pipeline", stage: "sourcing",
     start_date: "2027-03",
     program_months: 13,
@@ -170,6 +181,7 @@ export const BASELINE_PROJECTS = [
     id: "p6",
     name: "Project 6",
     address: "TBC",
+    entity_spv: null, market: "hamptons", asset_type: "spec_home",
     status: "pipeline", stage: "sourcing",
     start_date: "2027-08",
     program_months: 13,
@@ -185,7 +197,9 @@ export const BASELINE_PROJECTS = [
     _excel_total_cost_per_sqft: 986,
   },
   {
-    id: "p7", name: "Project 7", address: "TBC", status: "pipeline",
+    id: "p7", name: "Project 7", address: "TBC",
+    entity_spv: null, market: "hamptons", asset_type: "spec_home",
+    status: "pipeline",
     start_date: "2027-12", program_months: 13, villa_sqft: 5500,
     land_cost_usd: 2200000, build_cost_per_sqft: null,
     kingshaus_cost_per_sqft: null, target_margin: null,
@@ -193,7 +207,9 @@ export const BASELINE_PROJECTS = [
     _excel_sale_price: 6775393, _excel_total_cost_per_sqft: 986,
   },
   {
-    id: "p8", name: "Project 8", address: "TBC", status: "pipeline",
+    id: "p8", name: "Project 8", address: "TBC",
+    entity_spv: null, market: "hamptons", asset_type: "spec_home",
+    status: "pipeline",
     start_date: "2028-03", program_months: 13, villa_sqft: 5500,
     land_cost_usd: 2200000, build_cost_per_sqft: null,
     kingshaus_cost_per_sqft: null, target_margin: null,
@@ -201,7 +217,9 @@ export const BASELINE_PROJECTS = [
     _excel_sale_price: 6775393, _excel_total_cost_per_sqft: 986,
   },
   {
-    id: "p9", name: "Project 9", address: "TBC", status: "pipeline",
+    id: "p9", name: "Project 9", address: "TBC",
+    entity_spv: null, market: "hamptons", asset_type: "spec_home",
+    status: "pipeline",
     start_date: "2028-06", program_months: 13, villa_sqft: 5500,
     land_cost_usd: 2200000, build_cost_per_sqft: null,
     kingshaus_cost_per_sqft: null, target_margin: null,
@@ -209,7 +227,9 @@ export const BASELINE_PROJECTS = [
     _excel_sale_price: 6775393, _excel_total_cost_per_sqft: 986,
   },
   {
-    id: "p10", name: "Project 10", address: "TBC", status: "pipeline",
+    id: "p10", name: "Project 10", address: "TBC",
+    entity_spv: null, market: "hamptons", asset_type: "spec_home",
+    status: "pipeline",
     start_date: "2028-09", program_months: 13, villa_sqft: 5500,
     land_cost_usd: 2200000, build_cost_per_sqft: null,
     kingshaus_cost_per_sqft: null, target_margin: null,
@@ -217,7 +237,9 @@ export const BASELINE_PROJECTS = [
     _excel_sale_price: 6775393, _excel_total_cost_per_sqft: 986,
   },
   {
-    id: "p11", name: "Project 11", address: "TBC", status: "pipeline",
+    id: "p11", name: "Project 11", address: "TBC",
+    entity_spv: null, market: "hamptons", asset_type: "spec_home",
+    status: "pipeline",
     start_date: "2028-12", program_months: 13, villa_sqft: 5500,
     land_cost_usd: 2200000, build_cost_per_sqft: null,
     kingshaus_cost_per_sqft: null, target_margin: null,
