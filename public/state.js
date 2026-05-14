@@ -8,6 +8,8 @@ import {
 } from "./supabase.js";
 
 const STORAGE_KEY = "juno-fd-v1";
+const WIZARD_DRAFT_KEY = "juno-wizard-draft";
+const WIZARD_STEP_COUNT = 7; // basics, program, timing, costs, revenue, financing, review
 
 export const state = {
   globals: structuredClone(BASELINE_GLOBALS),
@@ -33,6 +35,7 @@ export const state = {
     selected_project_id: "p2",
     theme: "light",
     mobileMoreOpen: false,  // v13: tracks whether the mobile "More" drawer is open
+    wizard: { open: false, step: 0, draft: null },  // v14.1: New Project wizard state
   },
 };
 
@@ -458,6 +461,86 @@ export function setView(view, projectId) {
   state.ui.view = view;
   if (projectId) state.ui.selected_project_id = projectId;
   save(); notify();
+}
+
+// ---------- New Project wizard ----------
+
+function readWizardDraft() {
+  try {
+    const raw = localStorage.getItem(WIZARD_DRAFT_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+function writeWizardDraft(draft) {
+  try {
+    if (draft) localStorage.setItem(WIZARD_DRAFT_KEY, JSON.stringify(draft));
+    else localStorage.removeItem(WIZARD_DRAFT_KEY);
+  } catch { /* ignore */ }
+}
+function makeBlankDraft() {
+  const g = state.globals;
+  return {
+    name: "",
+    address: "",
+    entity_spv: null,
+    market: "hamptons",
+    asset_type: "spec_home",
+    stage: "sourcing",
+    status: "pipeline",
+    start_date: g.model_start,
+    program_months: g.default_program_months,
+    villa_sqft: 5500,
+    land_cost_usd: g.default_land_cost_usd,
+    build_cost_per_sqft: null,        // null = use global default
+    kingshaus_cost_per_sqft: null,
+    soft_costs_lump_sum: 0,
+    sale_price_override_usd: null,
+    sale_price_per_sqft_override: null,
+    target_margin: null,
+    interest_rate_apr: null,
+    ltc_pct: null,
+  };
+}
+export function openWizard() {
+  const existing = readWizardDraft();
+  state.ui.wizard = {
+    open: true,
+    step: 0,
+    draft: existing || makeBlankDraft(),
+  };
+  notify();
+}
+export function closeWizard() {
+  // Save-as-draft on close (don't clear) so reopening resumes.
+  if (state.ui.wizard.draft) writeWizardDraft(state.ui.wizard.draft);
+  state.ui.wizard.open = false;
+  notify();
+}
+export function discardWizardDraft() {
+  writeWizardDraft(null);
+  state.ui.wizard = { open: false, step: 0, draft: null };
+  notify();
+}
+export function setWizardStep(n) {
+  state.ui.wizard.step = Math.max(0, Math.min(WIZARD_STEP_COUNT - 1, n));
+  if (state.ui.wizard.draft) writeWizardDraft(state.ui.wizard.draft);
+  notify();
+}
+export function updateWizardDraft(patch) {
+  if (!state.ui.wizard.draft) return;
+  Object.assign(state.ui.wizard.draft, patch);
+  writeWizardDraft(state.ui.wizard.draft);
+  notify();
+}
+export function submitWizardDraft() {
+  const draft = state.ui.wizard.draft;
+  if (!draft || !draft.name?.trim()) return null;
+  const id = addProject(draft);
+  // addProject sets selected_project_id and view = "project_detail"
+  writeWizardDraft(null);
+  state.ui.wizard = { open: false, step: 0, draft: null };
+  notify();
+  return id;
 }
 export function setTheme(theme) {
   state.ui.theme = theme;

@@ -6,9 +6,11 @@ import { state, notify, save, updateGlobal, updateScenario,
   saveCurrentScenario, deleteScenario, loadScenario,
   cloneProject, importProjectsFromCSV, reorderProject,
   clearAuditLog, canEdit, isSuperAdmin,
-  canSeeFinancials, isRestrictedViewer, hydrateAuthedSession } from "./state.js";
+  canSeeFinancials, isRestrictedViewer, hydrateAuthedSession,
+  openWizard, closeWizard, discardWizardDraft, setWizardStep,
+  updateWizardDraft, submitWizardDraft } from "./state.js";
 import { aggregatePortfolio, calcProject, fyOf, monteCarlo } from "./engine.js";
-import { EXCEL_BENCHMARK, LIFECYCLE_STAGES, STAGE_GROUP_COLORS } from "./data.js";
+import { EXCEL_BENCHMARK, LIFECYCLE_STAGES, STAGE_GROUP_COLORS, ASSET_TYPES } from "./data.js";
 import {
   signIn, signUp, signOut, sendPasswordReset, getCurrentUser,
   fetchAllProfiles, updateUserRole,
@@ -91,10 +93,12 @@ export function render() {
   const topbar = renderTopbar();
   const main = renderView(result);
   const footer = renderFooter();
-  root().innerHTML = topbar + main + footer;
+  const wizard = renderWizardOverlay();
+  root().innerHTML = topbar + main + footer + wizard;
   attachTopbarEvents();
   attachViewEvents(result);
   renderCharts(result);
+  if (state.ui.wizard.open) attachWizardEvents();
   // If the assistant was open before this re-render, re-mount it
   if (document.body.classList.contains("assistant-open")) {
     renderAssistantPanel();
@@ -549,7 +553,10 @@ function renderPortfolio(r) {
   const totalProjects = state.projects.length;
   const soldCount = state.projects.filter(p => p.status === "sold").length;
   return `
-    <div class="section-title">Portfolio overview · ${state.scenario.name} · ${k.active_project_count} of ${totalProjects} projects active${soldCount > 0 ? ` (${soldCount} sold, excluded from forecast)` : ""}</div>
+    <div class="row between" style="margin-bottom:12px;">
+      <div class="section-title" style="margin:0;">Portfolio overview · ${state.scenario.name} · ${k.active_project_count} of ${totalProjects} projects active${soldCount > 0 ? ` (${soldCount} sold, excluded from forecast)` : ""}</div>
+      ${canEdit() ? `<button class="btn" id="portfolio-new-project-btn">+ New project</button>` : ""}
+    </div>
     ${alertBanner}
     <div class="kpi-row">
       ${kpiCard("Peak equity required", fmt.usdM(k.peak_equity_required), `Month: ${fmt.ymShort(k.peak_equity_month)}`, peakEqCls)}
@@ -2322,10 +2329,12 @@ function attachViewEvents(result) {
     });
   }
 
-  // Add project button
+  // Add project button — opens the New Project wizard (v14.1)
   document.getElementById("add-project-btn")?.addEventListener("click", () => {
-    const id = addProject({});
-    setView("project_detail", id);
+    openWizard();
+  });
+  document.getElementById("portfolio-new-project-btn")?.addEventListener("click", () => {
+    openWizard();
   });
 
   // Monte Carlo distribution editing + run
@@ -2821,6 +2830,348 @@ function renderCharts(result) {
     drawScenarioOverlay(result, isDark);
     drawScenarioCashflow(result, isDark);
   }
+}
+
+// ---------- New Project wizard (v14.1, Phase 1.1) ----------
+
+const WIZARD_STEPS = [
+  { key: "basics",    title: "Basics" },
+  { key: "program",   title: "Program" },
+  { key: "timing",    title: "Timing" },
+  { key: "costs",     title: "Costs" },
+  { key: "revenue",   title: "Revenue" },
+  { key: "financing", title: "Financing" },
+  { key: "review",    title: "Review" },
+];
+
+function renderWizardOverlay() {
+  const w = state.ui.wizard;
+  if (!w.open || !w.draft) return "";
+  const d = w.draft;
+  const step = w.step;
+  const isLastStep = step === WIZARD_STEPS.length - 1;
+  const canSubmit = !!(d.name && d.name.trim());
+
+  const railHtml = WIZARD_STEPS.map((s, i) => {
+    const cls = i === step ? "active" : i < step ? "done" : "future";
+    return `<button class="wizard-rail-step ${cls}" data-wizard-step="${i}">
+      <span class="step-num">${i < step ? "✓" : i + 1}</span>
+      <span class="step-label">${s.title}</span>
+    </button>`;
+  }).join("");
+
+  return `
+    <div class="wizard-overlay" id="wizard-overlay" role="dialog" aria-label="New project">
+      <div class="wizard-modal" id="wizard-modal">
+        <aside class="wizard-rail">
+          <div class="wizard-rail-title">New project</div>
+          ${railHtml}
+          <div style="flex:1;"></div>
+          <button class="link-btn" id="wizard-discard" style="margin-top:18px;padding:6px 8px;text-align:left;">Discard draft</button>
+        </aside>
+        <div class="wizard-body">
+          <div class="wizard-content">${renderWizardStep(step, d)}</div>
+          <div class="wizard-footer">
+            <button class="link-btn" id="wizard-cancel">Save draft & close</button>
+            <div class="row gap-sm">
+              ${step > 0 ? `<button class="btn secondary" id="wizard-back">Back</button>` : ""}
+              ${!isLastStep
+                ? `<button class="btn" id="wizard-next">Next</button>`
+                : `<button class="btn" id="wizard-submit" ${canSubmit ? "" : "disabled title=\"Project name is required\""}>Create project</button>`}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderWizardStep(step, d) {
+  switch (step) {
+    case 0: return renderWizardBasics(d);
+    case 1: return renderWizardProgram(d);
+    case 2: return renderWizardTiming(d);
+    case 3: return renderWizardCosts(d);
+    case 4: return renderWizardRevenue(d);
+    case 5: return renderWizardFinancing(d);
+    case 6: return renderWizardReview(d);
+  }
+  return "";
+}
+
+// Helper: render a number input that stores null when empty (so engine falls back to globals)
+function nullableNumInput(field, value, placeholder = "Uses default") {
+  const v = value == null ? "" : value;
+  return `<input class="input ${value == null ? "override-empty" : ""}" type="number" inputmode="decimal" step="any"
+    data-wiz="${field}" data-wiz-type="nullable-number" value="${v}" placeholder="${placeholder}">`;
+}
+
+function renderWizardBasics(d) {
+  const markets = state.globals.markets || [];
+  return `
+    <h2>Project basics</h2>
+    <p class="muted">Identify the project. Only the name is required — the rest can be filled in later.</p>
+    <div class="form-grid">
+      <div class="form-row full">
+        <label>Project name <span class="required">*</span></label>
+        <input class="input" type="text" data-wiz="name" value="${escapeHtml(d.name || "")}" placeholder="e.g. 84 SBR (Project 2)" autofocus>
+      </div>
+      <div class="form-row full">
+        <label>Address</label>
+        <input class="input" type="text" data-wiz="address" value="${escapeHtml(d.address || "")}" placeholder="Site address or 'TBC'">
+      </div>
+      <div class="form-row">
+        <label>Entity / SPV</label>
+        <input class="input" type="text" data-wiz="entity_spv" value="${escapeHtml(d.entity_spv || "")}" placeholder="Optional — e.g. Juno SPV 6 LLC">
+      </div>
+      <div class="form-row">
+        <label>Market</label>
+        <select class="input" data-wiz="market">
+          ${markets.map(m => `<option value="${m.id}" ${d.market === m.id ? "selected" : ""}>${m.name}</option>`).join("")}
+        </select>
+        <div class="hint">Affects sale price &amp; build cost multipliers.</div>
+      </div>
+      <div class="form-row">
+        <label>Asset type</label>
+        <select class="input" data-wiz="asset_type">
+          ${ASSET_TYPES.map(t => `<option value="${t.id}" ${d.asset_type === t.id ? "selected" : ""}>${t.label}</option>`).join("")}
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Stage</label>
+        <select class="input" data-wiz="stage">
+          ${LIFECYCLE_STAGES.map(s => `<option value="${s.id}" ${d.stage === s.id ? "selected" : ""}>${s.label}</option>`).join("")}
+        </select>
+        <div class="hint">Defaults to <em>Sourcing</em> for a fresh project.</div>
+      </div>
+      <div class="form-row">
+        <label>Status</label>
+        <div class="row gap-sm" style="padding-top:4px;">
+          <label class="toggle"><input type="radio" name="wiz-status" value="pipeline" data-wiz="status" data-wiz-type="radio" ${d.status === "pipeline" ? "checked" : ""}> Pipeline</label>
+          <label class="toggle"><input type="radio" name="wiz-status" value="committed" data-wiz="status" data-wiz-type="radio" ${d.status === "committed" ? "checked" : ""}> Committed</label>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderWizardProgram(d) {
+  return `
+    <h2>Program</h2>
+    <p class="muted">How big is the build? How long does it take?</p>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Villa size (sqft)</label>
+        <input class="input" type="number" inputmode="numeric" data-wiz="villa_sqft" data-wiz-type="number" value="${d.villa_sqft ?? 5500}" min="500" step="100">
+        <div class="hint">Total conditioned floor area.</div>
+      </div>
+      <div class="form-row">
+        <label>Program duration (months)</label>
+        <input class="input" type="number" inputmode="numeric" data-wiz="program_months" data-wiz-type="number" value="${d.program_months ?? state.globals.default_program_months}" min="1" step="1">
+        <div class="hint">Land purchase → final sale closing.</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderWizardTiming(d) {
+  return `
+    <h2>Timing</h2>
+    <p class="muted">When does the project start? Sale date is computed from program duration.</p>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Start date (YYYY-MM)</label>
+        <input class="input" type="text" data-wiz="start_date" value="${escapeHtml(d.start_date || "")}" placeholder="2026-03" pattern="\\d{4}-\\d{2}">
+        <div class="hint">Land purchase / project kick-off month.</div>
+      </div>
+      <div class="form-row">
+        <label>Listing date (optional)</label>
+        <input class="input" type="text" data-wiz="listing_date" value="${escapeHtml(d.listing_date || "")}" placeholder="YYYY-MM">
+        <div class="hint">When you intend to list. Leave blank if TBD.</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderWizardCosts(d) {
+  const g = state.globals;
+  return `
+    <h2>Costs</h2>
+    <p class="muted">Blank fields fall back to the global defaults shown below each input.</p>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Land cost (USD)</label>
+        <input class="input" type="number" inputmode="decimal" data-wiz="land_cost_usd" data-wiz-type="number" value="${d.land_cost_usd ?? g.default_land_cost_usd}" min="0" step="10000">
+      </div>
+      <div class="form-row">
+        <label>Build cost ($/sqft)</label>
+        ${nullableNumInput("build_cost_per_sqft", d.build_cost_per_sqft, `Default: $${g.default_build_cost_per_sqft}`)}
+        <div class="hint">Hard construction. Default: $${g.default_build_cost_per_sqft}/sqft</div>
+      </div>
+      <div class="form-row">
+        <label>Kingshaus / superstructure ($/sqft)</label>
+        ${nullableNumInput("kingshaus_cost_per_sqft", d.kingshaus_cost_per_sqft, `Default: $${g.default_kingshaus_cost_per_sqft}`)}
+        <div class="hint">Default: $${g.default_kingshaus_cost_per_sqft}/sqft</div>
+      </div>
+      <div class="form-row">
+        <label>Soft costs (lump sum, USD)</label>
+        <input class="input" type="number" inputmode="decimal" data-wiz="soft_costs_lump_sum" data-wiz-type="number" value="${d.soft_costs_lump_sum ?? 0}" min="0" step="1000">
+        <div class="hint">Permits, design, legal, etc. Lump sum across the build.</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderWizardRevenue(d) {
+  const g = state.globals;
+  return `
+    <h2>Revenue</h2>
+    <p class="muted">If you have a goal sale price, set it here. Otherwise leave blank and the engine derives from cost &times; (1 + margin).</p>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Goal sale price (USD)</label>
+        ${nullableNumInput("sale_price_override_usd", d.sale_price_override_usd, "Engine will derive from cost + margin")}
+      </div>
+      <div class="form-row">
+        <label>Sale price ($/sqft)</label>
+        ${nullableNumInput("sale_price_per_sqft_override", d.sale_price_per_sqft_override, "Alternative to total $")}
+        <div class="hint">Either total $ OR $/sqft — not both.</div>
+      </div>
+      <div class="form-row">
+        <label>Target margin (decimal)</label>
+        ${nullableNumInput("target_margin", d.target_margin, `Default: ${g.target_margin}`)}
+        <div class="hint">0.25 = 25% margin. Default: ${(g.target_margin * 100).toFixed(0)}%</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderWizardFinancing(d) {
+  const g = state.globals;
+  return `
+    <h2>Financing</h2>
+    <p class="muted">Senior construction debt parameters. KPC LOC ($6M @ 6%) applies portfolio-wide — modeled separately in the Capital screen.</p>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Interest rate APR (decimal)</label>
+        ${nullableNumInput("interest_rate_apr", d.interest_rate_apr, `Default: ${g.interest_rate_apr}`)}
+        <div class="hint">Senior construction loan rate. Default: ${(g.interest_rate_apr * 100).toFixed(1)}%</div>
+      </div>
+      <div class="form-row">
+        <label>Loan-to-cost on build (decimal)</label>
+        ${nullableNumInput("ltc_pct", d.ltc_pct, `Default: ${g.ltc_pct}`)}
+        <div class="hint">Default: ${(g.ltc_pct * 100).toFixed(0)}%</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderWizardReview(d) {
+  const draftProject = { id: "__draft__", ...d };
+  let project, err = null;
+  try {
+    project = calcProject(draftProject, state.globals, state.scenario);
+  } catch (e) {
+    err = e?.message || String(e);
+  }
+  const k = project?.kpis;
+  const market = state.globals.markets?.find(m => m.id === d.market);
+  const assetType = ASSET_TYPES.find(t => t.id === d.asset_type);
+  const stage = LIFECYCLE_STAGES.find(s => s.id === d.stage);
+  return `
+    <h2>Review &amp; create</h2>
+    <p class="muted">Confirm the project before saving. Every field is editable after creation.</p>
+    <div class="wizard-summary">
+      <div class="wizard-summary-header">
+        <strong>${escapeHtml(d.name || "Untitled project")}</strong>
+        <span class="muted">${escapeHtml(d.address || "—")} · ${escapeHtml(market?.name || "—")} · ${escapeHtml(assetType?.label || "—")} · ${escapeHtml(stage?.label || "—")}</span>
+      </div>
+      ${err ? `<div class="note neg">Engine error: ${escapeHtml(err)}</div>` : k ? `
+        <div class="kpi-row">
+          ${kpiCard("Total dev cost", fmt.usdM(k.total_dev_cost))}
+          ${kpiCard("Gross sale value", fmt.usdM(k.total_sales))}
+          ${kpiCard("Projected profit", fmt.usdM(k.gross_profit), null, k.gross_profit >= 0 ? "pos" : "neg")}
+          ${kpiCard("Margin", fmt.pct(k.profit_margin_pct))}
+          ${kpiCard("Peak equity", fmt.usdM(k.peak_equity))}
+          ${kpiCard("Max debt", fmt.usdM(k.peak_debt))}
+          ${kpiCard("IRR (annual)", k.irr_annual == null ? "—" : fmt.pct(k.irr_annual))}
+          ${kpiCard("MOIC", k.moic ? `${k.moic.toFixed(2)}x` : "—")}
+        </div>
+      ` : ""}
+    </div>
+  `;
+}
+
+function attachWizardEvents() {
+  const overlay = document.getElementById("wizard-overlay");
+  const modal = document.getElementById("wizard-modal");
+  if (!overlay || !modal) return;
+
+  // Click outside modal → save and close
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) closeWizard();
+  });
+
+  // Esc → save and close
+  const escHandler = (e) => {
+    if (e.key === "Escape" && state.ui.wizard.open) {
+      closeWizard();
+    }
+  };
+  document.addEventListener("keydown", escHandler, { once: true });
+
+  // Step rail
+  for (const btn of modal.querySelectorAll("[data-wizard-step]")) {
+    btn.addEventListener("click", () => setWizardStep(Number(btn.dataset.wizardStep)));
+  }
+
+  // Field bindings
+  for (const el of modal.querySelectorAll("[data-wiz]")) {
+    const field = el.dataset.wiz;
+    const type = el.dataset.wizType || "text";
+    const handler = () => {
+      let val;
+      if (type === "radio") {
+        if (!el.checked) return;
+        val = el.value;
+      } else if (type === "number") {
+        val = el.value === "" ? null : Number(el.value);
+        if (val != null && isNaN(val)) val = null;
+      } else if (type === "nullable-number") {
+        val = el.value === "" ? null : Number(el.value);
+        if (val != null && isNaN(val)) val = null;
+      } else if (el.tagName === "SELECT") {
+        val = el.value;
+      } else {
+        val = el.value;
+        if (field === "entity_spv" && !val) val = null;
+        if (field === "listing_date" && !val) val = null;
+      }
+      updateWizardDraft({ [field]: val });
+    };
+    el.addEventListener("input", handler);
+    el.addEventListener("change", handler);
+  }
+
+  // Nav buttons
+  document.getElementById("wizard-cancel")?.addEventListener("click", () => closeWizard());
+  document.getElementById("wizard-discard")?.addEventListener("click", () => {
+    if (confirm("Discard this draft project? You'll lose anything entered.")) discardWizardDraft();
+  });
+  document.getElementById("wizard-back")?.addEventListener("click", () => setWizardStep(state.ui.wizard.step - 1));
+  document.getElementById("wizard-next")?.addEventListener("click", () => {
+    // Step 0 (Basics) requires name. Block "Next" until they fill it.
+    if (state.ui.wizard.step === 0 && !state.ui.wizard.draft.name?.trim()) {
+      const nameInput = modal.querySelector('[data-wiz="name"]');
+      nameInput?.focus();
+      nameInput?.classList.add("override-empty");
+      return;
+    }
+    setWizardStep(state.ui.wizard.step + 1);
+  });
+  document.getElementById("wizard-submit")?.addEventListener("click", () => {
+    const id = submitWizardDraft();
+    if (id) setView("project_detail", id);
+  });
 }
 
 function drawScenarioOverlay(currentR, isDark) {
