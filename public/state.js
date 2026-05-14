@@ -162,6 +162,10 @@ export async function bootstrap() {
     console.warn("Bootstrap failed:", e);
     state.sync.status = "error";
     state.sync.last_error = e?.message || String(e);
+  } finally {
+    // Always release the auth-loading splash, even if bootstrap threw.
+    // Otherwise the user is stuck on "Loading…" forever (e.g. Supabase 4xx, expired session).
+    state.auth.loading = false;
   }
 
   // Subscribe to auth state changes (sign-in / sign-out)
