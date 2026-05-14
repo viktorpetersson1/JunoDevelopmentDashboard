@@ -1,4 +1,4 @@
-import { load, bootstrap, subscribe, state } from "./state.js";
+import { load, bootstrap, subscribe, state, notify } from "./state.js";
 import { render } from "./ui.js";
 import { onSaveStatusChange } from "./supabase.js";
 
@@ -10,6 +10,18 @@ render();
 
 // 2. Then pull canonical state from Supabase (async, will re-render when done)
 bootstrap();
+
+// 3. Safety net — if bootstrap hangs (Supabase CDN slow, network stall, etc.)
+// the user would be stuck on the "Loading…" splash forever, since a hung
+// Promise never reaches our finally block. Force-release after 6s so they
+// at least reach the sign-in screen and can recover from there.
+setTimeout(() => {
+  if (state.auth.loading) {
+    console.warn("Bootstrap still pending after 6s — releasing splash so user can sign in.");
+    state.auth.loading = false;
+    notify();
+  }
+}, 6000);
 
 // 3. Wire sync status indicator
 onSaveStatusChange((status, detail) => {

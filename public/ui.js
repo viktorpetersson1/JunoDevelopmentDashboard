@@ -59,14 +59,23 @@ export function render() {
   const isBaseScenario = scenarioName === "base case" || scenarioName === "base";
   document.body.classList.toggle("scenario-active", !isBaseScenario);
 
-  // Auth gate: while auth is loading, show a quiet splash
+  // Auth gate: while auth is loading, show a quiet splash with an escape hatch.
+  // The "Reset" link clears localStorage + Supabase auth cache and reloads —
+  // useful if a stale session is hanging the bootstrap.
   if (state.auth.loading) {
     root().innerHTML = `<div class="auth-splash">
       <div class="auth-card">
         <div class="brand">JUNO <span>Financial dashboard</span></div>
         <div class="muted" style="margin-top:8px;">Loading…</div>
+        <div style="margin-top:18px;font-size:11px;">
+          <button class="link-btn" id="splash-reset">Stuck? Reset and reload</button>
+        </div>
       </div>
     </div>`;
+    document.getElementById("splash-reset")?.addEventListener("click", () => {
+      try { localStorage.clear(); } catch { /* ignore */ }
+      location.reload();
+    });
     return;
   }
   // Not signed in: show the login screen
