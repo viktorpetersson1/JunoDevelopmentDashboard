@@ -1,4 +1,4 @@
-import { load, bootstrap, subscribe, state, notify } from "./state.js";
+import { load, bootstrap, initAuthListener, subscribe, state, notify } from "./state.js";
 import { render } from "./ui.js";
 import { onSaveStatusChange } from "./supabase.js";
 
@@ -8,7 +8,12 @@ document.documentElement.dataset.theme = state.ui.theme;
 subscribe(render);
 render();
 
-// 2. Then pull canonical state from Supabase (async, will re-render when done)
+// 2. Register auth listener BEFORE bootstrap. Bootstrap may hang on a slow
+// Supabase call; the listener registration is decoupled so SIGNED_IN events
+// are caught even when bootstrap is still pending.
+initAuthListener();
+
+// 3. Then pull canonical state from Supabase (async, will re-render when done)
 bootstrap();
 
 // 3. Safety net — if bootstrap hangs (Supabase CDN slow, network stall, etc.)

@@ -133,21 +133,21 @@ export function load() {
   return !!cached;
 }
 
-// Async bootstrap: pull canonical state from Supabase, hook up auth + autosave
-export async function bootstrap() {
-  state.sync.status = "loading";
+// Hydrate user/profile/state progressively. Called from the auth listener and
+// directly from the sign-in form as a belt-and-suspenders. Sets auth.user first
+// and notifies immediately so the UI moves past the sign-in screen even if the
+// slower profile / state fetches hang.
+export async function hydrateAuthedSession(supabaseUser) {
+  if (!supabaseUser) return;
+  state.auth.user = { id: supabaseUser.id, email: supabaseUser.email };
   notify();
   try {
-    // Try to load auth + profile first
-    const user = await getCurrentUser();
-    if (user) {
-      state.auth.user = { id: user.id, email: user.email };
-      const profile = await fetchMyProfile();
-      state.auth.profile = profile;
-    }
-    state.auth.loading = false;
-
-    // Load canonical state
+    state.auth.profile = await fetchMyProfile();
+    notify();
+  } catch (e) {
+    console.warn("fetchMyProfile failed:", e);
+  }
+  try {
     const remote = await fetchFinancialState();
     if (remote?.state) {
       applyStateBlob(remote.state);
@@ -155,6 +155,42 @@ export async function bootstrap() {
       state.sync.last_saved_at = remote.updated_at ? new Date(remote.updated_at) : null;
       state.sync.status = "saved";
       writeLocalCache();
+      notify();
+    }
+  } catch (e) {
+    console.warn("fetchFinancialState failed:", e);
+  }
+}
+
+// Register auth listener early, independent of bootstrap. If bootstrap is hung
+// on an earlier await (Supabase auth init, network stall, etc.), the listener
+// still gets wired up and can react to SIGNED_IN.
+export async function initAuthListener() {
+  try {
+    await onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        hydrateAuthedSession(session?.user);
+      } else if (event === "SIGNED_OUT") {
+        state.auth.user = null;
+        state.auth.profile = null;
+        notify();
+      }
+    });
+  } catch (e) {
+    console.warn("initAuthListener failed:", e);
+  }
+}
+
+// Async bootstrap: pull canonical state from Supabase. Auth listener is registered
+// separately in initAuthListener().
+export async function bootstrap() {
+  state.sync.status = "loading";
+  notify();
+  try {
+    const user = await getCurrentUser();
+    if (user) {
+      // Hydrate session progressively — also notifies as profile + state arrive.
+      await hydrateAuthedSession(user);
     } else {
       state.sync.status = "idle";
     }
@@ -163,32 +199,10 @@ export async function bootstrap() {
     state.sync.status = "error";
     state.sync.last_error = e?.message || String(e);
   } finally {
-    // Always release the auth-loading splash, even if bootstrap threw.
-    // Otherwise the user is stuck on "Loading…" forever (e.g. Supabase 4xx, expired session).
+    // Always release the auth-loading splash, even if bootstrap threw or hung
+    // (paired with a setTimeout safety net in main.js for the truly hung case).
     state.auth.loading = false;
   }
-
-  // Subscribe to auth state changes (sign-in / sign-out)
-  await onAuthStateChange(async (event, session) => {
-    if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
-      const u = session?.user;
-      if (u) {
-        state.auth.user = { id: u.id, email: u.email };
-        state.auth.profile = await fetchMyProfile();
-      }
-      // After login, refresh canonical state
-      const remote = await fetchFinancialState();
-      if (remote?.state) {
-        applyStateBlob(remote.state);
-        state.sync.server_version = remote.version || 1;
-      }
-      notify();
-    } else if (event === "SIGNED_OUT") {
-      state.auth.user = null;
-      state.auth.profile = null;
-      notify();
-    }
-  });
   notify();
 }
 

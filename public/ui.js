@@ -6,11 +6,11 @@ import { state, notify, save, updateGlobal, updateScenario,
   saveCurrentScenario, deleteScenario, loadScenario,
   cloneProject, importProjectsFromCSV, reorderProject,
   clearAuditLog, canEdit, isSuperAdmin,
-  canSeeFinancials, isRestrictedViewer } from "./state.js";
+  canSeeFinancials, isRestrictedViewer, hydrateAuthedSession } from "./state.js";
 import { aggregatePortfolio, calcProject, fyOf, monteCarlo } from "./engine.js";
 import { EXCEL_BENCHMARK, LIFECYCLE_STAGES, STAGE_GROUP_COLORS } from "./data.js";
 import {
-  signIn, signUp, signOut, sendPasswordReset,
+  signIn, signUp, signOut, sendPasswordReset, getCurrentUser,
   fetchAllProfiles, updateUserRole,
   askAssistant, fetchPendingSuggestions, reviewSuggestion, fetchMyLlmQuota,
 } from "./supabase.js";
@@ -147,9 +147,12 @@ function renderAuthScreen() {
         msg.classList.add("warn");
         msg.innerText = `Reset link sent to ${email}. Check your inbox.`;
       } else if (isSignin) {
-        await signIn(email, password);
+        const { user } = await signIn(email, password);
         msg.innerText = "Signed in.";
-        // onAuthStateChange will trigger a render
+        // Belt-and-suspenders — manually hydrate state in case the
+        // onAuthStateChange listener didn't catch this SIGNED_IN event.
+        const u = user || (await getCurrentUser());
+        if (u) hydrateAuthedSession(u);
       } else {
         await signUp(email, password, displayName);
         msg.classList.add("warn");
