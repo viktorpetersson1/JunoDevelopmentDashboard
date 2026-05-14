@@ -78,14 +78,20 @@ export async function onAuthStateChange(callback) {
 
 // ---------- user profile + role ----------
 
-export async function fetchMyProfile() {
+export async function fetchMyProfile(userId) {
   const supabase = await getSupabase();
-  const user = await getCurrentUser();
-  if (!user) return null;
+  // If the caller already has the user id (typical right after signIn or from
+  // a cached session), use it directly — avoids a redundant getUser() network
+  // round-trip that can race with JWT propagation and return null.
+  if (!userId) {
+    const user = await getCurrentUser();
+    if (!user) return null;
+    userId = user.id;
+  }
   const { data, error } = await supabase
     .from("user_profiles")
     .select("id, email, display_name, role, created_at")
-    .eq("id", user.id)
+    .eq("id", userId)
     .single();
   if (error) {
     console.warn("fetchMyProfile failed:", error.message);

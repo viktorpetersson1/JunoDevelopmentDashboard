@@ -142,7 +142,10 @@ export async function hydrateAuthedSession(supabaseUser) {
   state.auth.user = { id: supabaseUser.id, email: supabaseUser.email };
   notify();
   try {
-    state.auth.profile = await fetchMyProfile();
+    // Pass user id explicitly so fetchMyProfile skips the redundant getUser()
+    // call — that call sometimes races with JWT propagation right after signIn
+    // and returns null, leaving the role chip stuck on the default "viewer".
+    state.auth.profile = await fetchMyProfile(supabaseUser.id);
     notify();
   } catch (e) {
     console.warn("fetchMyProfile failed:", e);
