@@ -263,8 +263,8 @@ function renderTopbar() {
     </div>
   </header>
   ${renderSubnav(currentSection, fin)}
-  <button id="assistant-launcher" class="assistant-launcher" title="Ask AI — LLM assistant">
-    ${JUNO_AI_ICON}<span>Ask AI</span>
+  <button id="assistant-launcher" class="assistant-launcher" title="Ask Juno — your AI assistant">
+    ${JUNO_AI_ICON}<span>Ask Juno</span>
   </button>
   <div id="assistant-panel" class="assistant-panel" style="display:none;"></div>
   ${renderBottomTabNav()}
@@ -1909,7 +1909,7 @@ function renderAssistantPanel() {
     <div class="assistant-header">
       <div class="assistant-title">
         <span class="juno-ai-icon-wrap">${JUNO_AI_ICON}</span>
-        <strong>Ask AI</strong>
+        <strong>Ask Juno</strong>
         <span class="muted" style="font-size:11px;margin-left:6px;">${quotaText}</span>
       </div>
       <button class="link-btn" id="assistant-close" aria-label="Close assistant">✕</button>

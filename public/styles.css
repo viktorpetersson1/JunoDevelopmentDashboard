@@ -716,7 +716,7 @@ body.assistant-open .assistant-launcher {
   .topbar .user-chip span:first-child { display: none; }
   .main { padding-bottom: 80px; }                     /* leave room for bottom tab */
   body.assistant-open .assistant-panel { bottom: 60px; }
-  /* Hide the floating Ask AI launcher when bottom-tab is shown to avoid overlap */
+  /* Lift the floating Ask Juno launcher above the bottom-tab nav on mobile */
   .assistant-launcher { bottom: 70px; }
 }
 
