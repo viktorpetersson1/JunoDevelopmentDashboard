@@ -65,9 +65,12 @@ export function render() {
   if (state.auth.loading) {
     root().innerHTML = `<div class="auth-splash">
       <div class="auth-card">
-        <div class="brand">JUNO <span>Financial dashboard</span></div>
-        <div class="muted" style="margin-top:8px;">Loading…</div>
-        <div style="margin-top:18px;font-size:11px;">
+        <div class="brand">Juno <span>Atlas</span></div>
+        <div class="muted" style="margin-top:14px;display:flex;align-items:center;">
+          <span>Loading</span>
+          <span class="loading-dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+        </div>
+        <div style="margin-top:20px;font-size:11px;">
           <button class="link-btn" id="splash-reset">Stuck? Reset and reload</button>
         </div>
       </div>
@@ -105,7 +108,7 @@ function renderAuthScreen() {
   root().innerHTML = `
     <div class="auth-splash">
       <div class="auth-card">
-        <div class="brand">JUNO <span>Financial dashboard</span></div>
+        <div class="brand">Juno <span>Atlas</span></div>
         <h2 style="margin:16px 0 6px;font-size:18px;">${isReset ? "Reset password" : isSignin ? "Sign in" : "Create account"}</h2>
         <div class="muted" style="margin-bottom:16px;font-size:12px;">${
           isReset ? "We'll send you a reset link." :
@@ -246,7 +249,7 @@ function renderTopbar() {
 
   return `
   <header class="topbar">
-    <div class="brand">JUNO <span>Financial dashboard</span></div>
+    <div class="brand">Juno <span>Atlas</span></div>
     <nav>
       ${NAV_SECTIONS.map(sectionBtn).join("")}
     </nav>
