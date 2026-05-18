@@ -8,7 +8,7 @@ import { state, notify, save, updateGlobal, updateScenario,
   clearAuditLog, canEdit, isSuperAdmin,
   canSeeFinancials, isRestrictedViewer, hydrateAuthedSession,
   openWizard, closeWizard, discardWizardDraft, setWizardStep,
-  updateWizardDraft, submitWizardDraft } from "./state.js";
+  updateWizardDraft, submitWizardDraft, setProjectTab } from "./state.js";
 import { aggregatePortfolio, calcProject, fyOf, monteCarlo } from "./engine.js";
 import { EXCEL_BENCHMARK, LIFECYCLE_STAGES, STAGE_GROUP_COLORS, ASSET_TYPES } from "./data.js";
 import {
@@ -947,6 +947,20 @@ async function renderTakeoffPanel(projectId) {
   });
 }
 
+// v14.4 (Phase 2.1) — Project workspace tabs
+// Each tab is a different perspective on the same selected project. Summary is the existing layout.
+// Inputs is the new structured editing surface. Others are placeholders until later Phase 2/3 work.
+const PROJECT_TABS = [
+  { key: "summary",  label: "Summary",   status: "live" },
+  { key: "inputs",   label: "Inputs",    status: "live" },
+  { key: "timeline", label: "Timeline",  status: "coming", phase: "2.2" },
+  { key: "capital",  label: "Capital",   status: "coming", phase: "2.3" },
+  { key: "sales",    label: "Sales",     status: "coming", phase: "4"   },
+  { key: "outputs",  label: "Outputs",   status: "coming", phase: "later" },
+  { key: "risks",    label: "Risks",     status: "coming", phase: "3"   },
+  { key: "activity", label: "Activity",  status: "coming", phase: "3"   },
+];
+
 function renderProjectDetail(r) {
   const id = state.ui.selected_project_id;
   const p = state.projects.find((x) => x.id === id);
@@ -955,13 +969,83 @@ function renderProjectDetail(r) {
     || calcProject(p, state.globals, state.scenario);
   const m = res.monthly;
 
+  // Tab strip — always above the active tab content. Live tabs route, placeholders show a coming-soon panel.
+  const activeTab = PROJECT_TABS.find(t => t.key === state.ui.project_tab) ? state.ui.project_tab : "summary";
+  const tabStripHtml = `
+    <div class="project-tabs mb-24">
+      ${PROJECT_TABS.map(t => `
+        <button class="project-tab ${activeTab === t.key ? "active" : ""} ${t.status === "coming" ? "coming" : ""}"
+                data-project-tab="${t.key}"
+                ${t.status === "coming" ? `title="Coming in Phase ${t.phase}"` : ""}>
+          ${t.label}${t.status === "coming" ? ` <span class="muted" style="font-weight:400;">·</span>` : ""}
+        </button>
+      `).join("")}
+    </div>`;
+
+  // Compact project header — shared across all tabs
+  const headerHtml = renderProjectHeader(p, res);
+
+  // Active tab body
+  let tabBody = "";
+  if (activeTab === "summary") {
+    tabBody = renderProjectSummaryTab(p, res, m);
+  } else if (activeTab === "inputs") {
+    tabBody = renderProjectInputs(p, res);
+  } else {
+    const t = PROJECT_TABS.find(t => t.key === activeTab);
+    tabBody = `<div class="panel" style="text-align:center;padding:48px 24px;">
+      <h3 style="margin-bottom:8px;">${t.label} — coming in Phase ${t.phase}</h3>
+      <p class="muted" style="font-size:13px;max-width:480px;margin:0 auto;">This view is reserved for the upcoming phase of the Atlas dev plan.</p>
+    </div>`;
+  }
+
+  return `${headerHtml}${tabStripHtml}${tabBody}`;
+}
+
+// Shared project header — sits above the tab strip on every project tab.
+function renderProjectHeader(p, res) {
+  const isExcluded = state.scenario.excluded_project_ids.includes(p.id);
+  const lastEdit = (state.audit_log || []).find(e =>
+    e.detail?.project_id === p.id || (e.message || "").toLowerCase().includes((p.name || "").toLowerCase())
+  );
+  const lastUpdatedText = lastEdit?.ts
+    ? new Date(lastEdit.ts).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+    : "no edits yet";
+  return `
+    <div class="project-summary-header mb-24">
+      <div class="project-summary-title">
+        <div class="row gap-sm" style="align-items:center;">
+          <h1 class="project-name">${escapeHtml(p.name)}</h1>
+          ${stageBadge(p, isExcluded)}
+          <span class="badge ${p.status || "pipeline"}">${(p.status || "pipeline").replace(/_/g," ")}</span>
+        </div>
+        <div class="project-summary-meta muted">
+          <span>${escapeHtml(p.address || "—")}</span>
+          <span>·</span>
+          <span>Scenario: <strong style="color:var(--fg);">${escapeHtml(state.scenario.name)}</strong></span>
+          <span>·</span>
+          <span>Last updated: ${lastUpdatedText}</span>
+        </div>
+      </div>
+      <div class="project-summary-actions row gap-sm wrap">
+        <select class="input" id="project-picker" style="max-width:240px;">
+          ${state.projects.map(x => `<option value="${x.id}" ${x.id===p.id?"selected":""}>${x.name}</option>`).join("")}
+        </select>
+        <button class="btn small ${isExcluded ? "secondary" : "danger"}" data-action="exclude" data-id="${p.id}">${isExcluded ? "Include" : "Exclude"}</button>
+        <button class="btn small secondary" data-action="clone" data-id="${p.id}">Clone</button>
+        <button class="btn small danger" data-action="remove" data-id="${p.id}">Delete</button>
+      </div>
+    </div>`;
+}
+
+// v14.4 — Summary tab: the Phase 1.2 layout, now scoped to its own renderer
+function renderProjectSummaryTab(p, res, m) {
   // v13.1 — Sensitivity table.
   // Sale price is PINNED at the current sale price (an override) so cost shocks don't perversely
   // raise the sale price via cost-plus-margin pricing. Margin override cases are excluded for
   // the same reason — they'd no-op against a fixed sale price.
   const baseProfit = res.kpis.gross_profit;
   const pinnedSale = p.sale_price_override_usd ?? res.kpis.total_sales;
-  // Build a copy of the project with sale price pinned for sensitivity calcs
   const projForSens = { ...p, sale_price_override_usd: pinnedSale };
   const sensCases = [
     { label: "Build cost +10%", patch: { build_cost_multiplier: 1.1 } },
@@ -984,44 +1068,7 @@ function renderProjectDetail(r) {
     </tr>`;
   }).join("");
 
-  const isExcluded = state.scenario.excluded_project_ids.includes(p.id);
-
-  // v14.2 — "last updated" inferred from the most recent audit_log entry mentioning this project
-  const lastEdit = (state.audit_log || []).find(e =>
-    e.detail?.project_id === p.id || (e.message || "").toLowerCase().includes((p.name || "").toLowerCase())
-  );
-  const lastUpdatedText = lastEdit?.ts
-    ? new Date(lastEdit.ts).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
-    : "no edits yet";
-
   return `
-    <!-- v14.2 Project Summary header -->
-    <div class="project-summary-header mb-24">
-      <div class="project-summary-title">
-        <div class="row gap-sm" style="align-items:center;">
-          <h1 class="project-name">${escapeHtml(p.name)}</h1>
-          ${stageBadge(p, isExcluded)}
-          <span class="badge ${p.status || "pipeline"}">${(p.status || "pipeline").replace(/_/g," ")}</span>
-        </div>
-        <div class="project-summary-meta muted">
-          <span>${escapeHtml(p.address || "—")}</span>
-          <span>·</span>
-          <span>Scenario: <strong style="color:var(--fg);">${escapeHtml(state.scenario.name)}</strong></span>
-          <span>·</span>
-          <span>Last updated: ${lastUpdatedText}</span>
-        </div>
-      </div>
-      <div class="project-summary-actions row gap-sm wrap">
-        <select class="input" id="project-picker" style="max-width:240px;">
-          ${state.projects.map(x => `<option value="${x.id}" ${x.id===id?"selected":""}>${x.name}</option>`).join("")}
-        </select>
-        <a href="#edit-assumptions" class="btn small secondary">Edit assumptions</a>
-        <button class="btn small ${isExcluded ? "secondary" : "danger"}" data-action="exclude" data-id="${p.id}">${isExcluded ? "Include" : "Exclude"}</button>
-        <button class="btn small secondary" data-action="clone" data-id="${p.id}">Clone</button>
-        <button class="btn small danger" data-action="remove" data-id="${p.id}">Delete</button>
-      </div>
-    </div>
-
     <!-- v14.2 KPI row — 8 cards per brief -->
     <div class="kpi-row">
       ${kpiCard("Total dev cost", fmt.usdM(res.kpis.total_dev_cost), `${fmt.num(res.kpis.total_cost_per_sqft, 0)}/sqft`)}
@@ -1400,6 +1447,192 @@ function renderProjectForm(p, res) {
       · Variance: <strong class="${res.kpis.total_sales >= p._excel_sale_price ? "" : ""}">${fmt.pct((res.kpis.total_sales - p._excel_sale_price) / p._excel_sale_price, 2)}</strong>
       <span class="muted" style="margin-left:8px;">See PHASE_4_VALIDATION.md for reconciliation.</span>
     </div>` : ""}
+  `;
+}
+
+// v14.4 (Phase 2.1) — Inputs screen helpers + renderer
+//
+// Source tag: tells the user where the current value came from.
+//   "override"  — set explicitly on this project (a manual override)
+//   "default"   — null on project, falls back to a global default
+//   "global"    — this field IS the global default (Overheads, Taxes)
+//   "scenario"  — modified by the active scenario
+//   "computed"  — derived (e.g. sale_date = start + program_months)
+function sourceTagFor({ kind, projectValue }) {
+  if (kind === "global") return { label: "Global", title: "Applies to all projects." };
+  if (kind === "scenario") return { label: "Scenario", title: "Modified by the active scenario." };
+  if (kind === "computed") return { label: "Computed", title: "Derived from other fields." };
+  if (kind === "project-required") return { label: "Project value", title: "Required field on every project." };
+  if (kind === "project-override") {
+    return projectValue == null || projectValue === ""
+      ? { label: "Default", title: "Using the global default. Type a value to override." }
+      : { label: "Override", title: "Manually overridden on this project." };
+  }
+  return { label: "", title: "" };
+}
+
+// Last-edited lookup: find the most recent audit_log entry that touched `field` on this project.
+function lastEditedFor(projectId, field) {
+  const log = state.audit_log || [];
+  const hit = log.find(e =>
+    e.detail?.project_id === projectId
+    && e.detail?.changes
+    && Object.prototype.hasOwnProperty.call(e.detail.changes, field)
+  );
+  if (!hit?.ts) return null;
+  const when = new Date(hit.ts).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  const who = hit.user_email ? hit.user_email.split("@")[0] : "—";
+  return `${when} · ${who}`;
+}
+
+// Render a single inputs row. Centralizes the layout per the brief:
+// label · unit · current value (input) · helper · source tag · last updated
+function inputRow(opts) {
+  const {
+    label, unit, helper,
+    field,                       // data-field attribute (also used for last-edited lookup)
+    value,                       // raw value (for input)
+    placeholder = "",
+    type = "text",               // "text" | "number" | "select"
+    selectOptions,               // [{ value, label }]
+    kind,                        // sourceTagFor kind
+    projectId,                   // for lastEditedFor; null = global/scenario
+    scope = "project",           // "project" | "global" | "scenario"
+    suffix,                      // optional html shown after the input (e.g. unit display)
+  } = opts;
+  const src = sourceTagFor({ kind, projectValue: value });
+  const last = projectId ? lastEditedFor(projectId, field) : null;
+  const dataAttr = scope === "global" ? `data-global="${field}"`
+                  : scope === "scenario" ? `data-scenario="${field}"`
+                  : `data-field="${field}"`;
+  const isOverride = kind === "project-override";
+  const inputCls = `input ${isOverride && (value == null || value === "") ? "override-empty" : ""}`;
+  const inputDisplay = value == null ? "" : value;
+  let inputHtml;
+  if (type === "select" && selectOptions) {
+    inputHtml = `<select class="${inputCls}" ${dataAttr}>
+      ${selectOptions.map(o => `<option value="${o.value}" ${value === o.value ? "selected" : ""}>${o.label}</option>`).join("")}
+    </select>`;
+  } else if (type === "checkbox") {
+    inputHtml = `<input type="checkbox" ${dataAttr} ${value ? "checked" : ""}>`;
+  } else {
+    inputHtml = `<input class="${inputCls}" type="${type}" ${dataAttr} value="${inputDisplay}" placeholder="${escapeHtml(placeholder)}">`;
+  }
+  return `<div class="input-row">
+    <div class="input-row-label">
+      <div class="label-text">${label}</div>
+      ${unit ? `<div class="label-unit muted">${unit}</div>` : ""}
+    </div>
+    <div class="input-row-control">
+      ${inputHtml}
+      ${suffix || ""}
+    </div>
+    <div class="input-row-meta">
+      ${src.label ? `<span class="src-tag ${src.label.toLowerCase().replace(/\s/g, "-")}" title="${escapeHtml(src.title)}">${src.label}</span>` : ""}
+      ${last ? `<span class="last-edited muted">${last}</span>` : ""}
+    </div>
+    ${helper ? `<div class="input-row-helper muted">${helper}</div>` : ""}
+  </div>`;
+}
+
+// Section panel — one per logical group, contains a stack of input rows.
+function inputsSection(title, sub, rows) {
+  return `<div class="panel inputs-section">
+    <h3>${title}</h3>
+    ${sub ? `<div class="panel-subtitle">${sub}</div>` : ""}
+    <div class="input-rows">${rows.join("")}</div>
+  </div>`;
+}
+
+function renderProjectInputs(p, res) {
+  const g = state.globals;
+  const sc = state.scenario;
+  const markets = g.markets || [];
+  const stageOptions = LIFECYCLE_STAGES.map(s => ({ value: s.id, label: s.label }));
+  const marketOptions = markets.map(m => ({ value: m.id, label: m.name }));
+  const assetOptions = ASSET_TYPES.map(t => ({ value: t.id, label: t.label }));
+  const statusOptions = [
+    { value: "pipeline",  label: "Pipeline" },
+    { value: "committed", label: "Committed" },
+  ];
+
+  // ----- Sections per the brief -----
+
+  const basics = inputsSection("Basics", "Identification and lifecycle status.", [
+    inputRow({ label: "Project name", field: "name", value: p.name, kind: "project-required", projectId: p.id }),
+    inputRow({ label: "Address", field: "address", value: p.address, kind: "project-required", projectId: p.id, placeholder: "Site address" }),
+    inputRow({ label: "Entity / SPV", field: "entity_spv", value: p.entity_spv || "", kind: "project-required", projectId: p.id, placeholder: "Optional", helper: "The LLC that holds the project." }),
+    inputRow({ label: "Market", field: "market", value: p.market || "hamptons", kind: "project-required", projectId: p.id, type: "select", selectOptions: marketOptions, helper: "Market multiplier affects sale price and build cost." }),
+    inputRow({ label: "Asset type", field: "asset_type", value: p.asset_type || "spec_home", kind: "project-required", projectId: p.id, type: "select", selectOptions: assetOptions }),
+    inputRow({ label: "Stage", field: "stage", value: p.stage || "sourcing", kind: "project-required", projectId: p.id, type: "select", selectOptions: stageOptions, helper: "Where this project sits in the lifecycle right now." }),
+    inputRow({ label: "Status", field: "status", value: p.status || "pipeline", kind: "project-required", projectId: p.id, type: "select", selectOptions: statusOptions }),
+  ]);
+
+  const program = inputsSection("Program", "Build size and duration.", [
+    inputRow({ label: "Villa size", unit: "sqft", field: "villa_sqft", value: p.villa_sqft, kind: "project-required", projectId: p.id, type: "number", helper: "Total conditioned floor area." }),
+    inputRow({ label: "Program duration", unit: "months", field: "program_months", value: p.program_months, kind: "project-required", projectId: p.id, type: "number", helper: "Land purchase → final sale closing." }),
+  ]);
+
+  const timing = inputsSection("Timing", "Key dates. Sale date is computed from start + program months unless a closing date is set.", [
+    inputRow({ label: "Start date", field: "start_date", value: p.start_date, kind: "project-required", projectId: p.id, placeholder: "YYYY-MM", helper: "Land purchase / project kick-off month." }),
+    inputRow({ label: "Listing date", field: "listing_date", value: p.listing_date || "", kind: "project-override", projectId: p.id, placeholder: "YYYY-MM-DD", helper: "When you intend to list. Optional." }),
+    inputRow({ label: "Under contract date", field: "under_contract_date", value: p.under_contract_date || "", kind: "project-override", projectId: p.id, placeholder: "YYYY-MM-DD" }),
+    inputRow({ label: "Closing date", field: "closing_date", value: p.closing_date || "", kind: "project-override", projectId: p.id, placeholder: "YYYY-MM-DD" }),
+  ]);
+
+  const land = inputsSection("Land", null, [
+    inputRow({ label: "Land cost", unit: "USD", field: "land_cost_usd", value: p.land_cost_usd, kind: "project-required", projectId: p.id, type: "number" }),
+  ]);
+
+  const buildCosts = inputsSection("Build costs", "Hard construction. Blank fields use the global default.", [
+    inputRow({ label: "Build cost", unit: "$/sqft", field: "build_cost_per_sqft", value: p.build_cost_per_sqft, kind: "project-override", projectId: p.id, type: "number", placeholder: `Default: $${g.default_build_cost_per_sqft}` }),
+    inputRow({ label: "Soft costs (lump sum)", unit: "USD", field: "soft_costs_lump_sum", value: p.soft_costs_lump_sum ?? 0, kind: "project-required", projectId: p.id, type: "number", helper: "Permits, design, legal, etc. Used unless the soft-cost breakdown below has nonzero values." }),
+  ]);
+
+  const kingshaus = inputsSection("Kingshaus / superstructure", "Prefab timber panel + Kingshaus contribution.", [
+    inputRow({ label: "Kingshaus cost", unit: "$/sqft", field: "kingshaus_cost_per_sqft", value: p.kingshaus_cost_per_sqft, kind: "project-override", projectId: p.id, type: "number", placeholder: `Default: $${g.default_kingshaus_cost_per_sqft}` }),
+  ]);
+
+  const financing = inputsSection("Financing", "Senior construction debt. KPC LOC ($6M @ 6%) is modeled portfolio-wide and shown on the Capital screen.", [
+    inputRow({ label: "Interest rate", unit: "APR (decimal)", field: "interest_rate_apr", value: p.interest_rate_apr, kind: "project-override", projectId: p.id, type: "number", placeholder: `Default: ${g.interest_rate_apr}`, helper: `Default ${(g.interest_rate_apr * 100).toFixed(2)}% — senior construction loan rate.` }),
+    inputRow({ label: "Loan-to-cost (build)", unit: "decimal", field: "ltc_pct", value: p.ltc_pct, kind: "project-override", projectId: p.id, type: "number", placeholder: `Default: ${g.ltc_pct}`, helper: `Default ${(g.ltc_pct * 100).toFixed(0)}%.` }),
+  ]);
+
+  const revenue = inputsSection("Revenue", "If you have a target sale price, set it here. Otherwise leave blank and the engine derives sale from cost × (1 + margin).", [
+    inputRow({ label: "Goal sale price", unit: "USD", field: "sale_price_override_usd", value: p.sale_price_override_usd, kind: "project-override", projectId: p.id, type: "number", placeholder: "Derived from cost+margin" }),
+    inputRow({ label: "Sale price", unit: "$/sqft", field: "sale_price_per_sqft_override", value: p.sale_price_per_sqft_override, kind: "project-override", projectId: p.id, type: "number", placeholder: "Alternative to total $" }),
+    inputRow({ label: "Target margin", unit: "decimal", field: "target_margin", value: p.target_margin, kind: "project-override", projectId: p.id, type: "number", placeholder: `Default: ${g.target_margin}`, helper: `Default ${(g.target_margin * 100).toFixed(0)}%.` }),
+    inputRow({ label: "Listing price", unit: "USD", field: "listing_price_usd", value: p.listing_price_usd, kind: "project-override", projectId: p.id, type: "number", placeholder: "Set when listed" }),
+    inputRow({ label: "Actual sale price", unit: "USD", field: "actual_sale_price_usd", value: p.actual_sale_price_usd, kind: "project-override", projectId: p.id, type: "number", placeholder: "Set when closed" }),
+  ]);
+
+  const overheads = inputsSection("Overheads <span class='muted' style='font-weight:400;'>· applies to all projects</span>", "Juno's annual operating expenses, spread monthly and escalated.", [
+    inputRow({ label: "Annual opex", unit: "USD", field: "annual_opex_usd", value: g.annual_opex_usd, kind: "global", scope: "global", type: "number" }),
+    inputRow({ label: "Opex growth rate", unit: "decimal/yr", field: "opex_growth_rate", value: g.opex_growth_rate, kind: "global", scope: "global", type: "number", placeholder: "0 = flat", helper: "Excel shows ~9% YoY growth. Default is 0 (flat)." }),
+  ]);
+
+  const taxes = inputsSection("Taxes <span class='muted' style='font-weight:400;'>· applies to all projects</span>", "Federal + state tax model. NOL carryforward is enabled.", [
+    inputRow({ label: "Federal tax rate", unit: "decimal", field: "tax_rate_pct", value: g.tax_rate_pct, kind: "global", scope: "global", type: "number" }),
+    inputRow({ label: "State tax rate", unit: "decimal", field: "tax_state_rate_pct", value: g.tax_state_rate_pct, kind: "global", scope: "global", type: "number" }),
+    inputRow({ label: "Apply tax", field: "apply_tax", value: g.apply_tax, kind: "global", scope: "global", type: "checkbox", helper: "Toggle to show pre-tax vs after-tax view." }),
+  ]);
+
+  const scenarioOverrides = inputsSection(`Scenario overrides <span class="muted" style="font-weight:400;">· scenario: ${escapeHtml(sc.name)}</span>`, "These multipliers/deltas affect every project in the active scenario. Change scenario from the topbar.", [
+    inputRow({ label: "Sale price multiplier", unit: "x", field: "sale_price_multiplier", value: sc.sale_price_multiplier ?? 1, kind: "scenario", scope: "scenario", type: "number", helper: "1.0 = no change. 1.1 = +10%." }),
+    inputRow({ label: "Build cost multiplier", unit: "x", field: "build_cost_multiplier", value: sc.build_cost_multiplier ?? 1, kind: "scenario", scope: "scenario", type: "number" }),
+    inputRow({ label: "Interest rate delta", unit: "bps", field: "interest_rate_delta_bps", value: sc.interest_rate_delta_bps ?? 0, kind: "scenario", scope: "scenario", type: "number" }),
+    inputRow({ label: "Timing shift", unit: "months", field: "timing_shift_months", value: sc.timing_shift_months ?? 0, kind: "scenario", scope: "scenario", type: "number" }),
+  ]);
+
+  return `
+    <div class="inputs-grid">
+      <div class="inputs-col">${basics}${program}${timing}${land}</div>
+      <div class="inputs-col">${buildCosts}${kingshaus}${financing}${revenue}</div>
+    </div>
+    <div class="inputs-grid">
+      <div class="inputs-col">${overheads}${taxes}</div>
+      <div class="inputs-col">${scenarioOverrides}</div>
+    </div>
   `;
 }
 
@@ -2964,17 +3197,43 @@ function attachViewEvents(result) {
     });
   }
 
-  // Settings: global drivers
+  // Settings + Inputs screen: global drivers (number / text / checkbox)
   for (const inp of document.querySelectorAll("[data-global]")) {
     inp.addEventListener("change", (e) => {
       const key = e.target.dataset.global;
-      let value = e.target.value;
-      if (e.target.type === "number") {
-        value = Number(value);
+      let value;
+      if (e.target.type === "checkbox") {
+        value = e.target.checked;
+      } else if (e.target.type === "number") {
+        value = Number(e.target.value);
         if (isNaN(value)) return;
+      } else {
+        value = e.target.value;
       }
       updateGlobal(key, value);
     });
+  }
+
+  // Inputs screen: scenario overrides (multipliers, deltas, timing shift)
+  for (const inp of document.querySelectorAll("[data-scenario]")) {
+    inp.addEventListener("change", (e) => {
+      const key = e.target.dataset.scenario;
+      let value;
+      if (e.target.type === "checkbox") {
+        value = e.target.checked;
+      } else if (e.target.type === "number") {
+        value = Number(e.target.value);
+        if (isNaN(value)) return;
+      } else {
+        value = e.target.value;
+      }
+      updateScenario({ [key]: value });
+    });
+  }
+
+  // Project workspace tabs (Summary / Inputs / Timeline / Capital / ...)
+  for (const btn of document.querySelectorAll("[data-project-tab]")) {
+    btn.addEventListener("click", () => setProjectTab(btn.dataset.projectTab));
   }
   for (const sel of document.querySelectorAll("[data-global-select]")) {
     sel.addEventListener("change", (e) => {

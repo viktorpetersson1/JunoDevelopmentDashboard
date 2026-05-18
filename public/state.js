@@ -33,6 +33,7 @@ export const state = {
   ui: {
     view: "portfolio",
     selected_project_id: "p2",
+    project_tab: "summary",  // v14.4 (Phase 2.1): in-project workspace tab
     theme: "light",
     mobileMoreOpen: false,  // v13: tracks whether the mobile "More" drawer is open
     wizard: { open: false, step: 0, draft: null },  // v14.1: New Project wizard state
@@ -460,6 +461,11 @@ function parseCSVRow(line) {
 export function setView(view, projectId) {
   state.ui.view = view;
   if (projectId) state.ui.selected_project_id = projectId;
+  save(); notify();
+}
+
+export function setProjectTab(tab) {
+  state.ui.project_tab = tab;
   save(); notify();
 }
 
