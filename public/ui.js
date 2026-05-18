@@ -199,9 +199,10 @@ const NAV_SECTIONS = [
       { view: "cashflow", label: "Cash flow" },
       { view: "scenario", label: "Scenarios" },
     ] },
-  { key: "capital",   label: "Capital",   default: "waterfall", financial: true,
+  { key: "capital",   label: "Capital",   default: "capital_overview", financial: true,
     subviews: [
-      { view: "waterfall", label: "Waterfall" },
+      { view: "capital_overview", label: "Capital overview" },
+      { view: "waterfall",        label: "Owner waterfall" },
     ] },
   { key: "risks",     label: "Risks",     default: "risk",      financial: true,
     subviews: [
@@ -458,6 +459,7 @@ function renderView(result) {
     case "project_detail": html += renderProjectDetail(result); break;
     case "cashflow": html += renderCashflow(result); break;
     case "pipeline": html += renderPipeline(result); break;
+    case "capital_overview": html += renderCapitalOverview(result); break;
     case "waterfall": html += renderWaterfall(result); break;
     case "scenario": html += renderScenario(result); break;
     case "sensitivity": html += renderSensitivity(result); break;
@@ -954,7 +956,7 @@ const PROJECT_TABS = [
   { key: "summary",  label: "Summary",   status: "live" },
   { key: "inputs",   label: "Inputs",    status: "live" },
   { key: "timeline", label: "Timeline",  status: "live" },
-  { key: "capital",  label: "Capital",   status: "coming", phase: "2.3" },
+  { key: "capital",  label: "Capital",   status: "live" },
   { key: "sales",    label: "Sales",     status: "coming", phase: "4"   },
   { key: "outputs",  label: "Outputs",   status: "coming", phase: "later" },
   { key: "risks",    label: "Risks",     status: "coming", phase: "3"   },
@@ -993,6 +995,8 @@ function renderProjectDetail(r) {
     tabBody = renderProjectInputs(p, res);
   } else if (activeTab === "timeline") {
     tabBody = renderProjectTimelineTab(p, res);
+  } else if (activeTab === "capital") {
+    tabBody = renderProjectCapitalTab(p, res);
   } else {
     const t = PROJECT_TABS.find(t => t.key === activeTab);
     tabBody = `<div class="panel" style="text-align:center;padding:48px 24px;">
@@ -1634,6 +1638,158 @@ function renderProjectInputs(p, res) {
     <div class="inputs-grid">
       <div class="inputs-col">${overheads}${taxes}</div>
       <div class="inputs-col">${scenarioOverrides}</div>
+    </div>
+  `;
+}
+
+// v14.6 (Phase 2.3) — Top-level Capital screen
+// Portfolio-wide capital orchestration: how the KPC $6M LOC is being consumed across
+// the pipeline, when senior debt and the LOC are at peak, where funding gaps appear,
+// total accrued LOC interest, and per-owner equity exposure.
+function renderCapitalOverview(r) {
+  const port = r.monthly;
+  const k = r.kpis;
+  const loc = state.globals.kpc_loc || {};
+  const ownership = state.globals.investors || [];
+  const totalEquityCalled = port.cum_equity_called?.[port.cum_equity_called.length - 1] ?? 0;
+  const peakLoc = port.loc_peak_balance ?? 0;
+  const peakDrawnPct = port.loc_peak_drawn_pct ?? 0;
+  const totalLocInterest = port.loc_total_interest ?? 0;
+  const trueEquityTotal = port.true_equity_total_drawn ?? 0;
+  const breachMonths = port.cap_breach_months ?? 0;
+  const peakDebt = k.max_debt_outstanding ?? 0;
+
+  // Funding-gap banner: only show if true equity is needed (LOC exhausted)
+  const gapBanner = breachMonths > 0 ? `
+    <div class="note neg mb-12">
+      <strong>Funding gap:</strong> The $${(loc.facility_size_usd/1e6).toFixed(0)}M KPC LOC is exhausted for ${breachMonths} month${breachMonths === 1 ? "" : "s"} of the forecast.
+      ${fmt.usdM(trueEquityTotal)} of owner equity must be called pro-rata to cover the shortfall.
+    </div>` : `<div class="note mb-12">
+      <strong>KPC LOC sufficient:</strong> The $${(loc.facility_size_usd/1e6).toFixed(0)}M facility covers projected equity demand across the horizon. Peak draw: ${fmt.usdM(peakLoc)} (${fmt.pct(peakDrawnPct)}).
+    </div>`;
+
+  // Sources vs uses summary (portfolio)
+  const totalDevCost = k.total_dev_cost ?? 0;
+  const totalSales = k.total_sales ?? 0;
+  const totalInterest = k.total_interest ?? 0;
+  const sources = [
+    { label: "Senior construction debt (peak)", value: peakDebt },
+    { label: `KPC LOC drawn (peak / ${fmt.usdM(loc.facility_size_usd || 0)} cap)`, value: peakLoc },
+    { label: "Owner equity calls", value: trueEquityTotal },
+    { label: "Sales proceeds (gross)", value: totalSales },
+  ];
+  const uses = [
+    { label: "Total development cost", value: totalDevCost },
+    { label: "Financing (senior interest + fees)", value: totalInterest },
+    { label: "KPC LOC interest (accrued)", value: -totalLocInterest },
+  ];
+  const rowsHtml = (list) => list.map(r => `<tr><td>${r.label}</td><td class="num">${fmt.usdM(r.value)}</td></tr>`).join("");
+
+  // Per-owner cap-table view — pro-rata of the true_equity_total_drawn
+  const ownerRowsHtml = ownership.map(o => {
+    const share = o.equity_share_pct || 0;
+    const ownerCall = trueEquityTotal * share;
+    const ownerProfit = (k.total_profit_before_tax || 0) * share;
+    return `<tr>
+      <td>${escapeHtml(o.name)}</td>
+      <td class="num">${fmt.pct(share, 1)}</td>
+      <td class="num">${fmt.usdM(ownerCall)}</td>
+      <td class="num ${ownerProfit >= 0 ? "pos" : "neg"}">${fmt.usdM(ownerProfit)}</td>
+    </tr>`;
+  }).join("");
+
+  // High-level KPI strip
+  return `
+    <div class="row between mb-12">
+      <div>
+        <h1 class="page-title">Capital</h1>
+        <div class="muted" style="font-size:12px;margin-top:4px;">
+          ${escapeHtml(state.scenario.name)} · senior loan → KPC LOC → owner equity
+        </div>
+      </div>
+    </div>
+
+    ${gapBanner}
+
+    <div class="kpi-row">
+      ${kpiCard("KPC LOC peak", fmt.usdM(peakLoc), `${fmt.pct(peakDrawnPct)} of ${fmt.usdM(loc.facility_size_usd || 0)} cap`, peakDrawnPct > 0.9 ? "warn" : "")}
+      ${kpiCard("LOC interest accrued", fmt.usdM(totalLocInterest), `${(loc.interest_rate_apr * 100).toFixed(1)}% APR · capitalized`)}
+      ${kpiCard("Owner equity needed", fmt.usdM(trueEquityTotal), trueEquityTotal > 0 ? "Above LOC cap" : "LOC covers everything", trueEquityTotal > 0 ? "warn" : "pos")}
+      ${kpiCard("Funding-gap months", `${breachMonths}`, breachMonths > 0 ? "LOC insufficient" : "All covered by LOC", breachMonths > 0 ? "neg" : "pos")}
+      ${kpiCard("Senior debt peak", fmt.usdM(peakDebt), `Month: ${fmt.ymShort(k.max_debt_month)}`)}
+      ${kpiCard("Total equity called", fmt.usdM(totalEquityCalled), "LOC + owner equity")}
+    </div>
+
+    <div class="panel-row">
+      <div class="panel">
+        <h3>KPC LOC drawdown</h3>
+        <div class="panel-subtitle">Outstanding balance vs facility cap over the model horizon.</div>
+        <div class="chart-frame"><canvas id="chart-loc-drawdown"></canvas></div>
+      </div>
+      <div class="panel">
+        <h3>Capital sources stacked</h3>
+        <div class="panel-subtitle">Cumulative draws: senior debt + KPC LOC + owner equity.</div>
+        <div class="chart-frame"><canvas id="chart-capital-stack"></canvas></div>
+      </div>
+    </div>
+
+    <div class="panel-row">
+      <div class="panel">
+        <h3>Sources vs Uses</h3>
+        <div class="panel-subtitle">Portfolio totals across the horizon.</div>
+        <div class="sources-uses">
+          <div>
+            <div class="section-title" style="margin-bottom:6px;">Sources</div>
+            <table class="tbl">${rowsHtml(sources)}</table>
+          </div>
+          <div>
+            <div class="section-title" style="margin-bottom:6px;">Uses</div>
+            <table class="tbl">${rowsHtml(uses)}</table>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Owner cap-table</h3>
+        <div class="panel-subtitle">Equity share, owner-equity call exposure, profit allocation. KPC provides debt (not equity) via the LOC and so does not appear in this table.</div>
+        <table class="tbl">
+          <thead><tr><th>Owner</th><th>Share</th><th>Owner equity call</th><th>Profit share</th></tr></thead>
+          <tbody>${ownerRowsHtml}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+// v14.6 (Phase 2.3) — Project Capital tab
+// Shows THIS project's contribution to the capital stack. Pro-rata of the portfolio LOC
+// at each month is approximated by the project's share of total equity demand.
+function renderProjectCapitalTab(p, res) {
+  const k = res.kpis;
+  const loc = state.globals.kpc_loc || {};
+
+  return `
+    <div class="panel mb-24">
+      <h3>This project's capital stack</h3>
+      <div class="panel-subtitle">Project-level view of how this villa is funded. Portfolio-wide LOC capacity is enforced on the top-level Capital screen.</div>
+      <div class="kpi-row">
+        ${kpiCard("Senior debt peak", fmt.usdM(k.peak_debt), `Construction loan`)}
+        ${kpiCard("Equity / LOC peak", fmt.usdM(k.peak_equity), `Funded via KPC LOC until exhausted`)}
+        ${kpiCard("Total dev cost", fmt.usdM(k.total_dev_cost), `Across project lifecycle`)}
+        ${kpiCard("Sale proceeds", fmt.usdM(k.total_sales), `Repays debt + LOC, then owners`)}
+      </div>
+    </div>
+
+    <div class="panel mb-24">
+      <h3>Sources vs Uses (this project)</h3>
+      <div class="panel-subtitle">Where capital comes from vs where it goes for this single project.</div>
+      ${renderSourcesUses(p, res).replace(/<div class="panel">|<\/div>$/g, "").replace(/<h3>.*?<\/h3>/, "").replace(/<div class="panel-subtitle">.*?<\/div>/, "")}
+    </div>
+
+    <div class="note mb-24">
+      <strong>Note on LOC allocation:</strong> The KPC LOC is portfolio-wide ($${(loc.facility_size_usd/1e6).toFixed(0)}M @ ${(loc.interest_rate_apr * 100).toFixed(1)}% APR).
+      The top-level Capital screen shows the actual LOC drawdown curve and any funding gaps.
+      Until the engine allocates LOC capacity per project explicitly, this tab treats "equity" as a single bucket
+      (LOC + owner equity).
     </div>
   `;
 }
@@ -3687,6 +3843,9 @@ function renderCharts(result) {
     } else if (state.ui.project_tab === "timeline") {
       drawBurnChart(result, isDark);
     }
+  } else if (state.ui.view === "capital_overview") {
+    drawLocDrawdownChart(result, isDark);
+    drawCapitalStackChart(result, isDark);
   } else if (state.ui.view === "waterfall") {
     drawWaterfallChart(result, isDark);
     drawEquityMonthlyChart(result, isDark);
@@ -4283,6 +4442,66 @@ function drawBurnChart(r, isDark) {
       },
     },
   });
+}
+
+// v14.6 (Phase 2.3) — Capital overview: LOC drawdown curve.
+// Outstanding balance over time vs the facility cap, with a dashed cap line.
+function drawLocDrawdownChart(r, isDark) {
+  destroyChart("chart-loc-drawdown");
+  const ctx = document.getElementById("chart-loc-drawdown");
+  if (!ctx) return;
+  const port = r.monthly;
+  const dates = r.timeline || [];
+  if (!dates.length) return;
+  const cap = state.globals.kpc_loc?.facility_size_usd || 0;
+  const labels = dates.map(d => d.slice(2));
+  charts["chart-loc-drawdown"] = new Chart(ctx, {
+    type: "line",
+    data: { labels, datasets: [
+      { label: "LOC balance", data: port.loc_balance, borderColor: "#334155", backgroundColor: "rgba(51, 65, 85, 0.12)", fill: true, tension: 0.18, pointRadius: 0, borderWidth: 2 },
+      { label: "Facility cap", data: dates.map(() => cap), borderColor: "#9f1239", borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false },
+      { label: "Available", data: port.loc_available, borderColor: "#15803d", borderWidth: 1, pointRadius: 0, fill: false, hidden: true },
+    ]},
+    options: { responsive: true, maintainAspectRatio: false,
+      scales: { x: { ticks: { autoSkip: true, maxTicksLimit: 12 } }, y: { ticks: { callback: (v) => "$" + (v/1e6).toFixed(1) + "M" } } },
+      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatTooltip(ctx.parsed.y)}` } } },
+    },
+  });
+}
+
+// Capital stack — cumulative draws across senior debt, LOC, and true owner equity.
+function drawCapitalStackChart(r, isDark) {
+  destroyChart("chart-capital-stack");
+  const ctx = document.getElementById("chart-capital-stack");
+  if (!ctx) return;
+  const port = r.monthly;
+  const dates = r.timeline || [];
+  if (!dates.length) return;
+  const labels = dates.map(d => d.slice(2));
+  // Cumulative draws (NOT outstanding) — shows the layered story
+  const cumDebt = cumulativeSeries(port.debt_drawn);
+  const cumLoc  = cumulativeSeries(port.loc_drawn);
+  const cumEq   = cumulativeSeries(port.true_equity_drawn);
+  charts["chart-capital-stack"] = new Chart(ctx, {
+    type: "line",
+    data: { labels, datasets: [
+      { label: "Senior debt (cum)",   data: cumDebt, borderColor: "#475569", backgroundColor: "rgba(71, 85, 105, 0.18)", fill: "origin", tension: 0.18, pointRadius: 0, borderWidth: 2 },
+      { label: "KPC LOC (cum)",       data: cumLoc,  borderColor: "#334155", backgroundColor: "rgba(51, 65, 85, 0.18)",  fill: "-1", tension: 0.18, pointRadius: 0, borderWidth: 2 },
+      { label: "Owner equity (cum)",  data: cumEq,   borderColor: "#9f1239", backgroundColor: "rgba(159, 18, 57, 0.18)", fill: "-1", tension: 0.18, pointRadius: 0, borderWidth: 2 },
+    ]},
+    options: { responsive: true, maintainAspectRatio: false,
+      scales: { x: { ticks: { autoSkip: true, maxTicksLimit: 12 } }, y: { stacked: false, ticks: { callback: (v) => "$" + (v/1e6).toFixed(1) + "M" } } },
+      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatTooltip(ctx.parsed.y)}` } } },
+    },
+  });
+}
+
+// Helper: running sum
+function cumulativeSeries(arr) {
+  const out = [];
+  let s = 0;
+  for (const v of arr || []) { s += v || 0; out.push(s); }
+  return out;
 }
 
 function formatTooltip(v) {

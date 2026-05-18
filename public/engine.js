@@ -367,6 +367,70 @@ export function aggregatePortfolio(projects, globals, scenario) {
     openingCash = port.closing_cash[m];
   }
 
+  // v14.6 (Phase 2.3) — KPC Line of Credit pool
+  //
+  // What the existing engine calls "equity_called" is actually the gap between senior debt
+  // and total project cost. In Juno's real capital stack, that gap is filled FIRST by the
+  // KPC LOC ($6M facility, 6% APR, capitalized interest), and only the excess comes from
+  // true equity (the 7 individual owners).
+  //
+  // Pool model: at each month, accrue interest on the outstanding LOC balance, then allocate
+  // new equity demand to LOC up to remaining facility headroom, with the rest going to true
+  // equity calls. Equity_returned flows repay LOC first, then equity holders.
+  //
+  // Existing fields (equity_called, equity_drawn, equity_balance, etc.) are left untouched
+  // so downstream consumers (waterfall, IRR, KPI cards) keep working. This is additive.
+  const locConfig = globals.kpc_loc || { facility_size_usd: 0, interest_rate_apr: 0, capitalize_interest: true };
+  const locCap = locConfig.facility_size_usd || 0;
+  const locMonthlyRate = (locConfig.interest_rate_apr || 0) / 12;
+  port.loc_drawn = new Array(N).fill(0);
+  port.loc_repaid = new Array(N).fill(0);
+  port.loc_interest = new Array(N).fill(0);
+  port.loc_balance = new Array(N).fill(0);
+  port.loc_available = new Array(N).fill(0);
+  port.true_equity_drawn = new Array(N).fill(0);
+  port.true_equity_returned = new Array(N).fill(0);
+  port.true_equity_balance = new Array(N).fill(0);
+  port.cap_breach = new Array(N).fill(false);
+  let locBalance = 0;
+  let trueEquityBalance = 0;
+  for (let m = 0; m < N; m++) {
+    // 1. Accrue capitalized interest on outstanding LOC balance
+    const interest = locConfig.capitalize_interest === false ? 0 : locBalance * locMonthlyRate;
+    locBalance += interest;
+    port.loc_interest[m] = interest;
+
+    // 2. Allocate this month's equity demand to LOC (first) then true equity (overflow)
+    const demand = port.equity_called[m];
+    const room = Math.max(0, locCap - locBalance);
+    const locTake = Math.min(demand, room);
+    locBalance += locTake;
+    port.loc_drawn[m] = locTake;
+    const trueTake = demand - locTake;
+    port.true_equity_drawn[m] = trueTake;
+    trueEquityBalance += trueTake;
+    if (demand > 0 && trueTake > 0) port.cap_breach[m] = true; // LOC was insufficient this month
+
+    // 3. Sales-driven equity returns repay LOC first, then flow to true equity holders
+    const returned = port.equity_returned[m];
+    const locRepay = Math.min(returned, locBalance);
+    locBalance -= locRepay;
+    port.loc_repaid[m] = locRepay;
+    const trueReturn = returned - locRepay;
+    port.true_equity_returned[m] = trueReturn;
+    trueEquityBalance = Math.max(0, trueEquityBalance - trueReturn);
+
+    port.loc_balance[m] = locBalance;
+    port.true_equity_balance[m] = trueEquityBalance;
+    port.loc_available[m] = Math.max(0, locCap - locBalance);
+  }
+  port.loc_peak_balance = Math.max(0, ...port.loc_balance);
+  port.loc_peak_drawn_pct = locCap > 0 ? port.loc_peak_balance / locCap : 0;
+  port.loc_total_interest = port.loc_interest.reduce((a, b) => a + b, 0);
+  port.true_equity_total_drawn = port.true_equity_drawn.reduce((a, b) => a + b, 0);
+  port.cap_breach_months = port.cap_breach.reduce((a, b) => a + (b ? 1 : 0), 0);
+  port.kpc_loc_config = { ...locConfig };
+
   // Annual rollup (mode-aware: "calendar" or "juno13")
   const fyMode = globals.fiscal_year_mode ?? "calendar";
   const annual = {};
