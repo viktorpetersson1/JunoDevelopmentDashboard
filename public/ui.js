@@ -953,7 +953,7 @@ async function renderTakeoffPanel(projectId) {
 const PROJECT_TABS = [
   { key: "summary",  label: "Summary",   status: "live" },
   { key: "inputs",   label: "Inputs",    status: "live" },
-  { key: "timeline", label: "Timeline",  status: "coming", phase: "2.2" },
+  { key: "timeline", label: "Timeline",  status: "live" },
   { key: "capital",  label: "Capital",   status: "coming", phase: "2.3" },
   { key: "sales",    label: "Sales",     status: "coming", phase: "4"   },
   { key: "outputs",  label: "Outputs",   status: "coming", phase: "later" },
@@ -991,6 +991,8 @@ function renderProjectDetail(r) {
     tabBody = renderProjectSummaryTab(p, res, m);
   } else if (activeTab === "inputs") {
     tabBody = renderProjectInputs(p, res);
+  } else if (activeTab === "timeline") {
+    tabBody = renderProjectTimelineTab(p, res);
   } else {
     const t = PROJECT_TABS.find(t => t.key === activeTab);
     tabBody = `<div class="panel" style="text-align:center;padding:48px 24px;">
@@ -1634,6 +1636,157 @@ function renderProjectInputs(p, res) {
       <div class="inputs-col">${scenarioOverrides}</div>
     </div>
   `;
+}
+
+// v14.5 (Phase 2.2) — Timeline tab
+// A dedicated, full-width view of the project's sequence: milestones, monthly burn,
+// capital pressure heatmap, sales events, and a delay simulator that previews KPI
+// impact without saving anything.
+function renderProjectTimelineTab(p, res) {
+  return `
+    ${renderTimelineHeader(p, res)}
+    ${renderTimelineMilestoneBar(p, res)}
+    <div class="panel mb-24">
+      <h3>Monthly burn schedule</h3>
+      <div class="panel-subtitle">Outflows by category — land, construction, Kingshaus, soft costs, financing.</div>
+      <div class="chart-frame"><canvas id="chart-burn"></canvas></div>
+    </div>
+    ${renderCapitalPressureHeatmap(p, res)}
+    ${renderDelaySimulator(p, res)}
+    ${renderSalesEvents(p, res)}
+  `;
+}
+
+function renderTimelineHeader(p, res) {
+  const start = res.start_date || p.start_date;
+  const sale = res.sale_date;
+  const total = monthsBetween(start, sale);
+  return `<div class="mb-12 muted" style="font-size:12px;">
+    Project sequence from <strong style="color:var(--fg);">${fmt.ymShort(start)}</strong>
+    to <strong style="color:var(--fg);">${fmt.ymShort(sale)}</strong>
+    · ${total} months · scenario <strong style="color:var(--fg);">${escapeHtml(state.scenario.name)}</strong>
+  </div>`;
+}
+
+// Big version of the Summary timeline. Uses the same .timeline CSS but in a full-width panel.
+function renderTimelineMilestoneBar(p, res) {
+  return `<div class="panel mb-24">
+    <h3>Milestones</h3>
+    <div class="panel-subtitle">Key dates from land control through to close.</div>
+    ${renderProjectTimeline(p, res).replace(/^<div class="panel">|<\/div>$/g, "").replace(/<h3>.*?<\/h3>/, "")}
+  </div>`;
+}
+
+// Capital pressure heatmap — strip of monthly cells colored by equity called that month.
+function renderCapitalPressureHeatmap(p, res) {
+  const m = res.monthly;
+  const drawn = m.equity_drawn || [];
+  const startIdx = m.dates.findIndex(d => d === res.start_date);
+  const saleIdx = m.dates.findIndex(d => d === res.sale_date);
+  const lo = Math.max(0, startIdx - 1);
+  const hi = Math.min(m.dates.length, saleIdx + 2);
+  const slice = drawn.slice(lo, hi);
+  const sliceDates = m.dates.slice(lo, hi);
+  const maxVal = Math.max(1, ...slice);
+  const cells = slice.map((v, i) => {
+    const intensity = Math.max(0, v) / maxVal;
+    const opacity = intensity > 0 ? 0.15 + intensity * 0.7 : 0;
+    return `<div class="heatmap-cell" style="background: rgba(159, 18, 57, ${opacity.toFixed(3)});" title="${sliceDates[i]}: ${fmt.usdM(v)}">
+      <span class="heatmap-cell-label">${sliceDates[i].slice(2, 4)}-${sliceDates[i].slice(5, 7)}</span>
+    </div>`;
+  }).join("");
+  return `<div class="panel mb-24">
+    <h3>Capital pressure</h3>
+    <div class="panel-subtitle">Months where you need new equity called. Darker = more capital pulled that month. Peak: ${fmt.usdM(maxVal)}.</div>
+    <div class="heatmap-strip">${cells}</div>
+    <div class="heatmap-legend muted">
+      <span>Low</span>
+      <div class="heatmap-gradient"></div>
+      <span>High</span>
+    </div>
+  </div>`;
+}
+
+// Delay simulator — slider that shifts dates and recomputes KPIs live without saving.
+function renderDelaySimulator(p, res) {
+  const shift = state.ui.timeline_preview_shift ?? 0;
+  // Build a hypothetical project + scenario with the shift applied, just for preview.
+  const altScenario = { ...state.scenario, timing_shift_months: (state.scenario.timing_shift_months ?? 0) + shift };
+  let preview = null, err = null;
+  try { preview = calcProject(p, state.globals, altScenario); } catch (e) { err = e?.message; }
+
+  const base = res.kpis;
+  const alt = preview?.kpis;
+  const dKpi = (label, get, fmtFn, betterDown = false) => {
+    if (!alt) return kpiCard(label, "—", "—");
+    const b = get(base), a = get(alt);
+    const delta = a - b;
+    const pos = betterDown ? delta < 0 : delta > 0;
+    const cls = delta === 0 ? "" : (pos ? "pos" : "neg");
+    const sign = delta > 0 ? "+" : (delta < 0 ? "−" : "");
+    return kpiCard(label, fmtFn(a), `${sign}${fmtFn(Math.abs(delta))} vs current`, cls);
+  };
+  const dPct = (label, get, betterDown = false) => {
+    if (!alt) return kpiCard(label, "—", "—");
+    const b = get(base), a = get(alt);
+    const delta = (a ?? 0) - (b ?? 0);
+    const pos = betterDown ? delta < 0 : delta > 0;
+    const cls = delta === 0 ? "" : (pos ? "pos" : "neg");
+    const sign = delta > 0 ? "+" : (delta < 0 ? "−" : "");
+    return kpiCard(label, fmt.pct(a), `${sign}${fmt.pct(Math.abs(delta))} vs current`, cls);
+  };
+
+  return `<div class="panel mb-24">
+    <h3>Delay simulator</h3>
+    <div class="panel-subtitle">Drag the slider to shift start/closing by ±months. KPIs recompute live. Nothing is saved.</div>
+    <div class="delay-slider-row">
+      <input type="range" id="delay-slider" min="-6" max="12" step="1" value="${shift}">
+      <div class="delay-slider-value">
+        <span class="delta-num">${shift > 0 ? "+" : ""}${shift}</span>
+        <span class="muted" style="font-size:11px;">month${Math.abs(shift) === 1 ? "" : "s"}</span>
+      </div>
+      <button class="link-btn" id="delay-reset" ${shift === 0 ? 'style="visibility:hidden;"' : ""}>Reset</button>
+    </div>
+    ${err ? `<div class="note neg">Simulation error: ${escapeHtml(err)}</div>` : ""}
+    <div class="kpi-row" style="margin-top:18px;">
+      ${dKpi("Projected profit", k => k.gross_profit, fmt.usdM)}
+      ${dKpi("Peak equity",      k => k.peak_equity,  fmt.usdM, true)}
+      ${dKpi("Max debt",         k => k.peak_debt,    fmt.usdM, true)}
+      ${dPct("IRR",              k => k.irr_annual)}
+      ${dKpi("Gross sale",       k => k.total_sales,  fmt.usdM)}
+      ${dPct("Margin",           k => k.profit_margin_pct)}
+    </div>
+  </div>`;
+}
+
+// Sales events panel — listing / under-contract / closing dates and prices.
+function renderSalesEvents(p, res) {
+  const events = [
+    { label: "Listed",         date: p.listing_date,        price: p.listing_price_usd },
+    { label: "Under contract", date: p.under_contract_date, price: null },
+    { label: "Closed",         date: p.closing_date,        price: p.actual_sale_price_usd },
+  ];
+  const anyEvent = events.some(e => e.date);
+  if (!anyEvent) {
+    return `<div class="panel mb-24">
+      <h3>Sales events</h3>
+      <div class="muted" style="font-size:12px;">No sales events recorded yet. Once the project moves into pre-sales, fill in listing / contract / closing dates on the Inputs tab.</div>
+    </div>`;
+  }
+  return `<div class="panel mb-24">
+    <h3>Sales events</h3>
+    <div class="panel-subtitle">Actuals as the deal progresses. Edit dates and prices on the Inputs tab.</div>
+    <table class="tbl">
+      <thead><tr><th>Event</th><th>Date</th><th>Price</th></tr></thead>
+      <tbody>
+        ${events.map(e => `<tr>
+          <td>${e.label}</td>
+          <td>${e.date ? fmt.ymShort(e.date) : "—"}</td>
+          <td class="num">${e.price != null ? fmt.usdM(e.price) : "—"}</td>
+        </tr>`).join("")}
+      </tbody>
+    </table>
+  </div>`;
 }
 
 function renderProjectMonthlyTable(res) {
@@ -3235,6 +3388,19 @@ function attachViewEvents(result) {
   for (const btn of document.querySelectorAll("[data-project-tab]")) {
     btn.addEventListener("click", () => setProjectTab(btn.dataset.projectTab));
   }
+
+  // Timeline tab: delay simulator slider — transient preview, not saved.
+  const delaySlider = document.getElementById("delay-slider");
+  if (delaySlider) {
+    delaySlider.addEventListener("input", (e) => {
+      state.ui.timeline_preview_shift = Number(e.target.value) || 0;
+      notify();
+    });
+  }
+  document.getElementById("delay-reset")?.addEventListener("click", () => {
+    state.ui.timeline_preview_shift = 0;
+    notify();
+  });
   for (const sel of document.querySelectorAll("[data-global-select]")) {
     sel.addEventListener("change", (e) => {
       const key = e.target.dataset.globalSelect;
@@ -3513,8 +3679,14 @@ function renderCharts(result) {
     drawCashflowChart(result, isDark);
     drawBalancesChart(result, isDark);
   } else if (state.ui.view === "project_detail") {
-    drawProjectChart(result, isDark);
-    renderTakeoffPanel(state.ui.selected_project_id);
+    // Tab-specific chart draws — Summary keeps the existing cash-flow chart,
+    // Timeline gets the new burn schedule chart.
+    if (state.ui.project_tab === "summary") {
+      drawProjectChart(result, isDark);
+      renderTakeoffPanel(state.ui.selected_project_id);
+    } else if (state.ui.project_tab === "timeline") {
+      drawBurnChart(result, isDark);
+    }
   } else if (state.ui.view === "waterfall") {
     drawWaterfallChart(result, isDark);
     drawEquityMonthlyChart(result, isDark);
@@ -4074,6 +4246,41 @@ function drawProjectChart(r, isDark) {
     options: { responsive: true, maintainAspectRatio: false,
       scales: { x: { stacked: true, ticks: { autoSkip: true, maxTicksLimit: 12 } }, y: { stacked: true, ticks: { callback: (v) => "$" + (v/1e6).toFixed(1) + "M" } } },
       plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatTooltip(ctx.parsed.y)}` } } },
+    },
+  });
+}
+
+// v14.5 (Phase 2.2) — Monthly burn schedule chart for the Timeline tab.
+// Cost-focused (no sales line): stacked monthly outflows for one project.
+function drawBurnChart(r, isDark) {
+  destroyChart("chart-burn");
+  const ctx = document.getElementById("chart-burn");
+  if (!ctx) return;
+  const id = state.ui.selected_project_id;
+  const res = r.by_project.find((x) => x.project_id === id);
+  if (!res) return;
+  const m = res.monthly;
+  // Show absolute magnitudes (positive bars) so the chart reads as "burn intensity".
+  const abs = (arr) => arr.map(v => Math.abs(v || 0));
+  const labels = m.dates.map(d => d.slice(2));
+  charts["chart-burn"] = new Chart(ctx, {
+    type: "bar",
+    data: { labels, datasets: [
+      { label: "Land",       data: abs(m.land_cost),  backgroundColor: "#9f1239" },
+      { label: "Build",      data: abs(m.build_cost), backgroundColor: "#c2410c" },
+      { label: "Kingshaus",  data: abs(m.kingshaus),  backgroundColor: "#a16207" },
+      { label: "Soft costs", data: abs(m.soft_cost),  backgroundColor: "#475569" },
+      { label: "Financing",  data: abs(m.interest),   backgroundColor: "#52525b" },
+    ]},
+    options: { responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { stacked: true, ticks: { autoSkip: true, maxTicksLimit: 12 } },
+        y: { stacked: true, ticks: { callback: (v) => "$" + (v/1e6).toFixed(1) + "M" } },
+      },
+      plugins: {
+        legend: { position: "bottom" },
+        tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatTooltip(ctx.parsed.y)}` } },
+      },
     },
   });
 }

@@ -34,6 +34,7 @@ export const state = {
     view: "portfolio",
     selected_project_id: "p2",
     project_tab: "summary",  // v14.4 (Phase 2.1): in-project workspace tab
+    timeline_preview_shift: 0,  // v14.5 (Phase 2.2): transient delay-simulator slider value (months); not persisted
     theme: "light",
     mobileMoreOpen: false,  // v13: tracks whether the mobile "More" drawer is open
     wizard: { open: false, step: 0, draft: null },  // v14.1: New Project wizard state
