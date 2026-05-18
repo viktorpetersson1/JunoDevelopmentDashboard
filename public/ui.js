@@ -960,10 +960,10 @@ const PROJECT_TABS = [
   { key: "inputs",   label: "Inputs",    status: "live" },
   { key: "timeline", label: "Timeline",  status: "live" },
   { key: "capital",  label: "Capital",   status: "live" },
+  { key: "actuals",  label: "Actuals",   status: "live" },
   { key: "sales",    label: "Sales",     status: "coming", phase: "4"   },
-  { key: "outputs",  label: "Outputs",   status: "coming", phase: "later" },
-  { key: "risks",    label: "Risks",     status: "coming", phase: "3"   },
-  { key: "activity", label: "Activity",  status: "coming", phase: "3"   },
+  { key: "risks",    label: "Risks",     status: "coming", phase: "3.4" },
+  { key: "activity", label: "Activity",  status: "coming", phase: "3.4" },
 ];
 
 function renderProjectDetail(r) {
@@ -1000,6 +1000,8 @@ function renderProjectDetail(r) {
     tabBody = renderProjectTimelineTab(p, res);
   } else if (activeTab === "capital") {
     tabBody = renderProjectCapitalTab(p, res);
+  } else if (activeTab === "actuals") {
+    tabBody = renderProjectActualsTab(p, res);
   } else {
     const t = PROJECT_TABS.find(t => t.key === activeTab);
     tabBody = `<div class="panel" style="text-align:center;padding:48px 24px;">
@@ -1863,6 +1865,136 @@ function renderProjectCapitalTab(p, res) {
       The top-level Capital screen shows the actual LOC drawdown curve and any funding gaps.
       Until the engine allocates LOC capacity per project explicitly, this tab treats "equity" as a single bucket
       (LOC + owner equity).
+    </div>
+  `;
+}
+
+// v14.9 (Phase 3.3) — Project Actuals tab
+// Forecast vs actuals tracking for cost lines. Entry inputs sit on top, variance table below.
+// Each line gets a variance flag chip with severity: on-budget / over / way over.
+function renderProjectActualsTab(p, res) {
+  const actuals = p.actuals || {};
+  const m = res.monthly;
+  const lines = [
+    { key: "land",         label: "Land",                forecast: -m.land_cost.reduce((a,b)=>a+b,0) },
+    { key: "construction", label: "Construction",        forecast: -m.build_cost.reduce((a,b)=>a+b,0) },
+    { key: "kingshaus",    label: "Kingshaus / superstructure", forecast: -m.kingshaus.reduce((a,b)=>a+b,0) },
+    { key: "soft",         label: "Soft costs",          forecast: -m.soft_cost.reduce((a,b)=>a+b,0) },
+    { key: "financing",    label: "Financing",           forecast: -m.interest.reduce((a,b)=>a+b,0) },
+  ];
+  const totalForecast = lines.reduce((a, l) => a + l.forecast, 0);
+  const totalActual = lines.reduce((a, l) => a + (actuals[l.key] || 0), 0);
+  const totalVariance = totalActual - totalForecast;
+  const totalVariancePct = totalForecast > 0 ? totalVariance / totalForecast : 0;
+
+  const contingency = p.contingency_used_usd ?? 0;
+  const contingencyBudget = (totalForecast * (state.globals.contingency_pct ?? 0.05));
+  const contingencyBurnPct = contingencyBudget > 0 ? contingency / contingencyBudget : 0;
+
+  const varianceFlag = (vPct) => {
+    if (vPct <= 0) return { label: "On budget", cls: "ok" };
+    if (vPct < 0.05) return { label: "Slight over", cls: "low" };
+    if (vPct < 0.15) return { label: "Over budget", cls: "medium" };
+    return { label: "Way over", cls: "high" };
+  };
+
+  const anyActuals = lines.some(l => (actuals[l.key] || 0) > 0);
+
+  // KPI strip — top of the tab
+  const totalFlag = varianceFlag(totalVariancePct);
+  const kpiStrip = `<div class="kpi-row">
+    ${kpiCard("Forecast", fmt.usdM(totalForecast), "Total dev cost (planned)")}
+    ${kpiCard("Actual to date", fmt.usdM(totalActual), anyActuals ? "Across all lines" : "No actuals entered yet", anyActuals ? "" : "")}
+    ${kpiCard("Variance", `${totalVariance >= 0 ? "+" : "−"}${fmt.usdM(Math.abs(totalVariance))}`, fmt.pct(totalVariancePct), totalVariance <= 0 ? "pos" : totalVariance < totalForecast * 0.05 ? "warn" : "neg")}
+    ${kpiCard("Contingency burn", fmt.pct(contingencyBurnPct), `${fmt.usdM(contingency)} of ${fmt.usdM(contingencyBudget)} budget`, contingencyBurnPct >= 0.8 ? "neg" : contingencyBurnPct >= 0.5 ? "warn" : "pos")}
+  </div>`;
+
+  // Entry panel — number inputs side-by-side with forecast labels
+  const entryRowsHtml = lines.map(l => {
+    const actual = actuals[l.key] || 0;
+    const variance = actual - l.forecast;
+    const vPct = l.forecast > 0 ? variance / l.forecast : 0;
+    const flag = actual > 0 ? varianceFlag(vPct) : null;
+    return `<div class="actuals-row">
+      <div class="actuals-row-label"><strong>${l.label}</strong></div>
+      <div class="actuals-row-forecast">
+        <div class="muted" style="font-size:10px;letter-spacing:0.04em;text-transform:uppercase;">Forecast</div>
+        <div>${fmt.usdM(l.forecast)}</div>
+      </div>
+      <div class="actuals-row-actual">
+        <div class="muted" style="font-size:10px;letter-spacing:0.04em;text-transform:uppercase;">Actual paid</div>
+        <input class="input" type="number" inputmode="decimal" step="1000" data-actual="${l.key}" value="${actual}" placeholder="0">
+      </div>
+      <div class="actuals-row-variance">
+        ${actual > 0 ? `
+          <div class="muted" style="font-size:10px;letter-spacing:0.04em;text-transform:uppercase;">Variance</div>
+          <div class="num ${variance <= 0 ? "pos" : "neg"}">${variance >= 0 ? "+" : "−"}${fmt.usdM(Math.abs(variance))} <span class="muted" style="font-weight:400;">(${fmt.pct(vPct)})</span></div>
+        ` : `<div class="muted" style="font-size:11px;font-style:italic;">No data</div>`}
+      </div>
+      <div class="actuals-row-flag">
+        ${flag ? `<span class="variance-flag ${flag.cls}">${flag.label}</span>` : ""}
+      </div>
+    </div>`;
+  }).join("");
+
+  return `
+    ${kpiStrip}
+
+    <div class="panel mb-24">
+      <h3>Forecast vs actuals</h3>
+      <div class="panel-subtitle">Enter the amount paid to date for each line. Variance is computed live (actual − forecast). Save is automatic.</div>
+      <div class="actuals-list">
+        ${entryRowsHtml}
+      </div>
+      <div class="actuals-row actuals-total" style="margin-top:14px;">
+        <div class="actuals-row-label"><strong>Total dev cost</strong></div>
+        <div class="actuals-row-forecast">
+          <div class="muted" style="font-size:10px;letter-spacing:0.04em;text-transform:uppercase;">Forecast</div>
+          <div><strong>${fmt.usdM(totalForecast)}</strong></div>
+        </div>
+        <div class="actuals-row-actual">
+          <div class="muted" style="font-size:10px;letter-spacing:0.04em;text-transform:uppercase;">Actual paid</div>
+          <div><strong>${fmt.usdM(totalActual)}</strong></div>
+        </div>
+        <div class="actuals-row-variance">
+          <div class="muted" style="font-size:10px;letter-spacing:0.04em;text-transform:uppercase;">Variance</div>
+          <div class="num ${totalVariance <= 0 ? "pos" : "neg"}"><strong>${totalVariance >= 0 ? "+" : "−"}${fmt.usdM(Math.abs(totalVariance))}</strong> <span class="muted" style="font-weight:400;">(${fmt.pct(totalVariancePct)})</span></div>
+        </div>
+        <div class="actuals-row-flag">
+          <span class="variance-flag ${totalFlag.cls}">${totalFlag.label}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel mb-24">
+      <h3>Contingency tracking</h3>
+      <div class="panel-subtitle">${fmt.pct(state.globals.contingency_pct ?? 0.05)} standard contingency on hard costs. Drawing here absorbs cost overruns before they hit margin.</div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label>Contingency budget</label>
+          <input class="input" type="text" value="${fmt.usdM(contingencyBudget)}" disabled>
+          <div class="hint">${fmt.pct(state.globals.contingency_pct ?? 0.05)} × total hard cost forecast</div>
+        </div>
+        <div class="form-row">
+          <label>Contingency drawn (USD)</label>
+          <input class="input" type="number" inputmode="decimal" step="1000" data-field="contingency_used_usd" value="${contingency}">
+          <div class="hint">${fmt.pct(contingencyBurnPct)} of budget consumed</div>
+        </div>
+      </div>
+      ${contingencyBurnPct >= 0.8 ? `<div class="note neg" style="margin-top:14px;">
+        <strong>Contingency nearly exhausted (${fmt.pct(contingencyBurnPct)}).</strong> Overruns from here flow directly to margin compression.
+      </div>` : contingencyBurnPct >= 0.5 ? `<div class="note warn" style="margin-top:14px;">
+        Contingency burn over 50%. Track closely; consider scope freeze on discretionary items.
+      </div>` : ""}
+    </div>
+
+    <div class="panel mb-24">
+      <h3>What's next</h3>
+      <div class="muted" style="font-size:12px;line-height:1.6;">
+        Phase 4 will add: <strong>notes per line</strong> (free-form explanation of overruns),
+        <strong>actuals timeline view</strong> (monthly cumulative actuals vs forecast curve),
+        and <strong>change order log</strong> tying contingency draws to specific events.
+      </div>
     </div>
   `;
 }
