@@ -796,69 +796,282 @@ function renderProjectDetail(r) {
 
   const isExcluded = state.scenario.excluded_project_ids.includes(p.id);
 
+  // v14.2 — "last updated" inferred from the most recent audit_log entry mentioning this project
+  const lastEdit = (state.audit_log || []).find(e =>
+    e.detail?.project_id === p.id || (e.message || "").toLowerCase().includes((p.name || "").toLowerCase())
+  );
+  const lastUpdatedText = lastEdit?.ts
+    ? new Date(lastEdit.ts).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+    : "no edits yet";
+
   return `
-    <div class="row between mb-12">
-      <div>
-        <div class="section-title" style="margin:0;">${p.name} ${stageBadge(p, isExcluded)}</div>
-        <div class="muted">${p.address}</div>
+    <!-- v14.2 Project Summary header -->
+    <div class="project-summary-header mb-24">
+      <div class="project-summary-title">
+        <div class="row gap-sm" style="align-items:center;">
+          <h1 class="project-name">${escapeHtml(p.name)}</h1>
+          ${stageBadge(p, isExcluded)}
+          <span class="badge ${p.status || "pipeline"}">${(p.status || "pipeline").replace(/_/g," ")}</span>
+        </div>
+        <div class="project-summary-meta muted">
+          <span>${escapeHtml(p.address || "—")}</span>
+          <span>·</span>
+          <span>Scenario: <strong style="color:var(--fg);">${escapeHtml(state.scenario.name)}</strong></span>
+          <span>·</span>
+          <span>Last updated: ${lastUpdatedText}</span>
+        </div>
       </div>
-      <div class="row gap-sm wrap">
+      <div class="project-summary-actions row gap-sm wrap">
         <select class="input" id="project-picker" style="max-width:240px;">
           ${state.projects.map(x => `<option value="${x.id}" ${x.id===id?"selected":""}>${x.name}</option>`).join("")}
         </select>
-        <select class="input" data-field="stage" style="max-width:200px;">
-          ${(state.globals.lifecycle_stages || LIFECYCLE_STAGES).map(s => `<option value="${s.id}" ${(p.stage || "sourcing") === s.id ? "selected" : ""}>${s.label}</option>`).join("")}
-        </select>
+        <a href="#edit-assumptions" class="btn small secondary">Edit assumptions</a>
         <button class="btn small ${isExcluded ? "secondary" : "danger"}" data-action="exclude" data-id="${p.id}">${isExcluded ? "Include" : "Exclude"}</button>
         <button class="btn small secondary" data-action="clone" data-id="${p.id}">Clone</button>
         <button class="btn small danger" data-action="remove" data-id="${p.id}">Delete</button>
       </div>
     </div>
 
+    <!-- v14.2 KPI row — 8 cards per brief -->
     <div class="kpi-row">
-      ${kpiCard("Total cost", fmt.usdM(res.kpis.total_dev_cost), `${fmt.num(res.kpis.total_cost_per_sqft, 0)}/sqft`)}
-      ${kpiCard("Sale price", fmt.usdM(res.kpis.total_sales), `${fmt.num(res.kpis.sale_price_per_sqft, 0)}/sqft`)}
-      ${kpiCard("Gross profit", fmt.usdM(res.kpis.gross_profit), fmt.pct(res.kpis.profit_margin_pct), res.kpis.gross_profit >= 0 ? "pos" : "neg")}
-      ${kpiCard("Financing cost", fmt.usdM(res.kpis.total_interest), `Interest + fees`)}
-      ${kpiCard("MOIC", `${(res.kpis.moic || 0).toFixed(2)}x`, `Equity multiple`)}
-      ${kpiCard("Annualized IRR", res.kpis.irr_annual == null ? "—" : fmt.pct(res.kpis.irr_annual), `Project IRR`)}
+      ${kpiCard("Total dev cost", fmt.usdM(res.kpis.total_dev_cost), `${fmt.num(res.kpis.total_cost_per_sqft, 0)}/sqft`)}
+      ${kpiCard("Gross sale value", fmt.usdM(res.kpis.total_sales), `${fmt.num(res.kpis.sale_price_per_sqft, 0)}/sqft`)}
+      ${kpiCard("Projected profit", fmt.usdM(res.kpis.gross_profit), fmt.pct(res.kpis.profit_margin_pct), res.kpis.gross_profit >= 0 ? "pos" : "neg")}
+      ${kpiCard("Margin", fmt.pct(res.kpis.profit_margin_pct), `Profit / sales`)}
       ${kpiCard("Peak equity", fmt.usdM(res.kpis.peak_equity), `Project-level`)}
-      ${kpiCard("Peak debt", fmt.usdM(res.kpis.peak_debt), `Project-level`)}
-      ${kpiCard("Yield on cost", fmt.pct(res.kpis.yield_on_cost), `Profit / all-in cost`, res.kpis.yield_on_cost >= 0.15 ? "pos" : res.kpis.yield_on_cost >= 0.08 ? "" : "neg")}
-      ${kpiCard("Profit per sqft", `$${Math.round(res.kpis.profit_per_sqft).toLocaleString()}`, `${fmt.num(p.villa_sqft)} sqft villa`)}
+      ${kpiCard("Max debt", fmt.usdM(res.kpis.peak_debt), `Project-level`)}
+      ${kpiCard("Annualized IRR", res.kpis.irr_annual == null ? "—" : fmt.pct(res.kpis.irr_annual), `Equity cash flow`)}
+      ${kpiCard("MOIC", `${(res.kpis.moic || 0).toFixed(2)}x`, `Equity multiple`)}
     </div>
 
+    <!-- v14.2 Timeline + Cash flow chart -->
     <div class="panel-row">
+      ${renderProjectTimeline(p, res)}
       <div class="panel">
-        <h3>Inputs</h3>
-        <div class="panel-subtitle">Blank override fields use global defaults</div>
+        <h3>Monthly cash flow</h3>
+        <div class="panel-subtitle">${m.dates[0]} → ${m.dates[m.dates.length-1]} · debt &amp; equity overlay</div>
+        <div class="chart-frame"><canvas id="chart-project"></canvas></div>
+      </div>
+    </div>
+
+    <!-- v14.2 Forecast vs Actuals band (promoted per Phase 1 dev plan) -->
+    ${renderActualsVariance(p, res)}
+
+    <!-- v14.2 Lower band: Sources vs Uses · Risks · Recent changes -->
+    <div class="panel-three-row mb-24">
+      ${renderSourcesUses(p, res)}
+      ${renderProjectRiskCards(p, res)}
+      ${renderProjectRecentChanges(p)}
+    </div>
+
+    <!-- Edit assumptions — collapsed by default. Anchored from the header button. -->
+    <div class="panel mb-24" id="edit-assumptions">
+      <details ${state.ui._inputs_open ? "open" : ""}>
+        <summary style="cursor:pointer;font-weight:600;">Edit assumptions</summary>
+        <div class="panel-subtitle" style="margin-top:8px;">Blank override fields use global defaults. Changes save automatically.</div>
         ${renderProjectForm(p, res)}
-      </div>
-      <div class="panel">
-        <h3>Sensitivity (this project)</h3>
-        <div class="panel-subtitle">Profit impact of one-factor changes vs current scenario</div>
-        <table class="tbl">
-          <thead><tr><th>Case</th><th>Profit</th><th>Δ vs current</th></tr></thead>
-          <tbody>${sensRows}</tbody>
-        </table>
-      </div>
+      </details>
+    </div>
+
+    <!-- Sensitivity for this project — Phase 3 will fold this into the Risks center -->
+    <div class="panel mb-24">
+      <h3>Sensitivity</h3>
+      <div class="panel-subtitle">Profit impact of one-factor changes vs current scenario.</div>
+      <table class="tbl">
+        <thead><tr><th>Case</th><th>Profit</th><th>Δ vs current</th></tr></thead>
+        <tbody>${sensRows}</tbody>
+      </table>
     </div>
 
     <div class="panel mb-24" id="takeoff-panel-container"></div>
 
     <div class="panel mb-24">
-      <h3>Monthly cash flow</h3>
-      <div class="panel-subtitle">All values in USD · ${m.dates[0]} to ${m.dates[m.dates.length-1]}</div>
-      <div class="chart-frame"><canvas id="chart-project"></canvas></div>
-    </div>
-
-    ${renderActualsVariance(p, res)}
-
-    <div class="panel mb-24">
-      <h3>Monthly detail grid</h3>
+      <h3>Monthly forecast</h3>
       <div class="scroll-x">${renderProjectMonthlyTable(res)}</div>
     </div>
   `;
+}
+
+// v14.2 — Project Summary: Timeline panel
+// Visual milestone bar from project start → sale, with markers for key dates and a "today" indicator.
+function renderProjectTimeline(p, res) {
+  const start = res.start_date || p.start_date;
+  const sale = res.sale_date || addMonthsLite(start, p.program_months || state.globals.default_program_months);
+  if (!start || !sale) {
+    return `<div class="panel"><h3>Timeline</h3><div class="muted">Set a start date to see the project timeline.</div></div>`;
+  }
+  const totalMonths = monthsBetween(start, sale);
+  if (totalMonths <= 0) {
+    return `<div class="panel"><h3>Timeline</h3><div class="muted">Program duration must be positive.</div></div>`;
+  }
+  const today = new Date();
+  const todayYM = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+  const milestones = [
+    { ym: start,                 label: "Land / start",    kind: "start" },
+    { ym: p.listing_date,        label: "Listed",          kind: "list" },
+    { ym: p.under_contract_date, label: "Under contract",  kind: "uc" },
+    { ym: p.closing_date || sale,label: "Closing",         kind: "close" },
+  ].filter(m => m.ym);
+  const pos = (ym) => {
+    const off = monthsBetween(start, ym);
+    return Math.max(0, Math.min(100, (off / totalMonths) * 100));
+  };
+  const todayPos = pos(todayYM);
+  const todayInRange = todayPos > 0 && todayPos < 100;
+  const stage = LIFECYCLE_STAGES.find(s => s.id === (p.stage || "sourcing"));
+  return `<div class="panel">
+    <h3>Timeline <span class="muted" style="font-weight:400;font-size:11px;margin-left:8px;">${fmt.ymShort(start)} → ${fmt.ymShort(sale)} · ${totalMonths} months</span></h3>
+    <div class="timeline">
+      <div class="timeline-bar">
+        <div class="timeline-fill" style="width:${todayInRange ? todayPos : (todayPos >= 100 ? 100 : 0)}%;"></div>
+        ${todayInRange ? `<div class="timeline-today" style="left:${todayPos}%;" title="Today">Today</div>` : ""}
+        ${milestones.map(m => `
+          <div class="timeline-marker" style="left:${pos(m.ym)}%;" title="${m.label}: ${fmt.ymShort(m.ym)}">
+            <span class="timeline-marker-dot kind-${m.kind}"></span>
+            <span class="timeline-marker-label">${m.label}<br><span class="muted">${fmt.ymShort(m.ym)}</span></span>
+          </div>`).join("")}
+      </div>
+    </div>
+    <div class="timeline-stage muted">Current stage: <strong style="color:var(--fg);">${stage?.label || "Sourcing"}</strong>${stage?.description ? ` — ${stage.description}` : ""}</div>
+  </div>`;
+}
+
+// Local helpers (kept lightweight — engine.js owns the canonical versions but we avoid the import dance here)
+function addMonthsLite(ym, n) {
+  if (!ym || !/^\d{4}-\d{2}$/.test(ym)) return null;
+  const [y, m] = ym.split("-").map(Number);
+  const nInt = Math.round(n || 0);
+  const total = y * 12 + (m - 1) + nInt;
+  return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, "0")}`;
+}
+function monthsBetween(a, b) {
+  if (!a || !b) return 0;
+  const [ay, am] = a.split("-").map(Number);
+  const [by, bm] = b.split("-").map(Number);
+  return (by - ay) * 12 + (bm - am);
+}
+
+// v14.2 — Project Summary: Sources vs Uses
+function renderSourcesUses(p, res) {
+  const k = res.kpis;
+  const sources = [
+    { label: "Senior construction debt (peak)", value: k.peak_debt },
+    { label: "Equity / KPC LOC (peak called)",   value: k.peak_equity },
+    { label: "Gross sale proceeds",               value: k.total_sales },
+  ];
+  const uses = [
+    { label: "Land",                              value: -res.monthly.land_cost.reduce((a,b)=>a+b,0) },
+    { label: "Construction",                      value: -res.monthly.build_cost.reduce((a,b)=>a+b,0) },
+    { label: "Kingshaus / superstructure",        value: -res.monthly.kingshaus.reduce((a,b)=>a+b,0) },
+    { label: "Soft costs",                        value: -res.monthly.soft_cost.reduce((a,b)=>a+b,0) },
+    { label: "Financing (interest + fees)",       value: k.total_interest },
+  ];
+  const rowsHtml = (list) => list.map(r => `<tr><td>${r.label}</td><td class="num">${fmt.usdM(r.value)}</td></tr>`).join("");
+  return `<div class="panel">
+    <h3>Sources vs Uses</h3>
+    <div class="panel-subtitle">Capital coming in vs costs going out across the project lifecycle.</div>
+    <div class="sources-uses">
+      <div>
+        <div class="section-title" style="margin-bottom:6px;">Sources</div>
+        <table class="tbl">${rowsHtml(sources)}</table>
+      </div>
+      <div>
+        <div class="section-title" style="margin-bottom:6px;">Uses</div>
+        <table class="tbl">${rowsHtml(uses)}</table>
+      </div>
+    </div>
+  </div>`;
+}
+
+// v14.2 — Project Summary: per-project Risk cards
+// Uses the same thresholds as the Portfolio screen but applied at the project level.
+function renderProjectRiskCards(p, res) {
+  const k = res.kpis;
+  const g = state.globals;
+  // Per-project pro-rata of portfolio-level peak-equity / max-debt thresholds.
+  // For a single project we use a proportionate fraction (1 / typical-pipeline-size = 1/8).
+  const proRata = 1 / 8;
+  const peakEqProRata = g.risk_peak_equity_threshold * proRata;
+  const peakDebtProRata = g.risk_max_debt_threshold * proRata;
+  const cards = [
+    {
+      label: "Peak equity",
+      value: fmt.usdM(k.peak_equity),
+      ok: k.peak_equity <= peakEqProRata,
+      detail: `vs ${fmt.usdM(peakEqProRata)} per-project tolerance`,
+    },
+    {
+      label: "Peak debt",
+      value: fmt.usdM(k.peak_debt),
+      ok: k.peak_debt <= peakDebtProRata,
+      detail: `vs ${fmt.usdM(peakDebtProRata)} per-project tolerance`,
+    },
+    {
+      label: "Annualized IRR",
+      value: k.irr_annual == null ? "—" : fmt.pct(k.irr_annual),
+      ok: k.irr_annual == null || k.irr_annual >= g.risk_min_irr_annual,
+      detail: `min ${fmt.pct(g.risk_min_irr_annual)}`,
+    },
+    {
+      label: "Profit margin",
+      value: fmt.pct(k.profit_margin_pct),
+      ok: k.profit_margin_pct >= g.risk_min_margin_pct,
+      detail: `min ${fmt.pct(g.risk_min_margin_pct)}`,
+    },
+    {
+      label: "MOIC",
+      value: `${(k.moic || 0).toFixed(2)}x`,
+      ok: k.moic == null || k.moic >= g.risk_min_moic,
+      detail: `min ${g.risk_min_moic.toFixed(2)}x`,
+    },
+  ];
+  return `<div class="panel">
+    <h3>Risks</h3>
+    <div class="panel-subtitle">Health checks for this project against portfolio risk thresholds.</div>
+    <div class="risk-cards">
+      ${cards.map(c => `
+        <div class="risk-card ${c.ok ? "ok" : "warn"}">
+          <div class="risk-card-status">${c.ok ? "✓" : "!"}</div>
+          <div class="risk-card-body">
+            <div class="risk-card-label">${c.label}</div>
+            <div class="risk-card-value">${c.value}</div>
+            <div class="risk-card-detail muted">${c.detail}</div>
+          </div>
+        </div>`).join("")}
+    </div>
+  </div>`;
+}
+
+// v14.2 — Project Summary: Recent changes filtered to this project
+function renderProjectRecentChanges(p) {
+  const log = state.audit_log || [];
+  // Filter to entries where the project is mentioned in detail or message
+  const entries = log.filter(e => {
+    if (e.detail?.project_id === p.id) return true;
+    if (e.detail?.source_id === p.id || e.detail?.target_id === p.id) return true;
+    if (e.message?.toLowerCase().includes(p.name?.toLowerCase() || "##nope##")) return true;
+    return false;
+  }).slice(0, 5);
+  if (!entries.length) {
+    return `<div class="panel">
+      <h3>Recent changes</h3>
+      <div class="muted" style="font-size:12px;">No edits logged yet for this project.</div>
+    </div>`;
+  }
+  return `<div class="panel">
+    <h3>Recent changes</h3>
+    <div class="panel-subtitle">Last 5 edits affecting this project.</div>
+    <ul class="recent-changes">
+      ${entries.map(e => {
+        const when = e.ts ? new Date(e.ts).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
+        const who = e.user_email ? e.user_email.split("@")[0] : "—";
+        return `<li>
+          <div class="recent-msg">${escapeHtml(e.message || "(unspecified)")}</div>
+          <div class="muted recent-meta">${when} · ${who}</div>
+        </li>`;
+      }).join("")}
+    </ul>
+  </div>`;
 }
 
 // v12.3 — budget vs actual variance for this project

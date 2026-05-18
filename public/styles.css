@@ -489,6 +489,181 @@ tr.drag-over-after td { border-bottom: 2px solid var(--accent); }
 }
 .link-btn:hover { color: var(--fg); }
 
+/* ---------- Project Summary (v14.2) ---------- */
+
+.project-summary-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.project-summary-title { min-width: 0; flex: 1; }
+.project-summary-title .project-name {
+  margin: 0 0 6px 0;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--fg);
+}
+.project-summary-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 12px;
+  margin-top: 6px;
+}
+.project-summary-meta > span:not(.muted) strong { font-weight: 600; }
+.project-summary-actions { flex-wrap: wrap; }
+
+/* Three-column lower band: Sources/Uses + Risks + Recent changes */
+.panel-three-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 1100px) { .panel-three-row { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 720px)  { .panel-three-row { grid-template-columns: 1fr; } }
+
+/* Timeline panel */
+.timeline {
+  padding: 18px 8px 36px;
+}
+.timeline-bar {
+  position: relative;
+  height: 6px;
+  background: var(--surface-3);
+  border-radius: 3px;
+}
+.timeline-fill {
+  position: absolute;
+  top: 0; left: 0;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  opacity: 0.7;
+}
+.timeline-marker {
+  position: absolute;
+  top: -8px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.timeline-marker-dot {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--accent);
+  margin-bottom: 6px;
+}
+.timeline-marker-dot.kind-start { background: var(--accent); }
+.timeline-marker-dot.kind-list  { border-color: var(--info); }
+.timeline-marker-dot.kind-uc    { border-color: var(--warn); }
+.timeline-marker-dot.kind-close { background: var(--pos); border-color: var(--pos); }
+.timeline-marker-label {
+  position: absolute;
+  top: 24px;
+  font-size: 10px;
+  white-space: nowrap;
+  text-align: center;
+  color: var(--fg-2);
+  font-weight: 500;
+  line-height: 1.3;
+}
+.timeline-today {
+  position: absolute;
+  top: -22px;
+  transform: translateX(-50%);
+  background: var(--fg);
+  color: var(--accent-fg);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 3px;
+  z-index: 2;
+}
+.timeline-today::after {
+  content: "";
+  position: absolute;
+  bottom: -16px; left: 50%;
+  transform: translateX(-50%);
+  width: 1px;
+  height: 16px;
+  background: var(--fg);
+}
+.timeline-stage {
+  margin-top: 28px;
+  font-size: 12px;
+}
+
+/* Sources vs Uses */
+.sources-uses {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.sources-uses table.tbl th,
+.sources-uses table.tbl td { padding: 6px 8px; }
+@media (max-width: 720px) { .sources-uses { grid-template-columns: 1fr; } }
+
+/* Risk cards (per project) */
+.risk-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.risk-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.risk-card.ok { border-left: 3px solid var(--pos); }
+.risk-card.warn { border-left: 3px solid var(--warn); background: rgba(161, 98, 7, 0.04); }
+.risk-card-status {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.risk-card.ok .risk-card-status { background: rgba(21, 128, 61, 0.10); color: var(--pos); }
+.risk-card.warn .risk-card-status { background: rgba(161, 98, 7, 0.14); color: var(--warn); }
+.risk-card-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.risk-card-label { font-size: 11px; color: var(--fg-3); font-weight: 500; }
+.risk-card-value { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.risk-card-detail { font-size: 10px; }
+
+/* Recent changes */
+.recent-changes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.recent-changes li {
+  border-left: 2px solid var(--border-strong);
+  padding: 4px 0 4px 10px;
+}
+.recent-changes .recent-msg { font-size: 12px; color: var(--fg-2); line-height: 1.4; }
+.recent-changes .recent-meta { font-size: 10px; margin-top: 2px; }
+
 /* ---------- New Project wizard ---------- */
 
 .wizard-overlay {
