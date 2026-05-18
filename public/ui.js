@@ -518,11 +518,182 @@ function renderBasicOverview(r) {
 
 // ---------- Portfolio view ----------
 
+// v14.3 — Portfolio support helpers (Phase 1.3)
+
+// What's the next significant thing for this project? Used in the portfolio table.
+function nextMilestone(p, res) {
+  if (!p) return { label: "—", date: null };
+  const stage = p.stage || "sourcing";
+  const computedSale = res?.sale_date;
+  switch (stage) {
+    case "sold":
+    case "archived":         return { label: "Closed",          date: p.closing_date || computedSale };
+    case "under_contract":   return { label: "Closing",         date: p.closing_date || computedSale };
+    case "pre_sales":        return { label: "Under contract",  date: p.under_contract_date };
+    case "construction":     return { label: "Pre-sales / list", date: p.listing_date };
+    case "pre_construction": return { label: "Construction",    date: p.start_date };
+    case "permitting":       return { label: "Pre-construction", date: null };
+    case "design":           return { label: "Permitting",       date: null };
+    case "entitlement":      return { label: "Design",           date: null };
+    case "land_control":     return { label: "Entitlement",      date: p.start_date };
+    case "sourcing":
+    default:                 return { label: "Land control",     date: p.start_date };
+  }
+}
+
+// Returns a short list of risk-flag names that apply to this project right now.
+// Shared between the Project Summary risk cards and the Portfolio risk watchlist.
+function evaluateProjectRisks(p, res) {
+  const k = res?.kpis;
+  if (!k) return [];
+  const g = state.globals;
+  const proRata = 1 / 8;  // per-project share of portfolio tolerance — proxy until Phase 2 LOC modeling
+  const flags = [];
+  if (k.peak_equity > g.risk_peak_equity_threshold * proRata) flags.push("Peak equity");
+  if (k.peak_debt   > g.risk_max_debt_threshold * proRata)    flags.push("Peak debt");
+  if (k.irr_annual != null && k.irr_annual < g.risk_min_irr_annual) flags.push("Low IRR");
+  if (k.profit_margin_pct < g.risk_min_margin_pct)            flags.push("Low margin");
+  if (k.moic != null && k.moic < g.risk_min_moic)             flags.push("Low MOIC");
+  return flags;
+}
+
+// Compact pipeline-by-stage panel — bar per lifecycle group with count.
+function renderPipelineByStage(projects) {
+  const counts = {};
+  for (const p of projects) {
+    const stage = LIFECYCLE_STAGES.find(s => s.id === (p.stage || "sourcing"));
+    const group = stage?.group || "pre-deal";
+    counts[group] = (counts[group] || 0) + 1;
+  }
+  const groups = [
+    { id: "pre-deal",     label: "Pre-deal" },
+    { id: "pre-build",    label: "Pre-build" },
+    { id: "build",        label: "Build" },
+    { id: "go-to-market", label: "Go-to-market" },
+    { id: "closed",       label: "Closed" },
+  ];
+  const total = projects.length;
+  const maxCount = Math.max(1, ...groups.map(g => counts[g.id] || 0));
+  return `<div class="panel">
+    <h3>Pipeline by stage</h3>
+    <div class="panel-subtitle">${total} project${total === 1 ? "" : "s"} across the lifecycle.</div>
+    <div class="pipeline-stage-bars">
+      ${groups.map(g => {
+        const c = counts[g.id] || 0;
+        const pct = (c / maxCount) * 100;
+        const color = STAGE_GROUP_COLORS[g.id] || "#7a7a73";
+        return `<div class="pipeline-stage-row">
+          <div class="pipeline-stage-label">${g.label}</div>
+          <div class="pipeline-stage-track">
+            <div class="pipeline-stage-fill" style="width:${pct}%;background:${color};"></div>
+          </div>
+          <div class="pipeline-stage-count">${c}</div>
+        </div>`;
+      }).join("")}
+    </div>
+  </div>`;
+}
+
+// Risk watchlist — projects with one or more active risk flags. Click name to open.
+function renderRiskWatchlist(by_project) {
+  const items = by_project.map(res => {
+    const p = state.projects.find(x => x.id === res.project_id);
+    const flags = evaluateProjectRisks(p, res);
+    return { p, flags };
+  }).filter(x => x.p && x.flags.length > 0)
+    .sort((a, b) => b.flags.length - a.flags.length);
+
+  if (!items.length) {
+    return `<div class="panel">
+      <h3>Risk watchlist</h3>
+      <div class="muted" style="font-size:12px;">No projects flagged. All within thresholds.</div>
+    </div>`;
+  }
+  return `<div class="panel">
+    <h3>Risk watchlist</h3>
+    <div class="panel-subtitle">${items.length} project${items.length === 1 ? "" : "s"} with one or more flags. Click a name to open.</div>
+    <ul class="risk-watchlist">
+      ${items.map(({ p, flags }) => `
+        <li>
+          <button class="link-btn watchlist-name" data-action="open-project" data-id="${p.id}">${escapeHtml(p.name)}</button>
+          <div class="watchlist-flags">${flags.map(f => `<span class="badge excluded">${f}</span>`).join("")}</div>
+        </li>
+      `).join("")}
+    </ul>
+  </div>`;
+}
+
+// Portfolio table — brief's columns including Next milestone. Lighter than the Projects detail table.
+function renderPortfolioTable(by_project) {
+  const rows = by_project.map(res => {
+    const p = state.projects.find(x => x.id === res.project_id);
+    if (!p) return "";
+    const excluded = state.scenario.excluded_project_ids.includes(res.project_id);
+    const next = nextMilestone(p, res);
+    return `<tr>
+      <td data-label="Project">
+        <button class="link-btn" data-action="open-project" data-id="${p.id}" style="font-weight:600;color:var(--fg);text-decoration:none;">${escapeHtml(p.name)}</button>
+        <div class="muted" style="font-size:10.5px;">${escapeHtml(p.address || "")}</div>
+      </td>
+      <td data-label="Status">${stageBadge(p, excluded)}</td>
+      <td data-label="Start">${fmt.ymShort(p.start_date)}</td>
+      <td data-label="Sale">${fmt.ymShort(res.sale_date)}</td>
+      <td data-label="Peak equity" class="num">${fmt.usdM(res.kpis.peak_equity)}</td>
+      <td data-label="Max debt" class="num">${fmt.usdM(res.kpis.peak_debt)}</td>
+      <td data-label="Profit" class="num ${res.kpis.gross_profit >= 0 ? "pos" : "neg"}">${fmt.usdM(res.kpis.gross_profit)}</td>
+      <td data-label="Margin" class="num">${fmt.pct(res.kpis.profit_margin_pct)}</td>
+      <td data-label="Next milestone">
+        <div style="font-weight:500;">${next.label}</div>
+        ${next.date ? `<div class="muted" style="font-size:10.5px;">${fmt.ymShort(next.date)}</div>` : ""}
+      </td>
+    </tr>`;
+  }).join("");
+
+  return `<div class="panel mb-24">
+    <h3>Portfolio</h3>
+    <div class="panel-subtitle">Active projects and what comes next. Click a project name to open its workspace.</div>
+    <div class="scroll-x"><table class="tbl">
+      <thead><tr>
+        <th>Project</th><th>Status</th><th>Start</th><th>Sale</th>
+        <th>Peak equity</th><th>Max debt</th><th>Profit</th><th>Margin</th>
+        <th>Next milestone</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+  </div>`;
+}
+
+// Empty state for a brand new account with zero projects.
+function renderPortfolioEmpty() {
+  const canCreate = canEdit();
+  return `<div class="portfolio-empty">
+    <div class="portfolio-empty-card">
+      <div class="brand">Juno <span>Atlas</span></div>
+      <h1>Run your development portfolio in one place</h1>
+      <p class="muted">Create a project, enter assumptions, and Atlas will generate cash flow, P&amp;L, debt, equity, and risk automatically.</p>
+      ${canCreate ? `
+        <div class="row gap-sm" style="margin-top:24px;justify-content:center;">
+          <button class="btn" id="portfolio-empty-create-btn">+ Create your first project</button>
+          <button class="btn secondary" id="portfolio-empty-import-btn">Import from CSV</button>
+          <input type="file" id="portfolio-empty-import-file" accept=".csv,text/csv" style="display:none;">
+        </div>
+        <div class="portfolio-empty-templates muted">
+          Quick-start templates coming in Phase 4: Spec home · Ground-up development · Renovation / value-add
+        </div>
+      ` : `<div class="muted" style="margin-top:16px;font-size:12px;">No projects to display yet. Ask an editor or admin to create the first project.</div>`}
+    </div>
+  </div>`;
+}
+
 function renderPortfolio(r) {
+  // v14.3 — Phase 1.3: empty state for fresh installs
+  if (state.projects.length === 0) return renderPortfolioEmpty();
+
   const k = r.kpis;
   const g = state.globals;
   const profitCls = k.total_profit_before_tax >= 0 ? "pos" : "neg";
-  // Risk threshold checks
+
+  // Risk threshold checks (portfolio-level alert banner)
   const alerts = [];
   if (k.peak_equity_required > g.risk_peak_equity_threshold)
     alerts.push({ severity: "warn", msg: `Peak equity ${fmt.usdM(k.peak_equity_required)} exceeds threshold ${fmt.usdM(g.risk_peak_equity_threshold)}` });
@@ -544,34 +715,44 @@ function renderPortfolio(r) {
       </ul>
     </div>` : "";
 
-  // KPI card classes based on thresholds
   const peakEqCls = k.peak_equity_required > g.risk_peak_equity_threshold ? "warn" : "";
   const maxDebtCls = k.max_debt_outstanding > g.risk_max_debt_threshold ? "warn" : "";
   const moicCls = k.moic_gross < g.risk_min_moic ? "neg" : (k.moic_gross > 2 ? "pos" : "");
-  const irrCls = k.irr_annual != null && k.irr_annual < g.risk_min_irr_annual ? "neg" : "";
 
   const totalProjects = state.projects.length;
   const soldCount = state.projects.filter(p => p.status === "sold").length;
+
   return `
-    <div class="row between" style="margin-bottom:12px;">
-      <div class="section-title" style="margin:0;">Portfolio overview · ${state.scenario.name} · ${k.active_project_count} of ${totalProjects} projects active${soldCount > 0 ? ` (${soldCount} sold, excluded from forecast)` : ""}</div>
-      ${canEdit() ? `<button class="btn" id="portfolio-new-project-btn">+ New project</button>` : ""}
-    </div>
-    ${alertBanner}
-    <div class="kpi-row">
-      ${kpiCard("Peak equity required", fmt.usdM(k.peak_equity_required), `Month: ${fmt.ymShort(k.peak_equity_month)}`, peakEqCls)}
-      ${kpiCard("Max debt outstanding", fmt.usdM(k.max_debt_outstanding), `Month: ${fmt.ymShort(k.max_debt_month)}`, maxDebtCls)}
-      ${kpiCard("Total sales (gross)", fmt.usdM(k.total_sales), `${k.active_project_count} projects`)}
-      ${kpiCard("Profit (pre-tax)", fmt.usdM(k.total_profit_before_tax), `Across model horizon`, profitCls)}
-      ${state.globals.apply_tax ? kpiCard("Profit (after tax)", fmt.usdM(k.total_profit_after_tax), `Tax: ${fmt.usdM(k.total_tax)} @ ${fmt.pct(k.effective_tax_rate)}`, k.total_profit_after_tax >= 0 ? "pos" : "neg") : ""}
-      ${kpiCard("Gross MOIC", `${k.moic_gross.toFixed(2)}x`, `Equity in: ${fmt.usdM(k.total_equity_in)}`, moicCls)}
-      ${kpiCard("Annualized IRR", k.irr_annual == null ? "—" : fmt.pct(k.irr_annual), `Equity cash flow basis`, irrCls)}
-      ${kpiCard("Simple payback", k.payback_months == null ? "—" : fmt.months(k.payback_months), `Until equity returned ≥ drawn`)}
+    <!-- v14.3 Portfolio header with global controls + CTAs -->
+    <div class="portfolio-header mb-24">
+      <div>
+        <h1 class="page-title">Portfolio</h1>
+        <div class="muted" style="font-size:12px;margin-top:4px;">${escapeHtml(state.scenario.name)} · ${k.active_project_count} of ${totalProjects} projects active${soldCount > 0 ? ` · ${soldCount} sold` : ""}</div>
+      </div>
+      ${canEdit() ? `<div class="row gap-sm wrap">
+        <button class="btn" id="portfolio-new-project-btn">+ New project</button>
+        <button class="btn secondary" id="portfolio-import-btn">Import CSV</button>
+        <input type="file" id="portfolio-import-file" accept=".csv,text/csv" style="display:none;">
+      </div>` : ""}
     </div>
 
+    ${alertBanner}
+
+    <!-- v14.3 KPI row — 7 per brief -->
+    <div class="kpi-row">
+      ${kpiCard("Active projects", `${k.active_project_count}`, `${totalProjects} total${soldCount > 0 ? ` · ${soldCount} sold` : ""}`)}
+      ${kpiCard("Projected revenue", fmt.usdM(k.total_sales), `Across model horizon`)}
+      ${kpiCard("Projected profit", fmt.usdM(k.total_profit_before_tax), state.globals.apply_tax ? `After tax: ${fmt.usdM(k.total_profit_after_tax)}` : `Pre-tax`, profitCls)}
+      ${kpiCard("Peak equity required", fmt.usdM(k.peak_equity_required), `Month: ${fmt.ymShort(k.peak_equity_month)}`, peakEqCls)}
+      ${kpiCard("Max debt outstanding", fmt.usdM(k.max_debt_outstanding), `Month: ${fmt.ymShort(k.max_debt_month)}`, maxDebtCls)}
+      ${kpiCard("Gross MOIC", `${k.moic_gross.toFixed(2)}x`, `Equity in: ${fmt.usdM(k.total_equity_in)}`, moicCls)}
+      ${kpiCard("Portfolio margin", fmt.pct(portfolioMargin), `Profit / sales (pre-tax)`)}
+    </div>
+
+    <!-- Main analytics band: cash flow + debt/equity -->
     <div class="panel-row">
       <div class="panel">
-        <h3>Monthly cash flow</h3>
+        <h3>Net cash flow</h3>
         <div class="panel-subtitle">Sales positive · costs negative · stacked by category</div>
         <div class="chart-frame"><canvas id="chart-cashflow"></canvas></div>
       </div>
@@ -581,6 +762,15 @@ function renderPortfolio(r) {
         <div class="chart-frame"><canvas id="chart-balances"></canvas></div>
       </div>
     </div>
+
+    <!-- v14.3 Pipeline by stage + Risk watchlist -->
+    <div class="panel-row">
+      ${renderPipelineByStage(state.projects)}
+      ${renderRiskWatchlist(r.by_project)}
+    </div>
+
+    <!-- v14.3 Portfolio table with Next milestone -->
+    ${renderPortfolioTable(r.by_project)}
 
     <div class="panel mb-24">
       <h3>Development yield metrics</h3>
@@ -2549,6 +2739,40 @@ function attachViewEvents(result) {
   document.getElementById("portfolio-new-project-btn")?.addEventListener("click", () => {
     openWizard();
   });
+  document.getElementById("portfolio-empty-create-btn")?.addEventListener("click", () => {
+    openWizard();
+  });
+
+  // Portfolio "open project" links in the table + watchlist
+  for (const btn of document.querySelectorAll("[data-action='open-project']")) {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.id;
+      if (id) setView("project_detail", id);
+    });
+  }
+
+  // Portfolio CSV import (header CTA + empty-state CTA both wire to the same file input)
+  const importTriggers = [
+    document.getElementById("portfolio-import-btn"),
+    document.getElementById("portfolio-empty-import-btn"),
+  ].filter(Boolean);
+  const importFileInputs = [
+    document.getElementById("portfolio-import-file"),
+    document.getElementById("portfolio-empty-import-file"),
+  ].filter(Boolean);
+  if (importTriggers.length && importFileInputs.length) {
+    const fileInput = importFileInputs[0];
+    importTriggers.forEach(b => b.addEventListener("click", () => fileInput.click()));
+    fileInput.addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const text = await file.text();
+      const result = importProjectsFromCSV(text);
+      if (!result.ok) alert(`Import failed: ${result.error}`);
+      else alert(`Imported ${result.added.length} project${result.added.length === 1 ? "" : "s"}.`);
+      e.target.value = "";
+    });
+  }
 
   // Monte Carlo distribution editing + run
   for (const inp of document.querySelectorAll("[data-dist]")) {
