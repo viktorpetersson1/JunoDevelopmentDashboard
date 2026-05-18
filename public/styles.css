@@ -489,6 +489,27 @@ tr.drag-over-after td { border-bottom: 2px solid var(--accent); }
 }
 .link-btn:hover { color: var(--fg); }
 
+/* ---------- Scenarios (v14.8 Phase 3.2) ---------- */
+
+.scenario-class-chip {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.scenario-class-chip.small { font-size: 9px; padding: 1px 6px; }
+.scenario-class-chip.base     { background: rgba(51, 65, 85, 0.10); color: var(--accent); }
+.scenario-class-chip.lender   { background: rgba(29, 78, 216, 0.10); color: var(--info); }
+.scenario-class-chip.upside   { background: rgba(21, 128, 61, 0.10); color: var(--pos); }
+.scenario-class-chip.downside { background: rgba(159, 18, 57, 0.10); color: var(--neg); }
+.scenario-class-chip.custom   { background: var(--surface-2);        color: var(--fg-2); }
+
+.scenario-lock-icon { font-size: 12px; }
+
 /* ---------- Risks center (v14.7 Phase 3.1) ---------- */
 
 .risk-category-grid {

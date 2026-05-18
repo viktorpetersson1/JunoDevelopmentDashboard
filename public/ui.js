@@ -8,9 +8,10 @@ import { state, notify, save, updateGlobal, updateScenario,
   clearAuditLog, canEdit, isSuperAdmin,
   canSeeFinancials, isRestrictedViewer, hydrateAuthedSession,
   openWizard, closeWizard, discardWizardDraft, setWizardStep,
-  updateWizardDraft, submitWizardDraft, setProjectTab } from "./state.js";
+  updateWizardDraft, submitWizardDraft, setProjectTab,
+  duplicateCurrentScenario, classifyScenario, setScenarioLock } from "./state.js";
 import { aggregatePortfolio, calcProject, fyOf, monteCarlo, evaluateRisks } from "./engine.js";
-import { EXCEL_BENCHMARK, LIFECYCLE_STAGES, STAGE_GROUP_COLORS, ASSET_TYPES } from "./data.js";
+import { EXCEL_BENCHMARK, LIFECYCLE_STAGES, STAGE_GROUP_COLORS, ASSET_TYPES, SCENARIO_CLASSES } from "./data.js";
 import {
   signIn, signUp, signOut, sendPasswordReset, getCurrentUser,
   fetchAllProfiles, updateUserRole,
@@ -2370,13 +2371,41 @@ function renderWaterfall(r) {
 
 function renderScenario(r) {
   const s = state.scenario;
+  const cls = SCENARIO_CLASSES.find(c => c.id === (s.class || "custom")) || SCENARIO_CLASSES[4];
+  const classChipHtml = `<span class="scenario-class-chip ${cls.id}" title="${cls.description}">${cls.label}</span>`;
+  const lockIcon = s.locked ? `<span class="scenario-lock-icon" title="Locked as the decision scenario">🔒</span>` : "";
   return `
-    <div class="section-title">Scenario controls · ${s.name}</div>
+    <div class="row between mb-12" style="align-items:flex-start;flex-wrap:wrap;gap:12px;">
+      <div>
+        <h1 class="page-title">Scenarios</h1>
+        <div class="muted" style="font-size:12px;margin-top:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          Active: <strong style="color:var(--fg);">${escapeHtml(s.name)}</strong>
+          ${classChipHtml}
+          ${lockIcon}
+        </div>
+      </div>
+      <div class="row gap-sm wrap">
+        <button class="btn" id="scn-duplicate">Duplicate scenario</button>
+        ${canEdit() ? `<button class="btn secondary" id="scn-save">Save changes</button>` : ""}
+        <button class="btn secondary" id="scn-reset">Reset to base</button>
+      </div>
+    </div>
     <div class="panel-row">
       <div class="panel">
         <h3>Active scenario</h3>
+        <div class="panel-subtitle">Edit any driver and Apply to update KPIs. Classify and lock once you're confident this is the deal you're underwriting against.</div>
         <div class="form-grid">
-          <div class="form-row full"><label>Scenario name</label><input class="input" id="scn-name" type="text" value="${s.name}"></div>
+          <div class="form-row full"><label>Scenario name</label><input class="input" id="scn-name" type="text" value="${escapeHtml(s.name)}"></div>
+          <div class="form-row">
+            <label>Classification</label>
+            <select class="input" id="scn-class">
+              ${SCENARIO_CLASSES.map(c => `<option value="${c.id}" ${cls.id === c.id ? "selected" : ""}>${c.label}</option>`).join("")}
+            </select>
+            <div class="hint">${cls.description}</div>
+          </div>
+          <div class="form-row"><label>Locked as decision</label>
+            <label class="toggle" style="padding-top:4px;"><input type="checkbox" id="scn-locked" ${s.locked ? "checked" : ""}> ${s.locked ? "This is the locked decision scenario" : "Lock to mark as the canonical decision"}</label>
+          </div>
           <div class="form-row"><label>Interest rate Δ (bps)</label><input class="input" id="scn-interest-bps" type="number" step="25" value="${s.interest_rate_delta_bps}"></div>
           <div class="form-row"><label>Build cost ×</label><input class="input" id="scn-build-mult" type="number" step="0.05" value="${s.build_cost_multiplier}"></div>
           <div class="form-row"><label>Sale price ×</label><input class="input" id="scn-sale-mult" type="number" step="0.05" value="${s.sale_price_multiplier}"></div>
@@ -2385,8 +2414,6 @@ function renderScenario(r) {
         </div>
         <div class="row mt-16 gap-sm wrap">
           <button class="btn" id="scn-apply">Apply</button>
-          <button class="btn secondary" id="scn-save">Save as named scenario</button>
-          <button class="btn secondary" id="scn-reset">Reset to base</button>
           <button class="btn secondary" data-preset="stress">Stress preset</button>
           <button class="btn secondary" data-preset="optimistic">Optimistic preset</button>
         </div>
@@ -2409,6 +2436,8 @@ function renderScenario(r) {
       <div class="panel-subtitle">Comparison vs base case (all-default scenario)</div>
       ${renderScenarioComparison()}
     </div>
+
+    ${renderVarianceDrivers(s)}
 
     ${state.scenarios.length > 0 ? `
     <div class="panel mb-24">
@@ -2492,7 +2521,21 @@ function renderSavedScenarios() {
     months: v => v == null ? "—" : `${v} mo`,
   };
   let html = `<div class="scroll-x"><table class="tbl"><thead><tr><th>Metric</th>`;
-  for (const x of results) html += `<th>${x.scn.name}${x.scn !== baseScn ? ` <button class="btn small danger" data-delete-scenario="${x.scn.name}" style="margin-left:6px;padding:0 6px;">×</button>` : ""}</th>`;
+  for (const x of results) {
+    const cls = SCENARIO_CLASSES.find(c => c.id === (x.scn.class || (x.scn === baseScn ? "base" : "custom")));
+    const chip = `<span class="scenario-class-chip ${cls?.id || 'custom'} small">${cls?.label || "Custom"}</span>`;
+    const lockIcon = x.scn.locked ? `<span class="scenario-lock-icon" title="Locked as the decision scenario">🔒</span>` : "";
+    const deleteBtn = x.scn !== baseScn && !x.scn.locked
+      ? ` <button class="btn small danger" data-delete-scenario="${x.scn.name}" style="margin-left:6px;padding:0 6px;">×</button>`
+      : "";
+    const lockBtn = x.scn !== baseScn
+      ? ` <button class="link-btn small" data-toggle-lock="${x.scn.name}" style="margin-left:4px;font-size:10px;">${x.scn.locked ? "Unlock" : "Lock"}</button>`
+      : "";
+    html += `<th><div style="display:flex;flex-direction:column;gap:2px;align-items:flex-start;">
+      <div style="display:flex;align-items:center;gap:4px;">${escapeHtml(x.scn.name)} ${lockIcon}${deleteBtn}</div>
+      <div style="display:flex;align-items:center;gap:4px;">${chip}${lockBtn}</div>
+    </div></th>`;
+  }
   html += `</tr></thead><tbody>`;
   for (const [label, getter, fmtKey] of metrics) {
     const base = getter(results[0].r);
@@ -2507,6 +2550,88 @@ function renderSavedScenarios() {
   }
   html += `</tbody></table></div>`;
   return html;
+}
+
+// v14.8 (Phase 3.2) — Variance drivers: explains which scenario assumptions are
+// different from base, so users can read the KPI deltas with context.
+function renderVarianceDrivers(s) {
+  const drivers = [];
+  if ((s.interest_rate_delta_bps ?? 0) !== 0) {
+    drivers.push({
+      label: "Interest rate",
+      value: `${s.interest_rate_delta_bps > 0 ? "+" : ""}${s.interest_rate_delta_bps} bps`,
+      effect: s.interest_rate_delta_bps > 0
+        ? "Higher financing cost; compresses profit."
+        : "Lower financing cost; lifts profit.",
+    });
+  }
+  if ((s.build_cost_multiplier ?? 1) !== 1) {
+    const pct = (s.build_cost_multiplier - 1) * 100;
+    drivers.push({
+      label: "Build cost",
+      value: `${pct > 0 ? "+" : ""}${pct.toFixed(0)}%`,
+      effect: pct > 0
+        ? "Higher hard costs; compresses margin unless sale price keeps up."
+        : "Lower hard costs; expands margin.",
+    });
+  }
+  if ((s.sale_price_multiplier ?? 1) !== 1) {
+    const pct = (s.sale_price_multiplier - 1) * 100;
+    drivers.push({
+      label: "Sale price",
+      value: `${pct > 0 ? "+" : ""}${pct.toFixed(0)}%`,
+      effect: pct > 0
+        ? "Stronger pricing; lifts profit dollar-for-dollar."
+        : "Softer pricing; reduces profit dollar-for-dollar.",
+    });
+  }
+  if (s.margin_override != null && s.margin_override !== "") {
+    drivers.push({
+      label: "Margin override",
+      value: `${(Number(s.margin_override) * 100).toFixed(0)}%`,
+      effect: "Forces target margin across the portfolio; sale prices are derived to hit it.",
+    });
+  }
+  if ((s.timing_shift_months ?? 0) !== 0) {
+    drivers.push({
+      label: "Timing shift",
+      value: `${s.timing_shift_months > 0 ? "+" : ""}${s.timing_shift_months} months`,
+      effect: s.timing_shift_months > 0
+        ? "All projects pushed later; can change interest accrual and fiscal-year tax recognition."
+        : "All projects pulled forward; capital cycles faster.",
+    });
+  }
+  if ((s.excluded_project_ids || []).length > 0) {
+    const names = (s.excluded_project_ids || [])
+      .map(id => state.projects.find(p => p.id === id)?.name)
+      .filter(Boolean);
+    drivers.push({
+      label: "Excluded projects",
+      value: `${names.length}`,
+      effect: `Removed from portfolio totals: ${names.join(", ")}.`,
+    });
+  }
+
+  if (drivers.length === 0) {
+    return `<div class="panel mb-24">
+      <h3>Variance drivers</h3>
+      <div class="muted" style="font-size:12px;">This scenario matches base — no overrides active. Edit any driver above and apply to see what changes.</div>
+    </div>`;
+  }
+  return `<div class="panel mb-24">
+    <h3>Variance drivers</h3>
+    <div class="panel-subtitle">What's different in this scenario vs base, and how each change moves the KPIs.</div>
+    <table class="tbl">
+      <thead><tr><th>Driver</th><th>Change</th><th>Why it matters</th></tr></thead>
+      <tbody>
+        ${drivers.map(d => `<tr>
+          <td><strong>${d.label}</strong></td>
+          <td class="num">${d.value}</td>
+          <td style="max-width:500px;">${d.effect}</td>
+        </tr>`).join("")}
+      </tbody>
+    </table>
+  </div>`;
 }
 
 function renderScenarioComparison() {
@@ -3859,8 +3984,27 @@ function attachViewEvents(result) {
   });
   document.getElementById("scn-save")?.addEventListener("click", () => {
     const name = document.getElementById("scn-name").value.trim() || "Unnamed";
-    saveCurrentScenario(name);
+    const classification = document.getElementById("scn-class")?.value || state.scenario.class || "custom";
+    saveCurrentScenario(name, classification);
   });
+  // v14.8 (Phase 3.2) — Duplicate / classify / lock controls
+  document.getElementById("scn-duplicate")?.addEventListener("click", () => {
+    duplicateCurrentScenario();
+  });
+  document.getElementById("scn-class")?.addEventListener("change", (e) => {
+    classifyScenario(state.scenario.name, e.target.value);
+  });
+  document.getElementById("scn-locked")?.addEventListener("change", (e) => {
+    setScenarioLock(state.scenario.name, e.target.checked);
+  });
+  for (const btn of document.querySelectorAll("[data-toggle-lock]")) {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const name = btn.dataset.toggleLock;
+      const scn = state.scenarios.find(s => s.name === name) || (state.scenario.name === name ? state.scenario : null);
+      if (scn) setScenarioLock(name, !scn.locked);
+    });
+  }
   for (const td of document.querySelectorAll("[data-load-scenario]")) {
     td.addEventListener("click", (e) => {
       if (e.target.tagName === "BUTTON") return;  // delete button handled separately

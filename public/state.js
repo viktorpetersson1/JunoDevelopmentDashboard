@@ -249,12 +249,57 @@ export function resetToBaseline() {
   save(); notify();
 }
 
-export function saveCurrentScenario(name) {
+export function saveCurrentScenario(name, classification) {
   const snapshot = { ...structuredClone(state.scenario), name };
+  if (classification) snapshot.class = classification;
+  if (snapshot.locked == null) snapshot.locked = false;
   const existingIdx = state.scenarios.findIndex(s => s.name === name);
   if (existingIdx >= 0) state.scenarios[existingIdx] = snapshot;
   else state.scenarios.push(snapshot);
   logEvent("scenario", `saved scenario "${name}"`, { name });
+  save(); notify();
+}
+
+// v14.8 (Phase 3.2) — Duplicate the active scenario as a new saved one.
+export function duplicateCurrentScenario(suggestedName) {
+  const baseName = suggestedName || `${state.scenario.name} (copy)`;
+  // Avoid collisions by appending a number
+  let name = baseName;
+  let n = 2;
+  while (state.scenarios.some(s => s.name === name)) {
+    name = `${baseName} ${n}`;
+    n += 1;
+  }
+  const snapshot = { ...structuredClone(state.scenario), name, class: "custom", locked: false };
+  state.scenarios.push(snapshot);
+  logEvent("scenario", `duplicated scenario as "${name}"`, { name, fromName: state.scenario.name });
+  save(); notify();
+  return name;
+}
+
+// v14.8 — Set the classification of either the active scenario or a saved one.
+export function classifyScenario(name, classification) {
+  if (state.scenario.name === name) {
+    state.scenario.class = classification;
+  }
+  const idx = state.scenarios.findIndex(s => s.name === name);
+  if (idx >= 0) state.scenarios[idx].class = classification;
+  logEvent("scenario", `classified "${name}" as ${classification}`, { name, class: classification });
+  save(); notify();
+}
+
+// v14.8 — Lock or unlock a saved scenario. Locking signals "this is the chosen decision".
+// Convention: only one scenario should be locked at a time. We unlock others on lock.
+export function setScenarioLock(name, locked) {
+  if (locked) {
+    // Unlock everything else first to enforce single-decision-scenario convention
+    state.scenarios = state.scenarios.map(s => ({ ...s, locked: false }));
+    if (state.scenario.name !== name) state.scenario.locked = false;
+  }
+  if (state.scenario.name === name) state.scenario.locked = locked;
+  const idx = state.scenarios.findIndex(s => s.name === name);
+  if (idx >= 0) state.scenarios[idx].locked = locked;
+  logEvent("scenario", `${locked ? "locked" : "unlocked"} scenario "${name}"`, { name, locked });
   save(); notify();
 }
 

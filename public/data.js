@@ -297,8 +297,21 @@ export const EXCEL_BENCHMARK = {
   },
 };
 
+// v14.8 (Phase 3.2) — scenarios now carry a `class` (base/lender/upside/downside/custom)
+// and a `locked` flag. The locked flag is for governance — there is exactly one canonical
+// scenario at a time. Atlas does not enforce single-lock automatically; the UI surfaces it.
+export const SCENARIO_CLASSES = [
+  { id: "base",     label: "Base",     color: "var(--accent)", description: "The current canonical plan." },
+  { id: "lender",   label: "Lender",   color: "var(--info)",   description: "Conservative case used in debt conversations." },
+  { id: "upside",   label: "Upside",   color: "var(--pos)",    description: "Better-than-base case." },
+  { id: "downside", label: "Downside", color: "var(--neg)",    description: "Worse-than-base case." },
+  { id: "custom",   label: "Custom",   color: "var(--fg-3)",   description: "Ad-hoc what-if." },
+];
+
 export const BASELINE_SCENARIO = {
   name: "Base case",
+  class: "base",
+  locked: true,
   interest_rate_delta_bps: 0,
   build_cost_multiplier: 1.0,
   sale_price_multiplier: 1.0,
