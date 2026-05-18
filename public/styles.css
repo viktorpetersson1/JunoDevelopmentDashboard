@@ -489,6 +489,93 @@ tr.drag-over-after td { border-bottom: 2px solid var(--accent); }
 }
 .link-btn:hover { color: var(--fg); }
 
+/* ---------- Risks center (v14.7 Phase 3.1) ---------- */
+
+.risk-category-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 980px) { .risk-category-grid { grid-template-columns: 1fr; } }
+
+.risk-category-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.risk-category-header h3 { margin: 0; }
+.risk-category-count {
+  font-size: 11px;
+  color: var(--fg-3);
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+.risk-category-count.active {
+  color: var(--accent);
+  background: rgba(51, 65, 85, 0.10);
+}
+
+.risk-finding {
+  border-left: 3px solid var(--border-strong);
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.risk-finding.high   { border-left-color: var(--neg);  background: rgba(159, 18, 57, 0.04); }
+.risk-finding.medium { border-left-color: var(--warn); background: rgba(161, 98, 7, 0.04); }
+.risk-finding.low    { border-left-color: var(--fg-3); }
+
+.risk-finding-header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+}
+.risk-severity-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.risk-severity-chip.high   { background: rgba(159, 18, 57, 0.12); color: var(--neg); }
+.risk-severity-chip.medium { background: rgba(161, 98, 7, 0.12); color: var(--warn); }
+.risk-severity-chip.low    { background: var(--surface-3);       color: var(--fg-2); }
+
+.risk-finding-target { font-size: 13px; color: var(--fg); min-width: 0; }
+.risk-finding-target strong { color: var(--fg); }
+.risk-finding-impact { font-size: 11px; color: var(--fg-3); white-space: nowrap; }
+.risk-finding-impact .neg, .risk-finding-impact .pos { font-weight: 600; }
+
+.risk-finding-body {
+  font-size: 12px;
+  color: var(--fg-2);
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.risk-finding-body .risk-label {
+  display: inline-block;
+  min-width: 70px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 /* ---------- Timeline tab (v14.5 Phase 2.2) ---------- */
 
 .heatmap-strip {

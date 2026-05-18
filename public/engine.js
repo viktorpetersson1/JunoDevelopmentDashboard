@@ -652,6 +652,189 @@ function percentile(sortedArr, p) {
 }
 
 // Run N Monte Carlo trials. For each trial, sample each driver from its distribution,
+// v14.7 (Phase 3.1) — Risks center evaluation.
+//
+// Six categories per the brief, each producing zero or more findings. A finding is project-scoped
+// when it stems from one project's data; portfolio-scoped when it stems from the aggregate model.
+//
+// Returns: {
+//   summary: { total, high, medium, low, by_category: { sales_delay: 3, ... } },
+//   categories: [{ id, label, description, findings: [{ severity, project, trigger, financial_impact_usd,
+//                                                       timing_impact, mitigation, scope }] }]
+// }
+//
+// Severity convention: "high" | "medium" | "low". High triggers loudest UI emphasis.
+export function evaluateRisks(state, result) {
+  const projects = state.projects || [];
+  const globals = state.globals || {};
+  const scenario = state.scenario || {};
+  const port = result?.monthly || {};
+  const portfolioK = result?.kpis || {};
+  const byProj = result?.by_project || [];
+  const today = new Date();
+  const todayYM = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+
+  const findings = (id) => ({ id, findings: [] });
+  const c = {
+    sales_delay:    { id: "sales_delay",    label: "Sales delay",          description: "Projects whose listing or closing is at risk of slipping past plan.", findings: [] },
+    sale_downside:  { id: "sale_downside",  label: "Sale price downside",  description: "Projects exposed if the market softens by 10%.", findings: [] },
+    cost_overrun:   { id: "cost_overrun",   label: "Cost overrun",         description: "Projects where actuals are already running over forecast.", findings: [] },
+    lender:         { id: "lender",         label: "Lender rejection",     description: "Projects sized above safe LTC, where the senior lender may decline.", findings: [] },
+    equity_cluster: { id: "equity_cluster", label: "Equity clustering",    description: "Months where multiple projects need equity simultaneously and the KPC LOC can't cover.", findings: [] },
+    funding_gap:    { id: "funding_gap",    label: "Funding gap",          description: "Total equity calls exceed available KPC LOC + reasonable owner contribution.", findings: [] },
+  };
+
+  // 1. Sales delay — projects past their start whose listing date is empty or behind schedule
+  for (const p of projects) {
+    if (!p.start_date) continue;
+    if (p.stage === "sold" || p.stage === "archived") continue;
+    const monthsSinceStart = monthsBetweenLite(p.start_date, todayYM);
+    const programMonths = p.program_months || globals.default_program_months || 13;
+    const expectedListMonth = Math.max(0, programMonths - 3); // typically list 3 months before close
+    // After expected list month with no listing date set → high; or listing in past but no UC
+    if (monthsSinceStart >= expectedListMonth && !p.listing_date && !["sourcing","land_control","entitlement","design","permitting"].includes(p.stage)) {
+      const monthsLate = monthsSinceStart - expectedListMonth;
+      const severity = monthsLate >= 3 ? "high" : monthsLate >= 1 ? "medium" : "low";
+      c.sales_delay.findings.push({
+        severity, project: p, scope: "project",
+        trigger: `${monthsLate} month${monthsLate === 1 ? "" : "s"} past expected listing window with no listing date set`,
+        financial_impact_usd: estimateDelayImpact(p, byProj, 3),
+        timing_impact: `Expected close slips by 3+ months if listing slips further`,
+        mitigation: "Confirm listing broker and target list date; if delayed, reset stage and adjust pipeline pacing.",
+      });
+    }
+  }
+
+  // 2. Sale price downside — projects where -10% market sale would tip them below margin minimum
+  const minMargin = globals.risk_min_margin_pct ?? 0.15;
+  for (const res of byProj) {
+    const p = projects.find(x => x.id === res.project_id);
+    if (!p || isClosed(p)) continue;
+    const baseProfit = res.kpis.gross_profit;
+    const baseSales = res.kpis.total_sales;
+    const stress = -baseSales * 0.10;            // -10% of sale
+    const stressedProfit = baseProfit + stress;
+    const stressedMargin = baseSales > 0 ? stressedProfit / (baseSales * 0.9) : 0;
+    if (stressedMargin < minMargin) {
+      const severity = stressedMargin < 0 ? "high" : stressedMargin < minMargin / 2 ? "medium" : "low";
+      c.sale_downside.findings.push({
+        severity, project: p, scope: "project",
+        trigger: `Margin drops to ${(stressedMargin * 100).toFixed(1)}% if sale price ${(0.10 * 100).toFixed(0)}% softer (vs ${(minMargin * 100).toFixed(0)}% floor)`,
+        financial_impact_usd: stress,
+        timing_impact: stressedProfit < 0 ? "Project would be loss-making" : "Profit compressed below minimum margin",
+        mitigation: stressedProfit < 0
+          ? "Re-underwrite — reduce cost basis or pass on the deal."
+          : "Build sale-price contingency into financial plan; identify cost reductions to preserve margin.",
+      });
+    }
+  }
+
+  // 3. Cost overrun — actuals already running ≥5% above forecast on any line item
+  for (const res of byProj) {
+    const p = projects.find(x => x.id === res.project_id);
+    if (!p?.actuals) continue;
+    const lines = [
+      { key: "land",         forecast: -(res.monthly.land_cost || []).reduce((a,b)=>a+b,0) },
+      { key: "construction", forecast: -(res.monthly.build_cost || []).reduce((a,b)=>a+b,0) },
+      { key: "kingshaus",    forecast: -(res.monthly.kingshaus  || []).reduce((a,b)=>a+b,0) },
+      { key: "soft",         forecast: -(res.monthly.soft_cost  || []).reduce((a,b)=>a+b,0) },
+    ];
+    for (const line of lines) {
+      const actual = p.actuals[line.key] || 0;
+      if (actual <= 0 || line.forecast <= 0) continue;
+      const overPct = (actual - line.forecast) / line.forecast;
+      if (overPct < 0.05) continue; // <5% is noise
+      const overage = actual - line.forecast;
+      const severity = overPct >= 0.20 ? "high" : overPct >= 0.10 ? "medium" : "low";
+      c.cost_overrun.findings.push({
+        severity, project: p, scope: "project",
+        trigger: `${line.key} actuals ${(overPct * 100).toFixed(1)}% over forecast (${fmtUsdShort(actual)} vs ${fmtUsdShort(line.forecast)})`,
+        financial_impact_usd: -overage,
+        timing_impact: "Compresses contingency; may require additional draw",
+        mitigation: `Draw contingency to absorb ${fmtUsdShort(overage)}; pause discretionary scope.`,
+      });
+    }
+  }
+
+  // 4. Lender rejection — high LTC + high senior debt vs typical underwriting comfort
+  const ltcCeiling = 0.80; // typical comfort for construction debt
+  for (const res of byProj) {
+    const p = projects.find(x => x.id === res.project_id);
+    if (!p || isClosed(p)) continue;
+    const effLtc = p.ltc_pct ?? globals.ltc_pct ?? 0.75;
+    if (effLtc > ltcCeiling) {
+      const severity = effLtc > 0.90 ? "high" : effLtc > 0.85 ? "medium" : "low";
+      c.lender.findings.push({
+        severity, project: p, scope: "project",
+        trigger: `LTC ${(effLtc * 100).toFixed(0)}% exceeds typical lender comfort (${(ltcCeiling * 100).toFixed(0)}%)`,
+        financial_impact_usd: -((p.land_cost_usd || 0) * 0.02),
+        timing_impact: "May add 30–60 days to debt commitment timeline",
+        mitigation: "Engage backup lender; consider co-investor or larger KPC LOC tranche to reduce LTC.",
+      });
+    }
+  }
+
+  // 5. Equity clustering — months where LOC was insufficient (cap_breach)
+  if (port.cap_breach_months > 0) {
+    const breachMonths = (port.cap_breach || []).map((b, i) => b ? port.dates[i] : null).filter(Boolean);
+    const severity = port.cap_breach_months >= 6 ? "high" : port.cap_breach_months >= 3 ? "medium" : "low";
+    c.equity_cluster.findings.push({
+      severity, project: null, scope: "portfolio",
+      trigger: `KPC LOC ($${(globals.kpc_loc?.facility_size_usd / 1e6).toFixed(0)}M cap) exhausted for ${port.cap_breach_months} month${port.cap_breach_months === 1 ? "" : "s"}: ${breachMonths.slice(0, 3).join(", ")}${breachMonths.length > 3 ? "…" : ""}`,
+      financial_impact_usd: -(port.true_equity_total_drawn || 0),
+      timing_impact: `Equity calls concentrated in ${breachMonths.length} month window`,
+      mitigation: "Stagger project starts to spread equity demand; expand KPC LOC facility; pre-commit owner equity for the gap window.",
+    });
+  }
+
+  // 6. Funding gap — owner equity required is large relative to ownership pool
+  const trueEquity = port.true_equity_total_drawn || 0;
+  if (trueEquity > 0) {
+    // Severity scales with size — >$3M is real money to call
+    const severity = trueEquity > 3000000 ? "high" : trueEquity > 1000000 ? "medium" : "low";
+    c.funding_gap.findings.push({
+      severity, project: null, scope: "portfolio",
+      trigger: `$${fmtUsdShort(trueEquity)} owner equity required across the horizon (above KPC LOC capacity)`,
+      financial_impact_usd: -trueEquity,
+      timing_impact: "Owners must contribute pro-rata to ownership share",
+      mitigation: "Raise KPC LOC limit or formalize an owner-equity reserve. Verify each owner can meet their pro-rata call.",
+    });
+  }
+
+  // Build summary
+  const cats = Object.values(c);
+  const all = cats.flatMap(cat => cat.findings.map(f => ({ ...f, category: cat.id })));
+  const bySev = (s) => all.filter(f => f.severity === s).length;
+  const byCategoryCounts = {};
+  for (const cat of cats) byCategoryCounts[cat.id] = cat.findings.length;
+
+  return {
+    summary: { total: all.length, high: bySev("high"), medium: bySev("medium"), low: bySev("low"), by_category: byCategoryCounts },
+    categories: cats,
+    all,
+  };
+}
+
+// Local helpers — kept here so engine.js stays self-contained.
+function monthsBetweenLite(a, b) {
+  if (!a || !b) return 0;
+  const [ay, am] = a.split("-").map(Number);
+  const [by, bm] = b.split("-").map(Number);
+  return (by - ay) * 12 + (bm - am);
+}
+function fmtUsdShort(n) {
+  if (n == null || isNaN(n)) return "—";
+  const abs = Math.abs(n);
+  return abs >= 1e6 ? `$${(abs/1e6).toFixed(1)}M` : abs >= 1e3 ? `$${(abs/1e3).toFixed(0)}k` : `$${Math.round(abs)}`;
+}
+function estimateDelayImpact(p, byProj, delayMonths) {
+  // Rough estimate: extra interest cost = peak_debt × monthly_rate × delayMonths
+  const res = byProj.find(x => x.project_id === p.id);
+  if (!res) return 0;
+  const r = (p.interest_rate_apr ?? 0.095) / 12;
+  return -(res.kpis.peak_debt * r * delayMonths);
+}
+
 // run aggregatePortfolio, collect outcome metrics.
 // distributions: { build_cost_multiplier: {type:"triangular", min, mode, max}, ... }
 export function monteCarlo(projects, globals, scenario, distributions, trials = 1000, seed = null) {

@@ -9,7 +9,7 @@ import { state, notify, save, updateGlobal, updateScenario,
   canSeeFinancials, isRestrictedViewer, hydrateAuthedSession,
   openWizard, closeWizard, discardWizardDraft, setWizardStep,
   updateWizardDraft, submitWizardDraft, setProjectTab } from "./state.js";
-import { aggregatePortfolio, calcProject, fyOf, monteCarlo } from "./engine.js";
+import { aggregatePortfolio, calcProject, fyOf, monteCarlo, evaluateRisks } from "./engine.js";
 import { EXCEL_BENCHMARK, LIFECYCLE_STAGES, STAGE_GROUP_COLORS, ASSET_TYPES } from "./data.js";
 import {
   signIn, signUp, signOut, sendPasswordReset, getCurrentUser,
@@ -204,10 +204,11 @@ const NAV_SECTIONS = [
       { view: "capital_overview", label: "Capital overview" },
       { view: "waterfall",        label: "Owner waterfall" },
     ] },
-  { key: "risks",     label: "Risks",     default: "risk",      financial: true,
+  { key: "risks",     label: "Risks",     default: "risks_center", financial: true,
     subviews: [
-      { view: "risk",        label: "Stress test" },
-      { view: "sensitivity", label: "Sensitivity" },
+      { view: "risks_center", label: "Risks center" },
+      { view: "risk",         label: "Stress test" },
+      { view: "sensitivity",  label: "Sensitivity" },
     ] },
   { key: "settings",  label: "Settings",  default: "settings",  financial: false,
     subviews: [
@@ -463,6 +464,7 @@ function renderView(result) {
     case "waterfall": html += renderWaterfall(result); break;
     case "scenario": html += renderScenario(result); break;
     case "sensitivity": html += renderSensitivity(result); break;
+    case "risks_center": html += renderRisksCenter(result); break;
     case "risk": html += renderRisk(result); break;
     case "activity": html += renderActivity(); break;
     case "suggestions": html += renderSuggestions(); break;
@@ -1759,6 +1761,76 @@ function renderCapitalOverview(r) {
     </div>
   `;
 }
+
+// v14.7 (Phase 3.1) — Top-level Risks center
+// Six risk categories per the brief. Each card shows severity, trigger, financial impact,
+// timing impact, and a suggested mitigation. Risks are tied to actions, not decoration.
+function renderRisksCenter(r) {
+  const risks = evaluateRisks(state, r);
+  const sev = risks.summary;
+
+  const severityIcon = (s) => s === "high" ? "!" : s === "medium" ? "·" : "•";
+  const severityLabel = (s) => s === "high" ? "High" : s === "medium" ? "Medium" : "Low";
+
+  const renderCard = (f) => `
+    <div class="risk-finding ${f.severity}">
+      <div class="risk-finding-header">
+        <div class="risk-severity-chip ${f.severity}" title="${severityLabel(f.severity)} severity">${severityIcon(f.severity)} ${severityLabel(f.severity)}</div>
+        <div class="risk-finding-target">
+          ${f.scope === "portfolio"
+            ? `<strong>Portfolio</strong>`
+            : `<button class="link-btn" data-action="open-project" data-id="${f.project.id}" style="color:var(--fg);font-weight:600;text-decoration:none;">${escapeHtml(f.project.name)}</button>`}
+        </div>
+        <div class="risk-finding-impact">${f.financial_impact_usd < 0 ? `<span class="neg">${fmt.usdM(Math.abs(f.financial_impact_usd))}</span> at risk` : f.financial_impact_usd > 0 ? `<span class="pos">${fmt.usdM(f.financial_impact_usd)}</span> upside` : "Impact: timing only"}</div>
+      </div>
+      <div class="risk-finding-body">
+        <div class="risk-finding-trigger"><span class="risk-label muted">Trigger:</span> ${escapeHtml(f.trigger)}</div>
+        ${f.timing_impact ? `<div class="risk-finding-timing"><span class="risk-label muted">Timing:</span> ${escapeHtml(f.timing_impact)}</div>` : ""}
+        <div class="risk-finding-mitigation"><span class="risk-label muted">Mitigation:</span> ${escapeHtml(f.mitigation)}</div>
+      </div>
+    </div>
+  `;
+
+  const categoryPanels = risks.categories.map(cat => {
+    const findings = cat.findings.sort((a, b) => sevWeight(b.severity) - sevWeight(a.severity));
+    const count = findings.length;
+    const cardsHtml = count > 0
+      ? findings.map(renderCard).join("")
+      : `<div class="muted" style="font-size:12px;padding:12px 4px;">No active findings in this category.</div>`;
+    return `<div class="panel risk-category">
+      <div class="risk-category-header">
+        <h3>${cat.label}</h3>
+        <span class="risk-category-count ${count > 0 ? "active" : ""}">${count} finding${count === 1 ? "" : "s"}</span>
+      </div>
+      <div class="panel-subtitle">${cat.description}</div>
+      ${cardsHtml}
+    </div>`;
+  }).join("");
+
+  return `
+    <div class="row between mb-12">
+      <div>
+        <h1 class="page-title">Risks</h1>
+        <div class="muted" style="font-size:12px;margin-top:4px;">${escapeHtml(state.scenario.name)} · six categories tied to actions</div>
+      </div>
+    </div>
+
+    <div class="kpi-row">
+      ${kpiCard("Total findings", `${sev.total}`, sev.total === 0 ? "All clear" : `${sev.high} high · ${sev.medium} medium · ${sev.low} low`, sev.high > 0 ? "neg" : sev.medium > 0 ? "warn" : "pos")}
+      ${kpiCard("High severity", `${sev.high}`, "Act now", sev.high > 0 ? "neg" : "")}
+      ${kpiCard("Medium severity", `${sev.medium}`, "Plan a mitigation", sev.medium > 0 ? "warn" : "")}
+      ${kpiCard("Low severity", `${sev.low}`, "Monitor", sev.low > 0 ? "" : "")}
+      ${kpiCard("Categories with findings", `${Object.values(sev.by_category).filter(n => n > 0).length} of 6`, "Where to focus next")}
+      ${kpiCard("Capital findings", `${sev.by_category.equity_cluster + sev.by_category.funding_gap}`, "Equity / LOC pressure", (sev.by_category.equity_cluster + sev.by_category.funding_gap) > 0 ? "warn" : "")}
+    </div>
+
+    <div class="risk-category-grid">
+      ${categoryPanels}
+    </div>
+  `;
+}
+
+function sevWeight(s) { return s === "high" ? 3 : s === "medium" ? 2 : 1; }
 
 // v14.6 (Phase 2.3) — Project Capital tab
 // Shows THIS project's contribution to the capital stack. Pro-rata of the portfolio LOC
