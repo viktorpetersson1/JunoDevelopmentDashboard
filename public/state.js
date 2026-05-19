@@ -84,7 +84,31 @@ export function clearAuditLog() {
 
 const listeners = new Set();
 export function subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }
-export function notify() { for (const fn of listeners) fn(); }
+
+// rAF-batched notify: any number of notify() calls in the same frame coalesce
+// into a single render on the next animation frame. Critical for two reasons:
+//
+//  1. Bursts (rapid setView, autosave status churn, keystroke handlers) used
+//     to fire a full render per call. 50 mutations = 50 renders = wedged tab.
+//     With batching, 50 mutations = 1 render.
+//
+//  2. If a listener ever calls notify() during render, the next notify queues
+//     for the NEXT frame — bounded to ~60Hz, with paint in between. The
+//     browser stays responsive. (queueMicrotask is NOT safe here: microtasks
+//     run before paint, so a render-triggered notify chains into an infinite
+//     microtask loop and wedges the tab.)
+//
+// State mutations remain synchronous — only the render is deferred. Callers
+// that read state.x after notify() still see the new value.
+let _notifyScheduled = false;
+export function notify() {
+  if (_notifyScheduled) return;
+  _notifyScheduled = true;
+  requestAnimationFrame(() => {
+    _notifyScheduled = false;
+    for (const fn of listeners) fn();
+  });
+}
 
 function applyStateBlob(blob) {
   if (!blob) return false;
@@ -142,32 +166,48 @@ export function load() {
 // directly from the sign-in form as a belt-and-suspenders. Sets auth.user first
 // and notifies immediately so the UI moves past the sign-in screen even if the
 // slower profile / state fetches hang.
+//
+// Deduped: both the auth listener (on SIGNED_IN) and the sign-in form handler
+// call this in parallel right after login. Without dedupe, two concurrent
+// hydrations fire ~6 full re-renders back-to-back as their fetches interleave,
+// which can wedge the main thread long enough to trigger "Page Unresponsive".
+let _hydratingUserId = null;
+let _hydratingPromise = null;
 export async function hydrateAuthedSession(supabaseUser) {
   if (!supabaseUser) return;
-  state.auth.user = { id: supabaseUser.id, email: supabaseUser.email };
-  notify();
-  try {
-    // Pass user id explicitly so fetchMyProfile skips the redundant getUser()
-    // call — that call sometimes races with JWT propagation right after signIn
-    // and returns null, leaving the role chip stuck on the default "viewer".
-    state.auth.profile = await fetchMyProfile(supabaseUser.id);
+  // Concurrent caller for the same user — share the in-flight promise.
+  if (_hydratingUserId === supabaseUser.id && _hydratingPromise) return _hydratingPromise;
+  // Already fully hydrated (e.g. TOKEN_REFRESHED for the same session).
+  if (state.auth.user?.id === supabaseUser.id && state.auth.profile) return;
+  _hydratingUserId = supabaseUser.id;
+  _hydratingPromise = (async () => {
+    state.auth.user = { id: supabaseUser.id, email: supabaseUser.email };
     notify();
-  } catch (e) {
-    console.warn("fetchMyProfile failed:", e);
-  }
-  try {
-    const remote = await fetchFinancialState();
-    if (remote?.state) {
-      applyStateBlob(remote.state);
-      state.sync.server_version = remote.version || 1;
-      state.sync.last_saved_at = remote.updated_at ? new Date(remote.updated_at) : null;
-      state.sync.status = "saved";
-      writeLocalCache();
+    try {
+      // Pass user id explicitly so fetchMyProfile skips the redundant getUser()
+      // call — that call sometimes races with JWT propagation right after signIn
+      // and returns null, leaving the role chip stuck on the default "viewer".
+      state.auth.profile = await fetchMyProfile(supabaseUser.id);
       notify();
+    } catch (e) {
+      console.warn("fetchMyProfile failed:", e);
     }
-  } catch (e) {
-    console.warn("fetchFinancialState failed:", e);
-  }
+    try {
+      const remote = await fetchFinancialState();
+      if (remote?.state) {
+        applyStateBlob(remote.state);
+        state.sync.server_version = remote.version || 1;
+        state.sync.last_saved_at = remote.updated_at ? new Date(remote.updated_at) : null;
+        state.sync.status = "saved";
+        writeLocalCache();
+        notify();
+      }
+    } catch (e) {
+      console.warn("fetchFinancialState failed:", e);
+    }
+  })();
+  try { await _hydratingPromise; }
+  finally { _hydratingUserId = null; _hydratingPromise = null; }
 }
 
 // Register auth listener early, independent of bootstrap. If bootstrap is hung

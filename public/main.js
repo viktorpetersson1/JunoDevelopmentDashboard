@@ -28,15 +28,29 @@ setTimeout(() => {
   }
 }, 6000);
 
-// 3. Wire sync status indicator
+// 3. Wire sync status indicator.
+//
+// rAF-batched so a burst of status changes (e.g. pending → saving → saved in
+// quick succession, or many "pending" events from rapid mutations) collapses
+// to at most one re-render per animation frame. Without batching, each status
+// change re-fires notify() which re-runs render() on the whole app — that
+// cascade was wedging the main thread under bursty editing.
+let _syncUpdatePending = false;
+let _latestStatus = null;
 onSaveStatusChange((status, detail) => {
-  state.sync.status = status;
-  if (status === "saved") {
-    state.sync.last_saved_at = detail?.ts || new Date();
-    if (detail?.newVersion != null) state.sync.server_version = detail.newVersion;
-  }
-  if (status === "error") state.sync.last_error = detail?.message;
-  if (status === "conflict") state.sync.last_error = `Concurrent edit (server v${detail?.serverVersion})`;
-  // Trigger a re-render via the state subscription system
-  import("./state.js").then(s => s.notify());
+  _latestStatus = { status, detail };
+  if (_syncUpdatePending) return;
+  _syncUpdatePending = true;
+  requestAnimationFrame(() => {
+    _syncUpdatePending = false;
+    const { status, detail } = _latestStatus;
+    state.sync.status = status;
+    if (status === "saved") {
+      state.sync.last_saved_at = detail?.ts || new Date();
+      if (detail?.newVersion != null) state.sync.server_version = detail.newVersion;
+    }
+    if (status === "error") state.sync.last_error = detail?.message;
+    if (status === "conflict") state.sync.last_error = `Concurrent edit (server v${detail?.serverVersion})`;
+    notify();
+  });
 });

@@ -252,7 +252,17 @@ let _saveInflight = null;
 const _saveListeners = new Set();
 
 export function onSaveStatusChange(fn) { _saveListeners.add(fn); return () => _saveListeners.delete(fn); }
+
+// Suppress consecutive duplicate "pending" notifications. Without this, a burst
+// of mutations (e.g. typing in an input, dragging a slider, a script firing
+// multiple setView calls) re-fires "pending" on every call, each one wakes the
+// subscriber in main.js, which re-renders the entire app. The actual save still
+// fires once after the debounce — listeners just don't need to know about each
+// reset of the timer.
+let _lastNotifiedStatus = null;
 function notifyStatus(status, detail) {
+  if (status === "pending" && _lastNotifiedStatus === "pending") return;
+  _lastNotifiedStatus = status;
   for (const fn of _saveListeners) fn(status, detail);
 }
 
