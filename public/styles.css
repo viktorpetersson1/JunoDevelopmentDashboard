@@ -489,6 +489,67 @@ tr.drag-over-after td { border-bottom: 2px solid var(--accent); }
 }
 .link-btn:hover { color: var(--fg); }
 
+/* ---------- Activity tab (v14.10 Phase 3.4) ---------- */
+
+.activity-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.activity-day-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+.activity-day-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.activity-entry {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 14px;
+  align-items: flex-start;
+}
+.activity-entry-time {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  padding-top: 2px;
+}
+.activity-entry-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.activity-entry-message {
+  font-size: 13px;
+  color: var(--fg);
+}
+.activity-detail {
+  font-size: 11px;
+  margin-top: 3px;
+  font-family: var(--font);
+}
+.activity-detail code {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 1px 4px;
+  background: var(--surface-2);
+  border-radius: 3px;
+  color: var(--fg-2);
+}
+.activity-entry-meta {
+  font-size: 10px;
+  margin-top: 3px;
+}
+
 /* ---------- Actuals tab (v14.9 Phase 3.3) ---------- */
 
 .actuals-list {

@@ -961,9 +961,9 @@ const PROJECT_TABS = [
   { key: "timeline", label: "Timeline",  status: "live" },
   { key: "capital",  label: "Capital",   status: "live" },
   { key: "actuals",  label: "Actuals",   status: "live" },
-  { key: "sales",    label: "Sales",     status: "coming", phase: "4"   },
-  { key: "risks",    label: "Risks",     status: "coming", phase: "3.4" },
-  { key: "activity", label: "Activity",  status: "coming", phase: "3.4" },
+  { key: "risks",    label: "Risks",     status: "live" },
+  { key: "activity", label: "Activity",  status: "live" },
+  { key: "sales",    label: "Sales",     status: "coming", phase: "4" },
 ];
 
 function renderProjectDetail(r) {
@@ -1002,6 +1002,10 @@ function renderProjectDetail(r) {
     tabBody = renderProjectCapitalTab(p, res);
   } else if (activeTab === "actuals") {
     tabBody = renderProjectActualsTab(p, res);
+  } else if (activeTab === "risks") {
+    tabBody = renderProjectRisksTab(p, res);
+  } else if (activeTab === "activity") {
+    tabBody = renderProjectActivityTab(p);
   } else {
     const t = PROJECT_TABS.find(t => t.key === activeTab);
     tabBody = `<div class="panel" style="text-align:center;padding:48px 24px;">
@@ -1994,6 +1998,179 @@ function renderProjectActualsTab(p, res) {
         Phase 4 will add: <strong>notes per line</strong> (free-form explanation of overruns),
         <strong>actuals timeline view</strong> (monthly cumulative actuals vs forecast curve),
         and <strong>change order log</strong> tying contingency draws to specific events.
+      </div>
+    </div>
+  `;
+}
+
+// v14.10 (Phase 3.4) — Project Risks tab
+// Shows the per-project health checks (reused from the Summary card) PLUS any cross-portfolio
+// findings from evaluateRisks() that name this project specifically. Acts as the project's
+// dedicated risk register.
+function renderProjectRisksTab(p, res) {
+  const r = aggregatePortfolio(state.projects, state.globals, state.scenario);
+  const allRisks = evaluateRisks(state, r);
+  // Filter to findings about THIS project (project-scope where project.id matches)
+  const findings = allRisks.all.filter(f => f.scope === "project" && f.project?.id === p.id);
+
+  const severityChip = (s) => {
+    const label = s === "high" ? "High" : s === "medium" ? "Medium" : "Low";
+    const icon = s === "high" ? "!" : s === "medium" ? "·" : "•";
+    return `<div class="risk-severity-chip ${s}">${icon} ${label}</div>`;
+  };
+
+  const findingsHtml = findings.length === 0
+    ? `<div class="muted" style="font-size:13px;padding:24px 4px;text-align:center;">No active findings for this project. All checks within thresholds.</div>`
+    : findings
+        .sort((a, b) => sevWeight(b.severity) - sevWeight(a.severity))
+        .map(f => `
+          <div class="risk-finding ${f.severity}">
+            <div class="risk-finding-header">
+              ${severityChip(f.severity)}
+              <div class="risk-finding-target"><strong>${escapeHtml(allRisks.categories.find(c => c.id === f.category)?.label || f.category)}</strong></div>
+              <div class="risk-finding-impact">${f.financial_impact_usd < 0 ? `<span class="neg">${fmt.usdM(Math.abs(f.financial_impact_usd))}</span> at risk` : f.financial_impact_usd > 0 ? `<span class="pos">${fmt.usdM(f.financial_impact_usd)}</span> upside` : "Impact: timing only"}</div>
+            </div>
+            <div class="risk-finding-body">
+              <div><span class="risk-label muted">Trigger:</span> ${escapeHtml(f.trigger)}</div>
+              ${f.timing_impact ? `<div><span class="risk-label muted">Timing:</span> ${escapeHtml(f.timing_impact)}</div>` : ""}
+              <div><span class="risk-label muted">Mitigation:</span> ${escapeHtml(f.mitigation)}</div>
+            </div>
+          </div>
+        `).join("");
+
+  const severityCounts = {
+    high: findings.filter(f => f.severity === "high").length,
+    medium: findings.filter(f => f.severity === "medium").length,
+    low: findings.filter(f => f.severity === "low").length,
+  };
+
+  return `
+    <div class="kpi-row">
+      ${kpiCard("Active findings", `${findings.length}`, findings.length === 0 ? "All clear" : "Review and act", findings.length === 0 ? "pos" : "")}
+      ${kpiCard("High severity", `${severityCounts.high}`, "Act now", severityCounts.high > 0 ? "neg" : "")}
+      ${kpiCard("Medium severity", `${severityCounts.medium}`, "Plan a mitigation", severityCounts.medium > 0 ? "warn" : "")}
+      ${kpiCard("Low severity", `${severityCounts.low}`, "Monitor", severityCounts.low > 0 ? "" : "")}
+    </div>
+
+    ${renderProjectRiskCards(p, res)}
+
+    <div class="panel mb-24">
+      <h3>Active findings for this project</h3>
+      <div class="panel-subtitle">Sourced from the portfolio-wide risk engine. Findings here cite ${escapeHtml(p.name)} specifically.</div>
+      ${findingsHtml}
+    </div>
+
+    <div class="panel mb-24">
+      <h3>What's next</h3>
+      <div class="muted" style="font-size:12px;line-height:1.6;">
+        Future iterations: <strong>acknowledge / dismiss</strong> findings, <strong>assign owners</strong>, and
+        <strong>track mitigations to completion</strong>. For now the engine recomputes on every state change,
+        so resolved triggers (e.g. fixing an over-LTC project) disappear from this view automatically.
+      </div>
+    </div>
+  `;
+}
+
+// v14.10 (Phase 3.4) — Project Activity tab
+// Full chronological feed of audit_log entries that touch this project. Replaces the
+// "last 5" sample on the Summary tab with a complete history view.
+function renderProjectActivityTab(p) {
+  const log = state.audit_log || [];
+  const entries = log.filter(e => {
+    if (e.detail?.project_id === p.id) return true;
+    if (e.detail?.source_id === p.id || e.detail?.target_id === p.id) return true;
+    if (e.message?.toLowerCase().includes((p.name || "##nope##").toLowerCase())) return true;
+    return false;
+  });
+
+  if (!entries.length) {
+    return `<div class="panel">
+      <h3>Activity</h3>
+      <div class="muted" style="font-size:13px;padding:24px 4px;text-align:center;">
+        No activity recorded for this project yet. Every assumption change, scenario edit,
+        and lifecycle move that touches <strong>${escapeHtml(p.name)}</strong> will appear here.
+      </div>
+    </div>`;
+  }
+
+  // Group entries by day
+  const groups = {};
+  for (const e of entries) {
+    const day = e.ts ? new Date(e.ts).toISOString().slice(0, 10) : "—";
+    if (!groups[day]) groups[day] = [];
+    groups[day].push(e);
+  }
+  const days = Object.keys(groups).sort().reverse();
+
+  const dayLabel = (iso) => {
+    if (iso === "—") return "Unknown date";
+    const d = new Date(iso + "T00:00:00");
+    const todayIso = new Date().toISOString().slice(0, 10);
+    if (iso === todayIso) return "Today";
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    if (iso === yesterday) return "Yesterday";
+    return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+  };
+
+  const categoryChip = (cat) => {
+    const map = {
+      project:  { label: "Project",  cls: "in-build" },
+      global:   { label: "Global",   cls: "committed" },
+      scenario: { label: "Scenario", cls: "sold" },
+    };
+    const t = map[cat] || { label: cat, cls: "pipeline" };
+    return `<span class="badge ${t.cls}" style="font-size:9px;">${t.label}</span>`;
+  };
+
+  const detailSnippet = (entry) => {
+    if (!entry.detail) return "";
+    const changes = entry.detail.changes;
+    if (changes && typeof changes === "object") {
+      const keys = Object.keys(changes).slice(0, 3);
+      const summary = keys.map(k => {
+        const c = changes[k];
+        const prev = c?.prev == null ? "—" : (typeof c.prev === "number" ? c.prev.toLocaleString() : escapeHtml(String(c.prev)));
+        const next = c?.next == null ? "—" : (typeof c.next === "number" ? c.next.toLocaleString() : escapeHtml(String(c.next)));
+        return `<code>${escapeHtml(k)}</code>: ${prev} → ${next}`;
+      }).join(" · ");
+      const more = Object.keys(changes).length > keys.length ? ` <span class="muted">+${Object.keys(changes).length - keys.length} more</span>` : "";
+      return `<div class="activity-detail muted">${summary}${more}</div>`;
+    }
+    return "";
+  };
+
+  return `
+    <div class="kpi-row">
+      ${kpiCard("Total events", `${entries.length}`, `Across ${days.length} day${days.length === 1 ? "" : "s"}`)}
+      ${kpiCard("Project edits", `${entries.filter(e => e.category === "project").length}`, "Direct project changes")}
+      ${kpiCard("Scenario events", `${entries.filter(e => e.category === "scenario").length}`, "Scenario changes affecting this project")}
+      ${kpiCard("Last activity", entries[0]?.ts ? new Date(entries[0].ts).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—", "Most recent event")}
+    </div>
+
+    <div class="panel mb-24">
+      <h3>Project history</h3>
+      <div class="panel-subtitle">Every edit that touches ${escapeHtml(p.name)}, newest first. Synced server-side via activity_log.</div>
+      <div class="activity-feed">
+        ${days.map(day => `
+          <div class="activity-day">
+            <div class="activity-day-label">${dayLabel(day)}</div>
+            <div class="activity-day-entries">
+              ${groups[day].map(e => `
+                <div class="activity-entry">
+                  <div class="activity-entry-time muted">${e.ts ? new Date(e.ts).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "—"}</div>
+                  <div class="activity-entry-body">
+                    <div class="activity-entry-line">
+                      ${categoryChip(e.category)}
+                      <span class="activity-entry-message">${escapeHtml(e.message || "(unspecified)")}</span>
+                    </div>
+                    ${detailSnippet(e)}
+                    <div class="activity-entry-meta muted">${e.user_email ? escapeHtml(e.user_email) : "system"}</div>
+                  </div>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        `).join("")}
       </div>
     </div>
   `;
