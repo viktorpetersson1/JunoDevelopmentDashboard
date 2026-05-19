@@ -3674,6 +3674,56 @@ function renderAssistantPanel() {
 
 function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 
+// v14.17 (2026-05-19) — In-app confirmation modal.
+// Replaces the native confirm() dialog for destructive actions. Native confirms are
+// easy to miss (small banner near the address bar) and some browsers auto-suppress
+// after multiple uses. This is a styled overlay that's hard to dismiss accidentally:
+//   - Big card centered on screen with title, message, and explicit Cancel / Confirm
+//   - Confirm button is focused by default — but Enter doesn't auto-fire
+//   - Esc or click outside the card cancels (no destructive action without intent)
+//
+// Usage:
+//   confirmDialog({
+//     title: "Delete project?",
+//     message: "This will permanently remove ...",
+//     confirmLabel: "Delete",
+//     danger: true,
+//     onConfirm: () => removeProject(id),
+//   });
+function confirmDialog(opts) {
+  const { title, message, confirmLabel = "Confirm", cancelLabel = "Cancel", danger = false, onConfirm, onCancel } = opts || {};
+  document.querySelector(".confirm-overlay")?.remove();
+  const overlay = document.createElement("div");
+  overlay.className = "confirm-overlay";
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-modal", "true");
+  overlay.innerHTML = `
+    <div class="confirm-modal">
+      <h3 class="confirm-title">${escapeHtml(title || "Are you sure?")}</h3>
+      ${message ? `<p class="confirm-message">${escapeHtml(message)}</p>` : ""}
+      <div class="confirm-actions">
+        <button class="btn secondary" data-confirm-action="cancel">${escapeHtml(cancelLabel)}</button>
+        <button class="btn ${danger ? "danger" : ""}" data-confirm-action="confirm">${escapeHtml(confirmLabel)}</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  const close = () => {
+    document.removeEventListener("keydown", onKey);
+    overlay.remove();
+  };
+  const onKey = (e) => {
+    if (e.key === "Escape") { close(); onCancel?.(); }
+  };
+  document.addEventListener("keydown", onKey);
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) { close(); onCancel?.(); }
+  });
+  overlay.querySelector('[data-confirm-action="cancel"]').addEventListener("click", () => { close(); onCancel?.(); });
+  overlay.querySelector('[data-confirm-action="confirm"]').addEventListener("click", () => { close(); onConfirm?.(); });
+  overlay.querySelector('[data-confirm-action="cancel"]').focus({ preventScroll: true });
+}
+
 // ---------- Suggestions view (admin queue) ----------
 
 let _suggestionsCache = null;
@@ -4017,7 +4067,15 @@ function attachViewEvents(result) {
       if (action === "open") setView("project_detail", id);
       if (action === "exclude") toggleProjectExclusion(id);
       if (action === "remove") {
-        if (confirm(`Delete project? This cannot be undone.`)) removeProject(id);
+        const proj = state.projects.find(x => x.id === id);
+        confirmDialog({
+          title: "Delete this project?",
+          message: `"${proj?.name || id}" will be permanently removed from Juno Atlas. This cannot be undone.`,
+          confirmLabel: "Delete project",
+          cancelLabel: "Keep it",
+          danger: true,
+          onConfirm: () => removeProject(id),
+        });
       }
       if (action === "use-excel-price") {
         const price = Number(btn.dataset.price);
@@ -4165,7 +4223,14 @@ function attachViewEvents(result) {
 
   // Activity log buttons
   document.getElementById("clear-audit-log")?.addEventListener("click", () => {
-    if (confirm("Clear the entire activity log? This cannot be undone.")) clearAuditLog();
+    confirmDialog({
+      title: "Clear the entire activity log?",
+      message: "All recorded events for this project will be removed. This cannot be undone.",
+      confirmLabel: "Clear log",
+      cancelLabel: "Keep it",
+      danger: true,
+      onConfirm: () => clearAuditLog(),
+    });
   });
   document.getElementById("export-audit-csv")?.addEventListener("click", () => {
     const rows = [["Timestamp", "Category", "Action", "Detail"]];
@@ -4391,7 +4456,14 @@ function attachViewEvents(result) {
     btn.addEventListener("click", () => setTheme(btn.dataset.theme));
   }
   document.getElementById("reset-baseline")?.addEventListener("click", () => {
-    if (confirm("Reset all state to Excel baseline?")) resetToBaseline();
+    confirmDialog({
+      title: "Reset all state to seed data?",
+      message: "Every project, scenario, and override will be wiped and reloaded from the Atlas seed. This cannot be undone.",
+      confirmLabel: "Reset everything",
+      cancelLabel: "Keep my data",
+      danger: true,
+      onConfirm: () => resetToBaseline(),
+    });
   });
   document.getElementById("match-excel")?.addEventListener("click", () => {
     updateGlobal("fiscal_year_mode", "juno13");
@@ -4585,7 +4657,14 @@ function attachViewEvents(result) {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
       const name = btn.dataset.deleteScenario;
-      if (confirm(`Delete scenario "${name}"?`)) deleteScenario(name);
+      confirmDialog({
+        title: "Delete this scenario?",
+        message: `"${name}" will be permanently removed. This cannot be undone.`,
+        confirmLabel: "Delete scenario",
+        cancelLabel: "Keep it",
+        danger: true,
+        onConfirm: () => deleteScenario(name),
+      });
     });
   }
   for (const btn of document.querySelectorAll("[data-preset]")) {
@@ -5099,7 +5178,14 @@ function attachWizardEvents() {
   // Nav buttons
   document.getElementById("wizard-cancel")?.addEventListener("click", () => closeWizard());
   document.getElementById("wizard-discard")?.addEventListener("click", () => {
-    if (confirm("Discard this draft project? You'll lose anything entered.")) discardWizardDraft();
+    confirmDialog({
+      title: "Discard this draft?",
+      message: "Everything you've entered in the wizard will be lost.",
+      confirmLabel: "Discard draft",
+      cancelLabel: "Keep editing",
+      danger: true,
+      onConfirm: () => discardWizardDraft(),
+    });
   });
   document.getElementById("wizard-back")?.addEventListener("click", () => setWizardStep(state.ui.wizard.step - 1));
   document.getElementById("wizard-next")?.addEventListener("click", () => {

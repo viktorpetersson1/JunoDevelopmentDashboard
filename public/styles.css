@@ -1337,6 +1337,71 @@ tr.drag-over-after td { border-bottom: 2px solid var(--accent); }
   line-height: 1.5;
 }
 
+/* ---------- Confirmation modal (v14.17) ---------- */
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(30, 41, 59, 0.42);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300; /* above the wizard (200) and assistant panel */
+  padding: 24px;
+  animation: confirm-fade-in 0.16s ease-out;
+}
+@keyframes confirm-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.confirm-modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow:
+    0 1px 2px rgba(30, 41, 59, 0.06),
+    0 24px 64px rgba(30, 41, 59, 0.22),
+    0 0 0 1px rgba(30, 41, 59, 0.04);
+  width: 100%;
+  max-width: 440px;
+  padding: 28px 28px 22px;
+  position: relative;
+  overflow: hidden;
+  animation: confirm-pop-in 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+@keyframes confirm-pop-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.confirm-modal::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--neg) 25%, var(--neg) 75%, transparent);
+  opacity: 0.9;
+}
+
+.confirm-title {
+  margin: 0 0 10px 0;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--fg);
+}
+.confirm-message {
+  margin: 0 0 22px 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--fg-2);
+}
+.confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
 /* ---------- New Project wizard ---------- */
 
 .wizard-overlay {
