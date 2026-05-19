@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Juno Atlas — Exec Presentation</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #faf6ec;
+    --surface: #ffffff;
+    --surface-2: #f1ecdf;
+    --surface-3: #e3dcc8;
+    --border: #ddd4bf;
+    --border-strong: #c2b8a0;
+    --fg: #1e293b;
+    --fg-2: #475569;
+    --fg-3: #78716c;
+    --accent: #334155;
+    --pos: #15803d;
+    --neg: #9f1239;
+    --info: #1d4ed8;
+    --warn: #a16207;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 0%, rgba(51, 65, 85, 0.04), transparent 70%),
+      var(--bg);
+  }
+
+  .deck { position: relative; height: 100vh; width: 100vw; }
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    padding: 64px 80px;
+    overflow-y: auto;
+  }
+  .slide.active { display: flex; }
+
+  .slide-inner { max-width: 1080px; margin: 0 auto; width: 100%; }
+  .slide-num {
+    position: fixed;
+    top: 24px;
+    right: 32px;
+    font-size: 11px;
+    color: var(--fg-3);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+  .brand {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: -0.01em;
+    margin-bottom: 8px;
+  }
+  .brand span { color: var(--fg-2); margin-left: 4px; font-weight: 400; }
+  .eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--fg-3);
+    margin-bottom: 16px;
+  }
+  h1 {
+    font-size: 56px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin-bottom: 24px;
+    color: var(--fg);
+  }
+  h1.small { font-size: 40px; }
+  h2 {
+    font-size: 32px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+    margin-bottom: 20px;
+    color: var(--fg);
+  }
+  .lede {
+    font-size: 20px;
+    line-height: 1.55;
+    color: var(--fg-2);
+    max-width: 760px;
+    margin-bottom: 32px;
+  }
+  .sub {
+    font-size: 14px;
+    color: var(--fg-3);
+    margin-bottom: 12px;
+  }
+
+  ul, ol { list-style: none; padding: 0; }
+  ul.bullets li {
+    position: relative;
+    padding-left: 24px;
+    margin-bottom: 14px;
+    font-size: 17px;
+    color: var(--fg);
+    line-height: 1.55;
+    max-width: 800px;
+  }
+  ul.bullets li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 9px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  ul.bullets li strong { font-weight: 600; }
+  ul.bullets li .muted { color: var(--fg-3); font-weight: 400; }
+
+  .accent-stripe {
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--accent) 25%, var(--accent) 75%, transparent);
+    opacity: 0.85;
+    margin-bottom: 32px;
+    max-width: 240px;
+  }
+
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+    margin-top: 24px;
+  }
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    box-shadow: 0 1px 2px rgba(30, 41, 59, 0.04);
+  }
+  .kpi .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--fg-3);
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .kpi .value {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--fg);
+    letter-spacing: -0.01em;
+  }
+  .kpi .meta {
+    font-size: 11px;
+    color: var(--fg-3);
+    margin-top: 4px;
+  }
+
+  .nav-pills {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 24px 0;
+  }
+  .pill {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--fg);
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .pill.accent { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    margin-top: 24px;
+  }
+  .col h3 {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--fg-3);
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .col p, .col li { font-size: 16px; color: var(--fg); line-height: 1.55; }
+
+  .lifecycle {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin: 32px 0;
+  }
+  .stage {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+  }
+  .stage .num {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 10px;
+  }
+  .stage .title {
+    font-weight: 600;
+    color: var(--fg);
+    margin-bottom: 6px;
+    font-size: 15px;
+  }
+  .stage .desc {
+    font-size: 12px;
+    color: var(--fg-3);
+    line-height: 1.5;
+  }
+
+  .feature-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    margin-bottom: 12px;
+    position: relative;
+  }
+  .feature-card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px;
+    height: 100%;
+    background: var(--accent);
+    border-radius: 10px 0 0 10px;
+  }
+  .feature-card h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--fg);
+  }
+  .feature-card p {
+    font-size: 14px;
+    color: var(--fg-2);
+    line-height: 1.55;
+  }
+  .feature-card .tags {
+    margin-top: 12px;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .feature-card .tag {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 3px;
+    background: var(--surface-2);
+    color: var(--fg-3);
+  }
+
+  .cap-table {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    margin-top: 16px;
+  }
+  .cap-table table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 15px;
+  }
+  .cap-table th, .cap-table td {
+    text-align: left;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    color: var(--fg);
+  }
+  .cap-table th {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--fg-3);
+    font-weight: 600;
+  }
+  .cap-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .cap-table tr.kpc-row { color: var(--fg-3); font-style: italic; }
+  .cap-table tr.kpc-row td { border-bottom: none; }
+
+  .footer-nav {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--surface-3);
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    transition: all 0.15s;
+  }
+  .dot:hover { background: var(--border-strong); }
+  .dot.active { background: var(--accent); width: 24px; border-radius: 4px; }
+
+  .nav-hint {
+    position: fixed;
+    bottom: 24px;
+    right: 32px;
+    font-size: 11px;
+    color: var(--fg-3);
+  }
+  .nav-hint kbd {
+    font-family: inherit;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--fg-2);
+  }
+
+  .quote {
+    font-size: 24px;
+    line-height: 1.5;
+    color: var(--fg);
+    font-weight: 500;
+    max-width: 800px;
+    padding: 16px 0 16px 24px;
+    border-left: 3px solid var(--accent);
+    margin: 24px 0;
+  }
+  .quote-source {
+    font-size: 13px;
+    color: var(--fg-3);
+    margin-top: 8px;
+  }
+
+  .url {
+    font-family: "Inter", monospace;
+    font-size: 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 12px 18px;
+    border-radius: 8px;
+    color: var(--fg);
+    display: inline-block;
+    margin-top: 16px;
+    font-weight: 500;
+  }
+
+  @media print {
+    body { background: white; }
+    .slide { display: flex !important; page-break-after: always; height: 100vh; }
+    .footer-nav, .nav-hint, .slide-num { display: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+  <div class="slide-num" id="slide-num">1 / 11</div>
+
+  <!-- 1. Title -->
+  <section class="slide active">
+    <div class="slide-inner">
+      <div class="brand">Juno <span>Atlas</span></div>
+      <div class="accent-stripe"></div>
+      <h1>The development operating system we built for Juno</h1>
+      <p class="lede">From sourcing a site through closing the sale — one dashboard, one source of truth, no Excel.</p>
+      <p class="sub" style="margin-top: 32px;">Exec presentation · May 2026</p>
+    </div>
+  </section>
+
+  <!-- 2. Problem -->
+  <section class="slide">
+    <div class="slide-inner">
+      <div class="eyebrow">The problem</div>
+      <h1 class="small">Juno was running on a 27-sheet Excel model</h1>
+      <ul class="bullets" style="margin-top: 16px;">
+        <li><strong>12,815 formulas</strong> across portfolio summary, monthly cash flow, debt schedules, capital waterfalls, and risk flags</li>
+        <li><strong>Single-user, version-by-filename</strong> — every "what if?" forked a new file</li>
+        <li><strong>No actuals tracking</strong> — forecasts lived in Excel, real spending lived in someone's head or a separate file</li>
+        <li><strong>No multi-stakeholder visibility</strong> — owners couldn't see the same numbers Viktor was looking at</li>
+        <li><strong>Brittle to change</strong> — adding a project meant re-cloning rows across 8 sheets</li>
+      </ul>
+      <div class="quote" style="margin-top: 32px;">
+        The spreadsheet already contains the intelligence. The product now needs to make that intelligence understandable, editable, collaborative, and visually elegant.
+        <div class="quote-source">— Product brief, May 2026</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. Vision -->
+  <section class="slide">
+    <div class="slide-inner">
+      <div class="eyebrow">The vision</div>
+      <h1 class="small">Atlas runs Juno end-to-end</h1>
+      <p class="lede">A daily-driver dashboard for the exec team. Simple enough to look at on a Monday. Trustworthy enough to make capital decisions with.</p>
+      <div class="lifecycle">
+        <div class="stage">
+          <div class="num">1</div>
+          <div class="title">Sourcing</div>
+          <div class="desc">Pipeline projects, site evaluation, underwriting</div>
+        </div>
+        <div class="stage">
+          <div class="num">2</div>
+          <div class="title">Financial planning</div>
+          <div class="desc">Forecasts, scenarios, capital orchestration, KPIs</div>
+        </div>
+        <div class="stage">
+          <div class="num">3</div>
+          <div class="title">Operating</div>
+          <div class="desc">Actuals vs forecast, variance flagging, risk monitoring</div>
+        </div>
+        <div class="stage">
+          <div class="num">4</div>
+          <div class="title">Selling</div>
+          <div class="desc">Listing through closing, sale waterfall to owners</div>
+        </div>
+      </div>
+      <p class="sub" style="margin-top: 16px;">Excel is archived. Atlas is the source of truth.</p>
+    </div>
+  </section>
+
+  <!-- 4. The platform — top-level IA -->
+  <section class="slide">
+    <div class="slide-inner">
+      <div class="eyebrow">What we built</div>
+      <h1 class="small">Six sections covering every operating decision</h1>
+      <div class="nav-pills">
+        <div class="pill accent">Portfolio</div>
+        <div class="pill accent">Projects</div>
+        <div class="pill accent">Forecast</div>
+        <div class="pill accent">Capital</div>
+        <div class="pill accent">Risks</div>
+        <div class="pill accent">Settings</div>
+      </div>
+      <div class="grid-2">
+        <div class="col">
+          <h3>Top nav (what Viktor + Missy see)</h3>
+          <p style="margin-bottom: 12px;"><strong>Portfolio</strong> — health of all projects at a glance, with risk watchlist + next milestones</p>
+          <p style="margin-bottom: 12px;"><strong>Projects</strong> — list + per-project workspace (8 tabs)</p>
+          <p style="margin-bottom: 12px;"><strong>Forecast</strong> — monthly cash flow + scenarios</p>
+          <p style="margin-bottom: 12px;"><strong>Capital</strong> — KPC LOC orchestration + owner cap-table</p>
+          <p style="margin-bottom: 12px;"><strong>Risks</strong> — 6 categories of operational risk, tied to actions</p>
+        </div>
+        <div class="col">
+          <h3>Project workspace (per villa)</h3>
+          <p style="margin-bottom: 12px;"><strong>Summary</strong> — KPI dashboard for the project</p>
+          <p style="margin-bottom: 12px;"><strong>Inputs</strong> — every assumption editable in plain language</p>
+          <p style="margin-bottom: 12px;"><strong>Timeline</strong> — milestones, burn schedule, delay simulator</p>
+          <p style="margin-bottom: 12px;"><strong>Capital</strong> — project's slice of the financing stack</p>
+          <p style="margin-bottom: 12px;"><strong>Actuals</strong> — forecast vs reality with variance flags</p>
+          <p style="margin-bottom: 12px;"><strong>Sales</strong> — lifecycle, sale waterfall, owner distributions</p>
+          <p style="margin-bottom: 12px;"><strong>Risks · Activity</strong> — per-project flags + edit history</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. Sourcing & Planning -->
+  <section class="slide">
+    <div class="slide-inner">
+      <div class="eyebrow">Sourcing + Planning</div>
+      <h1 class="small">A villa goes from idea to model in 2 minutes</h1>
+      <div class="feature-card">
+        <h3>Guided 7-step wizard</h3>
+        <p>Basics → Program → Timing → Costs → Revenue → Financing → Review. Only project name is required; everything else inherits sensible defaults until you override.</p>
+        <div class="tags">
+          <span class="tag">Spec home</span><span class="tag">Ground-up</span><span class="tag">Renovation</span>
+        </div>
+      </div>
+      <div class="feature-card">
+        <h3>Live KPI preview before you commit</h3>
+        <p>The Review step runs the engine on your draft and shows projected profit, peak equity, max debt, IRR, and MOIC — so you see the financial shape of the deal before saving it.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Save-as-draft at every step</h3>
+        <p>Close the wizard mid-flow; pick up exactly where you left off. No spreadsheet copy-paste, no lost work.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. Capital orchestration -->
+  <section class="slide">
+    <div class="slide-inner">
+      <div class="eyebrow">Capital orchestration</div>
+      <h1 class="small">The KPC line of credit, modeled properly</h1>
+      <p class="lede">Atlas treats Juno's capital stack the way it actually works: senior construction debt → KPC's $6M LOC (subordinated debt @ 6%) → owner equity. Most platforms collapse this into one bucket.</p>
+      <div class="kpi-row">
+        <div class="kpi">
+          <div class="label">KPC LOC facility</div>
+          <div class="value">$6.0M</div>
+          <div class="meta">6% APR · capitalized interest</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Peak draw (current pipeline)</div>
+          <div class="value">$6.0M</div>
+          <div class="meta">Hits cap around March 2027</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Owner equity needed</div>
+          <div class="value">$1.8M</div>
+          <div class="meta">Above LOC cap, pro-rata</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Cap-breach months</div>
+          <div class="value">2-3</div>
+          <div class="meta">Funding-gap window flagged</div>
+        </div>
+      </div>
+      <p class="sub" style="margin-top: 24px;">The Capital screen shows the full LOC drawdown curve, when each cap-breach occurs, and what the per-owner equity contribution is. It's the conversation we need to have <em>before</em> we commit to the next project.</p>
+    </div>
+  </section>
+
+  <!-- 7. Owner cap-table -->
+  <section class="slide">
+    <div class="slide-inner">
+      <div class="eyebrow">Cap-table — modeled correctly</div>
+      <h1 class="small">Profits flow pro-rata to 7 owners. KPC is debt, not equity.</h1>
+      <p class="lede">Atlas computes a per-owner distribution on every project sale: gross sale → repay senior debt → repay KPC LOC + 6% interest → distribute remainder pro-rata.</p>
+      <div class="cap-table">
+        <table>
+          <thead><tr><th>Owner</th><th class="num">Share</th><th class="num">Profit share (current pipeline)</th></tr></thead>
+          <tbody>
+            <tr><td>Peter</td><td class="num">38.0%</td><td class="num">$4.77M</td></tr>
+            <tr><td>Lars</td><td class="num">30.0%</td><td class="num">$3.76M</td></tr>
+            <tr><td>Viktor</td><td class="num">17.0%</td><td class="num">$2.13M</td></tr>
+            <tr><td>Philip</td><td class="num">5.0%</td><td class="num">$0.63M</td></tr>
+            <tr><td>Missy</td><td class="num">5.0%</td><td class="num">$0.63M</td></tr>
+            <tr><td>Massi</td><td class="num">2.5%</td><td class="num">$0.31M</td></tr>
+            <tr><td>Mark</td><td class="num">2.5%</td><td class="num">$0.31M</td></tr>
+            <tr class="kpc-row"><td>KPC (debt only — not in distribution)</td><td class="num">—</td><td class="num">repaid + 6%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. Risks center -->
+  <section class="slide">
+    <div class="slide-inner">
+      <div class="eyebrow">Risk management</div>
+      <h1 class="small">Six categories of risk, every one tied to action</h1>
+      <p class="lede">Atlas continuously evaluates the portfolio across six risk categories. Each finding includes severity, financial impact, timing impact, and a suggested mitigation.</p>
+      <div class="grid-2" style="margin-top: 16px;">
+        <div class="col">
+          <div class="feature-card" style="margin-bottom: 8px;">
+            <h3 style="font-size: 15px;">Sales delay</h3>
+            <p style="font-size: 13px;">Projects past their listing window with no listing date set.</p>
+          </div>
+          <div class="feature-card" style="margin-bottom: 8px;">
+            <h3 style="font-size: 15px;">Sale price downside</h3>
+            <p style="font-size: 13px;">Margin tested against a 10% market drop.</p>
+          </div>
+          <div class="feature-card" style="margin-bottom: 8px;">
+            <h3 style="font-size: 15px;">Cost overrun</h3>
+            <p style="font-size: 13px;">Actuals running 5%+ over forecast on any line.</p>
+          </div>
+        </div>
+        <div class="col">
+          <div class="feature-card" style="margin-bottom: 8px;">
+            <h3 style="font-size: 15px;">Lender rejection</h3>
+            <p style="font-size: 13px;">LTC above 80% — lender may decline.</p>
+          </div>
+          <div class="feature-card" style="margin-bottom: 8px;">
+            <h3 style="font-size: 15px;">Equity clustering</h3>
+            <p style="font-size: 13px;">Multiple projects need equity simultaneously, exceeding LOC.</p>
+          </div>
+          <div class="feature-card" style="margin-bottom: 8px;">
+            <h3 style="font-size: 15px;">Funding gap</h3>
+            <p style="font-size: 13px;">Owner equity required above what the LOC can cover.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9. Scenarios -->
+  <section class="slide">
+    <div class="slide-inner">
+      <div class="eyebrow">Decision-grade scenarios</div>
+      <h1 class="small">Compare, classify, lock — then own the decision</h1>
+      <ul class="bullets">
+        <li><strong>Duplicate</strong> any scenario as a starting point for what-ifs</li>
+        <li><strong>Classify</strong> as Base · Lender · Upside · Downside · Custom — so anyone reading knows what they're looking at</li>
+        <li><strong>Edit only what changes</strong> — the rest inherits from the parent</li>
+        <li><strong>Side-by-side KPI comparison</strong> across all saved scenarios — profit, peak equity, max debt, MOIC, IRR</li>
+        <li><strong>Variance drivers</strong> — every assumption that's different gets a one-line explanation of why it matters</li>
+        <li><strong>Lock one as the decision</strong> — single source of truth, with everything else as alternatives</li>
+      </ul>
+      <p class="sub" style="margin-top: 24px;">No more "Base case FINAL v3 (Viktor's edits).xlsx" floating around the team.</p>
+    </div>
+  </section>
+
+  <!-- 10. Operating + Selling -->
+  <section class="slide">
+    <div class="slide-inner">
+      <div class="eyebrow">Operating + Selling</div>
+      <h1 class="small">From forecast to reality, in one screen</h1>
+      <div class="grid-2">
+        <div class="col">
+          <h3>Actuals tab</h3>
+          <div class="feature-card" style="margin-top: 12px;">
+            <h3 style="font-size: 16px;">Forecast vs actual, per line</h3>
+            <p style="font-size: 13px;">Land · Construction · Kingshaus · Soft costs · Financing. Enter what you've actually paid; variance computes live with severity flags (<em>on budget · slight over · over · way over</em>).</p>
+          </div>
+          <div class="feature-card" style="margin-top: 12px;">
+            <h3 style="font-size: 16px;">Contingency tracking</h3>
+            <p style="font-size: 13px;">Atlas computes the budget (5% of hard costs) and tracks burn live. Warns at 50% and 80%.</p>
+          </div>
+        </div>
+        <div class="col">
+          <h3>Sales tab</h3>
+          <div class="feature-card" style="margin-top: 12px;">
+            <h3 style="font-size: 16px;">Lifecycle bar</h3>
+            <p style="font-size: 13px;">Listed → Under contract → Closed. Visual progress as the deal moves; days on market computed automatically.</p>
+          </div>
+          <div class="feature-card" style="margin-top: 12px;">
+            <h3 style="font-size: 16px;">Sale waterfall</h3>
+            <p style="font-size: 13px;">Gross sale → senior debt repay → LOC + interest repay → net to 7 owners pro-rata. Per-owner distribution shown live.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11. Ask Juno + Next -->
+  <section class="slide">
+    <div class="slide-inner">
+      <div class="brand">Juno <span>Atlas</span></div>
+      <div class="accent-stripe"></div>
+      <h1 class="small">It's live. Soak test is next.</h1>
+      <a class="url" href="https://juno-dashboard.onrender.com">https://juno-dashboard.onrender.com</a>
+      <div class="grid-2" style="margin-top: 40px;">
+        <div class="col">
+          <h3>Built in</h3>
+          <ul class="bullets" style="margin-top: 0;">
+            <li style="font-size: 15px;">~2 weeks · 25+ commits · 4 dev phases</li>
+            <li style="font-size: 15px;">Engine: 6-category risk evaluation + KPC LOC pool modeling</li>
+            <li style="font-size: 15px;">UI: 6-section nav, 8-tab project workspace, restrained slate-on-stone aesthetic</li>
+            <li style="font-size: 15px;">Ask Juno: AI assistant with contextual nudges based on portfolio state</li>
+            <li style="font-size: 15px;">Multi-user with role-based access (Owner · Editor · Viewer)</li>
+          </ul>
+        </div>
+        <div class="col">
+          <h3>What we need from you</h3>
+          <ul class="bullets" style="margin-top: 0;">
+            <li style="font-size: 15px;"><strong>Use it.</strong> Open a real project. Try the wizard.</li>
+            <li style="font-size: 15px;"><strong>Tell us what's confusing</strong>, slow, or wrong</li>
+            <li style="font-size: 15px;"><strong>Sign up</strong> when invited — each of you sees your own profit share live</li>
+            <li style="font-size: 15px;"><strong>Decide</strong> what we iterate on first</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div class="footer-nav" id="footer-nav"></div>
+<div class="nav-hint">Use <kbd>←</kbd> <kbd>→</kbd> or <kbd>space</kbd> to navigate</div>
+
+<script>
+  const slides = document.querySelectorAll(".slide");
+  const totalSlides = slides.length;
+  let current = 0;
+
+  const dotsContainer = document.getElementById("footer-nav");
+  for (let i = 0; i < totalSlides; i++) {
+    const dot = document.createElement("button");
+    dot.className = "dot" + (i === 0 ? " active" : "");
+    dot.setAttribute("aria-label", `Go to slide ${i + 1}`);
+    dot.addEventListener("click", () => go(i));
+    dotsContainer.appendChild(dot);
+  }
+  const dots = dotsContainer.children;
+
+  function go(i) {
+    if (i < 0 || i >= totalSlides) return;
+    slides[current].classList.remove("active");
+    dots[current].classList.remove("active");
+    current = i;
+    slides[current].classList.add("active");
+    dots[current].classList.add("active");
+    document.getElementById("slide-num").textContent = `${current + 1} / ${totalSlides}`;
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") {
+      e.preventDefault();
+      go(current + 1);
+    } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
+      e.preventDefault();
+      go(current - 1);
+    } else if (e.key === "Home") {
+      go(0);
+    } else if (e.key === "End") {
+      go(totalSlides - 1);
+    }
+  });
+</script>
+
+</body>
+</html>
