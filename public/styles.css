@@ -1418,8 +1418,13 @@ tr.drag-over-after td { border-bottom: 2px solid var(--accent); }
 @keyframes wizard-fade-in { from { opacity: 0; } to { opacity: 1; } }
 
 .wizard-modal {
-  display: grid;
-  grid-template-columns: 220px 1fr;
+  /* v14.18 (2026-05-19) — Switched from CSS grid to flexbox.
+     Grid with implicit rows let the row auto-size to content, which on tall
+     steps (e.g. Financing with the capital-stack preview) overflowed past 90vh
+     and clipped the wizard footer (Next button). Flexbox with a fixed-width rail
+     and a flex:1 body column means the body always fills the available height,
+     and its inner overflow-y on .wizard-content works as intended. */
+  display: flex;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -1441,6 +1446,7 @@ tr.drag-over-after td { border-bottom: 2px solid var(--accent); }
 }
 
 .wizard-rail {
+  flex: 0 0 220px;        /* fixed width; don't shrink */
   background: var(--surface-2);
   border-right: 1px solid var(--border);
   padding: 28px 18px 18px;
@@ -1507,9 +1513,11 @@ tr.drag-over-after td { border-bottom: 2px solid var(--accent); }
 .wizard-rail-step.future .step-num { background: var(--surface); }
 
 .wizard-body {
+  flex: 1;                /* take all remaining horizontal space */
   display: flex;
   flex-direction: column;
-  min-height: 0;  /* allow inner overflow */
+  min-width: 0;
+  min-height: 0;          /* allow inner overflow-y to engage */
 }
 .wizard-content {
   padding: 32px 36px 24px;
@@ -1563,12 +1571,13 @@ tr.drag-over-after td { border-bottom: 2px solid var(--accent); }
 @media (max-width: 720px) {
   .wizard-overlay { padding: 0; }
   .wizard-modal {
-    grid-template-columns: 1fr;
+    flex-direction: column;     /* stack rail on top of body */
     max-height: 100vh;
     height: 100vh;
     border-radius: 0;
   }
   .wizard-rail {
+    flex: 0 0 auto;             /* size to content (horizontal strip) */
     flex-direction: row;
     overflow-x: auto;
     border-right: none;
