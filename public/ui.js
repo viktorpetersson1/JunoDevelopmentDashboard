@@ -880,8 +880,8 @@ function renderPortfolioEmpty() {
   return `<div class="portfolio-empty">
     <div class="portfolio-empty-card">
       <div class="brand">Juno <span>Atlas</span></div>
-      <h1>Run your development portfolio in one place</h1>
-      <p class="muted">Create a project, enter assumptions, and Atlas will generate cash flow, P&amp;L, debt, equity, and risk automatically.</p>
+      <h1>Our development portfolio. One place.</h1>
+      <p class="muted">Create a project, enter assumptions, and Atlas generates cash flow, P&amp;L, debt, equity, and risk automatically.</p>
       ${canCreate ? `
         <div class="row gap-sm" style="margin-top:24px;justify-content:center;">
           <button class="btn" id="portfolio-empty-create-btn">+ Create your first project</button>
