@@ -121,6 +121,58 @@ export const ASSET_TYPES = [
   { id: "renovation",  label: "Renovation / value-add" },
 ];
 
+// v14.12 (Phase 4.2) — Project templates for the New Project wizard.
+// Clicking a template patches the wizard draft with sensible defaults for that
+// project archetype. Users can still edit anything afterwards — templates are
+// starting points, not constraints.
+export const PROJECT_TEMPLATES = [
+  {
+    id: "spec_home",
+    label: "Spec home",
+    description: "Standard Hampton-style villa with Kingshaus superstructure. Juno's bread-and-butter.",
+    patch: {
+      asset_type: "spec_home",
+      villa_sqft: 5500,
+      program_months: 13,
+      land_cost_usd: 2200000,
+      build_cost_per_sqft: null,            // use global default ($470)
+      kingshaus_cost_per_sqft: null,        // use global default ($93)
+      soft_costs_lump_sum: 0,
+      target_margin: null,                  // use global default (25%)
+    },
+  },
+  {
+    id: "ground_up",
+    label: "Ground-up development",
+    description: "Larger, longer entity-level project. Custom plans, no Kingshaus, higher soft costs.",
+    patch: {
+      asset_type: "ground_up",
+      villa_sqft: 8500,
+      program_months: 18,
+      land_cost_usd: 3500000,
+      build_cost_per_sqft: 525,             // higher than spec to reflect custom design
+      kingshaus_cost_per_sqft: 0,           // not used in ground-up
+      soft_costs_lump_sum: 350000,
+      target_margin: 0.22,                  // tighter margin for custom work
+    },
+  },
+  {
+    id: "renovation",
+    label: "Renovation / value-add",
+    description: "Smaller, faster turn on existing structure. Lower land, no Kingshaus.",
+    patch: {
+      asset_type: "renovation",
+      villa_sqft: 3800,
+      program_months: 9,
+      land_cost_usd: 1800000,
+      build_cost_per_sqft: 380,             // renovation is cheaper per sqft than ground-up
+      kingshaus_cost_per_sqft: 0,           // not applicable
+      soft_costs_lump_sum: 75000,
+      target_margin: null,
+    },
+  },
+];
+
 // 10 active pipeline projects from the Excel model.
 // `null` for build_cost_per_sqft etc. means "use global default".
 export const BASELINE_PROJECTS = [

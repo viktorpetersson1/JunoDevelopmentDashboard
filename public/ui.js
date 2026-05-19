@@ -11,7 +11,7 @@ import { state, notify, save, updateGlobal, updateScenario,
   updateWizardDraft, submitWizardDraft, setProjectTab,
   duplicateCurrentScenario, classifyScenario, setScenarioLock } from "./state.js";
 import { aggregatePortfolio, calcProject, fyOf, monteCarlo, evaluateRisks } from "./engine.js";
-import { EXCEL_BENCHMARK, LIFECYCLE_STAGES, STAGE_GROUP_COLORS, ASSET_TYPES, SCENARIO_CLASSES } from "./data.js";
+import { EXCEL_BENCHMARK, LIFECYCLE_STAGES, STAGE_GROUP_COLORS, ASSET_TYPES, SCENARIO_CLASSES, PROJECT_TEMPLATES } from "./data.js";
 import {
   signIn, signUp, signOut, sendPasswordReset, getCurrentUser,
   fetchAllProfiles, updateUserRole,
@@ -4598,9 +4598,27 @@ function nullableNumInput(field, value, placeholder = "Uses default") {
 
 function renderWizardBasics(d) {
   const markets = state.globals.markets || [];
+  const appliedTemplateId = d._applied_template_id;
+  const templatePicker = `
+    <div class="wizard-templates">
+      <div class="wizard-templates-label">Quick-start template</div>
+      <div class="wizard-templates-row">
+        ${PROJECT_TEMPLATES.map(t => `
+          <button type="button" class="wizard-template-chip ${appliedTemplateId === t.id ? "active" : ""}" data-template="${t.id}" title="${escapeHtml(t.description)}">
+            ${t.label}
+          </button>
+        `).join("")}
+        <button type="button" class="wizard-template-chip ghost ${!appliedTemplateId ? "active" : ""}" data-template="">
+          Custom
+        </button>
+      </div>
+      ${appliedTemplateId ? `<div class="wizard-templates-hint muted">${escapeHtml(PROJECT_TEMPLATES.find(t => t.id === appliedTemplateId)?.description || "")}</div>` : `<div class="wizard-templates-hint muted">Pick a template to pre-fill sensible defaults, or stay custom and fill everything yourself.</div>`}
+    </div>
+  `;
   return `
     <h2>Project basics</h2>
     <p class="muted">Identify the project. Only the name is required — the rest can be filled in later.</p>
+    ${templatePicker}
     <div class="form-grid">
       <div class="form-row full">
         <label>Project name <span class="required">*</span></label>
@@ -4813,6 +4831,21 @@ function attachWizardEvents() {
   // Step rail
   for (const btn of modal.querySelectorAll("[data-wizard-step]")) {
     btn.addEventListener("click", () => setWizardStep(Number(btn.dataset.wizardStep)));
+  }
+
+  // v14.12 (Phase 4.2) — Template chips on the Basics step
+  for (const btn of modal.querySelectorAll("[data-template]")) {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.template;
+      if (!id) {
+        // "Custom" — clear applied template marker, don't touch other fields
+        updateWizardDraft({ _applied_template_id: null });
+        return;
+      }
+      const tpl = PROJECT_TEMPLATES.find(t => t.id === id);
+      if (!tpl) return;
+      updateWizardDraft({ ...tpl.patch, _applied_template_id: id });
+    });
   }
 
   // Field bindings

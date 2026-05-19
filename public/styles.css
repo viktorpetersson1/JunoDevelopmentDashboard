@@ -1242,6 +1242,62 @@ tr.drag-over-after td { border-bottom: 2px solid var(--accent); }
 .recent-changes .recent-msg { font-size: 12px; color: var(--fg-2); line-height: 1.4; }
 .recent-changes .recent-meta { font-size: 10px; margin-top: 2px; }
 
+/* ---------- Wizard templates (v14.12 Phase 4.2) ---------- */
+
+.wizard-templates {
+  margin-bottom: 22px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.wizard-templates-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+  margin-bottom: 8px;
+}
+.wizard-templates-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.wizard-template-chip {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  color: var(--fg-2);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.wizard-template-chip:hover { background: var(--surface-3); color: var(--fg); }
+.wizard-template-chip.active {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: var(--accent);
+}
+.wizard-template-chip.ghost {
+  background: transparent;
+  border-style: dashed;
+}
+.wizard-template-chip.ghost.active {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-style: solid;
+  border-color: var(--accent);
+}
+.wizard-templates-hint {
+  margin-top: 8px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 /* ---------- New Project wizard ---------- */
 
 .wizard-overlay {
