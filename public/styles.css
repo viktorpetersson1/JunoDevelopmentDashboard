@@ -1,67 +1,73 @@
 /* ============================================================
-   Phase 1 (design reset 2026-05-19) — design.md tokens.
-   See /design.md for the source of truth. Legacy token names
-   (--bg / --fg / --accent / etc.) are aliased to the new tokens
-   so existing component CSS keeps working during the migration.
-   Future phases will replace direct legacy references with the
-   new token names and retire the aliases.
+   Phase 1 (design reset 2026-05-19, Ramp-calibrated 2026-05-19) —
+   design.md tokens. See /design.md for the source of truth.
+
+   Ramp-calibrated palette: warm cream paper, mustard accent, warm
+   near-black ink, brick negatives (distinct from accent), soft
+   medium radii, barely-there shadows.
+
+   Legacy token names (--bg / --fg / --accent / etc.) are aliased
+   to the new tokens so existing component CSS keeps working
+   during the migration. Future phases will replace direct legacy
+   references with the new token names and retire the aliases.
    ============================================================ */
 :root {
   /* === design.md canonical tokens === */
 
-  /* Surfaces — warm neutrals */
-  --surface-page:        #FAFAF7;
+  /* Surfaces — warm cream paper */
+  --surface-page:        #FAF7F0;
   --surface-card:        #FFFFFF;
-  --surface-sunken:      #F4F2EC;
-  --surface-overlay:     #FFFFFFEE;
+  --surface-sunken:      #F5F1E8;
+  --surface-overlay:     #FFFFFFF2;
 
   /* Borders & dividers */
-  --border-subtle:       #ECEAE3;
-  --border-default:      #E0DDD4;
-  --border-strong:       #C9C5B8;
+  --border-subtle:       #EAE6DC;
+  --border-default:      #D9D4C6;
+  --border-strong:       #BFB9A8;
 
-  /* Text */
-  --text-primary:        #1A1A17;
-  --text-secondary:      #5C5A52;
-  --text-tertiary:       #8A8779;
-  --text-disabled:       #B5B2A6;
-  --text-inverse:        #FAFAF7;
+  /* Text — warm near-black */
+  --text-primary:        #0F0E0C;
+  --text-secondary:      #5A5750;
+  --text-tertiary:       #8B8678;
+  --text-disabled:       #B0AC9F;
+  --text-inverse:        #FAF7F0;
 
-  /* Accent — single warm rust (oxidized copper) */
-  --accent-50:           #FAEFE9;
-  --accent-100:          #F2D9CC;
-  --accent-500:          #B5552E;
-  --accent-600:          #9A4624;
-  --accent-700:          #7C381C;
+  /* Accent — Ramp mustard */
+  --accent-50:           #FDF6DC;
+  --accent-100:          #F9E8A3;
+  --accent-500:          #D4A437;
+  --accent-600:          #B0871E;
+  --accent-700:          #8C6B14;
 
-  /* Semantic — muted, never saturated */
-  --positive-500:        #4A6B4A;
-  --positive-50:         #EDF1ED;
-  --negative-500:        #B5552E;
-  --negative-50:         #FAEFE9;
-  --warning-500:         #B8893A;
-  --warning-50:          #F6EFDE;
+  /* Semantic — muted, never saturated. Negative is a *different* warm
+     color from accent so they stay distinguishable. */
+  --positive-500:        #5B7C5B;
+  --positive-50:         #EEF2EC;
+  --negative-500:        #B25B2E;   /* warm brick */
+  --negative-50:         #FAEFE7;
+  --warning-500:         #C49A2A;
+  --warning-50:          #FAF1D9;
   --neutral-500:         #6B6862;
 
-  /* Chart palette — desaturated, architectural */
-  --chart-1:             #5C5A52;   /* graphite */
-  --chart-2:             #B5552E;   /* rust */
-  --chart-3:             #8A7B5E;   /* sand */
-  --chart-4:             #4A6B4A;   /* sage */
-  --chart-5:             #6B7A85;   /* slate */
+  /* Chart palette — Ramp-style. Black is the workhorse; mustard is the spotlight. */
+  --chart-1:             #0F0E0C;   /* near-black ink */
+  --chart-2:             #D4A437;   /* mustard */
+  --chart-3:             #5B7C5B;   /* sage */
+  --chart-4:             #8B8678;   /* warm grey */
+  --chart-5:             #B25B2E;   /* brick */
   --chart-6:             #A88E6A;   /* clay */
 
-  /* Radii */
+  /* Radii — tighter than playful, looser than corporate */
   --radius-sm:           6px;
-  --radius-md:           10px;
-  --radius-lg:           14px;
-  --radius-xl:           20px;
+  --radius-md:           8px;
+  --radius-lg:           12px;
+  --radius-xl:           16px;
   --radius-full:         9999px;
 
-  /* Elevation — barely there */
-  --shadow-sm:           0 1px 2px rgba(26,26,23,0.04);
-  --shadow-md:           0 2px 8px rgba(26,26,23,0.06);
-  --shadow-lg:           0 8px 24px rgba(26,26,23,0.08);
+  /* Elevation — barely there. Shadow tint matches text-primary for warm consistency. */
+  --shadow-sm:           0 1px 2px rgba(15,14,12,0.04);
+  --shadow-md:           0 4px 12px rgba(15,14,12,0.06);
+  --shadow-lg:           0 12px 32px rgba(15,14,12,0.08);
 
   /* Spacing scale (4px base) */
   --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
@@ -98,25 +104,28 @@
 }
 
 :root[data-theme="dark"] {
-  --surface-page:        #1A1916;
-  --surface-card:        #232220;
-  --surface-sunken:      #1F1E1B;
-  --surface-overlay:     #232220EE;
-  --border-subtle:       #2E2C28;
-  --border-default:      #3A3833;
-  --border-strong:       #4A4842;
-  --text-primary:        #F0EEE7;
+  --surface-page:        #15140F;
+  --surface-card:        #1F1E18;
+  --surface-sunken:      #1A1914;
+  --surface-overlay:     #1F1E18F2;
+  --border-subtle:       #2C2A23;
+  --border-default:      #38362D;
+  --border-strong:       #4A4738;
+  --text-primary:        #F5F0E1;
   --text-secondary:      #A8A498;
   --text-tertiary:       #6E6B62;
-  --text-disabled:       #4E4C46;
-  --text-inverse:        #1A1916;
-  --accent-500:          #D17047;
-  --accent-600:          #B5552E;
-  --accent-700:          #9A4624;
-  --positive-500:        #6B8B6B;
-  --warning-500:         #C8A35A;
+  --text-disabled:       #4E4C42;
+  --text-inverse:        #15140F;
+  --accent-500:          #E9B448;     /* lighter mustard reads better on dark paper */
+  --accent-600:          #D4A437;
+  --accent-700:          #B0871E;
+  --positive-500:        #7A9A7A;
+  --negative-500:        #D17047;     /* brighter brick for dark surface */
+  --warning-500:         #DEB766;
   --neutral-500:         #8E8B82;
-  /* Chart palette stays the same — colors are already calibrated to read on dark surfaces. */
+  /* Chart palette: chart-1 must invert for dark mode so the workhorse stays visible */
+  --chart-1:             #F5F0E1;     /* "ink" inverts to paper on dark surface */
+  /* chart-2..6 stay the same — they already read on dark backgrounds */
 }
 
 * { box-sizing: border-box; }

@@ -7,15 +7,15 @@
 
 ## 1. Design Philosophy
 
-Juno Atlas is a **considered industrial instrument** — the software equivalent of a Snøhetta monograph or a Vitsoe shelving system. Warm but precise. Restrained but confident. Every element must justify its visual weight. The aesthetic target is a 2025 Ramp dashboard filtered through an architectural sensibility.
+Juno Atlas mirrors the **Ramp dashboard** as closely as a non-Ramp app can. Warm paper background, near-black ink, mustard accent used sparingly, generous whitespace, barely-there shadows, soft-but-tight radii. Calm, confident, professional. The product should feel like writing in a Moleskine, not reading the Financial Times.
 
 Three governing principles, in priority order:
 
-1. **Monochrome with one accent.** Warm neutrals carry 95% of the interface. A single rust accent does the heavy lifting for state and emphasis.
-2. **Soft geometry.** Rounded corners, monotone curves on charts, gradient fills replacing hard edges. Nothing has a sharp 90° corner except intentional structural dividers.
-3. **Typography as structure.** A single typeface family does all the work. Hierarchy comes from weight, size, and tracking — not color or borders.
+1. **Monochrome with one accent.** Warm neutrals carry 95% of the interface. A single mustard accent (`#D4A437`) does the heavy lifting for emphasis. Negative financial values use a *different* warm color (brick `#B25B2E`) so accent and negatives remain distinguishable.
+2. **Soft geometry.** Rounded medium corners (8–12px on cards), monotone curves on charts, gradient fills replacing hard edges. Nothing has a sharp 90° corner except intentional structural dividers.
+3. **Typography as structure.** Inter does all the work. Hierarchy comes from weight, size, and tracking — not color or borders.
 
-**Forbidden aesthetics:** Financial Times newspaper styling, true red/blue/green saturated colors, hard-edged bar charts, hairline grids, FT-style serif headlines, dense bordered cards, decorative shadows.
+**Forbidden aesthetics:** Financial Times newspaper styling, true red/blue/green saturated colors, hard-edged bar charts, hairline grids, serif headlines, dense bordered cards, decorative shadows, large radii that read playful (no >16px), bright fintech palettes (Robinhood, Coinbase).
 
 ---
 
@@ -25,59 +25,61 @@ These tokens must be defined at `:root` and used everywhere. **Never hardcode co
 
 ```css
 :root {
-  /* Surfaces — warm neutrals */
-  --surface-page:        #FAFAF7;
+  /* Surfaces — warm cream paper (Ramp-calibrated) */
+  --surface-page:        #FAF7F0;
   --surface-card:        #FFFFFF;
-  --surface-sunken:      #F4F2EC;
-  --surface-overlay:     #FFFFFFEE;
+  --surface-sunken:      #F5F1E8;
+  --surface-overlay:     #FFFFFFF2;
 
   /* Borders & dividers */
-  --border-subtle:       #ECEAE3;
-  --border-default:      #E0DDD4;
-  --border-strong:       #C9C5B8;
+  --border-subtle:       #EAE6DC;
+  --border-default:      #D9D4C6;
+  --border-strong:       #BFB9A8;
 
-  /* Text */
-  --text-primary:        #1A1A17;
-  --text-secondary:      #5C5A52;
-  --text-tertiary:       #8A8779;
-  --text-disabled:       #B5B2A6;
-  --text-inverse:        #FAFAF7;
+  /* Text — warm near-black */
+  --text-primary:        #0F0E0C;
+  --text-secondary:      #5A5750;
+  --text-tertiary:       #8B8678;
+  --text-disabled:       #B0AC9F;
+  --text-inverse:        #FAF7F0;
 
-  /* Accent — single warm rust (oxidized copper) */
-  --accent-50:           #FAEFE9;
-  --accent-100:          #F2D9CC;
-  --accent-500:          #B5552E;
-  --accent-600:          #9A4624;
-  --accent-700:          #7C381C;
+  /* Accent — Ramp mustard */
+  --accent-50:           #FDF6DC;
+  --accent-100:          #F9E8A3;
+  --accent-500:          #D4A437;
+  --accent-600:          #B0871E;
+  --accent-700:          #8C6B14;
 
-  /* Semantic — muted, never saturated */
-  --positive-500:        #4A6B4A;
-  --positive-50:         #EDF1ED;
-  --negative-500:        #B5552E;
-  --negative-50:         #FAEFE9;
-  --warning-500:         #B8893A;
-  --warning-50:          #F6EFDE;
+  /* Semantic — muted, never saturated. Negative is a *different* warm
+     color from accent so they stay distinguishable. */
+  --positive-500:        #5B7C5B;
+  --positive-50:         #EEF2EC;
+  --negative-500:        #B25B2E;   /* warm brick */
+  --negative-50:         #FAEFE7;
+  --warning-500:         #C49A2A;
+  --warning-50:          #FAF1D9;
   --neutral-500:         #6B6862;
 
-  /* Chart palette — desaturated, architectural */
-  --chart-1:             #5C5A52;   /* graphite */
-  --chart-2:             #B5552E;   /* rust */
-  --chart-3:             #8A7B5E;   /* sand */
-  --chart-4:             #4A6B4A;   /* sage */
-  --chart-5:             #6B7A85;   /* slate */
+  /* Chart palette — Ramp-style. Black is the workhorse (chart-1), mustard
+     is the spotlight (chart-2), then earth tones. */
+  --chart-1:             #0F0E0C;   /* near-black ink */
+  --chart-2:             #D4A437;   /* mustard */
+  --chart-3:             #5B7C5B;   /* sage */
+  --chart-4:             #8B8678;   /* warm grey */
+  --chart-5:             #B25B2E;   /* brick */
   --chart-6:             #A88E6A;   /* clay */
 
-  /* Radii */
+  /* Radii — tighter than playful, looser than corporate */
   --radius-sm:           6px;
-  --radius-md:           10px;
-  --radius-lg:           14px;
-  --radius-xl:           20px;
+  --radius-md:           8px;
+  --radius-lg:           12px;
+  --radius-xl:           16px;
   --radius-full:         9999px;
 
-  /* Elevation — barely there */
-  --shadow-sm:           0 1px 2px rgba(26,26,23,0.04);
-  --shadow-md:           0 2px 8px rgba(26,26,23,0.06);
-  --shadow-lg:           0 8px 24px rgba(26,26,23,0.08);
+  /* Elevation — barely there. Shadow tint matches text-primary for warm consistency. */
+  --shadow-sm:           0 1px 2px rgba(15,14,12,0.04);
+  --shadow-md:           0 4px 12px rgba(15,14,12,0.06);
+  --shadow-lg:           0 12px 32px rgba(15,14,12,0.08);
 
   /* Spacing scale (4px base) */
   --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
@@ -90,15 +92,17 @@ These tokens must be defined at `:root` and used everywhere. **Never hardcode co
 }
 
 [data-theme="dark"] {
-  --surface-page:    #1A1916;
-  --surface-card:    #232220;
-  --surface-sunken:  #1F1E1B;
-  --border-subtle:   #2E2C28;
-  --border-default:  #3A3833;
-  --text-primary:    #F0EEE7;
+  --surface-page:    #15140F;
+  --surface-card:    #1F1E18;
+  --surface-sunken:  #1A1914;
+  --border-subtle:   #2C2A23;
+  --border-default:  #38362D;
+  --border-strong:   #4A4738;
+  --text-primary:    #F5F0E1;
   --text-secondary:  #A8A498;
   --text-tertiary:   #6E6B62;
-  --accent-500:      #D17047;
+  --text-disabled:   #4E4C42;
+  --accent-500:      #E9B448;
 }
 
 body {
@@ -140,9 +144,9 @@ All numeric values must use tabular numerals (`font-variant-numeric: tabular-num
 ## 4. Color Rules
 
 - Pure red, pure blue, pure green are **banned**. Use the desaturated semantic palette only.
-- The rust accent (`--accent-500`) must cover **≤5% of pixels** on any given screen.
-- Accent is permitted for: negative financial values, primary CTA hover states, alert left-border, active chart series, focused input outlines. Nowhere else.
-- Negative numbers use `--accent-600`. Positive numbers use `--text-primary` (not green), unless emphasis is warranted, in which case `--positive-500`.
+- The mustard accent (`--accent-500`) must cover **≤5% of pixels** on any given screen.
+- Accent is permitted for: primary CTA hover states, focused input outlines, active chart series, the active item in primary nav. **Not** for negative numbers (those use `--negative-500` brick, which is a different warm color so accent and negatives stay distinct).
+- Negative numbers use `--negative-500`. Positive numbers use `--text-primary` (not green), unless emphasis is warranted, in which case `--positive-500` sage.
 - Zeros in tables use `--text-disabled` — they should recede, not assert themselves.
 
 ---
@@ -475,17 +479,24 @@ These behaviors must be preserved across all screens:
 
 ## 9. Inspirational Reference
 
-When in doubt about a new component, the visual target is:
+The single visual reference is **the Ramp dashboard** (ramp.com). When in doubt about a new component, ask: "Does this look like it could ship in Ramp?" If no, reconsider.
 
-- **Ramp dashboard** — primary reference for color, spacing, and chart treatment.
-- **Snøhetta, BIG, Foster + Partners** websites — for typographic restraint and warm-neutral palettes.
-- **Vitsoe.com** — for industrial-but-warm component composition.
+Specific things to lift from Ramp:
+- Warm cream paper background; never grey, never blue-tinted off-white
+- Mustard accent used VERY sparingly — typically one accent element per visible section
+- Near-black warm ink for text — not slate, not navy
+- Soft single-layer shadows (no double / triple-layer drops)
+- Generous whitespace; padding is more important than borders
+- Tabular numerals everywhere there's a number
+- Charts: monotone curves, gradient fills, no vertical gridlines, no axis lines, palette restricted to 6 tones
+- Pill controls / segmented toggles for status filters
 
 The visual target is **never**:
 
-- Financial Times, Bloomberg Terminal, classic FactSet.
-- Bootstrap defaults, Material Design.
+- Financial Times, Bloomberg Terminal, classic FactSet (dense, bordered, serif).
+- Bootstrap defaults, Material Design (loud, generic, primary-blue).
 - Saturated fintech (Robinhood, Coinbase consumer).
+- Architectural agency sites (Snøhetta etc) — those were a misdirection in the original spec; the target is the *product* feel of Ramp, not the *marketing* feel of an architecture firm.
 
 ---
 
