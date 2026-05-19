@@ -12,62 +12,66 @@
    references with the new token names and retire the aliases.
    ============================================================ */
 :root {
-  /* === design.md canonical tokens === */
+  /* === design.md canonical tokens, calibrated from real Ramp screenshots ===
+     Page is WHITE. Content is grouped on pale grey "section" cards. Interactive
+     items inside section cards go BACK to white. That's the hierarchy. */
 
-  /* Surfaces — warm cream paper */
-  --surface-page:        #FAF7F0;
-  --surface-card:        #FFFFFF;
-  --surface-sunken:      #F5F1E8;
+  /* Surfaces */
+  --surface-page:        #FFFFFF;
+  --surface-card:        #F3F2EE;   /* pale warm grey grouping card */
+  --surface-card-elev:   #FFFFFF;   /* interactive component inside a grouping card */
+  --surface-sunken:      #EBEAE5;
   --surface-overlay:     #FFFFFFF2;
 
-  /* Borders & dividers */
-  --border-subtle:       #EAE6DC;
-  --border-default:      #D9D4C6;
-  --border-strong:       #BFB9A8;
+  /* Borders */
+  --border-subtle:       #E5E4DF;
+  --border-default:      #D6D4CD;
+  --border-strong:       #B8B5AA;
 
-  /* Text — warm near-black */
-  --text-primary:        #0F0E0C;
-  --text-secondary:      #5A5750;
-  --text-tertiary:       #8B8678;
-  --text-disabled:       #B0AC9F;
-  --text-inverse:        #FAF7F0;
+  /* Text — pure near-black */
+  --text-primary:        #0A0A0A;
+  --text-secondary:      #6B6B68;
+  --text-tertiary:       #9B9A93;
+  --text-disabled:       #BFBDB5;
+  --text-inverse:        #FFFFFF;
 
-  /* Accent — Ramp mustard */
-  --accent-50:           #FDF6DC;
-  --accent-100:          #F9E8A3;
-  --accent-500:          #D4A437;
-  --accent-600:          #B0871E;
-  --accent-700:          #8C6B14;
+  /* Accent — Ramp lime-citron yellow (vivid, confident, not muted) */
+  --accent-50:           #F4FDD8;
+  --accent-100:          #E6FB9C;
+  --accent-500:          #DAFB60;
+  --accent-600:          #B7DC34;
+  --accent-700:          #94B324;
 
-  /* Semantic — muted, never saturated. Negative is a *different* warm
-     color from accent so they stay distinguishable. */
-  --positive-500:        #5B7C5B;
-  --positive-50:         #EEF2EC;
-  --negative-500:        #B25B2E;   /* warm brick */
-  --negative-50:         #FAEFE7;
-  --warning-500:         #C49A2A;
-  --warning-50:          #FAF1D9;
-  --neutral-500:         #6B6862;
+  /* Semantic — contextually saturated (not muted earth tones) */
+  --positive-500:        #4A8047;   /* saturated green for approve / sent */
+  --positive-50:         #E8F0E7;
+  --negative-500:        #E58940;   /* warm orange for negative figures + flagged */
+  --negative-50:         #FCEFE3;
+  --warning-500:         #F0A858;
+  --warning-50:          #FDF1E3;
+  --info-500:            #9CA8E5;   /* muted blue-purple for AI / informational */
+  --info-50:             #ECEFFA;
+  --neutral-500:         #6B6B68;
 
-  /* Chart palette — Ramp-style. Black is the workhorse; mustard is the spotlight. */
-  --chart-1:             #0F0E0C;   /* near-black ink */
-  --chart-2:             #D4A437;   /* mustard */
-  --chart-3:             #5B7C5B;   /* sage */
-  --chart-4:             #8B8678;   /* warm grey */
-  --chart-5:             #B25B2E;   /* brick */
-  --chart-6:             #A88E6A;   /* clay */
+  /* Chart palette — black workhorse, then blue/green/orange/rose for series */
+  --chart-1:             #0A0A0A;   /* near-black ink */
+  --chart-2:             #9CA8E5;   /* muted blue */
+  --chart-3:             #4A8047;   /* sage green */
+  --chart-4:             #E58940;   /* warm orange */
+  --chart-5:             #C97FA9;   /* dusty rose */
+  --chart-6:             #8C7C6E;   /* warm grey */
 
-  /* Radii — tighter than playful, looser than corporate */
+  /* Radii — 8 on buttons, 16 on grouping cards, 20 on modals */
   --radius-sm:           6px;
   --radius-md:           8px;
-  --radius-lg:           12px;
-  --radius-xl:           16px;
+  --radius-lg:           16px;
+  --radius-xl:           20px;
   --radius-full:         9999px;
 
-  /* Elevation — barely there. Shadow tint matches text-primary for warm consistency. */
-  --shadow-sm:           0 1px 2px rgba(15,14,12,0.04);
-  --shadow-md:           0 4px 12px rgba(15,14,12,0.06);
-  --shadow-lg:           0 12px 32px rgba(15,14,12,0.08);
+  /* Elevation — barely there. Surface-contrast does most of the work. */
+  --shadow-sm:           0 1px 2px rgba(10,10,10,0.04);
+  --shadow-md:           0 2px 8px rgba(10,10,10,0.05);
+  --shadow-lg:           0 8px 24px rgba(10,10,10,0.07);
 
   /* Spacing scale (4px base) */
   --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
@@ -80,18 +84,27 @@
 
   /* === legacy aliases (mapped to new tokens) ===
      These keep existing component styles working during the migration.
-     Phases 3+ will replace direct references with the new names. */
+     Phases 3+ will replace direct references with the new names.
+
+     IMPORTANT: --surface (legacy "card bg") is mapped to --surface-card-elev
+     (white) rather than --surface-card (pale grey). This keeps existing white
+     KPI cards looking like white cards. Phase 3 will introduce proper grouping
+     cards (pale grey) wrapping clusters of white-on-grey content.
+
+     IMPORTANT: --accent-fg flipped from --text-inverse (white) to --text-primary
+     (black). The new accent is lime-yellow — black text reads on yellow, white
+     does not. */
   --bg:                  var(--surface-page);
-  --surface:             var(--surface-card);
-  --surface-2:           var(--surface-sunken);
-  --surface-3:           var(--border-subtle);
+  --surface:             var(--surface-card-elev);
+  --surface-2:           var(--surface-card);
+  --surface-3:           var(--surface-sunken);
   --border:              var(--border-subtle);
   --border-strong:       var(--border-default);
   --fg:                  var(--text-primary);
   --fg-2:                var(--text-secondary);
   --fg-3:                var(--text-tertiary);
   --accent:              var(--accent-500);
-  --accent-fg:           var(--text-inverse);
+  --accent-fg:           var(--text-primary);   /* black on yellow */
   --pos:                 var(--positive-500);
   --neg:                 var(--negative-500);
   --info:                var(--neutral-500);
@@ -104,24 +117,26 @@
 }
 
 :root[data-theme="dark"] {
-  --surface-page:        #15140F;
-  --surface-card:        #1F1E18;
-  --surface-sunken:      #1A1914;
-  --surface-overlay:     #1F1E18F2;
-  --border-subtle:       #2C2A23;
-  --border-default:      #38362D;
-  --border-strong:       #4A4738;
-  --text-primary:        #F5F0E1;
-  --text-secondary:      #A8A498;
-  --text-tertiary:       #6E6B62;
-  --text-disabled:       #4E4C42;
-  --text-inverse:        #15140F;
-  --accent-500:          #E9B448;     /* lighter mustard reads better on dark paper */
-  --accent-600:          #D4A437;
-  --accent-700:          #B0871E;
-  --positive-500:        #7A9A7A;
-  --negative-500:        #D17047;     /* brighter brick for dark surface */
-  --warning-500:         #DEB766;
+  --surface-page:        #0A0A09;
+  --surface-card:        #1A1A18;
+  --surface-card-elev:   #232220;
+  --surface-sunken:      #161614;
+  --surface-overlay:     #232220F2;
+  --border-subtle:       #2C2A26;
+  --border-default:      #38362F;
+  --border-strong:       #4A4740;
+  --text-primary:        #F5F5F0;
+  --text-secondary:      #A0A09B;
+  --text-tertiary:       #6E6D67;
+  --text-disabled:       #4E4D47;
+  --text-inverse:        #0A0A09;
+  --accent-500:          #DAFB60;   /* yellow pops on dark too — unchanged */
+  --accent-600:          #B7DC34;
+  --accent-700:          #94B324;
+  --positive-500:        #5B9658;
+  --negative-500:        #F09558;
+  --warning-500:         #F2B570;
+  --info-500:            #B3BEE8;
   --neutral-500:         #8E8B82;
   /* Chart palette: chart-1 must invert for dark mode so the workhorse stays visible */
   --chart-1:             #F5F0E1;     /* "ink" inverts to paper on dark surface */

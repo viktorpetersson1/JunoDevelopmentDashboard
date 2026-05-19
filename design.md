@@ -7,15 +7,15 @@
 
 ## 1. Design Philosophy
 
-Juno Atlas mirrors the **Ramp dashboard** as closely as a non-Ramp app can. Warm paper background, near-black ink, mustard accent used sparingly, generous whitespace, barely-there shadows, soft-but-tight radii. Calm, confident, professional. The product should feel like writing in a Moleskine, not reading the Financial Times.
+Juno Atlas mirrors the **Ramp dashboard** as closely as a non-Ramp app can. Based on the Ramp screenshots captured 2026-05-19 (see `/docs/ramp-reference/` and §9), the visual character is: pale neutral surfaces, bold near-black typography, **vivid lime-citron yellow accent** for primary CTAs, contextually-saturated semantic colors (green for approve, orange for flag, blue for info), generous whitespace, barely-there shadows, soft medium radii. Bold and confident, not restrained or quiet.
 
 Three governing principles, in priority order:
 
-1. **Monochrome with one accent.** Warm neutrals carry 95% of the interface. A single mustard accent (`#D4A437`) does the heavy lifting for emphasis. Negative financial values use a *different* warm color (brick `#B25B2E`) so accent and negatives remain distinguishable.
-2. **Soft geometry.** Rounded medium corners (8–12px on cards), monotone curves on charts, gradient fills replacing hard edges. Nothing has a sharp 90° corner except intentional structural dividers.
-3. **Typography as structure.** Inter does all the work. Hierarchy comes from weight, size, and tracking — not color or borders.
+1. **Pale surfaces, bold ink, vivid accent.** Page sits on near-white (`#FAFAF9`). Content is grouped on **pale grey cards** (`#F5F4F0`), not white cards. Text is pure near-black (`#0A0A0A`). The primary brand accent is a vivid lime-citron yellow (`#DAFB60`) — used for primary CTAs and active brand emphasis. NOT a muted "≤5%" accent — Ramp uses it confidently.
+2. **Semantic colors are saturated, not muted.** Approve actions use saturated green (`#4A8047`). Flag/warning uses orange (`#F08648`). Info / AI uses soft blue (`#9CA8E5`). These are NOT "muted earth tones" — they're full-saturation but calibrated to feel calm against pale surfaces.
+3. **Typography is loud where it should be loud.** Massive bold sans-serif headings with periods used for emphasis (`"Your policy, auto-enforced."`). Display headings 40–56px, large. Body text in medium grey (`#6B6B6B`), generous line height.
 
-**Forbidden aesthetics:** Financial Times newspaper styling, true red/blue/green saturated colors, hard-edged bar charts, hairline grids, serif headlines, dense bordered cards, decorative shadows, large radii that read playful (no >16px), bright fintech palettes (Robinhood, Coinbase).
+**Forbidden aesthetics:** Financial Times newspaper styling, hairline grids, serif headlines, dense bordered cards, decorative drop shadows, gradient backgrounds, dark-mode-by-default. Specifically NOT what we shipped before: mustard accent, warm cream paper, architectural-restraint typography — those were misreads.
 
 ---
 
@@ -25,61 +25,73 @@ These tokens must be defined at `:root` and used everywhere. **Never hardcode co
 
 ```css
 :root {
-  /* Surfaces — warm cream paper (Ramp-calibrated) */
-  --surface-page:        #FAF7F0;
-  --surface-card:        #FFFFFF;
-  --surface-sunken:      #F5F1E8;
+  /* === Surfaces ===
+     Ramp's page is essentially WHITE. Content is grouped on pale grey "section"
+     cards that sit on the white page. Interactive components (inputs, secondary
+     cards) go BACK to white inside the grey section card.
+     Hierarchy: white page → pale grey grouping card → white interactive surface. */
+  --surface-page:        #FFFFFF;
+  --surface-card:        #F3F2EE;   /* the pale warm grey grouping card */
+  --surface-card-elev:   #FFFFFF;   /* interactive components inside a grouping card */
+  --surface-sunken:      #EBEAE5;   /* hover / pressed states */
   --surface-overlay:     #FFFFFFF2;
 
-  /* Borders & dividers */
-  --border-subtle:       #EAE6DC;
-  --border-default:      #D9D4C6;
-  --border-strong:       #BFB9A8;
+  /* Borders */
+  --border-subtle:       #E5E4DF;
+  --border-default:      #D6D4CD;
+  --border-strong:       #B8B5AA;
 
-  /* Text — warm near-black */
-  --text-primary:        #0F0E0C;
-  --text-secondary:      #5A5750;
-  --text-tertiary:       #8B8678;
-  --text-disabled:       #B0AC9F;
-  --text-inverse:        #FAF7F0;
+  /* Text — pure near-black, slight warm tint */
+  --text-primary:        #0A0A0A;
+  --text-secondary:      #6B6B68;
+  --text-tertiary:       #9B9A93;
+  --text-disabled:       #BFBDB5;
+  --text-inverse:        #FFFFFF;
 
-  /* Accent — Ramp mustard */
-  --accent-50:           #FDF6DC;
-  --accent-100:          #F9E8A3;
-  --accent-500:          #D4A437;
-  --accent-600:          #B0871E;
-  --accent-700:          #8C6B14;
+  /* Accent — Ramp's vivid lime-citron yellow.
+     Text on accent is ALWAYS black (yellow is too bright for white text). */
+  --accent-50:           #F4FDD8;
+  --accent-100:          #E6FB9C;
+  --accent-500:          #DAFB60;   /* the workhorse */
+  --accent-600:          #B7DC34;   /* hover */
+  --accent-700:          #94B324;
 
-  /* Semantic — muted, never saturated. Negative is a *different* warm
-     color from accent so they stay distinguishable. */
-  --positive-500:        #5B7C5B;
-  --positive-50:         #EEF2EC;
-  --negative-500:        #B25B2E;   /* warm brick */
-  --negative-50:         #FAEFE7;
-  --warning-500:         #C49A2A;
-  --warning-50:          #FAF1D9;
-  --neutral-500:         #6B6862;
+  /* Semantic — Ramp uses contextually-saturated colors, not muted earth tones.
+     Approve buttons are vivid green, flagged items are vivid orange, AI / info
+     uses muted blue-purple. */
+  --positive-500:        #4A8047;   /* saturated green for approve / sent */
+  --positive-50:         #E8F0E7;
+  --negative-500:        #E58940;   /* warm orange for negative figures + flagged */
+  --negative-50:         #FCEFE3;
+  --warning-500:         #F0A858;   /* alternate orange for warnings */
+  --warning-50:          #FDF1E3;
+  --info-500:            #9CA8E5;   /* muted blue-purple for AI / informational */
+  --info-50:             #ECEFFA;
+  --neutral-500:         #6B6B68;
 
-  /* Chart palette — Ramp-style. Black is the workhorse (chart-1), mustard
-     is the spotlight (chart-2), then earth tones. */
-  --chart-1:             #0F0E0C;   /* near-black ink */
-  --chart-2:             #D4A437;   /* mustard */
-  --chart-3:             #5B7C5B;   /* sage */
-  --chart-4:             #8B8678;   /* warm grey */
-  --chart-5:             #B25B2E;   /* brick */
-  --chart-6:             #A88E6A;   /* clay */
+  /* Chart palette — Ramp uses contextual semantic colors in charts too.
+     Black is the workhorse for single-series; blue is common for trend lines;
+     green / orange show up in budget-vs-actual style comparisons. */
+  --chart-1:             #0A0A0A;   /* near-black ink */
+  --chart-2:             #9CA8E5;   /* muted blue */
+  --chart-3:             #4A8047;   /* sage green */
+  --chart-4:             #E58940;   /* warm orange */
+  --chart-5:             #C97FA9;   /* dusty rose */
+  --chart-6:             #8C7C6E;   /* warm grey */
 
-  /* Radii — tighter than playful, looser than corporate */
+  /* Radii — Ramp uses MEDIUM radii: 8 on buttons, 16-20 on section cards.
+     Filter chips are full-pill. */
   --radius-sm:           6px;
   --radius-md:           8px;
-  --radius-lg:           12px;
-  --radius-xl:           16px;
+  --radius-lg:           16px;
+  --radius-xl:           20px;
   --radius-full:         9999px;
 
-  /* Elevation — barely there. Shadow tint matches text-primary for warm consistency. */
-  --shadow-sm:           0 1px 2px rgba(15,14,12,0.04);
-  --shadow-md:           0 4px 12px rgba(15,14,12,0.06);
-  --shadow-lg:           0 12px 32px rgba(15,14,12,0.08);
+  /* Elevation — barely there. Most Ramp surfaces use NO shadow at all and rely
+     on background-color contrast (white inside pale grey) for separation. */
+  --shadow-sm:           0 1px 2px rgba(10,10,10,0.04);
+  --shadow-md:           0 2px 8px rgba(10,10,10,0.05);
+  --shadow-lg:           0 8px 24px rgba(10,10,10,0.07);
 
   /* Spacing scale (4px base) */
   --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
@@ -92,17 +104,24 @@ These tokens must be defined at `:root` and used everywhere. **Never hardcode co
 }
 
 [data-theme="dark"] {
-  --surface-page:    #15140F;
-  --surface-card:    #1F1E18;
-  --surface-sunken:  #1A1914;
-  --border-subtle:   #2C2A23;
-  --border-default:  #38362D;
-  --border-strong:   #4A4738;
-  --text-primary:    #F5F0E1;
-  --text-secondary:  #A8A498;
-  --text-tertiary:   #6E6B62;
-  --text-disabled:   #4E4C42;
-  --accent-500:      #E9B448;
+  --surface-page:        #0A0A09;
+  --surface-card:        #1A1A18;
+  --surface-card-elev:   #232220;
+  --surface-sunken:      #161614;
+  --border-subtle:       #2C2A26;
+  --border-default:      #38362F;
+  --border-strong:       #4A4740;
+  --text-primary:        #F5F5F0;
+  --text-secondary:      #A0A09B;
+  --text-tertiary:       #6E6D67;
+  --text-disabled:       #4E4D47;
+  --accent-500:          #DAFB60;   /* yellow stays the same — it pops on dark too */
+  --positive-500:        #5B9658;
+  --negative-500:        #F09558;
+  --warning-500:         #F2B570;
+  --info-500:            #B3BEE8;
+  /* chart-1 must invert for dark mode */
+  --chart-1:             #F5F5F0;
 }
 
 body {
@@ -143,11 +162,13 @@ All numeric values must use tabular numerals (`font-variant-numeric: tabular-num
 
 ## 4. Color Rules
 
-- Pure red, pure blue, pure green are **banned**. Use the desaturated semantic palette only.
-- The mustard accent (`--accent-500`) must cover **≤5% of pixels** on any given screen.
-- Accent is permitted for: primary CTA hover states, focused input outlines, active chart series, the active item in primary nav. **Not** for negative numbers (those use `--negative-500` brick, which is a different warm color so accent and negatives stay distinct).
-- Negative numbers use `--negative-500`. Positive numbers use `--text-primary` (not green), unless emphasis is warranted, in which case `--positive-500` sage.
-- Zeros in tables use `--text-disabled` — they should recede, not assert themselves.
+- **Accent (`--accent-500` lime yellow)** is for: primary CTA buttons, the "See a demo / Sign up" type prominent action, brand emphasis (the floating Ask Juno button, a "New" pill next to a feature). Black text on yellow, never white. Use confidently — Ramp puts yellow buttons everywhere they want clicks, this is not a "≤5%" accent.
+- **Positive (`--positive-500` green)** is for: filled approve / sent / completed buttons; a "Sent" or "Approved" status chip. Saturated, not muted.
+- **Negative (`--negative-500` orange)** is for: negative monetary figures in tables, flagged-for-review status, "Over budget" indicators. Distinct from accent so the two never get confused.
+- **Info (`--info-500` muted blue-purple)** is for: AI-suggested actions, informational chips, "Suggestion" labels.
+- **Positive numbers** in regular tables use `--text-primary` (black) — NOT green. Green is reserved for active status/state, not for the value of a positive number sitting next to a label.
+- **Zeros in tables** use `--text-disabled` — recede, don't assert.
+- **The surface hierarchy** is the most important visual rule: white page → pale grey (`--surface-card`) for grouping/section cards → white again (`--surface-card-elev`) for interactive items inside grouping cards. This stepped surface system is how Ramp creates depth without shadows.
 
 ---
 
