@@ -41,6 +41,77 @@ const fmt = {
 const charts = {};
 function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
 
+// v14.20 (design reset Phase 6) — Ramp-calibrated Chart.js theming.
+// Pulls colors from the design tokens at render time so dark/light theme
+// switches don't need a page reload. Charts default to:
+//   - No vertical grid lines
+//   - Horizontal grid lines only, faint
+//   - No axis border
+//   - Monospaced tick labels in the foreground-tertiary colour
+//   - Legend bottom-aligned, light
+function chartTokens() {
+  const css = getComputedStyle(document.documentElement);
+  const t = (n) => css.getPropertyValue(n).trim();
+  return {
+    text:       t("--text-secondary") || "#6B6B68",
+    textMuted:  t("--text-tertiary")  || "#9B9A93",
+    grid:       t("--border-subtle")  || "#E5E4DF",
+    palette: [
+      t("--chart-1") || "#0A0A0A",
+      t("--chart-2") || "#9CA8E5",
+      t("--chart-3") || "#4A8047",
+      t("--chart-4") || "#E58940",
+      t("--chart-5") || "#C97FA9",
+      t("--chart-6") || "#8C7C6E",
+    ],
+  };
+}
+function rampChartOptions(opts = {}) {
+  const tk = chartTokens();
+  const { stacked = false, yIsCurrency = true, indexAxis = "x" } = opts;
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    indexAxis,
+    interaction: { intersect: false, mode: "index" },
+    scales: {
+      x: {
+        stacked,
+        grid: { display: false, drawBorder: false },
+        ticks: { color: tk.textMuted, font: { size: 11 }, autoSkip: true, maxTicksLimit: 12 },
+        border: { display: false },
+      },
+      y: {
+        stacked,
+        grid: { color: tk.grid, drawBorder: false, drawTicks: false },
+        ticks: {
+          color: tk.textMuted, font: { size: 11 }, padding: 8,
+          callback: yIsCurrency ? (v) => "$" + (Math.abs(v) >= 1e6 ? (v/1e6).toFixed(1) + "M" : v >= 1e3 ? (v/1e3).toFixed(0) + "k" : Math.round(v)) : undefined,
+        },
+        border: { display: false },
+      },
+    },
+    plugins: {
+      legend: {
+        position: "bottom",
+        align: "start",
+        labels: { color: tk.text, font: { size: 11 }, boxWidth: 10, boxHeight: 10, padding: 14, usePointStyle: true, pointStyle: "rectRounded" },
+      },
+      tooltip: {
+        backgroundColor: "#0A0A0A",
+        titleColor: "#FFFFFF",
+        bodyColor: "#FFFFFF",
+        borderColor: "transparent",
+        padding: 10,
+        cornerRadius: 6,
+        titleFont: { size: 12, weight: "500" },
+        bodyFont: { size: 12 },
+        callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatTooltip(indexAxis === "y" ? ctx.parsed.x : ctx.parsed.y)}` },
+      },
+    },
+  };
+}
+
 // v12.1 — stage badge helper
 function stageBadge(project, excluded = false) {
   if (excluded) return `<span class="badge excluded">excluded</span>`;
@@ -303,22 +374,30 @@ function sectionForView(view) {
 }
 
 function renderTopbar() {
+  // v14.20 (design reset Phase 4) — Top nav restructured into 4 groups:
+  // brand · primary nav · scenario chip · avatar dropdown.
+  // Sync badge, role, theme toggle, sign-out are all collapsed into the
+  // avatar dropdown to reduce visual noise (Ramp pattern).
   const sync = state.sync.status;
-  const syncBadge = {
-    idle: `<span class="sync-badge muted" title="No save in progress">●</span>`,
-    loading: `<span class="sync-badge muted" title="Loading from server">⟳</span>`,
-    pending: `<span class="sync-badge warn" title="Unsaved changes (will autosave shortly)">●</span>`,
-    saving: `<span class="sync-badge warn" title="Saving to server">⟳</span>`,
-    saved: `<span class="sync-badge pos" title="Saved to server${state.sync.last_saved_at ? ` at ${state.sync.last_saved_at.toLocaleTimeString()}` : ""}">✓</span>`,
-    conflict: `<span class="sync-badge warn" title="Another editor saved changes — reloading from server">⇄</span>`,
-    error: `<span class="sync-badge neg" title="Save failed: ${state.sync.last_error || ""}">!</span>`,
-    offline: `<span class="sync-badge neg" title="Offline — changes cached locally">⌽</span>`,
+  const syncLabel = {
+    idle: "All saved",
+    loading: "Loading…",
+    pending: "Unsaved changes",
+    saving: "Saving…",
+    saved: `Saved${state.sync.last_saved_at ? ` ${state.sync.last_saved_at.toLocaleTimeString()}` : ""}`,
+    conflict: "Reloading (another editor saved)",
+    error: `Save error: ${state.sync.last_error || ""}`,
+    offline: "Offline — changes cached locally",
   }[sync] || "";
+  const syncSeverity = ["pending", "saving", "conflict"].includes(sync) ? "warn"
+    : ["error", "offline"].includes(sync) ? "neg"
+    : sync === "saved" ? "pos" : "muted";
+
   const role = state.auth.profile?.role || "viewer";
   const roleLabel = { super_admin: "Owner", editor: "Editor", viewer: "Viewer", viewer_basic: "Basic viewer" }[role] || role;
-  const roleBadge = `<span class="badge ${role === "super_admin" ? "sold" : role === "editor" ? "committed" : "pipeline"}" style="font-size:9px;">${roleLabel}</span>`;
   const userEmail = state.auth.user?.email || "";
   const userDisplay = state.auth.profile?.display_name || userEmail.split("@")[0];
+  const initials = (userDisplay || userEmail || "?").split(/[\s@.\-_]+/).filter(Boolean).slice(0, 2).map(s => s[0].toUpperCase()).join("") || "?";
 
   const fin = canSeeFinancials();
   const currentSection = sectionForView(state.ui.view);
@@ -328,6 +407,31 @@ function renderTopbar() {
     return `<button data-section="${s.key}" class="${currentSection.key === s.key ? "active" : ""}">${label}</button>`;
   };
 
+  const scenarioLocked = state.scenario.locked_by_id != null;
+  const scenarioChip = fin ? `
+    <button class="scenario-chip" id="scenario-chip-btn" title="Switch scenario or open scenario manager">
+      <span class="scenario-chip-label">Scenario</span>
+      <span class="scenario-chip-name">${escapeHtml(state.scenario.name)}</span>
+      ${scenarioLocked ? `<span class="scenario-chip-lock" title="Locked as canonical decision">🔒</span>` : ""}
+      <span style="font-size:10px;color:var(--text-tertiary);">▾</span>
+    </button>` : "";
+
+  const menuOpen = !!state.ui.avatarMenuOpen;
+  const avatarMenu = `
+    <div class="avatar-menu${menuOpen ? " open" : ""}" id="avatar-menu" role="menu" aria-label="User menu">
+      <div class="menu-user">
+        <div class="menu-user-email">${escapeHtml(userDisplay)}</div>
+        <div class="menu-user-role">${roleLabel} · ${escapeHtml(userEmail)}</div>
+      </div>
+      <button class="menu-item" role="menuitem" id="menu-sync-info" disabled style="cursor:default;color:var(--text-secondary);">
+        <span class="dot dot-${syncSeverity}" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${syncSeverity === "pos" ? "var(--positive-500)" : syncSeverity === "warn" ? "var(--warning-500)" : syncSeverity === "neg" ? "var(--negative-500)" : "var(--text-tertiary)"};margin-right:8px;vertical-align:middle;"></span>${escapeHtml(syncLabel)}
+      </button>
+      <div class="menu-divider"></div>
+      <button class="menu-item" role="menuitem" id="menu-theme-toggle">${state.ui.theme === "light" ? "Switch to dark theme" : "Switch to light theme"}</button>
+      <div class="menu-divider"></div>
+      <button class="menu-item" role="menuitem" id="menu-sign-out" style="color:var(--negative-500);">Sign out</button>
+    </div>`;
+
   return `
   <header class="topbar">
     <div class="brand">Juno <span>Atlas</span></div>
@@ -335,15 +439,10 @@ function renderTopbar() {
       ${NAV_SECTIONS.map(sectionBtn).join("")}
     </nav>
     <div class="spacer"></div>
-    <div class="actions">
-      ${syncBadge}
-      <span class="muted" style="font-size:11px;">Scenario: <strong style="color:var(--fg);">${state.scenario.name}</strong></span>
-      <div class="user-chip" title="${userEmail}">
-        <span style="font-size:11px;">${userDisplay}</span>
-        ${roleBadge}
-      </div>
-      <button class="btn small secondary" id="theme-toggle">${state.ui.theme === "light" ? "Dark" : "Light"}</button>
-      <button class="btn small secondary" id="sign-out-btn">Sign out</button>
+    <div class="actions" style="position:relative;">
+      ${scenarioChip}
+      <button class="avatar-btn" id="avatar-btn" aria-haspopup="menu" aria-expanded="${menuOpen}" title="${escapeHtml(userEmail)}">${initials}</button>
+      ${avatarMenu}
     </div>
   </header>
   ${renderSubnav(currentSection, fin)}
@@ -478,10 +577,43 @@ function attachTopbarEvents() {
       }
     });
   }
-  document.getElementById("theme-toggle")?.addEventListener("click",
-    () => setTheme(state.ui.theme === "light" ? "dark" : "light"));
-  document.getElementById("sign-out-btn")?.addEventListener("click", async () => {
-    if (confirm("Sign out?")) await signOut();
+  // v14.20 (design reset Phase 4) — Avatar dropdown menu wiring.
+  // Theme toggle and sign-out moved off the topbar into the avatar menu;
+  // scenario chip routes to the Scenarios view for management/switching.
+  const avatarBtn  = document.getElementById("avatar-btn");
+  const avatarMenu = document.getElementById("avatar-menu");
+  if (avatarBtn && avatarMenu) {
+    avatarBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      state.ui.avatarMenuOpen = !state.ui.avatarMenuOpen;
+      notify();
+    });
+  }
+  // Close menu on outside click (one-shot listener — re-installed each render).
+  if (state.ui.avatarMenuOpen) {
+    const closeOnOutside = (e) => {
+      if (!e.target.closest(".avatar-menu") && !e.target.closest("#avatar-btn")) {
+        state.ui.avatarMenuOpen = false;
+        document.removeEventListener("click", closeOnOutside);
+        notify();
+      }
+    };
+    document.addEventListener("click", closeOnOutside);
+  }
+  document.getElementById("menu-theme-toggle")?.addEventListener("click", () => {
+    state.ui.avatarMenuOpen = false;
+    setTheme(state.ui.theme === "light" ? "dark" : "light");
+  });
+  document.getElementById("menu-sign-out")?.addEventListener("click", async () => {
+    state.ui.avatarMenuOpen = false;
+    if (await confirmAction({ title: "Sign out?", message: "You'll be returned to the sign-in screen.", confirmLabel: "Sign out", danger: true })) {
+      await signOut();
+    } else {
+      notify();
+    }
+  });
+  document.getElementById("scenario-chip-btn")?.addEventListener("click", () => {
+    setView("scenario");
   });
 
   // C2 — heatmap is lazy. Wire the "Compute heatmap" button when the Sensitivity view is open.
@@ -817,15 +949,25 @@ function renderPortfolio(r) {
 
     ${alertBanner}
 
-    <!-- v14.3 KPI row — 7 per brief -->
-    <div class="kpi-row">
-      ${kpiCard("Active projects", `${k.active_project_count}`, `${totalProjects} total${soldCount > 0 ? ` · ${soldCount} sold` : ""}`)}
-      ${kpiCard("Projected revenue", fmt.usdM(k.total_sales), `Across model horizon`)}
-      ${kpiCard("Projected profit", fmt.usdM(k.total_profit_before_tax), state.globals.apply_tax ? `After tax: ${fmt.usdM(k.total_profit_after_tax)}` : `Pre-tax`, profitCls)}
-      ${kpiCard("Peak equity required", fmt.usdM(k.peak_equity_required), `Month: ${fmt.ymShort(k.peak_equity_month)}`, peakEqCls)}
-      ${kpiCard("Max debt outstanding", fmt.usdM(k.max_debt_outstanding), `Month: ${fmt.ymShort(k.max_debt_month)}`, maxDebtCls)}
-      ${kpiCard("Gross MOIC", `${k.moic_gross.toFixed(2)}x`, `Equity in: ${fmt.usdM(k.total_equity_in)}`, moicCls)}
-      ${kpiCard("Portfolio margin", fmt.pct(portfolioMargin), `Profit / sales (pre-tax)`)}
+    <!-- v14.20 (design reset Phase 5) — KPIs grouped under eyebrow labels.
+         Performance · Capital · Returns. Four cards per row max. -->
+    <div class="kpi-section">
+      <div class="kpi-section-label">Performance</div>
+      <div class="kpi-grid">
+        ${kpiCard("Active projects", `${k.active_project_count}`, `${totalProjects} total${soldCount > 0 ? ` · ${soldCount} sold` : ""}`)}
+        ${kpiCard("Projected revenue", fmt.usdM(k.total_sales), `Across model horizon`)}
+        ${kpiCard("Projected profit", fmt.usdM(k.total_profit_before_tax), state.globals.apply_tax ? `After tax: ${fmt.usdM(k.total_profit_after_tax)}` : `Pre-tax`, profitCls)}
+        ${kpiCard("Portfolio margin", fmt.pct(portfolioMargin), `Profit / sales (pre-tax)`)}
+      </div>
+    </div>
+    <div class="kpi-section">
+      <div class="kpi-section-label">Capital</div>
+      <div class="kpi-grid">
+        ${kpiCard("Peak equity required", fmt.usdM(k.peak_equity_required), `Month: ${fmt.ymShort(k.peak_equity_month)}`, peakEqCls)}
+        ${kpiCard("Max debt outstanding", fmt.usdM(k.max_debt_outstanding), `Month: ${fmt.ymShort(k.max_debt_month)}`, maxDebtCls)}
+        ${kpiCard("Total equity in", fmt.usdM(k.total_equity_in), `Owner cash deployed`)}
+        ${kpiCard("Gross MOIC", `${k.moic_gross.toFixed(2)}x`, `Multiple on invested capital`, moicCls)}
+      </div>
     </div>
 
     <!-- Main analytics band: cash flow + debt/equity -->
@@ -854,13 +996,21 @@ function renderPortfolio(r) {
     <div class="panel mb-24">
       <h3>Development yield metrics</h3>
       <div class="panel-subtitle">Real-estate development KPIs for benchmarking against market cap rates and competing strategies.</div>
-      <div class="kpi-row">
-        ${kpiCard("Yield on cost", fmt.pct(k.portfolio_yield_on_cost), "Profit / all-in cost (incl. financing)", k.portfolio_yield_on_cost >= 0.15 ? "pos" : k.portfolio_yield_on_cost >= 0.08 ? "" : "neg")}
-        ${kpiCard("Cash-on-cash", k.cash_on_cash == null ? "—" : fmt.pct(k.cash_on_cash), "Annualized equity return", k.cash_on_cash >= 0.15 ? "pos" : k.cash_on_cash >= 0.08 ? "" : "neg")}
-        ${kpiCard("Revenue multiple", `${k.portfolio_revenue_multiple.toFixed(2)}x`, "Sales / all-in cost")}
-        ${kpiCard("Profit per sqft", `$${Math.round(k.portfolio_profit_per_sqft).toLocaleString()}`, `Total ${fmt.num(k.total_sqft)} sqft built`)}
-        ${kpiCard("Effective margin", fmt.pct(k.total_sales > 0 ? k.total_profit_before_tax / k.total_sales : 0), "Profit / sales (pre-tax)")}
-        ${kpiCard("Contingency burn", fmt.pct(k.contingency.burn_pct), `${fmt.usdM(k.contingency.used_usd)} of ${fmt.usdM(k.contingency.budget_usd)} budget`, k.contingency.burn_pct >= 0.80 ? "neg" : k.contingency.burn_pct >= 0.50 ? "warn" : "pos")}
+      <div class="kpi-section">
+        <div class="kpi-section-label">Returns</div>
+        <div class="kpi-grid">
+          ${kpiCard("Yield on cost", fmt.pct(k.portfolio_yield_on_cost), "Profit / all-in cost (incl. financing)", k.portfolio_yield_on_cost >= 0.15 ? "pos" : k.portfolio_yield_on_cost >= 0.08 ? "" : "neg")}
+          ${kpiCard("Cash-on-cash", k.cash_on_cash == null ? "—" : fmt.pct(k.cash_on_cash), "Annualized equity return", k.cash_on_cash >= 0.15 ? "pos" : k.cash_on_cash >= 0.08 ? "" : "neg")}
+          ${kpiCard("Revenue multiple", `${k.portfolio_revenue_multiple.toFixed(2)}x`, "Sales / all-in cost")}
+          ${kpiCard("Profit per sqft", `$${Math.round(k.portfolio_profit_per_sqft).toLocaleString()}`, `Total ${fmt.num(k.total_sqft)} sqft built`)}
+        </div>
+      </div>
+      <div class="kpi-section" style="margin-bottom:0;">
+        <div class="kpi-section-label">Operating health</div>
+        <div class="kpi-grid">
+          ${kpiCard("Effective margin", fmt.pct(k.total_sales > 0 ? k.total_profit_before_tax / k.total_sales : 0), "Profit / sales (pre-tax)")}
+          ${kpiCard("Contingency burn", fmt.pct(k.contingency.burn_pct), `${fmt.usdM(k.contingency.used_usd)} of ${fmt.usdM(k.contingency.budget_usd)} budget`, k.contingency.burn_pct >= 0.80 ? "neg" : k.contingency.burn_pct >= 0.50 ? "warn" : "pos")}
+        </div>
       </div>
     </div>
 
@@ -3725,6 +3875,18 @@ function confirmDialog(opts) {
   overlay.querySelector('[data-confirm-action="cancel"]').focus({ preventScroll: true });
 }
 
+// Promise-based wrapper around confirmDialog so callers can `await confirmAction(...)`
+// instead of nesting callbacks. Resolves to true on confirm, false on cancel.
+function confirmAction(opts) {
+  return new Promise((resolve) => {
+    confirmDialog({
+      ...opts,
+      onConfirm: () => resolve(true),
+      onCancel:  () => resolve(false),
+    });
+  });
+}
+
 // ---------- Suggestions view (admin queue) ----------
 
 let _suggestionsCache = null;
@@ -5305,19 +5467,24 @@ function drawWaterfallChart(r, isDark) {
   }
   // I4 — bound the y-axis to ~10% headroom over the actual peak instead of letting Chart.js auto-scale to 2× the data.
   const suggestedMax = maxVal > 0 ? maxVal * 1.1 : 1;
+  const tk = chartTokens();
+  const grad = (canvas, hex) => {
+    const ctx2d = canvas.getContext("2d");
+    const g = ctx2d.createLinearGradient(0, 0, 0, canvas.height || 240);
+    g.addColorStop(0, hex + "33");
+    g.addColorStop(1, hex + "00");
+    return g;
+  };
+  const opts = rampChartOptions({ stacked: false, yIsCurrency: true });
+  opts.scales.y.beginAtZero = true;
+  opts.scales.y.suggestedMax = suggestedMax;
   charts["chart-waterfall"] = new Chart(ctx, {
     type: "line",
     data: { labels, datasets: [
-      { label: "Cumulative equity deployed", data: cumIn, borderColor: "#b3261e", backgroundColor: "rgba(179,38,30,0.08)", fill: true, tension: 0.1 },
-      { label: "Cumulative equity returned", data: cumOut, borderColor: "#1f7a4d", backgroundColor: "rgba(31,122,77,0.08)", fill: true, tension: 0.1 },
+      { label: "Cumulative equity deployed", data: cumIn,  borderColor: tk.palette[3], backgroundColor: grad(ctx, tk.palette[3]), fill: true, tension: 0.35, borderWidth: 2, pointRadius: 0 },
+      { label: "Cumulative equity returned", data: cumOut, borderColor: tk.palette[2], backgroundColor: grad(ctx, tk.palette[2]), fill: true, tension: 0.35, borderWidth: 2, pointRadius: 0 },
     ]},
-    options: { responsive: true, maintainAspectRatio: false,
-      scales: {
-        y: { beginAtZero: true, suggestedMax, ticks: { callback: (v) => "$" + (v/1e6).toFixed(1) + "M" } },
-        x: { ticks: { autoSkip: true, maxTicksLimit: 12 } },
-      },
-      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatTooltip(ctx.parsed.y)}` } } },
-    },
+    options: opts,
   });
 }
 
@@ -5326,16 +5493,14 @@ function drawEquityMonthlyChart(r, isDark) {
   const ctx = document.getElementById("chart-equity-monthly");
   if (!ctx) return;
   const labels = r.timeline.map(d => d.slice(2));
+  const tk = chartTokens();
   charts["chart-equity-monthly"] = new Chart(ctx, {
     type: "bar",
     data: { labels, datasets: [
-      { label: "Equity drawn", data: r.monthly.equity_drawn.map(v => -v), backgroundColor: "#b3261e" },
-      { label: "Equity returned", data: r.monthly.equity_returned, backgroundColor: "#1f7a4d" },
+      { label: "Equity drawn",    data: r.monthly.equity_drawn.map(v => -v), backgroundColor: tk.palette[3], borderRadius: 2 },
+      { label: "Equity returned", data: r.monthly.equity_returned,           backgroundColor: tk.palette[2], borderRadius: 2 },
     ]},
-    options: { responsive: true, maintainAspectRatio: false,
-      scales: { x: { stacked: true, ticks: { autoSkip: true, maxTicksLimit: 12 } }, y: { stacked: true, ticks: { callback: (v) => "$" + (v/1e6).toFixed(1) + "M" } } },
-      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatTooltip(ctx.parsed.y)}` } } },
-    },
+    options: rampChartOptions({ stacked: true, yIsCurrency: true }),
   });
 }
 
@@ -5346,20 +5511,17 @@ function drawTornadoChart(r, isDark) {
   // Window-level access — computed once when sensitivity renders
   const data = window.__tornadoData || [];
   if (!data.length) return;
+  const tk = chartTokens();
   charts["chart-tornado"] = new Chart(ctx, {
     type: "bar",
     data: {
       labels: data.map(d => d.label),
       datasets: [
-        { label: "Downside", data: data.map(d => d.low), backgroundColor: "#b3261e" },
-        { label: "Upside", data: data.map(d => d.high), backgroundColor: "#1f7a4d" },
+        { label: "Downside", data: data.map(d => d.low),  backgroundColor: tk.palette[3], borderRadius: 2 },
+        { label: "Upside",   data: data.map(d => d.high), backgroundColor: tk.palette[2], borderRadius: 2 },
       ],
     },
-    options: {
-      responsive: true, maintainAspectRatio: false, indexAxis: "y",
-      scales: { x: { stacked: false, ticks: { callback: (v) => "$" + (v/1e6).toFixed(1) + "M" } }, y: { stacked: false } },
-      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatTooltip(ctx.parsed.x)}` } } },
-    },
+    options: rampChartOptions({ stacked: false, yIsCurrency: true, indexAxis: "y" }),
   });
 }
 
@@ -5369,24 +5531,21 @@ function drawCashflowChart(r, isDark) {
   if (!ctx) return;
   const labels = r.timeline.map(d => d.slice(2)); // YY-MM
   const m = r.monthly;
+  const tk = chartTokens();
   charts["chart-cashflow"] = new Chart(ctx, {
     type: "bar",
     data: {
       labels,
       datasets: [
-        { label: "Sales", data: m.sales, backgroundColor: "#1f7a4d" },
-        { label: "Land", data: m.land_cost, backgroundColor: "#b3261e" },
-        { label: "Build", data: m.build_cost, backgroundColor: "#e07a5f" },
-        { label: "Kingshaus", data: m.kingshaus, backgroundColor: "#b56c00" },
-        { label: "Overhead", data: m.overhead, backgroundColor: "#7a7a73" },
-        { label: "Interest", data: m.interest, backgroundColor: "#5a3d8a" },
+        { label: "Sales",     data: m.sales,      backgroundColor: tk.palette[2], borderRadius: 2 }, // sage green
+        { label: "Land",      data: m.land_cost,  backgroundColor: tk.palette[0], borderRadius: 2 }, // near-black ink (workhorse)
+        { label: "Build",     data: m.build_cost, backgroundColor: tk.palette[5], borderRadius: 2 }, // warm grey
+        { label: "Kingshaus", data: m.kingshaus,  backgroundColor: tk.palette[1], borderRadius: 2 }, // muted blue
+        { label: "Overhead",  data: m.overhead,   backgroundColor: tk.palette[4], borderRadius: 2 }, // dusty rose
+        { label: "Interest",  data: m.interest,   backgroundColor: tk.palette[3], borderRadius: 2 }, // warm orange (negative)
       ],
     },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      scales: { x: { stacked: true, ticks: { autoSkip: true, maxTicksLimit: 12 } }, y: { stacked: true, ticks: { callback: (v) => "$" + (v/1e6).toFixed(1) + "M" } } },
-      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatTooltip(ctx.parsed.y)}` } } },
-    },
+    options: rampChartOptions({ stacked: true, yIsCurrency: true }),
   });
 }
 
@@ -5395,16 +5554,22 @@ function drawBalancesChart(r, isDark) {
   const ctx = document.getElementById("chart-balances");
   if (!ctx) return;
   const labels = r.timeline.map(d => d.slice(2));
+  const tk = chartTokens();
+  // Gradient fills (Ramp pattern: deep at zero, fade to transparent)
+  const grad = (canvas, hex) => {
+    const ctx2d = canvas.getContext("2d");
+    const g = ctx2d.createLinearGradient(0, 0, 0, canvas.height || 240);
+    g.addColorStop(0, hex + "33"); // ~20% alpha at top
+    g.addColorStop(1, hex + "00");
+    return g;
+  };
   charts["chart-balances"] = new Chart(ctx, {
     type: "line",
     data: { labels, datasets: [
-      { label: "Cumulative debt", data: r.monthly.debt_balance, borderColor: "#b3261e", backgroundColor: "rgba(179,38,30,0.08)", fill: true, tension: 0.1 },
-      { label: "Cumulative equity", data: r.monthly.equity_balance, borderColor: "#2058a8", backgroundColor: "rgba(32,88,168,0.08)", fill: true, tension: 0.1 },
+      { label: "Cumulative debt",   data: r.monthly.debt_balance,   borderColor: tk.palette[3], backgroundColor: grad(ctx, tk.palette[3]), fill: true, tension: 0.35, borderWidth: 2, pointRadius: 0 },
+      { label: "Cumulative equity", data: r.monthly.equity_balance, borderColor: tk.palette[0], backgroundColor: grad(ctx, tk.palette[0]), fill: true, tension: 0.35, borderWidth: 2, pointRadius: 0 },
     ]},
-    options: { responsive: true, maintainAspectRatio: false,
-      scales: { y: { ticks: { callback: (v) => "$" + (v/1e6).toFixed(1) + "M" } }, x: { ticks: { autoSkip: true, maxTicksLimit: 12 } } },
-      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatTooltip(ctx.parsed.y)}` } } },
-    },
+    options: rampChartOptions({ stacked: false, yIsCurrency: true }),
   });
 }
 
@@ -5416,19 +5581,17 @@ function drawProjectChart(r, isDark) {
   const res = r.by_project.find((x) => x.project_id === id);
   if (!res) return;
   const labels = res.monthly.dates.map(d => d.slice(2));
+  const tk = chartTokens();
   charts["chart-project"] = new Chart(ctx, {
     type: "bar",
     data: { labels, datasets: [
-      { label: "Sales", data: res.monthly.sales, backgroundColor: "#1f7a4d" },
-      { label: "Land", data: res.monthly.land_cost, backgroundColor: "#b3261e" },
-      { label: "Build", data: res.monthly.build_cost, backgroundColor: "#e07a5f" },
-      { label: "Kingshaus", data: res.monthly.kingshaus, backgroundColor: "#b56c00" },
-      { label: "Interest", data: res.monthly.interest, backgroundColor: "#5a3d8a" },
+      { label: "Sales",     data: res.monthly.sales,      backgroundColor: tk.palette[2], borderRadius: 2 },
+      { label: "Land",      data: res.monthly.land_cost,  backgroundColor: tk.palette[0], borderRadius: 2 },
+      { label: "Build",     data: res.monthly.build_cost, backgroundColor: tk.palette[5], borderRadius: 2 },
+      { label: "Kingshaus", data: res.monthly.kingshaus,  backgroundColor: tk.palette[1], borderRadius: 2 },
+      { label: "Interest",  data: res.monthly.interest,   backgroundColor: tk.palette[3], borderRadius: 2 },
     ]},
-    options: { responsive: true, maintainAspectRatio: false,
-      scales: { x: { stacked: true, ticks: { autoSkip: true, maxTicksLimit: 12 } }, y: { stacked: true, ticks: { callback: (v) => "$" + (v/1e6).toFixed(1) + "M" } } },
-      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatTooltip(ctx.parsed.y)}` } } },
-    },
+    options: rampChartOptions({ stacked: true, yIsCurrency: true }),
   });
 }
 
@@ -5445,25 +5608,17 @@ function drawBurnChart(r, isDark) {
   // Show absolute magnitudes (positive bars) so the chart reads as "burn intensity".
   const abs = (arr) => arr.map(v => Math.abs(v || 0));
   const labels = m.dates.map(d => d.slice(2));
+  const tk = chartTokens();
   charts["chart-burn"] = new Chart(ctx, {
     type: "bar",
     data: { labels, datasets: [
-      { label: "Land",       data: abs(m.land_cost),  backgroundColor: "#9f1239" },
-      { label: "Build",      data: abs(m.build_cost), backgroundColor: "#c2410c" },
-      { label: "Kingshaus",  data: abs(m.kingshaus),  backgroundColor: "#a16207" },
-      { label: "Soft costs", data: abs(m.soft_cost),  backgroundColor: "#475569" },
-      { label: "Financing",  data: abs(m.interest),   backgroundColor: "#52525b" },
+      { label: "Land",       data: abs(m.land_cost),  backgroundColor: tk.palette[0], borderRadius: 2 },
+      { label: "Build",      data: abs(m.build_cost), backgroundColor: tk.palette[5], borderRadius: 2 },
+      { label: "Kingshaus",  data: abs(m.kingshaus),  backgroundColor: tk.palette[1], borderRadius: 2 },
+      { label: "Soft costs", data: abs(m.soft_cost),  backgroundColor: tk.palette[4], borderRadius: 2 },
+      { label: "Financing",  data: abs(m.interest),   backgroundColor: tk.palette[3], borderRadius: 2 },
     ]},
-    options: { responsive: true, maintainAspectRatio: false,
-      scales: {
-        x: { stacked: true, ticks: { autoSkip: true, maxTicksLimit: 12 } },
-        y: { stacked: true, ticks: { callback: (v) => "$" + (v/1e6).toFixed(1) + "M" } },
-      },
-      plugins: {
-        legend: { position: "bottom" },
-        tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatTooltip(ctx.parsed.y)}` } },
-      },
-    },
+    options: rampChartOptions({ stacked: true, yIsCurrency: true }),
   });
 }
 
@@ -5478,17 +5633,22 @@ function drawLocDrawdownChart(r, isDark) {
   if (!dates.length) return;
   const cap = state.globals.kpc_loc?.facility_size_usd || 0;
   const labels = dates.map(d => d.slice(2));
+  const tk = chartTokens();
+  const grad = (canvas, hex) => {
+    const ctx2d = canvas.getContext("2d");
+    const g = ctx2d.createLinearGradient(0, 0, 0, canvas.height || 240);
+    g.addColorStop(0, hex + "33");
+    g.addColorStop(1, hex + "00");
+    return g;
+  };
   charts["chart-loc-drawdown"] = new Chart(ctx, {
     type: "line",
     data: { labels, datasets: [
-      { label: "LOC balance", data: port.loc_balance, borderColor: "#334155", backgroundColor: "rgba(51, 65, 85, 0.12)", fill: true, tension: 0.18, pointRadius: 0, borderWidth: 2 },
-      { label: "Facility cap", data: dates.map(() => cap), borderColor: "#9f1239", borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false },
-      { label: "Available", data: port.loc_available, borderColor: "#15803d", borderWidth: 1, pointRadius: 0, fill: false, hidden: true },
+      { label: "LOC balance",  data: port.loc_balance,   borderColor: tk.palette[0], backgroundColor: grad(ctx, tk.palette[0]), fill: true, tension: 0.35, pointRadius: 0, borderWidth: 2 },
+      { label: "Facility cap", data: dates.map(() => cap), borderColor: tk.palette[3], borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false },
+      { label: "Available",    data: port.loc_available, borderColor: tk.palette[2], borderWidth: 1, pointRadius: 0, fill: false, hidden: true },
     ]},
-    options: { responsive: true, maintainAspectRatio: false,
-      scales: { x: { ticks: { autoSkip: true, maxTicksLimit: 12 } }, y: { ticks: { callback: (v) => "$" + (v/1e6).toFixed(1) + "M" } } },
-      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatTooltip(ctx.parsed.y)}` } } },
-    },
+    options: rampChartOptions({ stacked: false, yIsCurrency: true }),
   });
 }
 
@@ -5505,17 +5665,22 @@ function drawCapitalStackChart(r, isDark) {
   const cumDebt = cumulativeSeries(port.debt_drawn);
   const cumLoc  = cumulativeSeries(port.loc_drawn);
   const cumEq   = cumulativeSeries(port.true_equity_drawn);
+  const tk = chartTokens();
+  const grad = (canvas, hex) => {
+    const ctx2d = canvas.getContext("2d");
+    const g = ctx2d.createLinearGradient(0, 0, 0, canvas.height || 240);
+    g.addColorStop(0, hex + "33");
+    g.addColorStop(1, hex + "00");
+    return g;
+  };
   charts["chart-capital-stack"] = new Chart(ctx, {
     type: "line",
     data: { labels, datasets: [
-      { label: "Senior debt (cum)",   data: cumDebt, borderColor: "#475569", backgroundColor: "rgba(71, 85, 105, 0.18)", fill: "origin", tension: 0.18, pointRadius: 0, borderWidth: 2 },
-      { label: "KPC LOC (cum)",       data: cumLoc,  borderColor: "#334155", backgroundColor: "rgba(51, 65, 85, 0.18)",  fill: "-1", tension: 0.18, pointRadius: 0, borderWidth: 2 },
-      { label: "Owner equity (cum)",  data: cumEq,   borderColor: "#9f1239", backgroundColor: "rgba(159, 18, 57, 0.18)", fill: "-1", tension: 0.18, pointRadius: 0, borderWidth: 2 },
+      { label: "Senior debt (cum)",   data: cumDebt, borderColor: tk.palette[5], backgroundColor: grad(ctx, tk.palette[5]), fill: "origin", tension: 0.35, pointRadius: 0, borderWidth: 2 },
+      { label: "KPC LOC (cum)",       data: cumLoc,  borderColor: tk.palette[0], backgroundColor: grad(ctx, tk.palette[0]), fill: "-1",     tension: 0.35, pointRadius: 0, borderWidth: 2 },
+      { label: "Owner equity (cum)",  data: cumEq,   borderColor: tk.palette[3], backgroundColor: grad(ctx, tk.palette[3]), fill: "-1",     tension: 0.35, pointRadius: 0, borderWidth: 2 },
     ]},
-    options: { responsive: true, maintainAspectRatio: false,
-      scales: { x: { ticks: { autoSkip: true, maxTicksLimit: 12 } }, y: { stacked: false, ticks: { callback: (v) => "$" + (v/1e6).toFixed(1) + "M" } } },
-      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatTooltip(ctx.parsed.y)}` } } },
-    },
+    options: rampChartOptions({ stacked: false, yIsCurrency: true }),
   });
 }
 

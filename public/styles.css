@@ -156,13 +156,13 @@ body {
 }
 
 /* ============================================================
-   Phase 2 (design reset) — typography scale per design.md §3.
-   Single typeface (Inter). Hierarchy by weight, size, tracking.
+   Phase 2-7 (design reset) — Ramp-calibrated component system.
+   Typography (Ramp-style: massive bold display headings).
    ============================================================ */
-.text-display   { font-size: 36px; line-height: 1.1;  font-weight: 600; letter-spacing: -0.02em; }
-.text-h1        { font-size: 28px; line-height: 1.2;  font-weight: 600; letter-spacing: -0.015em; }
-.text-h2        { font-size: 20px; line-height: 1.3;  font-weight: 600; letter-spacing: -0.01em; }
-.text-h3        { font-size: 16px; line-height: 1.4;  font-weight: 600; }
+.text-display   { font-size: 56px; line-height: 1.05; font-weight: 700; letter-spacing: -0.025em; }
+.text-h1        { font-size: 36px; line-height: 1.15; font-weight: 700; letter-spacing: -0.02em;  }
+.text-h2        { font-size: 24px; line-height: 1.25; font-weight: 600; letter-spacing: -0.015em; }
+.text-h3        { font-size: 18px; line-height: 1.35; font-weight: 600; letter-spacing: -0.01em;  }
 .text-body      { font-size: 14px; line-height: 1.5;  font-weight: 400; }
 .text-sm        { font-size: 13px; line-height: 1.45; font-weight: 400; }
 .text-xs        { font-size: 12px; line-height: 1.4;  font-weight: 400; }
@@ -172,8 +172,8 @@ body {
   color: var(--text-tertiary);
 }
 .metric-value {
-  font-size: 32px; line-height: 1.1; font-weight: 600; letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
+  font-size: 32px; line-height: 1.1; font-weight: 700; letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums; color: var(--text-primary);
 }
 
 /* Tabular numerals — apply globally to all numeric cells + utility class */
@@ -182,12 +182,222 @@ body {
   font-feature-settings: 'tnum';
 }
 
-/* Native h1/h2/h3 elements adopt the new scale by default so existing markup
-   gets the new typography without a sweeping rewrite. Component-scoped
-   styles can still override these later. */
-h1 { font-size: 28px; line-height: 1.2; font-weight: 600; letter-spacing: -0.015em; margin: 0; }
-h2 { font-size: 20px; line-height: 1.3; font-weight: 600; letter-spacing: -0.01em;  margin: 0; }
-h3 { font-size: 16px; line-height: 1.4; font-weight: 600; margin: 0; }
+/* Native h1/h2/h3 elements adopt the new scale by default — bolder, larger,
+   tighter tracking. Period punctuation is a Ramp signature for emphasis;
+   not enforced via CSS but encouraged in copy. */
+h1 { font-size: 36px; line-height: 1.15; font-weight: 700; letter-spacing: -0.02em;  margin: 0; color: var(--text-primary); }
+h2 { font-size: 24px; line-height: 1.25; font-weight: 600; letter-spacing: -0.015em; margin: 0; color: var(--text-primary); }
+h3 { font-size: 18px; line-height: 1.35; font-weight: 600; letter-spacing: -0.01em;  margin: 0; color: var(--text-primary); }
+
+/* ============================================================
+   Phase 3 (design reset) — Component primitives, Ramp-style.
+   ============================================================ */
+
+/* === Buttons ===
+   Primary  → vivid yellow with BLACK text (Ramp's signature CTA)
+   Secondary → white with subtle border
+   Ghost    → transparent, hover sunken
+   Danger   → warm orange (negative)
+   These rules override the legacy .btn block lower in the file because
+   later-defined rules win the cascade. */
+.btn,
+button.btn {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease, transform 80ms ease;
+  border: 1px solid transparent;
+  cursor: pointer;
+  background: var(--accent-500);     /* Ramp primary: yellow */
+  color: var(--text-primary);        /* black text on yellow */
+  font-family: inherit;
+}
+.btn:hover,
+button.btn:hover {
+  background: var(--accent-600);
+}
+.btn:active { transform: translateY(1px); }
+.btn:focus-visible {
+  outline: 2px solid var(--accent-500);
+  outline-offset: 2px;
+}
+
+.btn.secondary,
+button.btn.secondary {
+  background: var(--surface-card-elev);
+  border-color: var(--border-default);
+  color: var(--text-primary);
+}
+.btn.secondary:hover,
+button.btn.secondary:hover {
+  background: var(--surface-card);
+  border-color: var(--border-strong);
+}
+
+.btn.ghost,
+button.btn.ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+.btn.ghost:hover,
+button.btn.ghost:hover {
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+}
+
+.btn.danger,
+button.btn.danger {
+  background: var(--surface-card-elev);
+  border-color: var(--border-default);
+  color: var(--negative-500);
+}
+.btn.danger:hover,
+button.btn.danger:hover {
+  background: var(--negative-50);
+  border-color: var(--negative-500);
+}
+
+.btn.small,
+button.btn.small {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+/* === Alerts (quiet, left-border accent) === */
+.alert,
+.note {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 18px;
+  background: var(--surface-card-elev);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--accent-500);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+.note.warn  { border-left-color: var(--warning-500); }
+.note.neg   { border-left-color: var(--negative-500); }
+.alert strong, .note strong { color: var(--text-primary); font-weight: 600; }
+
+/* === KPI sections (Ramp pattern: grouped under eyebrow labels) === */
+.kpi-section {
+  margin-bottom: var(--space-8);
+}
+.kpi-section .kpi-section-label {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-3);
+}
+.kpi-section .kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+}
+@media (max-width: 1200px) { .kpi-section .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 900px)  { .kpi-section .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px)  { .kpi-section .kpi-grid { grid-template-columns: 1fr; } }
+
+/* === Avatar dropdown menu (Phase 4 top-nav) === */
+.avatar-btn {
+  width: 32px; height: 32px;
+  border-radius: var(--radius-full);
+  background: var(--text-primary);
+  color: var(--text-inverse);
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  transition: opacity 120ms ease;
+}
+.avatar-btn:hover { opacity: 0.85; }
+.avatar-menu {
+  position: absolute;
+  top: 100%;
+  right: var(--space-6);
+  margin-top: 6px;
+  min-width: 240px;
+  background: var(--surface-card-elev);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  z-index: 200;
+  padding: 6px;
+  display: none;
+}
+.avatar-menu.open { display: block; }
+.avatar-menu .menu-user {
+  padding: 10px 12px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 4px;
+}
+.avatar-menu .menu-user-email {
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.avatar-menu .menu-user-role {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.avatar-menu .menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+}
+.avatar-menu .menu-item:hover { background: var(--surface-sunken); }
+.avatar-menu .menu-divider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 4px 0;
+}
+
+/* === Scenario picker chip (Phase 4 top-nav) === */
+.scenario-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+.scenario-chip:hover { border-color: var(--border-default); background: var(--surface-card-elev); }
+.scenario-chip .scenario-chip-label { color: var(--text-tertiary); font-size: 11px; }
+.scenario-chip .scenario-chip-name  { color: var(--text-primary); font-weight: 600; }
+.scenario-chip .scenario-chip-lock  { font-size: 10px; }
 
 /* ---------- layout ---------- */
 
@@ -313,29 +523,37 @@ button.btn.small { padding: 4px 8px; font-size: 12px; }
 @media (max-width: 1300px) { .kpi-row { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 980px)  { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
 .kpi {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px 16px;
-  box-shadow: var(--shadow);
+  /* v14.20 (design reset): white interactive card on whatever surface
+     (page or pale-grey grouping panel). Hover lifts very subtly. */
+  background: var(--surface-card-elev);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+  box-shadow: none;
+  transition: border-color 120ms ease;
 }
+.kpi:hover { border-color: var(--border-default); }
 .kpi .label {
   font-size: 11px;
-  color: var(--fg-3);
-  margin-bottom: 4px;
+  color: var(--text-tertiary);
+  margin-bottom: 6px;
   font-weight: 500;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 .kpi .value {
-  font-size: 22px;
-  font-weight: 600;
+  /* v14.20 (design reset Phase 2): Ramp-style large display numbers */
+  font-size: 28px;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--text-primary);
 }
 .kpi .meta {
   font-size: 11px;
-  color: var(--fg-3);
-  margin-top: 2px;
+  color: var(--text-tertiary);
+  margin-top: 6px;
 }
 .kpi.warn .value { color: var(--warn); }
 .kpi.neg .value { color: var(--neg); }
@@ -352,45 +570,58 @@ button.btn.small { padding: 4px 8px; font-size: 12px; }
 @media (max-width: 1100px) { .panel-row { grid-template-columns: 1fr; } }
 
 .panel {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px 18px;
-  box-shadow: var(--shadow);
+  /* v14.20 (design reset Phase 3): Ramp grouping card — pale grey,
+     larger radius, no shadow. The interactive content inside (KPIs,
+     tables, charts) sits on white surfaces that pop against this. */
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 24px 24px;
+  box-shadow: none;
 }
 .panel h3 {
-  margin: 0 0 14px 0;
-  font-size: 13px;
+  /* v14.20 (design reset Phase 2): bolder/larger panel headings per Ramp */
+  margin: 0 0 6px 0;
+  font-size: 18px;
   font-weight: 600;
-  color: var(--fg);
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
 }
 .panel .panel-subtitle {
-  font-size: 11px;
-  color: var(--fg-3);
-  margin-top: -10px;
-  margin-bottom: 14px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 0;
+  margin-bottom: 16px;
+  line-height: 1.4;
 }
 
-/* ---------- tables ---------- */
+/* ---------- tables (v14.20 design reset Phase 7) ---------- */
+/* Ramp pattern: minimal dividers, subtle row hover, sunken totals row,
+   negatives in warm orange, zeros recede. Tables sit on white surfaces
+   inside pale-grey grouping panels. */
 
 table.tbl {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: 13px;
   font-variant-numeric: tabular-nums;
+  background: var(--surface-card-elev);
+  border-radius: var(--radius-md);
+  overflow: hidden;
 }
 table.tbl th, table.tbl td {
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--border);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-subtle);
   text-align: right;
+  color: var(--text-primary);
 }
 table.tbl th {
-  font-weight: 600;
-  color: var(--fg-2);
+  font-weight: 500;
+  color: var(--text-tertiary);
   font-size: 11px;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  background: var(--surface-2);
+  background: var(--surface-card);
   position: sticky;
   top: 0;
 }
@@ -398,12 +629,15 @@ table.tbl th:first-child, table.tbl td:first-child {
   text-align: left;
   font-weight: 500;
 }
-table.tbl tr:hover td { background: var(--surface-2); }
+/* Negatives in warm orange, zero-ish values recede */
+table.tbl td.neg { color: var(--negative-500); }
+table.tbl td.zero,
+table.tbl td.muted { color: var(--text-tertiary); }
+table.tbl tbody tr:hover td { background: var(--surface-sunken); }
 table.tbl td.num { font-variant-numeric: tabular-nums; }
-table.tbl td.pos { color: var(--pos); }
-table.tbl td.neg { color: var(--neg); }
-table.tbl td.muted { color: var(--fg-3); }
-table.tbl tfoot td { font-weight: 600; background: var(--surface-2); border-top: 2px solid var(--border-strong); }
+table.tbl td.pos { color: var(--positive-500); }
+/* td.neg + td.muted defined above with the new tokens */
+table.tbl tfoot td { font-weight: 600; background: var(--surface-sunken); border-top: 1px solid var(--border-default); color: var(--text-primary); }
 
 .scroll-x { overflow-x: auto; max-width: 100%; }
 
@@ -1113,11 +1347,13 @@ tr.drag-over-after td { border-bottom: 2px solid var(--accent); }
   flex-wrap: wrap;
 }
 .page-title {
+  /* v14.20 (design reset Phase 2): big-bold Ramp display headings */
   margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  letter-spacing: -0.015em;
-  color: var(--fg);
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--text-primary);
 }
 
 /* Pipeline-by-stage bars */
