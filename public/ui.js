@@ -98,13 +98,33 @@ function rampChartOptions(opts = {}) {
         labels: {
           color: tk.text,
           font: { size: 11 },
-          // Solid color dots instead of outlined rounded-rect boxes.
-          // boxHeight matches boxWidth so circles render perfectly round.
           usePointStyle: true,
           pointStyle: "circle",
           boxWidth: 8,
           boxHeight: 8,
           padding: 14,
+          // Custom generator so the legend dot is always a SOLID filled circle.
+          // Without this, line-chart datasets render hollow rings because their
+          // backgroundColor is a transparent gradient — Chart.js's default
+          // generator uses backgroundColor for fillStyle, which produces the
+          // empty look. We force fillStyle = borderColor (or backgroundColor
+          // when no border exists, e.g. on bar datasets) and zero the stroke.
+          generateLabels: (chart) => {
+            const datasets = chart.data.datasets || [];
+            return datasets.map((ds, i) => {
+              const solid = ds.borderColor || ds.backgroundColor || "#0A0A0A";
+              return {
+                text: ds.label,
+                fillStyle: typeof solid === "string" ? solid : "#0A0A0A",
+                strokeStyle: typeof solid === "string" ? solid : "#0A0A0A",
+                lineWidth: 0,
+                lineDash: ds.borderDash || [],
+                pointStyle: "circle",
+                hidden: !chart.isDatasetVisible(i),
+                datasetIndex: i,
+              };
+            });
+          },
         },
       },
       tooltip: {
