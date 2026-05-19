@@ -1791,25 +1791,12 @@ tr.drag-over-after td { border-bottom: 2px solid var(--accent); }
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
-/* ---------- scenario indicator (warns when not Base) ---------- */
-
-body.scenario-active .topbar {
-  background: linear-gradient(180deg, rgba(181, 108, 0, 0.10) 0%, var(--surface) 100%);
-  border-bottom-color: rgba(181, 108, 0, 0.4);
-}
-body.scenario-active .topbar::before {
-  content: "Scenario active";
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  top: 2px;
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--warn);
-}
-body.scenario-active .topbar { position: relative; }
+/* ---------- scenario indicator ----------
+   v14.20 (design reset 2026-05-19) — The "Scenario active" banner that tinted
+   the entire topbar with a rusty-amber gradient is removed per design.md §5.1
+   ("the 'SCENARIO ACTIVE' banner is forbidden — scenario state lives in the
+   scenario picker"). The Scenario name is already visible in the topbar actions
+   strip and on every page header; no extra chrome needed. */
 
 /* ---------- LLM assistant ---------- */
 

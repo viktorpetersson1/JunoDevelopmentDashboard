@@ -58,9 +58,10 @@ const root = () => document.getElementById("app-root");
 export function render() {
   document.documentElement.dataset.theme = state.ui.theme;
   // v13 — tint the chrome when scenario is not Base so an exec can't miss it
-  const scenarioName = (state.scenario?.name || "Base case").trim().toLowerCase();
-  const isBaseScenario = scenarioName === "base case" || scenarioName === "base";
-  document.body.classList.toggle("scenario-active", !isBaseScenario);
+  // v14.20 (design reset) — Scenario state lives in the scenario picker chip
+  // (per design.md §5.1). The body.scenario-active class that used to tint the
+  // topbar amber is removed; ensure stale state is cleared on every render.
+  document.body.classList.remove("scenario-active");
 
   // Auth gate: while auth is loading, show a quiet splash with an escape hatch.
   // The "Reset" link clears localStorage + Supabase auth cache and reloads —
