@@ -326,6 +326,127 @@ button.btn.small {
   transition: opacity 120ms ease;
 }
 .avatar-btn:hover { opacity: 0.85; }
+
+/* v14.21 — Avatar group: circle + visible "▾" chevron so the user has an
+   obvious affordance to open the menu (the user explicitly asked for "the V"). */
+.avatar-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px 2px 2px;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+  font-family: inherit;
+}
+.avatar-group:hover { background: var(--surface-card); border-color: var(--border-subtle); }
+.avatar-group .avatar-circle {
+  width: 28px; height: 28px;
+  border-radius: var(--radius-full);
+  background: var(--text-primary);
+  color: var(--text-inverse);
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.avatar-group .avatar-caret {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  line-height: 1;
+}
+.avatar-group[aria-expanded="true"] .avatar-caret { color: var(--text-primary); transform: rotate(180deg); }
+.avatar-group[aria-expanded="true"] { background: var(--surface-card); border-color: var(--border-default); }
+
+/* Small eyebrow label inside the avatar menu, before the Settings group */
+.avatar-menu .menu-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  padding: 10px 12px 4px;
+}
+
+/* === Settings drawer (v14.21) — half-pane right-docked worksheet === */
+.settings-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 10, 0.32);
+  z-index: 120;
+  animation: fadeIn 160ms ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.settings-drawer {
+  position: fixed;
+  right: 0; top: 0; bottom: 0;
+  width: 50vw;
+  min-width: 480px;
+  max-width: 720px;
+  background: var(--surface-page);
+  border-left: 1px solid var(--border-default);
+  box-shadow: -8px 0 32px rgba(10, 10, 10, 0.10);
+  display: flex;
+  flex-direction: column;
+  z-index: 130;
+  animation: slideInRight 200ms ease;
+}
+@keyframes slideInRight {
+  from { transform: translateX(40px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+.settings-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.settings-drawer-header h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+.settings-drawer-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 12px 24px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+}
+.settings-drawer-tabs button {
+  background: transparent;
+  border: none;
+  padding: 8px 12px 12px;
+  margin-bottom: -1px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  font-family: inherit;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+.settings-drawer-tabs button:hover { color: var(--text-primary); }
+.settings-drawer-tabs button.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--text-primary);
+  font-weight: 600;
+}
+.settings-drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  background: var(--surface-page);
+}
+@media (max-width: 720px) {
+  .settings-drawer { width: 100vw; min-width: 0; max-width: 100vw; border-left: none; }
+}
 .avatar-menu {
   position: absolute;
   top: 100%;

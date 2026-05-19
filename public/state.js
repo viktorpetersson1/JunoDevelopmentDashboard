@@ -40,6 +40,7 @@ export const state = {
     theme: "light",
     mobileMoreOpen: false,  // v13: tracks whether the mobile "More" drawer is open
     avatarMenuOpen: false,  // v14.20 (design reset Phase 4): avatar dropdown menu open/closed
+    settingsDrawer: { open: false, tab: "settings" },  // v14.21: half-pane settings drawer (General / History / Suggestions / Users)
     wizard: { open: false, step: 0, draft: null },  // v14.1: New Project wizard state
   },
 };
@@ -187,6 +188,10 @@ function applyStateBlob(blob) {
     }
     if (Array.isArray(blob.audit_log)) state.audit_log = blob.audit_log;
     if (blob.ui) Object.assign(state.ui, blob.ui);
+    // v14.21 — transient UI flags should never restore from a previous session
+    state.ui.settingsDrawer = { open: false, tab: "settings" };
+    state.ui.avatarMenuOpen = false;
+    state.ui.mobileMoreOpen = false;
   } finally {
     _suppressAutoSave = false;
   }
@@ -746,4 +751,22 @@ export function setTheme(theme) {
   state.ui.theme = theme;
   document.documentElement.dataset.theme = theme;
   save(); notify();
+}
+
+// v14.21 — Half-pane Settings drawer. Settings was the only top-nav section
+// that didn't carry portfolio data — moved into the avatar dropdown so the
+// top nav is just project flow.
+export function openSettingsDrawer(tab = "settings") {
+  state.ui.settingsDrawer.open = true;
+  state.ui.settingsDrawer.tab = tab;
+  state.ui.avatarMenuOpen = false;  // close the menu when drawer opens
+  notify();
+}
+export function closeSettingsDrawer() {
+  state.ui.settingsDrawer.open = false;
+  notify();
+}
+export function setSettingsDrawerTab(tab) {
+  state.ui.settingsDrawer.tab = tab;
+  notify();
 }

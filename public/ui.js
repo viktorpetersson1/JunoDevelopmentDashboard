@@ -9,7 +9,8 @@ import { state, notify, save, updateGlobal, updateScenario,
   canSeeFinancials, isRestrictedViewer, hydrateAuthedSession,
   openWizard, closeWizard, discardWizardDraft, setWizardStep,
   updateWizardDraft, submitWizardDraft, setProjectTab,
-  duplicateCurrentScenario, classifyScenario, setScenarioLock } from "./state.js";
+  duplicateCurrentScenario, classifyScenario, setScenarioLock,
+  openSettingsDrawer, closeSettingsDrawer, setSettingsDrawerTab } from "./state.js";
 import { aggregatePortfolio, calcProject, fyOf, monteCarlo, evaluateRisks, generateNudges } from "./engine.js";
 import { EXCEL_BENCHMARK, LIFECYCLE_STAGES, STAGE_GROUP_COLORS, ASSET_TYPES, SCENARIO_CLASSES, PROJECT_TEMPLATES } from "./data.js";
 import {
@@ -433,9 +434,22 @@ function renderTopbar() {
   const currentSection = sectionForView(state.ui.view);
   const sectionBtn = (s) => {
     if (s.financial && !fin) return "";
+    // v14.21 — Settings lives in the avatar dropdown now, not the top nav.
+    if (s.key === "settings") return "";
     const label = s.key === "portfolio" && !fin ? "Overview" : s.label;
     return `<button data-section="${s.key}" class="${currentSection.key === s.key ? "active" : ""}">${label}</button>`;
   };
+
+  // v14.21 — Settings drawer menu items (filtered by role gates so users
+  // only see settings sections they can actually access).
+  const owner = isSuperAdmin();
+  const editor = canEdit();
+  const settingsItems = [
+    { tab: "settings",    label: "General",     show: fin },
+    { tab: "activity",    label: "History",     show: true },
+    { tab: "suggestions", label: "Suggestions", show: editor },
+    { tab: "users",       label: "Users",       show: owner },
+  ].filter(i => i.show);
 
   const scenarioLocked = state.scenario.locked_by_id != null;
   const scenarioChip = fin ? `
@@ -456,6 +470,11 @@ function renderTopbar() {
       <button class="menu-item" role="menuitem" id="menu-sync-info" disabled style="cursor:default;color:var(--text-secondary);">
         <span class="dot dot-${syncSeverity}" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${syncSeverity === "pos" ? "var(--positive-500)" : syncSeverity === "warn" ? "var(--warning-500)" : syncSeverity === "neg" ? "var(--negative-500)" : "var(--text-tertiary)"};margin-right:8px;vertical-align:middle;"></span>${escapeHtml(syncLabel)}
       </button>
+      ${settingsItems.length ? `
+      <div class="menu-divider"></div>
+      <div class="menu-section-label">Settings</div>
+      ${settingsItems.map(i => `<button class="menu-item" role="menuitem" data-settings-tab="${i.tab}">${i.label}</button>`).join("")}
+      ` : ""}
       <div class="menu-divider"></div>
       <button class="menu-item" role="menuitem" id="menu-theme-toggle">${state.ui.theme === "light" ? "Switch to dark theme" : "Switch to light theme"}</button>
       <div class="menu-divider"></div>
@@ -471,16 +490,66 @@ function renderTopbar() {
     <div class="spacer"></div>
     <div class="actions" style="position:relative;">
       ${scenarioChip}
-      <button class="avatar-btn" id="avatar-btn" aria-haspopup="menu" aria-expanded="${menuOpen}" title="${escapeHtml(userEmail)}">${initials}</button>
+      <button class="avatar-group" id="avatar-btn" aria-haspopup="menu" aria-expanded="${menuOpen}" title="${escapeHtml(userEmail)}">
+        <span class="avatar-circle">${initials}</span>
+        <span class="avatar-caret" aria-hidden="true">▾</span>
+      </button>
       ${avatarMenu}
     </div>
   </header>
   ${renderSubnav(currentSection, fin)}
+  ${renderSettingsDrawer()}
   <button id="assistant-launcher" class="assistant-launcher" title="Ask Juno — your AI assistant">
     ${JUNO_AI_ICON}<span>Ask Juno</span>
   </button>
   <div id="assistant-panel" class="assistant-panel" style="display:none;"></div>
   ${renderBottomTabNav()}
+  `;
+}
+
+// v14.21 — Half-pane Settings drawer. Opens from the right at ~50% width.
+// Internal tabs route between General / History / Suggestions / Users,
+// reusing the same render functions as the legacy full-page views.
+function renderSettingsDrawer() {
+  const drawer = state.ui.settingsDrawer || { open: false, tab: "settings" };
+  if (!drawer.open) return "";
+  const fin = canSeeFinancials();
+  const owner = isSuperAdmin();
+  const editor = canEdit();
+  const tabs = [
+    { tab: "settings",    label: "General",     show: fin },
+    { tab: "activity",    label: "History",     show: true },
+    { tab: "suggestions", label: "Suggestions", show: editor },
+    { tab: "users",       label: "Users",       show: owner },
+  ].filter(i => i.show);
+  // Pick a safe tab if current selection is now hidden by role change
+  let activeTab = drawer.tab;
+  if (!tabs.some(t => t.tab === activeTab)) activeTab = tabs[0]?.tab || "activity";
+
+  // Reuse existing view renderers — they return panel-wrapped HTML.
+  let body = "";
+  switch (activeTab) {
+    case "settings":    body = renderSettings(); break;
+    case "activity":    body = renderActivity(); break;
+    case "suggestions": body = renderSuggestions(); break;
+    case "users":       body = renderUsers(); break;
+    default:            body = `<div class="note">Unknown settings tab.</div>`;
+  }
+
+  return `
+    <div class="settings-drawer-backdrop" id="settings-drawer-backdrop"></div>
+    <aside class="settings-drawer" role="dialog" aria-label="Settings" aria-modal="true">
+      <header class="settings-drawer-header">
+        <h2>Settings</h2>
+        <button class="btn ghost small" id="settings-drawer-close" aria-label="Close settings">Close ✕</button>
+      </header>
+      <nav class="settings-drawer-tabs" role="tablist">
+        ${tabs.map(t => `<button role="tab" data-settings-tab="${t.tab}" class="${activeTab === t.tab ? "active" : ""}">${t.label}</button>`).join("")}
+      </nav>
+      <div class="settings-drawer-body" role="tabpanel">
+        ${body}
+      </div>
+    </aside>
   `;
 }
 
@@ -645,6 +714,38 @@ function attachTopbarEvents() {
   document.getElementById("scenario-chip-btn")?.addEventListener("click", () => {
     setView("scenario");
   });
+
+  // v14.21 — Settings drawer wiring. The avatar menu has one button per
+  // settings sub-tab. Clicking any of them opens the drawer to that tab.
+  // The drawer's internal tab bar uses the same data-settings-tab attribute.
+  for (const btn of document.querySelectorAll('[data-settings-tab]')) {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const tab = btn.dataset.settingsTab;
+      // Avatar-menu items open the drawer; drawer tabs just switch tab.
+      if (state.ui.settingsDrawer.open) {
+        setSettingsDrawerTab(tab);
+      } else {
+        openSettingsDrawer(tab);
+      }
+    });
+  }
+  document.getElementById("settings-drawer-close")?.addEventListener("click", () => {
+    closeSettingsDrawer();
+  });
+  document.getElementById("settings-drawer-backdrop")?.addEventListener("click", () => {
+    closeSettingsDrawer();
+  });
+  // Close drawer on Esc
+  if (state.ui.settingsDrawer?.open) {
+    const onEsc = (e) => {
+      if (e.key === "Escape") {
+        closeSettingsDrawer();
+        document.removeEventListener("keydown", onEsc);
+      }
+    };
+    document.addEventListener("keydown", onEsc);
+  }
 
   // C2 — heatmap is lazy. Wire the "Compute heatmap" button when the Sensitivity view is open.
   document.getElementById("compute-heatmap")?.addEventListener("click", (e) => {
