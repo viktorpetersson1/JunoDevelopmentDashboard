@@ -949,7 +949,7 @@ function renderProjectsList(r) {
       <td data-label="$/sqft profit" class="num">$${Math.round(res.kpis.profit_per_sqft).toLocaleString()}</td>
       <td data-label="Actions">
         <button class="btn small secondary" data-action="open" data-id="${res.project_id}">Open</button>
-        <button class="btn small ${excluded ? "secondary" : "danger"}" data-action="exclude" data-id="${res.project_id}">${excluded ? "Include" : "Exclude"}</button>
+        <button class="btn small secondary" data-action="exclude" data-id="${res.project_id}" title="${excluded ? "Re-include this project in the active scenario's totals." : "Remove this project from the active scenario's totals only. Does NOT delete the project."}">${excluded ? "Include in scenario" : "Exclude from scenario"}</button>
       </td>
     </tr>`;
   }).join("");
@@ -1121,9 +1121,9 @@ function renderProjectHeader(p, res) {
         <select class="input" id="project-picker" style="max-width:240px;">
           ${state.projects.map(x => `<option value="${x.id}" ${x.id===p.id?"selected":""}>${x.name}</option>`).join("")}
         </select>
-        <button class="btn small ${isExcluded ? "secondary" : "danger"}" data-action="exclude" data-id="${p.id}">${isExcluded ? "Include" : "Exclude"}</button>
+        <button class="btn small secondary" data-action="exclude" data-id="${p.id}" title="${isExcluded ? "Re-include this project in the active scenario's totals." : "Remove this project from the active scenario's totals only. Does NOT delete the project."}">${isExcluded ? "Include in scenario" : "Exclude from scenario"}</button>
         <button class="btn small secondary" data-action="clone" data-id="${p.id}">Clone</button>
-        <button class="btn small danger" data-action="remove" data-id="${p.id}">Delete</button>
+        <button class="btn small danger" data-action="remove" data-id="${p.id}" title="Permanently delete this project. You'll be asked to confirm.">Delete project</button>
       </div>
     </div>`;
 }
@@ -4065,7 +4065,26 @@ function attachViewEvents(result) {
     const action = btn.dataset.action;
     btn.addEventListener("click", () => {
       if (action === "open") setView("project_detail", id);
-      if (action === "exclude") toggleProjectExclusion(id);
+      if (action === "exclude") {
+        // v14.19 (2026-05-19) — Confirm before toggling exclusion so users don't
+        // confuse "Exclude from scenario" with "Delete project". The labels were
+        // ambiguous before; even after relabeling, a confirm dialog makes the
+        // scope explicit (scenario-only, not destructive).
+        const proj = state.projects.find(x => x.id === id);
+        const wasExcluded = state.scenario.excluded_project_ids.includes(id);
+        if (wasExcluded) {
+          // Re-including is benign — no confirm needed.
+          toggleProjectExclusion(id);
+        } else {
+          confirmDialog({
+            title: "Exclude from this scenario?",
+            message: `"${proj?.name || id}" will be removed from the "${state.scenario.name}" scenario's totals. The project stays in your list and can be re-included anytime — this does NOT delete the project. If you want to delete it permanently, use the "Delete project" button instead.`,
+            confirmLabel: "Exclude from scenario",
+            cancelLabel: "Cancel",
+            onConfirm: () => toggleProjectExclusion(id),
+          });
+        }
+      }
       if (action === "remove") {
         const proj = state.projects.find(x => x.id === id);
         confirmDialog({
