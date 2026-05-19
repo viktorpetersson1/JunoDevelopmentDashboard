@@ -815,6 +815,111 @@ export function evaluateRisks(state, result) {
   };
 }
 
+// v14.13 (Phase 4.3) — Contextual nudges for Ask Juno.
+//
+// These are deterministic, heuristic suggestions surfaced as clickable chips in the assistant
+// panel when no conversation is active. Each nudge has a short label (the chip) and a question
+// payload that gets dropped into the assistant input so the user can edit before sending.
+//
+// Returns up to N nudges sorted by relevance (high-severity findings first, then portfolio-level
+// signals, then governance items).
+export function generateNudges(state, result, maxNudges = 5) {
+  const nudges = [];
+  const port = result?.monthly || {};
+  const kpis = result?.kpis || {};
+  const projects = state.projects || [];
+
+  // 1. High-severity risks → nudge to discuss them
+  try {
+    const risks = evaluateRisks(state, result);
+    const high = risks.all.filter(f => f.severity === "high");
+    if (high.length > 0) {
+      const f = high[0];
+      const target = f.scope === "portfolio" ? "the portfolio" : (f.project?.name || "this project");
+      nudges.push({
+        priority: 1,
+        category: "risk",
+        chip: `Discuss high-severity risk on ${target}`,
+        prompt: `We have a high-severity finding in ${risks.categories.find(c => c.id === f.category)?.label || "risks"}: "${f.trigger}". What are our best mitigation options and which should we act on first?`,
+      });
+    }
+  } catch { /* ignore — engine still works without risks */ }
+
+  // 2. Funding gap (KPC LOC exhausted)
+  if ((port.cap_breach_months || 0) > 0 && (port.true_equity_total_drawn || 0) > 0) {
+    const owners = state.globals.investors || [];
+    const ownerSummary = owners.slice(0, 3).map(o => `${o.name} ${(o.equity_share_pct * 100).toFixed(0)}%`).join(", ");
+    nudges.push({
+      priority: 2,
+      category: "capital",
+      chip: "Walk me through the funding gap",
+      prompt: `The KPC LOC ($6M) is exhausted for ${port.cap_breach_months} months, requiring ~$${Math.round((port.true_equity_total_drawn || 0) / 1e3).toLocaleString()}k of owner equity to fill the gap (cap-table: ${ownerSummary}, etc.). Should we stagger project starts, expand the LOC, or pre-fund? What's the cleanest path?`,
+    });
+  }
+
+  // 3. Scenario not locked → governance nudge
+  const hasLockedScenario = (state.scenarios || []).some(s => s.locked) || state.scenario?.locked;
+  if (!hasLockedScenario) {
+    nudges.push({
+      priority: 5,
+      category: "governance",
+      chip: "Help pick a locked scenario",
+      prompt: `No scenario is locked yet as the canonical decision. Given the current pipeline KPIs, which scenario should we lock in as base? Consider profit, peak equity, and downside protection.`,
+    });
+  }
+
+  // 4. Cost overrun on a project (any actual >5% over forecast)
+  let costOverrunProject = null;
+  for (const res of (result?.by_project || [])) {
+    const p = projects.find(x => x.id === res.project_id);
+    if (!p?.actuals) continue;
+    const buildForecast = -(res.monthly.build_cost || []).reduce((a, b) => a + b, 0);
+    const buildActual = p.actuals.construction || 0;
+    if (buildActual > buildForecast * 1.05 && buildForecast > 0) {
+      costOverrunProject = { name: p.name, overage: buildActual - buildForecast };
+      break;
+    }
+  }
+  if (costOverrunProject) {
+    nudges.push({
+      priority: 3,
+      category: "actuals",
+      chip: `Explain the overage on ${costOverrunProject.name}`,
+      prompt: `${costOverrunProject.name} is running ~$${Math.round(costOverrunProject.overage / 1e3).toLocaleString()}k over construction budget. What's the typical root cause for this kind of overage, and what should I check first to contain it?`,
+    });
+  }
+
+  // 5. Portfolio margin compressed
+  const portMargin = kpis.total_sales > 0 ? (kpis.total_profit_before_tax || 0) / kpis.total_sales : 0;
+  const minMargin = (state.globals?.risk_min_margin_pct ?? 0.15);
+  if (portMargin < minMargin && kpis.total_sales > 0) {
+    nudges.push({
+      priority: 4,
+      category: "performance",
+      chip: "Diagnose margin compression",
+      prompt: `Portfolio margin is ${(portMargin * 100).toFixed(1)}%, below our ${(minMargin * 100).toFixed(0)}% floor. Which projects are dragging the average down, and what are the highest-leverage levers to pull?`,
+    });
+  }
+
+  // 6. Generic onboarding nudge if nothing else triggered
+  if (nudges.length === 0) {
+    nudges.push({
+      priority: 9,
+      category: "general",
+      chip: "Summarize portfolio health",
+      prompt: `Give me a 5-sentence summary of where the portfolio stands today — what's on track, what needs attention, and what I should focus on this week.`,
+    });
+    nudges.push({
+      priority: 9,
+      category: "general",
+      chip: "Explain a KPI to me",
+      prompt: `Explain what "Peak equity required" means in plain English, how Atlas computes it, and why it differs from total project cost.`,
+    });
+  }
+
+  return nudges.sort((a, b) => a.priority - b.priority).slice(0, maxNudges);
+}
+
 // Local helpers — kept here so engine.js stays self-contained.
 function monthsBetweenLite(a, b) {
   if (!a || !b) return 0;

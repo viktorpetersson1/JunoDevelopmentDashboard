@@ -10,7 +10,7 @@ import { state, notify, save, updateGlobal, updateScenario,
   openWizard, closeWizard, discardWizardDraft, setWizardStep,
   updateWizardDraft, submitWizardDraft, setProjectTab,
   duplicateCurrentScenario, classifyScenario, setScenarioLock } from "./state.js";
-import { aggregatePortfolio, calcProject, fyOf, monteCarlo, evaluateRisks } from "./engine.js";
+import { aggregatePortfolio, calcProject, fyOf, monteCarlo, evaluateRisks, generateNudges } from "./engine.js";
 import { EXCEL_BENCHMARK, LIFECYCLE_STAGES, STAGE_GROUP_COLORS, ASSET_TYPES, SCENARIO_CLASSES, PROJECT_TEMPLATES } from "./data.js";
 import {
   signIn, signUp, signOut, sendPasswordReset, getCurrentUser,
@@ -3492,6 +3492,33 @@ async function refreshAssistantQuota() {
   try { assistantState.quota = await fetchMyLlmQuota(); } catch { /* ignore */ }
 }
 
+// v14.13 (Phase 4.3) — Welcome state for Ask Juno with contextual nudges.
+// Heuristic recommendations based on current portfolio + risk state. Clicking a chip
+// drops the prepared question into the input so users can edit before sending.
+function renderAssistantWelcome() {
+  const mode = assistantState.mode;
+  let nudges = [];
+  if (mode === "query") {
+    try {
+      const r = aggregatePortfolio(state.projects, state.globals, state.scenario);
+      nudges = generateNudges(state, r, 5);
+    } catch { nudges = []; }
+  }
+  const intro = mode === "suggest"
+    ? `<strong>Suggest mode:</strong> describe a change you'd like to make. It will be routed to an admin for approval — nothing is applied automatically.`
+    : `<strong>Question mode:</strong> ask anything about projects, financial assumptions, the pipeline. I only use data you have access to.`;
+  const nudgeChips = nudges.length ? `
+    <div class="assistant-nudges-label">Suggested for your portfolio right now</div>
+    <div class="assistant-nudges">
+      ${nudges.map(n => `<button class="assistant-nudge-chip" data-nudge-prompt="${escapeHtml(n.prompt)}">${escapeHtml(n.chip)}</button>`).join("")}
+    </div>
+  ` : "";
+  return `<div class="assistant-welcome">
+    <div class="muted" style="font-size:12px;line-height:1.6;">${intro}</div>
+    ${nudgeChips}
+  </div>`;
+}
+
 function renderAssistantPanel() {
   const panel = document.getElementById("assistant-panel");
   if (!panel) return;
@@ -3518,7 +3545,7 @@ function renderAssistantPanel() {
       <button class="btn small ${assistantState.mode === "query" ? "" : "secondary"}" data-mode="query">Question</button>
       <button class="btn small ${assistantState.mode === "suggest" ? "" : "secondary"}" data-mode="suggest">Suggest a change</button>
     </div>
-    <div class="assistant-body">${messagesHtml || `<div class="muted" style="font-size:12px;padding:8px;">Ask anything about projects, financial assumptions, the pipeline. The assistant only uses data you have access to.<br><br>${assistantState.mode === "suggest" ? "<strong>Suggest mode:</strong> describe a change you'd like to make. It will be routed to an admin for approval — nothing is applied automatically." : "<strong>Question mode:</strong> get summaries, comparisons, or explanations of the current model."}</div>`}</div>
+    <div class="assistant-body">${messagesHtml || renderAssistantWelcome()}</div>
     <form id="assistant-form" class="assistant-input">
       <textarea id="assistant-input" rows="2" placeholder="${assistantState.mode === "suggest" ? "Describe the change you'd like to suggest…" : "Ask a question about projects, scenarios, or financials…"}" ${assistantState.busy ? "disabled" : ""}></textarea>
       <button type="submit" class="btn" ${assistantState.busy ? "disabled" : ""}>${assistantState.busy ? "Thinking…" : "Send"}</button>
@@ -3533,6 +3560,17 @@ function renderAssistantPanel() {
   };
   for (const btn of panel.querySelectorAll("[data-mode]")) {
     btn.addEventListener("click", () => { assistantState.mode = btn.dataset.mode; renderAssistantPanel(); });
+  }
+  // v14.13 (Phase 4.3) — Nudge chips drop a prompt into the input
+  for (const chip of panel.querySelectorAll("[data-nudge-prompt]")) {
+    chip.addEventListener("click", () => {
+      const inp = document.getElementById("assistant-input");
+      if (inp) {
+        inp.value = chip.dataset.nudgePrompt;
+        inp.focus();
+        inp.setSelectionRange(inp.value.length, inp.value.length);
+      }
+    });
   }
   const form = document.getElementById("assistant-form");
   const inp = document.getElementById("assistant-input");
