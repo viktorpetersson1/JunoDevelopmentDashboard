@@ -1,6 +1,6 @@
 // In-memory mutable state + persistence to Supabase (primary) + localStorage (offline cache).
 
-import { BASELINE_GLOBALS, BASELINE_PROJECTS, BASELINE_SCENARIO } from "./data.js";
+import { BASELINE_GLOBALS, BASELINE_PROJECTS, BASELINE_SCENARIO, LEGACY_STAGE_MAP } from "./data.js";
 import {
   fetchFinancialState, saveFinancialState, scheduleAutoSave,
   fetchMyProfile, onAuthStateChange, getCurrentUser,
@@ -15,7 +15,9 @@ export const state = {
   globals: structuredClone(BASELINE_GLOBALS),
   scenario: structuredClone(BASELINE_SCENARIO),
   scenarios: [],                        // v4: saved named scenarios for comparison
-  projects: structuredClone(BASELINE_PROJECTS),
+  // v14.16 — run migration on the initial seed so legacy mirror fields (start_date,
+  // villa_sqft, program_months) are populated for projects defined in the new schema only.
+  projects: structuredClone(BASELINE_PROJECTS).map(migrateProjectShape),
   audit_log: [],                        // v9: rolling log of state mutations (last 200)
   // v11: auth + role state
   auth: {
@@ -124,6 +126,54 @@ export function notify() {
   requestAnimationFrame(tryRender);
 }
 
+// v14.16 (2026-05-19) — Migrate projects loaded from older state shapes to the new schema:
+//   - legacy stages (land_control / entitlement / design / permitting) → pre_construction
+//   - villa_sqft → villa_sqft_ag + villa_sqft_bg (default 80/20 split)
+//   - start_date → purchase_date
+//   - program_months → 4 duration buckets (default: 0/30%/60%/10%)
+//   - external financing fields default to safe values
+// Idempotent: runs on every load; existing new-shape fields are left untouched.
+function migrateProjectShape(p) {
+  if (!p) return p;
+  // Stage migration (legacy → new collapsed stage list)
+  if (LEGACY_STAGE_MAP[p.stage]) p.stage = LEGACY_STAGE_MAP[p.stage];
+
+  // Villa size — new schema is AG + BG split. Fill from either direction.
+  if (p.villa_sqft_ag == null && p.villa_sqft_bg == null && p.villa_sqft != null) {
+    p.villa_sqft_ag = Math.round(p.villa_sqft * 0.83);
+    p.villa_sqft_bg = p.villa_sqft - p.villa_sqft_ag;
+  }
+  // Legacy mirror — engine still reads villa_sqft. Recompute from AG+BG every load.
+  if (p.villa_sqft_ag != null || p.villa_sqft_bg != null) {
+    p.villa_sqft = (p.villa_sqft_ag || 0) + (p.villa_sqft_bg || 0);
+  }
+
+  // purchase_date — fall back to legacy start_date if present.
+  if (!p.purchase_date && p.start_date) p.purchase_date = p.start_date;
+  // Legacy mirror — engine still reads start_date.
+  if (p.purchase_date) p.start_date = p.purchase_date;
+
+  // Duration buckets — split program_months into 4 if missing.
+  const totalMonths = p.program_months || 13;
+  if (p.sourcing_months == null) p.sourcing_months = 0;
+  if (p.permitting_preconstruction_months == null) p.permitting_preconstruction_months = Math.round(totalMonths * 0.23);
+  if (p.construction_months == null) p.construction_months = Math.round(totalMonths * 0.69);
+  if (p.sales_months == null) p.sales_months = Math.max(1, totalMonths - p.sourcing_months - p.permitting_preconstruction_months - p.construction_months);
+  // Legacy mirror — engine still reads program_months. Recompute every load.
+  p.program_months = p.sourcing_months + p.permitting_preconstruction_months + p.construction_months + p.sales_months;
+
+  // External lender fields — safe defaults so legacy projects don't break.
+  if (p.senior_ltv_pct == null) p.senior_ltv_pct = p.ltc_pct ?? 0.75;
+  if (p.origination_fee_pct == null) p.origination_fee_pct = 0.01;
+  if (p.exit_fee_pct == null) p.exit_fee_pct = 0.005;
+  if (p.interest_reserve_usd == null) p.interest_reserve_usd = 0;
+  if (p.loan_servicing_fee_usd == null) p.loan_servicing_fee_usd = 0;
+  if (p.closing_costs_usd == null) p.closing_costs_usd = 0;
+  if (p.google_maps_url === undefined) p.google_maps_url = null;
+  if (p.lender_name === undefined) p.lender_name = null;
+  return p;
+}
+
 function applyStateBlob(blob) {
   if (!blob) return false;
   _suppressAutoSave = true;
@@ -131,7 +181,9 @@ function applyStateBlob(blob) {
     if (blob.globals) Object.assign(state.globals, blob.globals);
     if (blob.scenario) Object.assign(state.scenario, blob.scenario);
     if (Array.isArray(blob.scenarios)) state.scenarios = blob.scenarios;
-    if (Array.isArray(blob.projects)) state.projects = blob.projects;
+    if (Array.isArray(blob.projects)) {
+      state.projects = blob.projects.map(migrateProjectShape);
+    }
     if (Array.isArray(blob.audit_log)) state.audit_log = blob.audit_log;
     if (blob.ui) Object.assign(state.ui, blob.ui);
   } finally {
@@ -298,7 +350,7 @@ export function resetToBaseline() {
   state.globals = structuredClone(BASELINE_GLOBALS);
   state.scenario = structuredClone(BASELINE_SCENARIO);
   state.scenarios = [];
-  state.projects = structuredClone(BASELINE_PROJECTS);
+  state.projects = structuredClone(BASELINE_PROJECTS).map(migrateProjectShape);
   state.ui.selected_project_id = "p2";
   save(); notify();
 }
@@ -404,18 +456,37 @@ export function updateProject(id, patch) {
 }
 export function addProject(seed = {}) {
   const id = "p" + (Math.max(0, ...state.projects.map((p) => Number(String(p.id).replace(/[^0-9]/g, "")) || 0)) + 1);
+  // v14.16 (2026-05-19) — New project shape. Backward-compat fields (program_months,
+  // villa_sqft, start_date) are derived from the new fields so engine + legacy callers
+  // keep working unchanged.
+  const sourcing_months = seed.sourcing_months ?? 0;
+  const permitting_preconstruction_months = seed.permitting_preconstruction_months ?? 3;
+  const construction_months = seed.construction_months ?? 9;
+  const sales_months = seed.sales_months ?? 1;
+  const programTotal = sourcing_months + permitting_preconstruction_months + construction_months + sales_months;
+  const villa_ag = seed.villa_sqft_ag ?? 4500;
+  const villa_bg = seed.villa_sqft_bg ?? 1000;
+  const purchase_date = seed.purchase_date ?? seed.start_date ?? state.globals.model_start;
   state.projects.push({
     id,
     name: seed.name || `New project (${id})`,
     address: seed.address || "TBC",
-    // Phase 0 — underwriting taxonomy (entity_spv / market / asset_type) so the Project Summary header can read them directly.
+    google_maps_url: seed.google_maps_url ?? null,
     entity_spv: seed.entity_spv ?? null,
     market: seed.market || "hamptons",
     asset_type: seed.asset_type || "spec_home",
     status: seed.status || "pipeline",
-    start_date: seed.start_date || state.globals.model_start,
-    program_months: seed.program_months || state.globals.default_program_months,
-    villa_sqft: seed.villa_sqft || 5500,
+    // Timing — purchase_date is the canonical start; sale_date is computed from durations.
+    purchase_date,
+    sourcing_months, permitting_preconstruction_months, construction_months, sales_months,
+    // Villa size — AG + BG split is the canonical shape.
+    villa_sqft_ag: villa_ag,
+    villa_sqft_bg: villa_bg,
+    // Backward-compat mirrors so the existing engine + UI continue to work.
+    start_date: purchase_date,
+    program_months: programTotal,
+    villa_sqft: villa_ag + villa_bg,
+    // Costs
     land_cost_usd: seed.land_cost_usd ?? state.globals.default_land_cost_usd,
     build_cost_per_sqft: seed.build_cost_per_sqft ?? null,
     kingshaus_cost_per_sqft: seed.kingshaus_cost_per_sqft ?? null,
@@ -450,6 +521,14 @@ export function addProject(seed = {}) {
       financing: 0,             // actual financing costs paid
     },
     contingency_used_usd: seed.contingency_used_usd ?? 0,  // v13: actual contingency drawn (change orders, surprises)
+    // v14.16 — external senior debt (e.g. Harrison Capital for 84SBR). Distinct from KPC LOC.
+    lender_name: seed.lender_name ?? null,
+    senior_ltv_pct: seed.senior_ltv_pct ?? 0.75,
+    origination_fee_pct: seed.origination_fee_pct ?? 0.01,
+    exit_fee_pct: seed.exit_fee_pct ?? 0.005,
+    interest_reserve_usd: seed.interest_reserve_usd ?? 0,
+    loan_servicing_fee_usd: seed.loan_servicing_fee_usd ?? 0,
+    closing_costs_usd: seed.closing_costs_usd ?? 0,
   });
   state.ui.selected_project_id = id;
   state.ui.view = "project_detail";
@@ -588,23 +667,37 @@ function makeBlankDraft() {
   return {
     name: "",
     address: "",
+    google_maps_url: null,
     entity_spv: null,
     market: "hamptons",
     asset_type: "spec_home",
     stage: "sourcing",
     status: "pipeline",
-    start_date: g.model_start,
-    program_months: g.default_program_months,
-    villa_sqft: 5500,
+    // Timing — purchase_date drives everything; sale_date is derived.
+    purchase_date: g.model_start,
+    sourcing_months: 0,
+    permitting_preconstruction_months: 3,
+    construction_months: 9,
+    sales_months: 1,
+    // Villa size — AG + BG.
+    villa_sqft_ag: 4500,
+    villa_sqft_bg: 1000,
+    // Costs
     land_cost_usd: g.default_land_cost_usd,
     build_cost_per_sqft: null,        // null = use global default
-    kingshaus_cost_per_sqft: null,
-    soft_costs_lump_sum: 0,
+    // Revenue
     sale_price_override_usd: null,
     sale_price_per_sqft_override: null,
     target_margin: null,
+    // Financing (external senior debt — separate from portfolio KPC LOC)
+    lender_name: null,
+    senior_ltv_pct: 0.75,
     interest_rate_apr: null,
-    ltc_pct: null,
+    origination_fee_pct: 0.01,
+    exit_fee_pct: 0.005,
+    interest_reserve_usd: 0,
+    loan_servicing_fee_usd: 0,
+    closing_costs_usd: 0,
   };
 }
 export function openWizard() {

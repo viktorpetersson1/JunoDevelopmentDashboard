@@ -4642,10 +4642,10 @@ function renderCharts(result) {
 
 // ---------- New Project wizard (v14.1, Phase 1.1) ----------
 
+// v14.16 (2026-05-19) — 6-step wizard. Timing folded into Program.
 const WIZARD_STEPS = [
   { key: "basics",    title: "Basics" },
   { key: "program",   title: "Program" },
-  { key: "timing",    title: "Timing" },
   { key: "costs",     title: "Costs" },
   { key: "revenue",   title: "Revenue" },
   { key: "financing", title: "Financing" },
@@ -4694,14 +4694,14 @@ function renderWizardOverlay() {
 }
 
 function renderWizardStep(step, d) {
+  // v14.16 — Timing removed; folded into Program.
   switch (step) {
     case 0: return renderWizardBasics(d);
     case 1: return renderWizardProgram(d);
-    case 2: return renderWizardTiming(d);
-    case 3: return renderWizardCosts(d);
-    case 4: return renderWizardRevenue(d);
-    case 5: return renderWizardFinancing(d);
-    case 6: return renderWizardReview(d);
+    case 2: return renderWizardCosts(d);
+    case 3: return renderWizardRevenue(d);
+    case 4: return renderWizardFinancing(d);
+    case 5: return renderWizardReview(d);
   }
   return "";
 }
@@ -4745,6 +4745,11 @@ function renderWizardBasics(d) {
         <label>Address</label>
         <input class="input" type="text" data-wiz="address" value="${escapeHtml(d.address || "")}" placeholder="Site address or 'TBC'">
       </div>
+      <div class="form-row full">
+        <label>Google Maps link <span class="muted" style="font-weight:400;">(optional)</span></label>
+        <input class="input" type="url" data-wiz="google_maps_url" value="${escapeHtml(d.google_maps_url || "")}" placeholder="https://maps.google.com/...">
+        <div class="hint">Paste a Google Maps share link so anyone on the team can find the site.</div>
+      </div>
       <div class="form-row">
         <label>Entity / SPV</label>
         <input class="input" type="text" data-wiz="entity_spv" value="${escapeHtml(d.entity_spv || "")}" placeholder="Optional — e.g. Juno SPV 6 LLC">
@@ -4781,48 +4786,79 @@ function renderWizardBasics(d) {
 }
 
 function renderWizardProgram(d) {
+  // v14.16 — Program absorbs Timing. Villa size split into AG + BG. Duration
+  // broken into 4 buckets so the team can plan each phase explicitly.
+  const ag = d.villa_sqft_ag ?? 0;
+  const bg = d.villa_sqft_bg ?? 0;
+  const sourcing = d.sourcing_months ?? 0;
+  const permpre = d.permitting_preconstruction_months ?? 0;
+  const construction = d.construction_months ?? 0;
+  const sales = d.sales_months ?? 0;
+  const totalSqft = ag + bg;
+  const totalMonths = sourcing + permpre + construction + sales;
   return `
     <h2>Program</h2>
-    <p class="muted">How big is the build? How long does it take?</p>
+    <p class="muted">How big is the build, how long does each phase take, and when do you take title to the land?</p>
+
+    <div class="section-title" style="margin-top:8px;">Villa size</div>
     <div class="form-grid">
       <div class="form-row">
-        <label>Villa size (sqft)</label>
-        <input class="input" type="number" inputmode="numeric" data-wiz="villa_sqft" data-wiz-type="number" value="${d.villa_sqft ?? 5500}" min="500" step="100">
-        <div class="hint">Total conditioned floor area.</div>
+        <label>Above ground (AG) sqft</label>
+        <input class="input" type="number" inputmode="numeric" data-wiz="villa_sqft_ag" data-wiz-type="number" value="${ag}" min="0" step="100">
       </div>
       <div class="form-row">
-        <label>Program duration (months)</label>
-        <input class="input" type="number" inputmode="numeric" data-wiz="program_months" data-wiz-type="number" value="${d.program_months ?? state.globals.default_program_months}" min="1" step="1">
-        <div class="hint">Land purchase → final sale closing.</div>
+        <label>Below ground (BG) sqft</label>
+        <input class="input" type="number" inputmode="numeric" data-wiz="villa_sqft_bg" data-wiz-type="number" value="${bg}" min="0" step="100">
+        <div class="hint">Basement / cellar.</div>
+      </div>
+      <div class="form-row full">
+        <div class="hint">Total villa size: <strong style="color:var(--fg);">${totalSqft.toLocaleString()} sqft</strong></div>
       </div>
     </div>
-  `;
-}
 
-function renderWizardTiming(d) {
-  return `
-    <h2>Timing</h2>
-    <p class="muted">When does the project start? Sale date is computed from program duration.</p>
+    <div class="section-title" style="margin-top:16px;">Program duration</div>
     <div class="form-grid">
       <div class="form-row">
-        <label>Start date (YYYY-MM)</label>
-        <input class="input" type="text" data-wiz="start_date" value="${escapeHtml(d.start_date || "")}" placeholder="2026-03" pattern="\\d{4}-\\d{2}">
-        <div class="hint">Land purchase / project kick-off month.</div>
+        <label>Sourcing (months)</label>
+        <input class="input" type="number" inputmode="numeric" data-wiz="sourcing_months" data-wiz-type="number" value="${sourcing}" min="0" step="1">
       </div>
       <div class="form-row">
-        <label>Listing date (optional)</label>
-        <input class="input" type="text" data-wiz="listing_date" value="${escapeHtml(d.listing_date || "")}" placeholder="YYYY-MM">
-        <div class="hint">When you intend to list. Leave blank if TBD.</div>
+        <label>Permitting &amp; pre-construction (months)</label>
+        <input class="input" type="number" inputmode="numeric" data-wiz="permitting_preconstruction_months" data-wiz-type="number" value="${permpre}" min="0" step="1">
+      </div>
+      <div class="form-row">
+        <label>Construction (months)</label>
+        <input class="input" type="number" inputmode="numeric" data-wiz="construction_months" data-wiz-type="number" value="${construction}" min="0" step="1">
+      </div>
+      <div class="form-row">
+        <label>Sales (months)</label>
+        <input class="input" type="number" inputmode="numeric" data-wiz="sales_months" data-wiz-type="number" value="${sales}" min="0" step="1">
+        <div class="hint">List → closing.</div>
+      </div>
+      <div class="form-row full">
+        <div class="hint">Total program duration: <strong style="color:var(--fg);">${totalMonths} months</strong></div>
+      </div>
+    </div>
+
+    <div class="section-title" style="margin-top:16px;">Timing</div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Land purchase date (YYYY-MM)</label>
+        <input class="input" type="text" data-wiz="purchase_date" value="${escapeHtml(d.purchase_date || "")}" placeholder="2026-03" pattern="\\d{4}-\\d{2}">
+        <div class="hint">Month you take title. Sale date is computed from this plus total program duration.</div>
       </div>
     </div>
   `;
 }
 
 function renderWizardCosts(d) {
+  // v14.16 — At sourcing, just need land + $/sqft. Detailed cost breakdown
+  // (Kingshaus, soft costs, etc.) belongs on the Inputs tab later in the lifecycle.
+  // Full Excel/CSV cost upload is on the Phase 4.5 roadmap.
   const g = state.globals;
   return `
     <h2>Costs</h2>
-    <p class="muted">Blank fields fall back to the global defaults shown below each input.</p>
+    <p class="muted">At the sourcing stage we just need land + build $/sqft. Detailed cost breakdown (Kingshaus, soft costs, change orders) can be filled in later on the project's <strong>Inputs</strong> tab.</p>
     <div class="form-grid">
       <div class="form-row">
         <label>Land cost (USD)</label>
@@ -4831,18 +4867,12 @@ function renderWizardCosts(d) {
       <div class="form-row">
         <label>Build cost ($/sqft)</label>
         ${nullableNumInput("build_cost_per_sqft", d.build_cost_per_sqft, `Default: $${g.default_build_cost_per_sqft}`)}
-        <div class="hint">Hard construction. Default: $${g.default_build_cost_per_sqft}/sqft</div>
+        <div class="hint">All-in hard construction $/sqft. Default: $${g.default_build_cost_per_sqft}.</div>
       </div>
-      <div class="form-row">
-        <label>Kingshaus / superstructure ($/sqft)</label>
-        ${nullableNumInput("kingshaus_cost_per_sqft", d.kingshaus_cost_per_sqft, `Default: $${g.default_kingshaus_cost_per_sqft}`)}
-        <div class="hint">Default: $${g.default_kingshaus_cost_per_sqft}/sqft</div>
-      </div>
-      <div class="form-row">
-        <label>Soft costs (lump sum, USD)</label>
-        <input class="input" type="number" inputmode="decimal" data-wiz="soft_costs_lump_sum" data-wiz-type="number" value="${d.soft_costs_lump_sum ?? 0}" min="0" step="1000">
-        <div class="hint">Permits, design, legal, etc. Lump sum across the build.</div>
-      </div>
+    </div>
+    <div class="note" style="margin-top:18px;">
+      <strong>Coming soon:</strong> upload an Excel or CSV cost breakdown directly into the wizard. For now,
+      detailed line-item costs go on the Inputs tab after the project is created.
     </div>
   `;
 }
@@ -4872,27 +4902,100 @@ function renderWizardRevenue(d) {
 }
 
 function renderWizardFinancing(d) {
+  // v14.16 — External senior debt only (e.g. Harrison Capital on 84SBR). KPC's $6M LOC
+  // is portfolio-wide subordinated debt and is modeled separately on the Capital screen —
+  // do NOT capture it here.
   const g = state.globals;
+  const land = d.land_cost_usd ?? g.default_land_cost_usd;
+  const buildPsf = d.build_cost_per_sqft ?? g.default_build_cost_per_sqft;
+  const sqft = (d.villa_sqft_ag ?? 0) + (d.villa_sqft_bg ?? 0);
+  const buildTotal = buildPsf * sqft;
+  const ltv = d.senior_ltv_pct ?? 0.75;
+  const seniorLoan = Math.round((land + buildTotal) * ltv);
+  const closingCosts = d.closing_costs_usd ?? 0;
+  const orig = (d.origination_fee_pct ?? 0.01) * seniorLoan;
+  const totalProjectCost = land + buildTotal + closingCosts + orig;
+  const capitalInjection = Math.max(0, totalProjectCost - seniorLoan);
   return `
-    <h2>Financing</h2>
-    <p class="muted">Senior construction debt parameters. KPC LOC ($6M @ 6%) applies portfolio-wide — modeled separately in the Capital screen.</p>
+    <h2>Financing — external senior debt</h2>
+    <p class="muted">The senior loan from your external lender (e.g. <strong style="color:var(--fg);">Harrison Capital</strong> on 84SBR). Modeled from the Excel 'Financing 84SB' tab.<br><span class="muted">KPC's $6M LOC is portfolio-wide subordinated debt — managed on the <strong style="color:var(--fg);">Capital</strong> screen, not here.</span></p>
+
+    <div class="section-title" style="margin-top:8px;">Lender</div>
+    <div class="form-grid">
+      <div class="form-row full">
+        <label>Lender name</label>
+        <input class="input" type="text" data-wiz="lender_name" value="${escapeHtml(d.lender_name || "")}" placeholder="e.g. Harrison Capital (USCNYC)">
+      </div>
+      <div class="form-row">
+        <label>Loan-to-cost (LTV %)</label>
+        <input class="input" type="number" inputmode="decimal" step="0.01" min="0" max="1" data-wiz="senior_ltv_pct" data-wiz-type="number" value="${ltv}">
+        <div class="hint">75% (0.75) is typical. Applied to total project cost (land + build).</div>
+      </div>
+      <div class="form-row">
+        <label>Interest rate APR</label>
+        ${nullableNumInput("interest_rate_apr", d.interest_rate_apr, `Default: ${g.interest_rate_apr}`)}
+        <div class="hint">Default ${(g.interest_rate_apr * 100).toFixed(1)}%.</div>
+      </div>
+    </div>
+
+    <div class="section-title" style="margin-top:16px;">Fees</div>
     <div class="form-grid">
       <div class="form-row">
-        <label>Interest rate APR (decimal)</label>
-        ${nullableNumInput("interest_rate_apr", d.interest_rate_apr, `Default: ${g.interest_rate_apr}`)}
-        <div class="hint">Senior construction loan rate. Default: ${(g.interest_rate_apr * 100).toFixed(1)}%</div>
+        <label>Origination fee (% of loan)</label>
+        <input class="input" type="number" inputmode="decimal" step="0.001" min="0" max="0.05" data-wiz="origination_fee_pct" data-wiz-type="number" value="${d.origination_fee_pct ?? 0.01}">
+        <div class="hint">Typically 1.0% (0.01). Paid at closing.</div>
       </div>
       <div class="form-row">
-        <label>Loan-to-cost on build (decimal)</label>
-        ${nullableNumInput("ltc_pct", d.ltc_pct, `Default: ${g.ltc_pct}`)}
-        <div class="hint">Default: ${(g.ltc_pct * 100).toFixed(0)}%</div>
+        <label>Exit fee (% of loan)</label>
+        <input class="input" type="number" inputmode="decimal" step="0.001" min="0" max="0.05" data-wiz="exit_fee_pct" data-wiz-type="number" value="${d.exit_fee_pct ?? 0.005}">
+        <div class="hint">Typically 0.5% (0.005). Paid at sale.</div>
       </div>
+      <div class="form-row">
+        <label>Interest reserve (USD)</label>
+        <input class="input" type="number" inputmode="decimal" step="1000" min="0" data-wiz="interest_reserve_usd" data-wiz-type="number" value="${d.interest_reserve_usd ?? 0}">
+        <div class="hint">Pre-funded at closing to cover interest payments through construction.</div>
+      </div>
+      <div class="form-row">
+        <label>Loan servicing fee (USD)</label>
+        <input class="input" type="number" inputmode="decimal" step="500" min="0" data-wiz="loan_servicing_fee_usd" data-wiz-type="number" value="${d.loan_servicing_fee_usd ?? 0}">
+      </div>
+      <div class="form-row full">
+        <label>Closing costs (USD)</label>
+        <input class="input" type="number" inputmode="decimal" step="1000" min="0" data-wiz="closing_costs_usd" data-wiz-type="number" value="${d.closing_costs_usd ?? 0}">
+        <div class="hint">All-in land closing costs (transfer tax, recording, title insurance, legal, appraisal, environmental). 84SBR baseline: $227,000.</div>
+      </div>
+    </div>
+
+    <div class="section-title" style="margin-top:16px;">Capital stack preview</div>
+    <div class="wizard-summary">
+      <table class="tbl">
+        <tbody>
+          <tr><td>Land cost</td><td class="num">${fmt.usdM(land)}</td></tr>
+          <tr><td>Build cost (${sqft.toLocaleString()} sqft × $${buildPsf}/sqft)</td><td class="num">${fmt.usdM(buildTotal)}</td></tr>
+          <tr><td>Closing costs + origination fee</td><td class="num">${fmt.usdM(closingCosts + orig)}</td></tr>
+          <tr><td><strong>Total project cost</strong></td><td class="num"><strong>${fmt.usdM(totalProjectCost)}</strong></td></tr>
+          <tr><td>Senior loan @ ${(ltv * 100).toFixed(0)}% LTV</td><td class="num pos">${fmt.usdM(seniorLoan)}</td></tr>
+          <tr><td><strong>Capital injection needed</strong> <span class="muted" style="font-weight:400;">(Juno equity / KPC LOC)</span></td><td class="num ${capitalInjection > 0 ? "neg" : ""}"><strong>${fmt.usdM(capitalInjection)}</strong></td></tr>
+        </tbody>
+      </table>
     </div>
   `;
 }
 
 function renderWizardReview(d) {
-  const draftProject = { id: "__draft__", ...d };
+  // v14.16 — Derive engine-compat fields from the new schema so calcProject works.
+  const totalSqft = (d.villa_sqft_ag ?? 0) + (d.villa_sqft_bg ?? 0);
+  const totalMonths = (d.sourcing_months ?? 0) + (d.permitting_preconstruction_months ?? 0)
+    + (d.construction_months ?? 0) + (d.sales_months ?? 0);
+  const draftProject = {
+    id: "__draft__",
+    ...d,
+    villa_sqft: totalSqft || 1,                                  // engine needs >0 to avoid div-by-zero
+    program_months: totalMonths || 13,
+    start_date: d.purchase_date || d.start_date || state.globals.model_start,
+    // Map new senior_ltv_pct to the engine's existing ltc_pct field
+    ltc_pct: d.senior_ltv_pct ?? null,
+  };
   let project, err = null;
   try {
     project = calcProject(draftProject, state.globals, state.scenario);
