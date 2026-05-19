@@ -1884,7 +1884,7 @@ function renderRisksCenter(r) {
         <h3>${cat.label}</h3>
         <span class="risk-category-count ${count > 0 ? "active" : ""}">${count} finding${count === 1 ? "" : "s"}</span>
       </div>
-      <div class="panel-subtitle">${cat.description}</div>
+      <div class="panel-subtitle" style="margin-top :10px !important;">${cat.description}</div>
       ${cardsHtml}
     </div>`;
   }).join("");
