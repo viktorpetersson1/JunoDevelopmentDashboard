@@ -100,14 +100,28 @@ export function subscribe(fn) { listeners.add(fn); return () => listeners.delete
 //
 // State mutations remain synchronous — only the render is deferred. Callers
 // that read state.x after notify() still see the new value.
+//
+// Select-focused guard: render() wipes the entire DOM via innerHTML, which
+// destroys a native <select> mid-interaction and snaps the dropdown shut. If
+// the user has a select focused (i.e. they may be picking an option), we defer
+// the render until the select loses focus. The autosave fires 2s after a
+// mutation; without this defer the dropdown closes the moment "saving" status
+// flips, even though the user is mid-pick. Render fires on the first frame
+// after blur, so the picked value still propagates immediately.
 let _notifyScheduled = false;
 export function notify() {
   if (_notifyScheduled) return;
   _notifyScheduled = true;
-  requestAnimationFrame(() => {
+  const tryRender = () => {
+    const active = typeof document !== "undefined" ? document.activeElement : null;
+    if (active && active.tagName === "SELECT") {
+      requestAnimationFrame(tryRender);
+      return;
+    }
     _notifyScheduled = false;
     for (const fn of listeners) fn();
-  });
+  };
+  requestAnimationFrame(tryRender);
 }
 
 function applyStateBlob(blob) {

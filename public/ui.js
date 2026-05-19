@@ -95,6 +95,14 @@ export function render() {
   const main = renderView(result);
   const footer = renderFooter();
   const wizard = renderWizardOverlay();
+
+  // Preserve focus + selection across the innerHTML wipe. Without this,
+  // every render destroys the input the user is typing in, so tabbing between
+  // fields or rapid editing loses focus + caret position every keystroke.
+  // The render below blows the entire DOM away; we capture a fingerprint of
+  // the active element before, and re-focus the matching element after.
+  const focusSnap = captureFocus();
+
   root().innerHTML = topbar + main + footer + wizard;
   attachTopbarEvents();
   attachViewEvents(result);
@@ -104,6 +112,71 @@ export function render() {
   if (document.body.classList.contains("assistant-open")) {
     renderAssistantPanel();
   }
+
+  restoreFocus(focusSnap);
+}
+
+// Snapshot the currently-focused element by identity (id or ALL data-* attrs)
+// plus caret position, so the matching element in the freshly-rendered DOM
+// can take focus back. Returns null when nothing useful is focused.
+//
+// Important: many inputs in repeated rows (markets, investors, takeoff lines)
+// share an outer data-key like data-market="0" but differ on data-field. We
+// must compound ALL data-* attributes into the selector — picking just one
+// would match a sibling input in the same row, sending focus to the wrong field.
+function captureFocus() {
+  const el = document.activeElement;
+  if (!el || el === document.body) return null;
+  const tag = el.tagName;
+  if (tag !== "INPUT" && tag !== "TEXTAREA" && tag !== "SELECT") return null;
+  let sel = null;
+  if (el.id) sel = `#${CSS.escape(el.id)}`;
+  else {
+    const parts = [];
+    for (const attr of el.attributes) {
+      if (attr.name.startsWith("data-")) parts.push(`[${attr.name}="${CSS.escape(attr.value)}"]`);
+    }
+    if (parts.length) sel = tag.toLowerCase() + parts.join("");
+  }
+  if (!sel) return null;
+  const snap = { selector: sel, tag };
+  // Caret/selection for text-y inputs (number inputs throw on selectionStart in some browsers)
+  if ((tag === "INPUT" && /^(text|search|url|tel|email|password)$/.test(el.type)) || tag === "TEXTAREA") {
+    try { snap.selStart = el.selectionStart; snap.selEnd = el.selectionEnd; } catch { /* ignore */ }
+  }
+  // For inputs with deferred commit (typed but not yet blurred), capture the
+  // current value so we can restore it across the render — otherwise the
+  // newly-rendered input shows the stale state value and the user's typed
+  // characters appear to vanish.
+  if (tag === "INPUT" || tag === "TEXTAREA") snap.value = el.value;
+  return snap;
+}
+
+function restoreFocus(snap) {
+  if (!snap) return;
+  const el = document.querySelector(snap.selector);
+  if (!el || el.tagName !== snap.tag) return;
+  try {
+    // Restore uncommitted typed value before focusing, so the user doesn't
+    // see their characters flash to the stale state value.
+    if (snap.value != null && el.value !== snap.value && (snap.tag === "INPUT" || snap.tag === "TEXTAREA")) {
+      el.value = snap.value;
+    }
+    el.focus({ preventScroll: true });
+    if (snap.selStart != null && typeof el.setSelectionRange === "function") {
+      el.setSelectionRange(snap.selStart, snap.selEnd);
+    } else if (snap.tag === "INPUT" && el.type === "number") {
+      // Number inputs throw on setSelectionRange/selectionStart, so we couldn't
+      // capture a caret position. After el.focus() the caret defaults to the
+      // left (position 0) which is annoying for editing. Force it to the end
+      // by briefly switching type to text, setting the range, then switching
+      // back. Visually instant; no value change.
+      const v = el.value;
+      el.type = "text";
+      el.setSelectionRange(v.length, v.length);
+      el.type = "number";
+    }
+  } catch { /* ignore */ }
 }
 
 function renderAuthScreen() {
