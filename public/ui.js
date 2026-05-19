@@ -961,9 +961,9 @@ const PROJECT_TABS = [
   { key: "timeline", label: "Timeline",  status: "live" },
   { key: "capital",  label: "Capital",   status: "live" },
   { key: "actuals",  label: "Actuals",   status: "live" },
+  { key: "sales",    label: "Sales",     status: "live" },
   { key: "risks",    label: "Risks",     status: "live" },
   { key: "activity", label: "Activity",  status: "live" },
-  { key: "sales",    label: "Sales",     status: "coming", phase: "4" },
 ];
 
 function renderProjectDetail(r) {
@@ -1006,6 +1006,8 @@ function renderProjectDetail(r) {
     tabBody = renderProjectRisksTab(p, res);
   } else if (activeTab === "activity") {
     tabBody = renderProjectActivityTab(p);
+  } else if (activeTab === "sales") {
+    tabBody = renderProjectSalesTab(p, res);
   } else {
     const t = PROJECT_TABS.find(t => t.key === activeTab);
     tabBody = `<div class="panel" style="text-align:center;padding:48px 24px;">
@@ -2173,6 +2175,143 @@ function renderProjectActivityTab(p) {
         `).join("")}
       </div>
     </div>
+  `;
+}
+
+// v14.11 (Phase 4.1) — Project Sales tab
+// Closes the project workspace. Tracks listing → under-contract → closing lifecycle,
+// shows actuals vs forecast on the sale itself, and runs a per-project sale waterfall
+// that distributes net proceeds to the 7 owners pro-rata.
+function renderProjectSalesTab(p, res) {
+  const k = res.kpis;
+  const ownership = state.globals.investors || [];
+
+  // Lifecycle stage helper — which step are we on?
+  const lifecycleSteps = [
+    { key: "listed",    label: "Listed",        date: p.listing_date,        price: p.listing_price_usd,        flag: "list" },
+    { key: "uc",        label: "Under contract", date: p.under_contract_date, price: null,                       flag: "uc" },
+    { key: "closed",    label: "Closed",         date: p.closing_date,        price: p.actual_sale_price_usd,    flag: "close" },
+  ];
+  const lastCompletedIdx = lifecycleSteps.reduce((acc, s, i) => s.date ? i : acc, -1);
+  const stageId = p.stage || "sourcing";
+  const inactive = ["sourcing", "land_control", "entitlement", "design", "permitting", "pre_construction", "construction"].includes(stageId);
+
+  // KPI strip
+  const grossSale = p.actual_sale_price_usd ?? p.listing_price_usd ?? k.total_sales;
+  const listPrice = p.listing_price_usd;
+  const actualSale = p.actual_sale_price_usd;
+  const priceToList = (listPrice && actualSale) ? (actualSale / listPrice - 1) : null;
+  const dom = (p.listing_date && p.under_contract_date)
+    ? Math.max(0, Math.round((new Date(p.under_contract_date) - new Date(p.listing_date)) / 86400000))
+    : null;
+  const listingToClose = (p.listing_date && p.closing_date)
+    ? Math.max(0, Math.round((new Date(p.closing_date) - new Date(p.listing_date)) / 86400000))
+    : null;
+
+  // Sale waterfall — gross sale → senior debt → KPC LOC (project share) → 7 owners pro-rata
+  const totalInterest = k.total_interest || 0;          // already negative (a cost)
+  const seniorDebtAtSale = k.peak_debt || 0;             // best estimate — peak debt typically near sale
+  const projectEquityCalls = k.peak_equity || 0;         // total equity called for this project
+  // Project's slice of portfolio LOC: use min(equity call, $6M / N projects) as a pro-rata proxy
+  const activeProjects = (state.projects || []).filter(x => !["sold", "archived"].includes(x.stage || "")).length || 1;
+  const locShare = Math.min(projectEquityCalls, (state.globals.kpc_loc?.facility_size_usd || 0) / activeProjects);
+  const ownerEquityShare = Math.max(0, projectEquityCalls - locShare);
+  // Approximate accrued LOC interest for this project (pro-rata of portfolio LOC interest)
+  // Simple: project_equity_share / portfolio_total_true_equity_and_loc × total_loc_interest
+  // For Phase 4.1 we'll keep this as a rough estimate; engine refinement is Phase 4.2+
+  const netToOwners = grossSale - seniorDebtAtSale + (totalInterest) - locShare - ownerEquityShare;
+  // Distribute to 7 owners pro-rata to share
+  const distributions = ownership.map(o => ({
+    name: o.name,
+    share_pct: o.equity_share_pct || 0,
+    distribution: netToOwners * (o.equity_share_pct || 0),
+  }));
+
+  // KPI strip rendering
+  const kpiStrip = `<div class="kpi-row">
+    ${kpiCard("List price",    listPrice ? fmt.usdM(listPrice) : "—", listPrice ? `Listed ${fmt.ymShort(p.listing_date)}` : "Not yet listed")}
+    ${kpiCard("Days on market", dom != null ? `${dom} d` : "—",         dom != null ? "List → under contract" : "Awaiting offer")}
+    ${kpiCard("Sale price",    actualSale ? fmt.usdM(actualSale) : "—",  actualSale ? `Closed ${fmt.ymShort(p.closing_date)}` : "Not yet closed")}
+    ${kpiCard("Net to owners", actualSale || stageId === "sold" ? fmt.usdM(netToOwners) : "—", actualSale || stageId === "sold" ? "After debt + LOC repay" : "Pending close", actualSale && netToOwners > 0 ? "pos" : actualSale && netToOwners < 0 ? "neg" : "")}
+  </div>`;
+
+  // Lifecycle bar
+  const lifecycleBar = `<div class="panel mb-24">
+    <h3>Lifecycle</h3>
+    <div class="panel-subtitle">Sale milestones from listing through closing. Fill in dates on the Inputs tab as the deal progresses.</div>
+    <div class="sales-lifecycle">
+      ${lifecycleSteps.map((s, i) => {
+        const done = !!s.date;
+        const isNext = !done && i === lastCompletedIdx + 1;
+        const cls = done ? "done" : isNext ? "next" : "future";
+        return `<div class="sales-step ${cls}">
+          <div class="sales-step-marker">${done ? "✓" : i + 1}</div>
+          <div class="sales-step-body">
+            <div class="sales-step-label">${s.label}</div>
+            <div class="sales-step-meta muted">${s.date ? fmt.ymShort(s.date) : isNext ? "next" : "—"}</div>
+            ${s.price ? `<div class="sales-step-price">${fmt.usdM(s.price)}</div>` : ""}
+          </div>
+        </div>`;
+      }).join("")}
+    </div>
+    ${inactive ? `<div class="note" style="margin-top:14px;">Project is in <strong>${escapeHtml(LIFECYCLE_STAGES.find(s => s.id === stageId)?.label || stageId)}</strong> — sales workflow opens once it moves into <strong>Pre-sales</strong>.</div>` : ""}
+  </div>`;
+
+  // Price-to-list summary (only if closed)
+  const priceToListPanel = (listPrice && actualSale) ? `<div class="panel mb-24">
+    <h3>Price realization</h3>
+    <div class="panel-subtitle">Actual sale vs the list price you put in market.</div>
+    <table class="tbl">
+      <tbody>
+        <tr><td>List price</td><td class="num">${fmt.usdM(listPrice)}</td></tr>
+        <tr><td>Actual sale price</td><td class="num">${fmt.usdM(actualSale)}</td></tr>
+        <tr><td><strong>Variance</strong></td><td class="num ${actualSale >= listPrice ? "pos" : "neg"}"><strong>${actualSale >= listPrice ? "+" : "−"}${fmt.usdM(Math.abs(actualSale - listPrice))}</strong> <span class="muted" style="font-weight:400;">(${fmt.pct(priceToList)})</span></td></tr>
+        ${listingToClose != null ? `<tr><td>List → close</td><td class="num">${listingToClose} d</td></tr>` : ""}
+      </tbody>
+    </table>
+  </div>` : "";
+
+  // Sale waterfall — single table that walks gross → owners
+  const waterfallPanel = `<div class="panel mb-24">
+    <h3>Sale waterfall</h3>
+    <div class="panel-subtitle">How proceeds flow from the buyer to the cap table. Uses ${actualSale ? `<strong>actual sale price</strong>` : `forecasted sale price`}; LOC and equity allocations are project pro-rata of the portfolio totals.</div>
+    <table class="tbl">
+      <tbody>
+        <tr><td>Gross sale proceeds</td><td class="num pos">${fmt.usdM(grossSale)}</td></tr>
+        <tr><td>Senior construction debt repayment</td><td class="num neg">${fmt.usdM(-seniorDebtAtSale)}</td></tr>
+        <tr><td>Senior debt accrued interest</td><td class="num neg">${fmt.usdM(totalInterest)}</td></tr>
+        <tr><td>KPC LOC repayment (project share)</td><td class="num neg">${fmt.usdM(-locShare)}</td></tr>
+        <tr><td>Owner equity contribution returned</td><td class="num neg">${fmt.usdM(-ownerEquityShare)}</td></tr>
+        <tr><td><strong>Net to owners</strong></td><td class="num ${netToOwners >= 0 ? "pos" : "neg"}"><strong>${fmt.usdM(netToOwners)}</strong></td></tr>
+      </tbody>
+    </table>
+  </div>`;
+
+  // Per-owner distribution table
+  const ownerTable = `<div class="panel mb-24">
+    <h3>Owner distributions</h3>
+    <div class="panel-subtitle">Net proceeds distributed pro-rata to ownership share. KPC is NOT in this table — it provided debt (LOC), not equity.</div>
+    <table class="tbl">
+      <thead><tr><th>Owner</th><th>Share</th><th>Distribution</th></tr></thead>
+      <tbody>
+        ${distributions.map(d => `<tr>
+          <td>${escapeHtml(d.name)}</td>
+          <td class="num">${fmt.pct(d.share_pct, 1)}</td>
+          <td class="num ${d.distribution >= 0 ? "pos" : "neg"}">${fmt.usdM(d.distribution)}</td>
+        </tr>`).join("")}
+      </tbody>
+      <tfoot>
+        <tr><td><strong>Total</strong></td><td class="num"><strong>100.0%</strong></td><td class="num ${netToOwners >= 0 ? "pos" : "neg"}"><strong>${fmt.usdM(netToOwners)}</strong></td></tr>
+      </tfoot>
+    </table>
+  </div>`;
+
+  return `
+    ${kpiStrip}
+    ${lifecycleBar}
+    ${priceToListPanel}
+    ${waterfallPanel}
+    ${ownerTable}
   `;
 }
 

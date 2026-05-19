@@ -489,6 +489,52 @@ tr.drag-over-after td { border-bottom: 2px solid var(--accent); }
 }
 .link-btn:hover { color: var(--fg); }
 
+/* ---------- Sales tab (v14.11 Phase 4.1) ---------- */
+
+.sales-lifecycle {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 12px;
+}
+.sales-step {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.sales-step.done   { border-color: var(--pos); background: rgba(21, 128, 61, 0.04); }
+.sales-step.next   { border-color: var(--accent); background: rgba(51, 65, 85, 0.04); }
+.sales-step.future { opacity: 0.6; }
+
+.sales-step-marker {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 12px;
+  background: var(--surface-2);
+  color: var(--fg-3);
+  flex-shrink: 0;
+}
+.sales-step.done .sales-step-marker   { background: var(--pos);    color: var(--accent-fg); }
+.sales-step.next .sales-step-marker   { background: var(--accent); color: var(--accent-fg); }
+
+.sales-step-label  { font-weight: 600; font-size: 13px; color: var(--fg); }
+.sales-step-meta   { font-size: 11px; margin-top: 2px; }
+.sales-step-price  { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--fg-2); margin-top: 4px; }
+
+@media (max-width: 720px) {
+  .sales-lifecycle { grid-template-columns: 1fr; }
+}
+
 /* ---------- Activity tab (v14.10 Phase 3.4) ---------- */
 
 .activity-feed {
