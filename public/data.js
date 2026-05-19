@@ -51,7 +51,12 @@ export const BASELINE_GLOBALS = {
   opex_growth_rate: 0.0,                    // v3: per-year escalation (Excel ramps from $396k→$515k = ~9% YoY)
   model_start: "2026-01",
   horizon_months: 49,                       // source: Juno Forecast cols C-AY = Jan-26 to Jan-30
-  excel_baseline_snapshot: "2026-05-10",    // I7/I10: when the dashboard was last reconciled to Excel
+  // v14.14 (Phase 4.4) — Excel decommissioned. Atlas is now the system of record.
+  // The 2026-05-10 reconciliation against the Excel workbook is preserved as the historical
+  // milestone where the two systems were last formally compared. From that date forward,
+  // Atlas is authoritative; Excel is archived and not maintained.
+  system_of_record_since: "2026-05-10",
+  excel_baseline_snapshot: "2026-05-10",    // kept for backward-compat reads; do not surface in UI as "reconciled to"
   capitalize_interest: false,               // v2: Excel computes simple interest on cumulative balance — set true to compound
   financing_fees_per_project_usd: 350000,   // v2: origination + closing + legal + title + appraisal (Excel project rows 65-70 ≈ $350k flat)
   fiscal_year_mode: "juno13",               // I1: Juno's actual FY rolls Jan-2030 into FY29 (the Excel convention). User can switch to "calendar" in Settings if they want the 5-column view.

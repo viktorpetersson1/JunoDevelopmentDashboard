@@ -3801,17 +3801,23 @@ function renderSettings() {
       </div>
       <div class="panel">
         <h3>Data management</h3>
-        <p class="muted" style="font-size:12px;">State is persisted to the Juno Supabase project (<code>financial_state</code> table, single canonical row, versioned in <code>state_history</code>). A local cache in your browser's <code>juno-fd-v1</code> localStorage keeps the last-known state for offline reads. The Excel baseline lives in <code>data.js</code> and was reconciled on 2026-05-10.</p>
+        <p class="muted" style="font-size:12px;">
+          Atlas is the system of record as of <strong style="color:var(--fg);">${state.globals.system_of_record_since || state.globals.excel_baseline_snapshot || "2026-05-10"}</strong>.
+          State is persisted to Juno's Supabase project (<code>financial_state</code> table, single canonical row,
+          versioned in <code>state_history</code>) with a local <code>juno-fd-v1</code> cache for offline reads.
+          The original Excel workbook is archived as historical reference — it is no longer maintained, and Atlas
+          drifts from it intentionally as new projects, scenarios, and actuals are added.
+        </p>
         <div class="row gap-sm wrap">
-          <button class="btn" id="match-excel">Match Excel mode</button>
+          <button class="btn secondary" id="match-excel">Compare to legacy Excel snapshot</button>
           <button class="btn secondary" id="export-json">Export state (JSON)</button>
           <button class="btn secondary" id="export-cashflow-csv">Export cash flow (CSV)</button>
           <button class="btn secondary" id="export-projects-csv">Export projects (CSV)</button>
           <button class="btn secondary" id="export-annual-csv">Export annual P&L (CSV)</button>
           <button class="btn secondary" id="export-html-report">Export printable HTML report</button>
-          <button class="btn danger" id="reset-baseline">Reset to Excel baseline</button>
+          <button class="btn danger" id="reset-baseline">Reset to seed data</button>
         </div>
-        <div class="hint mt-16">"Match Excel mode" sets Juno 13-month FY + 81% build realization + Excel sale prices on each project (within ~5% of Excel total profit).</div>
+        <div class="hint mt-16">"Compare to legacy Excel" applies the 13-month FY + 81% build realization + Excel sale prices for sanity-checking against the archived workbook. Use it as a historical reference, not as a reconciliation target — Atlas is the truth.</div>
         <div class="divider"></div>
         <h3>Theme</h3>
         <div class="row gap-sm">
@@ -4324,7 +4330,7 @@ function attachViewEvents(result) {
         updateProject(p.id, { sale_price_override_usd: p._excel_sale_price });
       }
     }
-    alert("Match Excel mode applied. Total profit should now be within ~5% of Excel.");
+    alert("Legacy Excel comparison mode applied. Total profit should now be within ~5% of the archived Excel snapshot. Atlas remains the system of record — use this for sanity-check only.");
   });
   document.getElementById("export-json")?.addEventListener("click", () => {
     downloadBlob(JSON.stringify({ globals: state.globals, scenario: state.scenario, projects: state.projects }, null, 2),
@@ -5266,12 +5272,12 @@ function downloadCSV(rows, filename) {
 // ---------- footer ----------
 
 function renderFooter() {
-  // I7/I10 — footer now reflects the actual state-of-truth and dynamic version + last-save info
+  // v14.14 (Phase 4.4) — Excel decommissioned. Atlas is the source of truth.
   const version = state.sync.server_version || 0;
   const lastSaved = state.sync.last_saved_at ? state.sync.last_saved_at.toLocaleString() : "—";
-  const baseline = state.globals.excel_baseline_snapshot || "2026-05-10";
+  const sorSince = state.globals.system_of_record_since || state.globals.excel_baseline_snapshot || "2026-05-10";
   return `<footer class="footer">
-    System of record: Juno Supabase · canonical state version v${version} · last saved ${lastSaved}
-    <span class="muted" style="margin-left:8px;">Excel-baseline reconciled ${baseline}.</span>
+    Juno Atlas is the system of record · canonical state v${version} · last saved ${lastSaved}
+    <span class="muted" style="margin-left:8px;">Source of truth since ${sorSince}. Excel archived.</span>
   </footer>`;
 }
