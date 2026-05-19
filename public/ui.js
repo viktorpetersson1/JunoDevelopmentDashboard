@@ -95,7 +95,17 @@ function rampChartOptions(opts = {}) {
       legend: {
         position: "bottom",
         align: "start",
-        labels: { color: tk.text, font: { size: 11 }, boxWidth: 10, boxHeight: 10, padding: 14, usePointStyle: true, pointStyle: "rectRounded" },
+        labels: {
+          color: tk.text,
+          font: { size: 11 },
+          // Solid color dots instead of outlined rounded-rect boxes.
+          // boxHeight matches boxWidth so circles render perfectly round.
+          usePointStyle: true,
+          pointStyle: "circle",
+          boxWidth: 8,
+          boxHeight: 8,
+          padding: 14,
+        },
       },
       tooltip: {
         backgroundColor: "#0A0A0A",
