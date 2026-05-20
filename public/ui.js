@@ -2062,14 +2062,110 @@ function renderProjectInputs(p, res) {
     inputRow({ label: "Timing shift", unit: "months", field: "timing_shift_months", value: sc.timing_shift_months ?? 0, kind: "scenario", scope: "scenario", type: "number" }),
   ]);
 
+  // v14.26 (Option B rework) — Left section rail + sticky KPI strip +
+  // single-column content with section dividers (not cards) + globals
+  // collapsed behind one accordion at the bottom.
+  //
+  // Each section is wrapped in <section id="..."> so the scroll-spy
+  // IntersectionObserver can highlight the active rail item, and the
+  // rail click handler can scrollIntoView.
+  const railItems = [
+    { id: "sec-basics",    label: "Basics" },
+    { id: "sec-program",   label: "Program" },
+    { id: "sec-timing",    label: "Timing" },
+    { id: "sec-land",      label: "Land" },
+    { id: "sec-build",     label: "Build costs" },
+    { id: "sec-kingshaus", label: "Kingshaus" },
+    { id: "sec-financing", label: "Financing" },
+    { id: "sec-other",     label: "Other fees" },
+    { id: "sec-revenue",   label: "Revenue" },
+    { id: "sec-globals",   label: "Global defaults" },
+  ];
+  // Wrap a section markup with the right anchor id so the rail can target it
+  const sec = (id, html) => `<section id="${id}" class="inputs-section-v2">${html}</section>`;
+
+  // Live KPI strip — pulls straight from the engine result passed in
+  const k = res?.kpis || {};
+  // Compute finance fees locally (engine doesn't include them yet) so the
+  // strip shows the true all-in cost the user just edited.
+  const ltcBase = (p.land_cost_usd ?? 0)
+    + ((p.build_cost_per_sqft ?? g.default_build_cost_per_sqft) * totalSqft)
+    + ((p.land_cost_usd ?? 0) + ((p.build_cost_per_sqft ?? g.default_build_cost_per_sqft) * totalSqft)) * (p.contingency_pct ?? g.contingency_pct ?? 0.05)
+    + (p.closing_costs_usd ?? 0)
+    + (p.interest_reserve_usd ?? 0);
+  const seniorLoanLive = ltcBase * (p.senior_ltv_pct ?? 0.75);
+  const financeFeesLive = (p.origination_fee_pct ?? 0.01) * seniorLoanLive
+    + (p.exit_fee_pct ?? 0.005) * seniorLoanLive
+    + (p.loan_servicing_fee_usd ?? 0)
+    + (Array.isArray(p.other_fees) ? p.other_fees.reduce((a, f) => a + (Number(f.amount_usd) || 0), 0) : 0);
+  const allInLive = (k.total_dev_cost || 0) + financeFeesLive;
+  const profitCls = (k.gross_profit || 0) >= 0 ? "pos" : "neg";
+
+  const kpiStrip = `
+    <div class="inputs-kpi-strip">
+      <div class="kpi-tile">
+        <div class="label">All-in cost</div>
+        <div class="value">${fmt.usdM(allInLive)}</div>
+      </div>
+      <div class="kpi-tile">
+        <div class="label">Sale value</div>
+        <div class="value">${fmt.usdM(k.total_sales)}</div>
+      </div>
+      <div class="kpi-tile">
+        <div class="label">Profit</div>
+        <div class="value ${profitCls}">${fmt.usdM(k.gross_profit)}</div>
+      </div>
+      <div class="kpi-tile">
+        <div class="label">Margin</div>
+        <div class="value">${fmt.pct(k.profit_margin_pct)}</div>
+      </div>
+      <div class="kpi-tile">
+        <div class="label">IRR (annual)</div>
+        <div class="value">${k.irr_annual == null ? "—" : fmt.pct(k.irr_annual)}</div>
+      </div>
+      <div class="kpi-tile">
+        <div class="label">Peak equity</div>
+        <div class="value">${fmt.usdM(k.peak_equity)}</div>
+      </div>
+    </div>`;
+
+  // Globals accordion — collapsed by default. Single combined block for
+  // Overheads + Taxes + Scenario overrides (all "set once, forget" stuff).
+  const globalsOpen = state.ui.inputsGlobalsOpen;
+  const globalsBlock = sec("sec-globals", `
+    <button class="inputs-globals-toggle ${globalsOpen ? "open" : ""}" id="inputs-globals-toggle" aria-expanded="${globalsOpen}">
+      <span class="inputs-globals-chevron">${globalsOpen ? "▾" : "▸"}</span>
+      <span class="inputs-globals-title">Global defaults</span>
+      <span class="muted inputs-globals-subtitle">Apply to all projects — change rarely</span>
+    </button>
+    ${globalsOpen ? `
+      <div class="inputs-globals-body">
+        ${overheads}
+        ${taxes}
+        ${scenarioOverrides}
+      </div>
+    ` : ""}
+  `);
+
   return `
-    <div class="inputs-grid">
-      <div class="inputs-col">${basics}${program}${timing}${land}${buildCosts}${kingshaus}</div>
-      <div class="inputs-col">${financing}${otherFeesHtml}${revenue}</div>
-    </div>
-    <div class="inputs-grid">
-      <div class="inputs-col">${overheads}${taxes}</div>
-      <div class="inputs-col">${scenarioOverrides}</div>
+    <div class="inputs-shell">
+      <aside class="inputs-rail" role="navigation" aria-label="Inputs sections">
+        <div class="inputs-rail-label">SECTIONS</div>
+        ${railItems.map(r => `<button class="inputs-rail-link" data-rail="${r.id}">${r.label}</button>`).join("")}
+      </aside>
+      <div class="inputs-content">
+        ${kpiStrip}
+        ${sec("sec-basics",    basics)}
+        ${sec("sec-program",   program)}
+        ${sec("sec-timing",    timing)}
+        ${sec("sec-land",      land)}
+        ${sec("sec-build",     buildCosts)}
+        ${sec("sec-kingshaus", kingshaus)}
+        ${sec("sec-financing", financing)}
+        ${sec("sec-other",     otherFeesHtml)}
+        ${sec("sec-revenue",   revenue)}
+        ${globalsBlock}
+      </div>
     </div>
   `;
 }
@@ -4845,6 +4941,48 @@ function attachViewEvents(result) {
   for (const btn of document.querySelectorAll("[data-project-tab]")) {
     btn.addEventListener("click", () => setProjectTab(btn.dataset.projectTab));
   }
+
+  // v14.26 — Inputs page section rail: smooth-scroll on click + scroll-spy
+  // highlighting based on which section is in view.
+  const railLinks = document.querySelectorAll(".inputs-rail-link[data-rail]");
+  if (railLinks.length) {
+    const sections = Array.from(document.querySelectorAll(".inputs-section-v2[id]"));
+    for (const a of railLinks) {
+      a.addEventListener("click", () => {
+        const target = document.getElementById(a.dataset.rail);
+        if (target) {
+          // Account for the sticky KPI strip + tab bar above when scrolling
+          const y = target.getBoundingClientRect().top + window.pageYOffset - 200;
+          window.scrollTo({ top: y, behavior: "smooth" });
+        }
+      });
+    }
+    // Scroll-spy: highlight the rail link of the section currently in view.
+    // rootMargin: -30% top, -60% bottom — section becomes "active" when its
+    // top crosses ~30% from viewport top.
+    const setActive = (id) => {
+      for (const a of railLinks) a.classList.toggle("active", a.dataset.rail === id);
+    };
+    if (sections.length && "IntersectionObserver" in window) {
+      const observer = new IntersectionObserver((entries) => {
+        // Find the entry whose top is closest to the top of the viewport
+        const visible = entries.filter(e => e.isIntersecting);
+        if (visible.length) {
+          visible.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+          setActive(visible[0].target.id);
+        }
+      }, { rootMargin: "-25% 0px -65% 0px", threshold: 0 });
+      sections.forEach(s => observer.observe(s));
+      // Initial highlight: first section
+      setActive(sections[0].id);
+    }
+  }
+
+  // v14.26 — Globals accordion toggle
+  document.getElementById("inputs-globals-toggle")?.addEventListener("click", () => {
+    state.ui.inputsGlobalsOpen = !state.ui.inputsGlobalsOpen;
+    notify();
+  });
 
   // Timeline tab: delay simulator slider — transient preview, not saved.
   const delaySlider = document.getElementById("delay-slider");

@@ -1580,6 +1580,213 @@ tr.drag-over-after td { border-bottom: 2px solid var(--accent); }
 
 .inputs-col { display: flex; flex-direction: column; gap: 16px; }
 
+/* ============================================================
+   v14.26 — Inputs page Option B layout
+   Section rail · sticky KPI strip · single-column dividers
+   ============================================================ */
+.inputs-shell {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 32px;
+  align-items: start;
+}
+
+/* Section rail — sticky, scrolls with the page */
+.inputs-rail {
+  position: sticky;
+  top: 64px;  /* clear the topbar */
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+}
+.inputs-rail-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--text-tertiary);
+  padding: 6px 12px 10px;
+}
+.inputs-rail-link {
+  background: transparent;
+  border: none;
+  border-left: 2px solid transparent;
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
+  margin: 0;
+  border-radius: 0;
+  width: 100%;
+  font-weight: 500;
+}
+.inputs-rail-link:hover { color: var(--text-primary); background: var(--surface-card); }
+.inputs-rail-link.active {
+  color: var(--text-primary);
+  border-left-color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* Content column — single flow, no card backgrounds */
+.inputs-content { min-width: 0; }
+
+/* Sticky KPI strip — live impact while editing below */
+.inputs-kpi-strip {
+  position: sticky;
+  top: 49px;  /* clear the topbar (49px tall) */
+  z-index: 4;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 1px;
+  background: var(--border-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  margin-bottom: 32px;
+  overflow: hidden;
+  box-shadow: 0 1px 0 rgba(10, 10, 10, 0.03);
+}
+.inputs-kpi-strip .kpi-tile {
+  background: var(--surface-card-elev);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.inputs-kpi-strip .kpi-tile .label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.inputs-kpi-strip .kpi-tile .value {
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+.inputs-kpi-strip .kpi-tile .value.pos { color: var(--positive-500); }
+.inputs-kpi-strip .kpi-tile .value.neg { color: var(--negative-500); }
+@media (max-width: 1100px) { .inputs-kpi-strip { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 600px)  { .inputs-kpi-strip { grid-template-columns: repeat(2, 1fr); } }
+
+/* Sections — no card chrome, just heading + content + bottom divider */
+.inputs-section-v2 {
+  padding: 0 0 32px 0;
+  margin-bottom: 32px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.inputs-section-v2:last-child { border-bottom: none; margin-bottom: 0; }
+.inputs-section-v2 .inputs-section {
+  /* The legacy .inputs-section panel-card chrome gets stripped inside the new shell */
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+}
+.inputs-section-v2 .inputs-section h3 {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin: 0 0 6px 0;
+}
+.inputs-section-v2 .inputs-section .panel-subtitle {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-bottom: 18px;
+  line-height: 1.45;
+  max-width: 640px;
+}
+
+/* Globals accordion — collapsed-by-default at the bottom */
+#sec-globals { border-bottom: none; }
+.inputs-globals-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  border: none;
+  padding: 16px 0;
+  cursor: pointer;
+  font-family: inherit;
+  width: 100%;
+  text-align: left;
+  border-top: 1px solid var(--border-default);
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background 120ms ease;
+}
+.inputs-globals-toggle:hover { background: var(--surface-card); }
+.inputs-globals-chevron {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  width: 14px;
+  text-align: center;
+}
+.inputs-globals-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+.inputs-globals-subtitle {
+  font-size: 12px;
+  margin-left: 8px;
+}
+.inputs-globals-body {
+  padding-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+.inputs-globals-body .inputs-section {
+  /* Globals stay as quiet pale-grey grouping cards so they're visually
+     separated from the project-specific sections above. */
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 20px;
+}
+.inputs-globals-body .inputs-section h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+/* Mobile: rail collapses to a horizontal scroll strip at top */
+@media (max-width: 900px) {
+  .inputs-shell { grid-template-columns: 1fr; gap: 16px; }
+  .inputs-rail {
+    position: static;
+    flex-direction: row;
+    gap: 0;
+    padding: 0;
+    overflow-x: auto;
+    max-height: none;
+    border-bottom: 1px solid var(--border-subtle);
+    margin-bottom: 8px;
+  }
+  .inputs-rail-label { display: none; }
+  .inputs-rail-link {
+    border-left: none;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    width: auto;
+  }
+  .inputs-rail-link.active {
+    border-left: none;
+    border-bottom-color: var(--text-primary);
+  }
+  .inputs-kpi-strip { top: 0; }
+}
+
 .inputs-section { padding: 24px 24px; }
 .inputs-section h3 {
   /* v14.25 — Bolder section headers to match Settings drawer */

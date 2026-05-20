@@ -41,6 +41,7 @@ export const state = {
     mobileMoreOpen: false,  // v13: tracks whether the mobile "More" drawer is open
     avatarMenuOpen: false,  // v14.20 (design reset Phase 4): avatar dropdown menu open/closed
     settingsDrawer: { open: false, tab: "settings" },  // v14.21: half-pane settings drawer (General / History / Suggestions / Users)
+    inputsGlobalsOpen: false,  // v14.26: project Inputs tab — "Global defaults" accordion at the bottom
     wizard: { open: false, step: 0, draft: null },  // v14.1: New Project wizard state
   },
 };
@@ -192,6 +193,7 @@ function applyStateBlob(blob) {
     state.ui.settingsDrawer = { open: false, tab: "settings" };
     state.ui.avatarMenuOpen = false;
     state.ui.mobileMoreOpen = false;
+    state.ui.inputsGlobalsOpen = state.ui.inputsGlobalsOpen ?? false;
   } finally {
     _suppressAutoSave = false;
   }
