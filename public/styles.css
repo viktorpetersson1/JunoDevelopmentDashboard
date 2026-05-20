@@ -2248,6 +2248,77 @@ tr.drag-over-after td { border-bottom: 2px solid var(--accent); }
 .wizard-summary .kpi-row { margin-bottom: 0; }
 .wizard-summary .kpi { padding: 12px 14px; }
 .wizard-summary .kpi .value { font-size: 18px; }
+.wizard-summary .kpi-section { margin-bottom: 16px; }
+.wizard-summary .kpi-section .kpi-section-label { margin-bottom: 8px; }
+.wizard-summary .kpi-section .kpi-grid { gap: 10px; }
+
+/* v14.24 — Other fees editor in the wizard Financing step */
+.other-fees { display: flex; flex-direction: column; gap: 8px; }
+.other-fees-empty {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  padding: 8px 0;
+  font-style: italic;
+}
+.other-fee-row {
+  display: grid;
+  grid-template-columns: 1fr 140px 32px;
+  gap: 8px;
+  align-items: center;
+}
+.other-fee-row .input.num { text-align: right; font-variant-numeric: tabular-nums; }
+.other-fee-row .row-remove-btn {
+  height: 32px;
+  width: 32px;
+  padding: 0;
+  color: var(--text-tertiary);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+.other-fee-row .row-remove-btn:hover {
+  color: var(--negative-500);
+  background: var(--negative-50);
+}
+
+/* v14.24 — Capital stack preview: grouped, with section headers and an
+   emphasized total + injection row */
+.capital-stack-preview table.tbl { background: transparent; }
+.capital-stack-preview table.tbl td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+.capital-stack-preview .cs-section-head td {
+  padding-top: 14px;
+  padding-bottom: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  border-bottom: 1px solid var(--border-default);
+  background: transparent;
+}
+.capital-stack-preview .cs-subtotal td {
+  border-top: 1px solid var(--border-default);
+  background: var(--surface-card);
+  font-weight: 500;
+}
+.capital-stack-preview .cs-total td {
+  border-top: 2px solid var(--text-primary);
+  background: var(--surface-card);
+  padding-top: 10px;
+  padding-bottom: 10px;
+  font-size: 14px;
+}
+.capital-stack-preview .cs-injection td {
+  background: var(--surface-sunken);
+  padding-top: 12px;
+  padding-bottom: 12px;
+  font-size: 14px;
+  border-top: none;
+}
 
 /* Mobile: rail collapses to horizontal top strip */
 @media (max-width: 720px) {

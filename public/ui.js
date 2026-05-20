@@ -1170,7 +1170,11 @@ function renderPortfolio(r) {
 }
 
 function kpiCard(label, value, meta = "", cls = "") {
-  return `<div class="kpi ${cls}"><div class="label">${label}</div><div class="value">${value}</div><div class="meta">${meta}</div></div>`;
+  // v14.24 — Coerce null/undefined meta to empty string so callers passing
+  // `null` (e.g. wizard review page) don't end up rendering the literal "null".
+  const metaStr = meta == null ? "" : meta;
+  const metaHtml = metaStr === "" ? "" : `<div class="meta">${metaStr}</div>`;
+  return `<div class="kpi ${cls}"><div class="label">${label}</div><div class="value">${value}</div>${metaHtml}</div>`;
 }
 
 function renderAnnualTable(r) {
@@ -5340,20 +5344,42 @@ function renderWizardRevenue(d) {
 }
 
 function renderWizardFinancing(d) {
-  // v14.16 — External senior debt only (e.g. Harrison Capital on 84SBR). KPC's $6M LOC
-  // is portfolio-wide subordinated debt and is modeled separately on the Capital screen —
-  // do NOT capture it here.
+  // v14.24 — Capital stack now matches the Excel "Financing 84SB" tab layout:
+  // hard costs + contingency on top, then financing-eligible costs (closing,
+  // interest reserve) included in the LTC base, then non-financed fees (orig,
+  // exit, servicing, "other") layered below the loan as required equity.
+  //
+  // KPC's $6M LOC is portfolio-wide subordinated debt — modeled on the
+  // Capital screen, not here.
   const g = state.globals;
   const land = d.land_cost_usd ?? g.default_land_cost_usd;
   const buildPsf = d.build_cost_per_sqft ?? g.default_build_cost_per_sqft;
   const sqft = (d.villa_sqft_ag ?? 0) + (d.villa_sqft_bg ?? 0);
   const buildTotal = buildPsf * sqft;
-  const ltv = d.senior_ltv_pct ?? 0.75;
-  const seniorLoan = Math.round((land + buildTotal) * ltv);
+  const contingencyPct = d.contingency_pct ?? g.contingency_pct ?? 0.05;
+  const contingency = (land + buildTotal) * contingencyPct;
   const closingCosts = d.closing_costs_usd ?? 0;
-  const orig = (d.origination_fee_pct ?? 0.01) * seniorLoan;
-  const totalProjectCost = land + buildTotal + closingCosts + orig;
-  const capitalInjection = Math.max(0, totalProjectCost - seniorLoan);
+  const interestReserve = d.interest_reserve_usd ?? 0;
+  const loanServicing = d.loan_servicing_fee_usd ?? 0;
+
+  // Lender finances land + build + contingency + closing + interest reserve.
+  // Origination + exit + loan servicing are paid by the borrower (equity).
+  const ltv = d.senior_ltv_pct ?? 0.75;
+  const ltcBase = land + buildTotal + contingency + closingCosts + interestReserve;
+  const seniorLoan = Math.round(ltcBase * ltv);
+
+  const origPct = d.origination_fee_pct ?? 0.01;
+  const exitPct = d.exit_fee_pct ?? 0.005;
+  const orig = origPct * seniorLoan;
+  const exit = exitPct * seniorLoan;
+
+  const otherFees = Array.isArray(d.other_fees) ? d.other_fees : [];
+  const otherFeesTotal = otherFees.reduce((a, f) => a + (Number(f.amount_usd) || 0), 0);
+
+  const financeFeesTotal = orig + exit + loanServicing + otherFeesTotal;
+  const totalAllIn = ltcBase + financeFeesTotal;
+  const capitalInjection = Math.max(0, totalAllIn - seniorLoan);
+
   return `
     <h2>Financing — external senior debt</h2>
     <p class="muted">The senior loan from your external lender (e.g. <strong style="color:var(--fg);">Harrison Capital</strong> on 84SBR). Modeled from the Excel 'Financing 84SB' tab.<br><span class="muted">KPC's $6M LOC is portfolio-wide subordinated debt — managed on the <strong style="color:var(--fg);">Capital</strong> screen, not here.</span></p>
@@ -5365,55 +5391,86 @@ function renderWizardFinancing(d) {
         <input class="input" type="text" data-wiz="lender_name" value="${escapeHtml(d.lender_name || "")}" placeholder="e.g. Harrison Capital (USCNYC)">
       </div>
       <div class="form-row">
-        <label>Loan-to-cost (LTV %)</label>
+        <label>Loan-to-cost (LTC %)</label>
         <input class="input" type="number" inputmode="decimal" step="0.01" min="0" max="1" data-wiz="senior_ltv_pct" data-wiz-type="number" value="${ltv}">
-        <div class="hint">75% (0.75) is typical. Applied to total project cost (land + build).</div>
+        <div class="hint">75% (0.75) is typical. Applied to land + build + contingency + closing + interest reserve.</div>
       </div>
       <div class="form-row">
         <label>Interest rate APR</label>
         ${nullableNumInput("interest_rate_apr", d.interest_rate_apr, `Default: ${g.interest_rate_apr}`)}
         <div class="hint">Default ${(g.interest_rate_apr * 100).toFixed(1)}%.</div>
       </div>
+      <div class="form-row">
+        <label>Contingency (% of hard cost)</label>
+        <input class="input" type="number" inputmode="decimal" step="0.01" min="0" max="0.20" data-wiz="contingency_pct" data-wiz-type="number" value="${contingencyPct}">
+        <div class="hint">Default ${(g.contingency_pct * 100).toFixed(0)}%. Financed by the loan.</div>
+      </div>
     </div>
 
-    <div class="section-title" style="margin-top:16px;">Fees</div>
+    <div class="section-title" style="margin-top:16px;">Standard fees</div>
     <div class="form-grid">
       <div class="form-row">
         <label>Origination fee (% of loan)</label>
-        <input class="input" type="number" inputmode="decimal" step="0.001" min="0" max="0.05" data-wiz="origination_fee_pct" data-wiz-type="number" value="${d.origination_fee_pct ?? 0.01}">
+        <input class="input" type="number" inputmode="decimal" step="0.001" min="0" max="0.05" data-wiz="origination_fee_pct" data-wiz-type="number" value="${origPct}">
         <div class="hint">Typically 1.0% (0.01). Paid at closing.</div>
       </div>
       <div class="form-row">
         <label>Exit fee (% of loan)</label>
-        <input class="input" type="number" inputmode="decimal" step="0.001" min="0" max="0.05" data-wiz="exit_fee_pct" data-wiz-type="number" value="${d.exit_fee_pct ?? 0.005}">
+        <input class="input" type="number" inputmode="decimal" step="0.001" min="0" max="0.05" data-wiz="exit_fee_pct" data-wiz-type="number" value="${exitPct}">
         <div class="hint">Typically 0.5% (0.005). Paid at sale.</div>
       </div>
       <div class="form-row">
         <label>Interest reserve (USD)</label>
-        <input class="input" type="number" inputmode="decimal" step="1000" min="0" data-wiz="interest_reserve_usd" data-wiz-type="number" value="${d.interest_reserve_usd ?? 0}">
-        <div class="hint">Pre-funded at closing to cover interest payments through construction.</div>
+        <input class="input" type="number" inputmode="decimal" step="1000" min="0" data-wiz="interest_reserve_usd" data-wiz-type="number" value="${interestReserve}">
+        <div class="hint">Pre-funded at closing. Financed by the loan.</div>
       </div>
       <div class="form-row">
         <label>Loan servicing fee (USD)</label>
-        <input class="input" type="number" inputmode="decimal" step="500" min="0" data-wiz="loan_servicing_fee_usd" data-wiz-type="number" value="${d.loan_servicing_fee_usd ?? 0}">
+        <input class="input" type="number" inputmode="decimal" step="500" min="0" data-wiz="loan_servicing_fee_usd" data-wiz-type="number" value="${loanServicing}">
       </div>
       <div class="form-row full">
         <label>Closing costs (USD)</label>
-        <input class="input" type="number" inputmode="decimal" step="1000" min="0" data-wiz="closing_costs_usd" data-wiz-type="number" value="${d.closing_costs_usd ?? 0}">
+        <input class="input" type="number" inputmode="decimal" step="1000" min="0" data-wiz="closing_costs_usd" data-wiz-type="number" value="${closingCosts}">
         <div class="hint">All-in land closing costs (transfer tax, recording, title insurance, legal, appraisal, environmental). 84SBR baseline: $227,000.</div>
       </div>
     </div>
 
-    <div class="section-title" style="margin-top:16px;">Capital stack preview</div>
-    <div class="wizard-summary">
+    <div class="section-title" style="margin-top:16px;">Other fees</div>
+    <div class="other-fees">
+      ${otherFees.length === 0 ? `<div class="muted other-fees-empty">No other fees. Click below to add one (e.g. environmental study, broker fee).</div>` : ""}
+      ${otherFees.map((f, idx) => `
+        <div class="other-fee-row">
+          <input class="input" type="text" data-other-fee="${idx}" data-field="description" value="${escapeHtml(f.description || "")}" placeholder="Description (e.g. environmental study)">
+          <input class="input num" type="number" inputmode="decimal" step="100" min="0" data-other-fee="${idx}" data-field="amount_usd" value="${f.amount_usd || 0}">
+          <button class="btn small ghost row-remove-btn" data-remove-other-fee="${idx}" title="Remove fee" aria-label="Remove fee">✕</button>
+        </div>
+      `).join("")}
+      <button class="btn small secondary mt-12" id="add-other-fee">+ Add other fee</button>
+    </div>
+
+    <div class="section-title" style="margin-top:24px;">Capital stack preview</div>
+    <div class="wizard-summary capital-stack-preview">
       <table class="tbl">
         <tbody>
-          <tr><td>Land cost</td><td class="num">${fmt.usdM(land)}</td></tr>
-          <tr><td>Build cost (${sqft.toLocaleString()} sqft × $${buildPsf}/sqft)</td><td class="num">${fmt.usdM(buildTotal)}</td></tr>
-          <tr><td>Closing costs + origination fee</td><td class="num">${fmt.usdM(closingCosts + orig)}</td></tr>
-          <tr><td><strong>Total project cost</strong></td><td class="num"><strong>${fmt.usdM(totalProjectCost)}</strong></td></tr>
-          <tr><td>Senior loan @ ${(ltv * 100).toFixed(0)}% LTV</td><td class="num pos">${fmt.usdM(seniorLoan)}</td></tr>
-          <tr><td><strong>Capital injection needed</strong> <span class="muted" style="font-weight:400;">(Juno equity / KPC LOC)</span></td><td class="num ${capitalInjection > 0 ? "neg" : ""}"><strong>${fmt.usdM(capitalInjection)}</strong></td></tr>
+          <tr class="cs-section-head"><td colspan="2">Hard costs</td></tr>
+          <tr><td>Land</td><td class="num">${fmt.usdM(land)}</td></tr>
+          <tr><td>Build (${sqft.toLocaleString()} sqft × $${buildPsf}/sqft)</td><td class="num">${fmt.usdM(buildTotal)}</td></tr>
+          <tr><td>Contingency (${(contingencyPct*100).toFixed(1)}% of hard)</td><td class="num">${fmt.usdM(contingency)}</td></tr>
+
+          <tr class="cs-section-head"><td colspan="2">Financed costs</td></tr>
+          <tr><td>Closing costs</td><td class="num">${fmt.usdM(closingCosts)}</td></tr>
+          <tr><td>Interest reserve</td><td class="num">${fmt.usdM(interestReserve)}</td></tr>
+          <tr class="cs-subtotal"><td><strong>LTC base</strong> <span class="muted" style="font-weight:400;">(eligible for senior debt)</span></td><td class="num"><strong>${fmt.usdM(ltcBase)}</strong></td></tr>
+
+          <tr class="cs-section-head"><td colspan="2">Borrower-paid fees</td></tr>
+          <tr><td>Origination fee (${(origPct*100).toFixed(2)}% × loan)</td><td class="num">${fmt.usdM(orig)}</td></tr>
+          <tr><td>Exit fee (${(exitPct*100).toFixed(2)}% × loan)</td><td class="num">${fmt.usdM(exit)}</td></tr>
+          <tr><td>Loan servicing fee</td><td class="num">${fmt.usdM(loanServicing)}</td></tr>
+          ${otherFees.map(f => `<tr><td>${escapeHtml(f.description || "Other fee")}</td><td class="num">${fmt.usdM(Number(f.amount_usd) || 0)}</td></tr>`).join("")}
+
+          <tr class="cs-total"><td><strong>Total all-in cost</strong></td><td class="num"><strong>${fmt.usdM(totalAllIn)}</strong></td></tr>
+          <tr><td>Senior loan @ ${(ltv * 100).toFixed(0)}% of LTC base</td><td class="num pos">${fmt.usdM(seniorLoan)}</td></tr>
+          <tr class="cs-injection"><td><strong>Capital injection needed</strong> <span class="muted" style="font-weight:400;">(Juno equity / KPC LOC)</span></td><td class="num ${capitalInjection > 0 ? "neg" : ""}"><strong>${fmt.usdM(capitalInjection)}</strong></td></tr>
         </tbody>
       </table>
     </div>
@@ -5444,6 +5501,30 @@ function renderWizardReview(d) {
   const market = state.globals.markets?.find(m => m.id === d.market);
   const assetType = ASSET_TYPES.find(t => t.id === d.asset_type);
   const stage = LIFECYCLE_STAGES.find(s => s.id === d.stage);
+
+  // v14.24 — Finance fees aren't in the engine yet (those fields are local to
+  // the wizard's financing step). Compute the borrower-paid fees here so the
+  // Review page can surface them alongside the engine-computed interest cost.
+  const g = state.globals;
+  const land = d.land_cost_usd ?? g.default_land_cost_usd;
+  const buildPsf = d.build_cost_per_sqft ?? g.default_build_cost_per_sqft;
+  const buildTotal = buildPsf * totalSqft;
+  const contingencyPct = d.contingency_pct ?? g.contingency_pct ?? 0.05;
+  const contingency = (land + buildTotal) * contingencyPct;
+  const closingCosts = d.closing_costs_usd ?? 0;
+  const interestReserve = d.interest_reserve_usd ?? 0;
+  const ltv = d.senior_ltv_pct ?? 0.75;
+  const ltcBase = land + buildTotal + contingency + closingCosts + interestReserve;
+  const seniorLoan = Math.round(ltcBase * ltv);
+  const orig = (d.origination_fee_pct ?? 0.01) * seniorLoan;
+  const exit = (d.exit_fee_pct ?? 0.005) * seniorLoan;
+  const loanServicing = d.loan_servicing_fee_usd ?? 0;
+  const otherFees = Array.isArray(d.other_fees) ? d.other_fees : [];
+  const otherFeesTotal = otherFees.reduce((a, f) => a + (Number(f.amount_usd) || 0), 0);
+  const financeFeesTotal = orig + exit + loanServicing + otherFeesTotal;
+  const interestCost = k?.total_interest || 0;
+  const allInCost = (k?.total_dev_cost || 0) + financeFeesTotal;  // dev cost already includes interest
+
   return `
     <h2>Review &amp; create</h2>
     <p class="muted">Confirm the project before saving. Every field is editable after creation.</p>
@@ -5453,15 +5534,30 @@ function renderWizardReview(d) {
         <span class="muted">${escapeHtml(d.address || "—")} · ${escapeHtml(market?.name || "—")} · ${escapeHtml(assetType?.label || "—")} · ${escapeHtml(stage?.label || "—")}</span>
       </div>
       ${err ? `<div class="note neg">Engine error: ${escapeHtml(err)}</div>` : k ? `
-        <div class="kpi-row">
-          ${kpiCard("Total dev cost", fmt.usdM(k.total_dev_cost))}
-          ${kpiCard("Gross sale value", fmt.usdM(k.total_sales))}
-          ${kpiCard("Projected profit", fmt.usdM(k.gross_profit), null, k.gross_profit >= 0 ? "pos" : "neg")}
-          ${kpiCard("Margin", fmt.pct(k.profit_margin_pct))}
-          ${kpiCard("Peak equity", fmt.usdM(k.peak_equity))}
-          ${kpiCard("Max debt", fmt.usdM(k.peak_debt))}
-          ${kpiCard("IRR (annual)", k.irr_annual == null ? "—" : fmt.pct(k.irr_annual))}
-          ${kpiCard("MOIC", k.moic ? `${k.moic.toFixed(2)}x` : "—")}
+        <div class="kpi-section">
+          <div class="kpi-section-label">Cost &amp; revenue</div>
+          <div class="kpi-grid">
+            ${kpiCard("All-in cost", fmt.usdM(allInCost), `Dev + financing fees`)}
+            ${kpiCard("Gross sale value", fmt.usdM(k.total_sales))}
+            ${kpiCard("Projected profit", fmt.usdM(k.gross_profit), "", k.gross_profit >= 0 ? "pos" : "neg")}
+            ${kpiCard("Margin", fmt.pct(k.profit_margin_pct))}
+          </div>
+        </div>
+        <div class="kpi-section">
+          <div class="kpi-section-label">Cost of financing</div>
+          <div class="kpi-grid">
+            ${kpiCard("Finance fees", fmt.usdM(financeFeesTotal), `Orig + exit + servicing${otherFees.length ? " + other" : ""}`)}
+            ${kpiCard("Interest cost", fmt.usdM(interestCost), `Over ${totalMonths}-mo program`)}
+            ${kpiCard("Peak equity", fmt.usdM(k.peak_equity))}
+            ${kpiCard("Max debt", fmt.usdM(k.peak_debt))}
+          </div>
+        </div>
+        <div class="kpi-section" style="margin-bottom:0;">
+          <div class="kpi-section-label">Returns</div>
+          <div class="kpi-grid">
+            ${kpiCard("IRR (annual)", k.irr_annual == null ? "—" : fmt.pct(k.irr_annual))}
+            ${kpiCard("MOIC", k.moic ? `${k.moic.toFixed(2)}x` : "—")}
+          </div>
         </div>
       ` : ""}
     </div>
@@ -5561,6 +5657,35 @@ function attachWizardEvents() {
     const id = submitWizardDraft();
     if (id) setView("project_detail", id);
   });
+
+  // v14.24 — Other fees: add / edit / remove
+  document.getElementById("add-other-fee")?.addEventListener("click", () => {
+    const current = Array.isArray(state.ui.wizard.draft.other_fees) ? state.ui.wizard.draft.other_fees : [];
+    updateWizardDraft({ other_fees: [...current, { description: "", amount_usd: 0 }] });
+  });
+  for (const el of modal.querySelectorAll("[data-other-fee]")) {
+    const idx = Number(el.dataset.otherFee);
+    const field = el.dataset.field;
+    el.addEventListener("input", () => {
+      const current = Array.isArray(state.ui.wizard.draft.other_fees) ? [...state.ui.wizard.draft.other_fees] : [];
+      if (!current[idx]) current[idx] = { description: "", amount_usd: 0 };
+      const next = { ...current[idx] };
+      if (field === "amount_usd") {
+        next.amount_usd = el.value === "" ? 0 : Number(el.value);
+      } else {
+        next.description = el.value;
+      }
+      current[idx] = next;
+      updateWizardDraft({ other_fees: current });
+    });
+  }
+  for (const btn of modal.querySelectorAll("[data-remove-other-fee]")) {
+    btn.addEventListener("click", () => {
+      const idx = Number(btn.dataset.removeOtherFee);
+      const current = Array.isArray(state.ui.wizard.draft.other_fees) ? state.ui.wizard.draft.other_fees : [];
+      updateWizardDraft({ other_fees: current.filter((_, i) => i !== idx) });
+    });
+  }
 }
 
 function drawScenarioOverlay(currentR, isDark) {
