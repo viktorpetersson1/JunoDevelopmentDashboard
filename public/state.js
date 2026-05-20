@@ -770,3 +770,13 @@ export function setSettingsDrawerTab(tab) {
   state.ui.settingsDrawer.tab = tab;
   notify();
 }
+
+// v14.22 — Restore the 7 Juno baseline shareholders without touching any
+// other state (markets, projects, scenarios, etc.). Used when the cap
+// table has been overwritten or partially edited and the user wants the
+// canonical Peter/Lars/Viktor/Philip/Missy/Massi/Mark split back.
+export function restoreCapTable() {
+  state.globals.investors = structuredClone(BASELINE_GLOBALS.investors);
+  logEvent("global", "Cap table restored to Juno baseline", { count: state.globals.investors.length });
+  save(); notify();
+}

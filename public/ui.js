@@ -10,7 +10,8 @@ import { state, notify, save, updateGlobal, updateScenario,
   openWizard, closeWizard, discardWizardDraft, setWizardStep,
   updateWizardDraft, submitWizardDraft, setProjectTab,
   duplicateCurrentScenario, classifyScenario, setScenarioLock,
-  openSettingsDrawer, closeSettingsDrawer, setSettingsDrawerTab } from "./state.js";
+  openSettingsDrawer, closeSettingsDrawer, setSettingsDrawerTab,
+  restoreCapTable } from "./state.js";
 import { aggregatePortfolio, calcProject, fyOf, monteCarlo, evaluateRisks, generateNudges } from "./engine.js";
 import { EXCEL_BENCHMARK, LIFECYCLE_STAGES, STAGE_GROUP_COLORS, ASSET_TYPES, SCENARIO_CLASSES, PROJECT_TEMPLATES } from "./data.js";
 import {
@@ -4225,7 +4226,7 @@ function renderSettings() {
           The original Excel workbook is archived as historical reference — it is no longer maintained, and Atlas
           drifts from it intentionally as new projects, scenarios, and actuals are added.
         </p>
-        <div class="row gap-sm wrap">
+        <div class="data-mgmt-actions">
           <button class="btn secondary" id="match-excel">Compare to legacy Excel snapshot</button>
           <button class="btn secondary" id="export-json">Export state (JSON)</button>
           <button class="btn secondary" id="export-cashflow-csv">Export cash flow (CSV)</button>
@@ -4245,62 +4246,70 @@ function renderSettings() {
     </div>
 
     <div class="panel mb-24">
-      <h3>Markets — sale price + build cost elasticity by region</h3>
-      <div class="panel-subtitle">Each project tags a market. Multipliers apply on top of base $/sqft.</div>
-      <div class="row gap-sm wrap" style="font-size:11px;color:var(--fg-3);font-weight:500;padding:4px 0;border-bottom:1px solid var(--border);">
-        <div style="flex:2;">Market</div>
-        <div style="flex:1;">Sale ×</div>
-        <div style="flex:1;">Build ×</div>
-        <div style="flex:1;">Demand</div>
-        <div style="width:72px;"></div>
-      </div>
-      ${(g.markets || []).map((m, idx) => `
-        <div class="row gap-sm wrap" style="padding:6px 0;border-bottom:1px solid var(--border);">
-          <input class="input" style="flex:2;" type="text" data-market="${idx}" data-field="name" value="${m.name}">
-          <input class="input" style="flex:1;" type="number" step="0.01" data-market="${idx}" data-field="sale_price_multiplier" value="${m.sale_price_multiplier}">
-          <input class="input" style="flex:1;" type="number" step="0.01" data-market="${idx}" data-field="build_cost_multiplier" value="${m.build_cost_multiplier}">
-          <select class="input" style="flex:1;" data-market="${idx}" data-field="demand_outlook">
-            ${["soft","stable","strong"].map(o => `<option value="${o}" ${m.demand_outlook === o ? "selected" : ""}>${o}</option>`).join("")}
-          </select>
-          <button class="btn small danger" data-remove-market="${idx}" ${m.id === "default" ? "disabled" : ""}>Remove</button>
+      <h3>Markets</h3>
+      <div class="panel-subtitle">Sale price + build cost elasticity by region. Each project tags a market; multipliers apply on top of base $/sqft.</div>
+      <div class="grid-table markets-table">
+        <div class="grid-table-head">
+          <div>Market</div>
+          <div class="num">Sale ×</div>
+          <div class="num">Build ×</div>
+          <div>Demand</div>
+          <div></div>
         </div>
-      `).join("")}
-      <button class="btn small mt-16" id="add-market">+ Add market</button>
+        ${(g.markets || []).map((m, idx) => `
+          <div class="grid-table-row">
+            <input class="input" type="text" data-market="${idx}" data-field="name" value="${m.name}">
+            <input class="input num" type="number" step="0.01" data-market="${idx}" data-field="sale_price_multiplier" value="${m.sale_price_multiplier}">
+            <input class="input num" type="number" step="0.01" data-market="${idx}" data-field="build_cost_multiplier" value="${m.build_cost_multiplier}">
+            <select class="input" data-market="${idx}" data-field="demand_outlook">
+              ${["soft","stable","strong"].map(o => `<option value="${o}" ${m.demand_outlook === o ? "selected" : ""}>${o}</option>`).join("")}
+            </select>
+            <button class="btn small ghost row-remove-btn" data-remove-market="${idx}" ${m.id === "default" ? "disabled" : ""} title="Remove market" aria-label="Remove ${escapeHtml(m.name)}">✕</button>
+          </div>
+        `).join("")}
+      </div>
+      <div class="row gap-sm mt-16">
+        <button class="btn small secondary" id="add-market">+ Add market</button>
+      </div>
     </div>
 
     <div class="panel mb-24">
-      <h3>Investors</h3>
-      <div class="panel-subtitle">Capital structure of the equity stack. Total equity share should sum to 100%.</div>
-      <div class="row gap-sm wrap" style="font-size:11px;color:var(--fg-3);font-weight:500;letter-spacing:0.02em;border-bottom:1px solid var(--border);padding-bottom:4px;">
-        <div style="flex:2;">Name</div>
-        <div style="flex:1;">Share</div>
-        <div style="flex:1;">Pref</div>
-        <div style="flex:1;">Hurdle</div>
-        <div style="flex:1;">Carry</div>
-        <div style="flex:1;">Tax rate</div>
-        <div style="flex:1;">Role</div>
-        <div style="width:72px;"></div>
-      </div>
-      ${(g.investors || []).map((inv, idx) => `
-        <div class="row gap-sm wrap" style="padding:8px 0;border-bottom:1px solid var(--border);">
-          <input class="input" style="flex:2;" type="text" data-investor="${idx}" data-field="name" value="${inv.name}" placeholder="Investor name">
-          <input class="input" style="flex:1;" type="number" step="0.01" data-investor="${idx}" data-field="equity_share_pct" value="${inv.equity_share_pct}">
-          <input class="input" style="flex:1;" type="number" step="0.01" data-investor="${idx}" data-field="preferred_return_pct" value="${inv.preferred_return_pct}">
-          <input class="input" style="flex:1;" type="number" step="0.01" data-investor="${idx}" data-field="hurdle_pct" value="${inv.hurdle_pct}">
-          <input class="input" style="flex:1;" type="number" step="0.01" data-investor="${idx}" data-field="carry_pct" value="${inv.carry_pct ?? 0.20}">
-          <input class="input" style="flex:1;" type="number" step="0.01" data-investor="${idx}" data-field="tax_rate_pct" value="${inv.tax_rate_pct ?? 0.255}">
-          <select class="input" style="flex:1;" data-investor="${idx}" data-field="is_sponsor">
-            <option value="true" ${inv.is_sponsor?"selected":""}>Sponsor</option>
-            <option value="false" ${!inv.is_sponsor?"selected":""}>LP</option>
-          </select>
-          <button class="btn small danger" data-remove-investor="${idx}">Remove</button>
+      <h3>Shareholders &amp; cap table</h3>
+      <div class="panel-subtitle">Capital structure of the equity stack. Equity share should sum to 100% — current total: <strong>${((g.investors || []).reduce((a,b)=>a+(b.equity_share_pct||0), 0) * 100).toFixed(1)}%</strong>.</div>
+      <div class="grid-table investors-table">
+        <div class="grid-table-head">
+          <div>Name</div>
+          <div class="num">Share</div>
+          <div class="num">Pref</div>
+          <div class="num">Hurdle</div>
+          <div class="num">Carry</div>
+          <div class="num">Tax</div>
+          <div>Role</div>
+          <div></div>
         </div>
-      `).join("")}
-      <button class="btn small mt-16" id="add-investor">+ Add investor</button>
-      <div class="hint mt-16">Equity share sum: ${((g.investors || []).reduce((a,b)=>a+(b.equity_share_pct||0), 0) * 100).toFixed(1)}%</div>
+        ${(g.investors || []).map((inv, idx) => `
+          <div class="grid-table-row">
+            <input class="input" type="text" data-investor="${idx}" data-field="name" value="${inv.name}" placeholder="Shareholder name">
+            <input class="input num" type="number" step="0.001" data-investor="${idx}" data-field="equity_share_pct" value="${inv.equity_share_pct}">
+            <input class="input num" type="number" step="0.01" data-investor="${idx}" data-field="preferred_return_pct" value="${inv.preferred_return_pct}">
+            <input class="input num" type="number" step="0.01" data-investor="${idx}" data-field="hurdle_pct" value="${inv.hurdle_pct}">
+            <input class="input num" type="number" step="0.01" data-investor="${idx}" data-field="carry_pct" value="${inv.carry_pct ?? 0.20}">
+            <input class="input num" type="number" step="0.001" data-investor="${idx}" data-field="tax_rate_pct" value="${inv.tax_rate_pct ?? 0.255}">
+            <select class="input" data-investor="${idx}" data-field="is_sponsor">
+              <option value="true" ${inv.is_sponsor?"selected":""}>Sponsor</option>
+              <option value="false" ${!inv.is_sponsor?"selected":""}>Owner</option>
+            </select>
+            <button class="btn small ghost row-remove-btn" data-remove-investor="${idx}" title="Remove shareholder" aria-label="Remove ${escapeHtml(inv.name)}">✕</button>
+          </div>
+        `).join("")}
+      </div>
+      <div class="row gap-sm mt-16">
+        <button class="btn small secondary" id="add-investor">+ Add shareholder</button>
+        <button class="btn small ghost" id="restore-cap-table" title="Reset to the Juno baseline cap table (Peter 38% · Lars 30% · Viktor 17% · Philip 5% · Missy 5% · Massi 2.5% · Mark 2.5%)">↺ Restore Juno cap table</button>
+      </div>
 
-      <h3 style="margin-top:24px;">Hypothetical co-investor</h3>
-      <div class="panel-subtitle">Simulate bringing in an LP at a given equity share. Shows up on the Waterfall view when share > 0.</div>
+      <h3 style="margin-top:32px;">Hypothetical co-investor</h3>
+      <div class="panel-subtitle">Simulate bringing in an LP at a given equity share. Shows up on the Waterfall view when share &gt; 0.</div>
       <div class="form-grid">
         ${f("hypothetical_lp_share_pct","LP equity share")}
         ${f("hypothetical_lp_pref_pct","LP preferred return")}
@@ -4330,23 +4339,6 @@ function renderSettings() {
       </div>
     </div>
 
-    <div class="panel mb-24">
-      <h3>Source traceability</h3>
-      <p class="muted" style="font-size:12px;">Each driver maps to a cell in the Excel model. See <code>data.js</code> comments for source pointers.</p>
-      <table class="tbl">
-        <thead><tr><th>Driver</th><th>Excel source</th><th>Default</th><th>Current</th></tr></thead>
-        <tbody>
-          <tr><td>Interest rate APR</td><td>Project 2-11!M16 (each hardcoded)</td><td>9.5%</td><td>${fmt.pct(g.interest_rate_apr)}</td></tr>
-          <tr><td>LTC (build / Kingshaus / soft)</td><td>Project 2-11!M17</td><td>75%</td><td>${fmt.pct(g.ltc_pct)}</td></tr>
-          <tr><td>LTC (land)</td><td>Implicit — calibrated to Excel Juno Forecast row 82 peak $7.7M</td><td>48%</td><td>${fmt.pct(g.ltc_land_pct)}</td></tr>
-          <tr><td>Build $/sqft default</td><td>Summary!D91</td><td>$470</td><td>${fmt.usd(g.default_build_cost_per_sqft)}</td></tr>
-          <tr><td>Target margin</td><td>Summary!D96</td><td>25%</td><td>${fmt.pct(g.target_margin)}</td></tr>
-          <tr><td>Default land cost</td><td>Summary!O42</td><td>$2.2M</td><td>${fmt.usdM(g.default_land_cost_usd)}</td></tr>
-          <tr><td>Default program months</td><td>Summary!F34:O34</td><td>13</td><td>${g.default_program_months}</td></tr>
-          <tr><td>Annual OPEX</td><td>Juno Forecast row 15 (annualized)</td><td>$475k</td><td>${fmt.usd(g.annual_opex_usd)}</td></tr>
-        </tbody>
-      </table>
-    </div>
   `;
 }
 
@@ -4760,8 +4752,17 @@ function attachViewEvents(result) {
     });
   }
   document.getElementById("add-investor")?.addEventListener("click", () => {
-    const investors = [...(state.globals.investors || []), { id: `inv${Date.now()}`, name: "New investor", equity_share_pct: 0, preferred_return_pct: 0.08, hurdle_pct: 0.20 }];
+    const investors = [...(state.globals.investors || []), { id: `inv${Date.now()}`, name: "New shareholder", equity_share_pct: 0, preferred_return_pct: 0, hurdle_pct: 0, carry_pct: 0, tax_rate_pct: 0.255, is_sponsor: false }];
     updateGlobal("investors", investors);
+  });
+  document.getElementById("restore-cap-table")?.addEventListener("click", () => {
+    confirmDialog({
+      title: "Restore the Juno cap table?",
+      message: "This replaces the current shareholder list with the canonical 7-owner split: Peter 38% · Lars 30% · Viktor 17% · Philip 5% · Missy 5% · Massi 2.5% · Mark 2.5%. Other settings (markets, projects, scenarios) stay untouched.",
+      confirmLabel: "Restore cap table",
+      cancelLabel: "Cancel",
+      onConfirm: () => restoreCapTable(),
+    });
   });
 
   // Settings: theme buttons + reset + export

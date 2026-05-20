@@ -468,25 +468,27 @@ button.btn.small {
 .settings-drawer-body .panel {
   background: transparent;
   border: none;
-  border-bottom: 1px solid var(--border-subtle);
   border-radius: 0;
-  padding: 20px 24px;
+  padding: 28px 24px;
   box-shadow: none;
   margin-bottom: 0;
+  border-bottom: 8px solid var(--surface-card);  /* thick divider between sections */
 }
 .settings-drawer-body .panel:last-child { border-bottom: none; }
 .settings-drawer-body .panel h3 {
-  font-size: 14px;
-  font-weight: 600;
+  /* v14.22 — Make subsection headers more prominent (user feedback).
+     Larger, bolder, with extra top margin to separate sections clearly. */
+  font-size: 18px;
+  font-weight: 700;
   color: var(--text-primary);
-  letter-spacing: -0.005em;
-  margin: 0 0 4px 0;
+  letter-spacing: -0.015em;
+  margin: 0 0 6px 0;
 }
 .settings-drawer-body .panel h3 + .panel-subtitle,
 .settings-drawer-body .panel-subtitle {
   font-size: 12px;
   color: var(--text-tertiary);
-  margin: 0 0 14px 0;
+  margin: 0 0 18px 0;
   line-height: 1.4;
 }
 
@@ -536,21 +538,86 @@ button.btn.small {
   margin-top: 20px;
 }
 
-/* Action button rows (e.g. Data management exports) get cleaner spacing */
-.settings-drawer-body .row.gap-sm.wrap {
+/* Data management action buttons stack full-width — better tap targets,
+   easier scanning. Scoped to .data-mgmt-actions so it doesn't break the
+   Markets/Investors data rows (which also used .row.gap-sm.wrap). */
+.settings-drawer-body .data-mgmt-actions {
+  display: flex;
   flex-direction: column;
-  align-items: stretch;
   gap: 8px;
 }
-.settings-drawer-body .row.gap-sm.wrap .btn {
+.settings-drawer-body .data-mgmt-actions .btn {
   justify-content: flex-start;
   width: 100%;
 }
 
-/* Markets / Investors tables — convert horizontal-flex rows into a denser
-   layout that fits the narrow drawer */
-.settings-drawer-body [data-market],
-.settings-drawer-body [data-investor] { font-size: 12px; }
+/* === Grid tables (Markets, Shareholders) ===
+   CSS-grid alignment so header columns and data inputs share the exact
+   same template. Inputs are quiet (no chrome) until focused, so the
+   table reads as an editable spreadsheet rather than a wall of boxes. */
+.settings-drawer-body .grid-table { display: flex; flex-direction: column; }
+.settings-drawer-body .grid-table-head,
+.settings-drawer-body .grid-table-row {
+  display: grid;
+  align-items: center;
+  gap: 8px;
+}
+.settings-drawer-body .grid-table-head {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0 0 8px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.settings-drawer-body .grid-table-head .num,
+.settings-drawer-body .grid-table-row .num { text-align: right; }
+.settings-drawer-body .grid-table-row {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.settings-drawer-body .grid-table-row:last-child { border-bottom: none; }
+.settings-drawer-body .grid-table-row .input {
+  height: 32px;
+  font-size: 13px;
+  border-color: transparent;
+  background: transparent;
+  padding: 4px 8px;
+  font-variant-numeric: tabular-nums;
+}
+.settings-drawer-body .grid-table-row .input:hover { background: var(--surface-card); }
+.settings-drawer-body .grid-table-row .input:focus {
+  background: var(--surface-card-elev);
+  border-color: var(--accent-500);
+  outline: none;
+}
+.settings-drawer-body .grid-table-row .input.num { text-align: right; }
+.settings-drawer-body .grid-table-row .row-remove-btn {
+  height: 28px;
+  width: 28px;
+  padding: 0;
+  color: var(--text-tertiary);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  opacity: 0;
+  transition: opacity 120ms ease, color 120ms ease, background 120ms ease;
+}
+.settings-drawer-body .grid-table-row:hover .row-remove-btn { opacity: 1; }
+.settings-drawer-body .grid-table-row .row-remove-btn:hover { color: var(--negative-500); background: var(--negative-50); }
+.settings-drawer-body .grid-table-row .row-remove-btn:disabled { display: none; }
+
+/* Markets: 5 columns. Name takes the most room. */
+.settings-drawer-body .markets-table .grid-table-head,
+.settings-drawer-body .markets-table .grid-table-row {
+  grid-template-columns: 1.6fr 70px 70px 1fr 32px;
+}
+
+/* Shareholders: 8 columns. Name + Role get more room; numbers are tight. */
+.settings-drawer-body .investors-table .grid-table-head,
+.settings-drawer-body .investors-table .grid-table-row {
+  grid-template-columns: 1.4fr 60px 50px 60px 50px 60px 1fr 32px;
+}
 
 /* Tables inside drawer (History, Suggestions, Users) */
 .settings-drawer-body table.tbl { font-size: 12px; }
