@@ -20,6 +20,62 @@ import {
   askAssistant, fetchPendingSuggestions, reviewSuggestion, fetchMyLlmQuota,
 } from "./supabase.js";
 
+// ---------- toast system ----------
+// Imperative, DOM-only. The toast region is a persistent element appended to
+// <body> once — it survives the root().innerHTML wipe on every render().
+// showToast() is called from event handlers and sync-status transitions.
+
+let _toastIdSeq = 0;
+let _prevSyncStatus = null;
+
+function initToastRegion() {
+  if (document.getElementById("ja-toast-region")) return;
+  const el = document.createElement("div");
+  el.id = "ja-toast-region";
+  el.className = "ja-toast-region";
+  el.setAttribute("role", "region");
+  el.setAttribute("aria-live", "polite");
+  el.setAttribute("aria-label", "Notifications");
+  document.body.appendChild(el);
+}
+
+function showToast({ title, description = "", variant = "default", duration = 5000 }) {
+  const region = document.getElementById("ja-toast-region");
+  if (!region) return;
+  const id = `toast-${++_toastIdSeq}`;
+  const el = document.createElement("div");
+  el.id = id;
+  el.className = `ja-toast ja-toast--${variant}`;
+  el.setAttribute("role", "status");
+  el.innerHTML = `
+    <div class="ja-toast__content">
+      <p class="ja-toast__title">${escapeHtml(title)}</p>
+      ${description ? `<p class="ja-toast__description">${escapeHtml(description)}</p>` : ""}
+    </div>
+    <button class="ja-toast__dismiss" aria-label="Dismiss notification">✕</button>`;
+  region.appendChild(el);
+  const dismiss = () => {
+    el.setAttribute("data-exiting", "");
+    el.addEventListener("animationend", () => el.remove(), { once: true });
+  };
+  el.querySelector(".ja-toast__dismiss").addEventListener("click", dismiss);
+  if (duration > 0) setTimeout(dismiss, duration);
+}
+
+// ---------- empty-state helper ----------
+// Returns a .ja-empty-state block. Pass actionId to wire a CTA button.
+function emptyState({ icon = "○", title, description = "", actionLabel = "", actionId = "" } = {}) {
+  const action = (actionLabel && actionId)
+    ? `<button class="ja-empty-state__action" id="${escapeHtml(actionId)}">${escapeHtml(actionLabel)}</button>`
+    : "";
+  return `<div class="ja-empty-state" role="status" aria-label="${escapeHtml(title)}">
+    <div class="ja-empty-state__icon" aria-hidden="true">${icon}</div>
+    <p class="ja-empty-state__title">${escapeHtml(title)}</p>
+    ${description ? `<p class="ja-empty-state__description">${escapeHtml(description)}</p>` : ""}
+    ${action}
+  </div>`;
+}
+
 // ---------- formatting helpers ----------
 
 const fmt = {
@@ -194,6 +250,22 @@ export function render() {
     return;
   }
   // Signed in: full app
+  initToastRegion(); // idempotent — creates the persistent toast container once
+
+  // Fire toasts on sync status transitions (error, conflict, offline).
+  // "saved" transitions stay quiet — the topbar sync label handles that.
+  const _curSyncStatus = state.sync.status;
+  if (_prevSyncStatus !== null && _prevSyncStatus !== _curSyncStatus) {
+    if (_curSyncStatus === "error") {
+      showToast({ title: "Save failed", description: state.sync.last_error || "Changes couldn't be saved. Try again.", variant: "negative" });
+    } else if (_curSyncStatus === "conflict") {
+      showToast({ title: "Sync conflict", description: "Another editor saved concurrently. Reloading latest.", variant: "warning" });
+    } else if (_curSyncStatus === "offline") {
+      showToast({ title: "You're offline", description: "Changes are cached locally and will sync when reconnected.", variant: "warning", duration: 8000 });
+    }
+  }
+  _prevSyncStatus = _curSyncStatus;
+
   const result = aggregatePortfolio(state.projects, state.globals, state.scenario);
   const topbar = renderTopbar();
   const main = renderView(result);
@@ -1216,21 +1288,18 @@ function renderProjectTilesGrouped(by_project) {
 // Empty state for a brand new account with zero projects.
 function renderPortfolioEmpty() {
   const canCreate = canEdit();
-  return `<div class="portfolio-empty">
-    <div class="portfolio-empty-card">
-      <div class="brand">Juno <span>Atlas</span></div>
-      <h1>Our development portfolio. One place.</h1>
-      <p class="muted">Create a project, enter assumptions, and Atlas generates cash flow, P&amp;L, debt, equity, and risk automatically.</p>
-      ${canCreate ? `
-        <div class="row gap-sm" style="margin-top:24px;justify-content:center;">
-          <button class="btn" id="portfolio-empty-create-btn">+ Create your first project</button>
-          <button class="btn secondary" id="portfolio-empty-import-btn">Import from CSV</button>
-          <input type="file" id="portfolio-empty-import-file" accept=".csv,text/csv" style="display:none;">
-        </div>
-        <div class="portfolio-empty-templates muted">
-          Quick-start templates coming in Phase 4: Spec home · Ground-up development · Renovation / value-add
-        </div>
-      ` : `<div class="muted" style="margin-top:16px;font-size:12px;">No projects to display yet. Ask an editor or admin to create the first project.</div>`}
+  const actions = canCreate ? `
+    <div class="row gap-sm" style="margin-top:4px;justify-content:center;flex-wrap:wrap;">
+      <button class="ja-empty-state__action" id="portfolio-empty-create-btn">+ New project</button>
+      <button class="ja-empty-state__action" id="portfolio-empty-import-btn">Import CSV</button>
+      <input type="file" id="portfolio-empty-import-file" accept=".csv,text/csv" style="display:none;">
+    </div>` : `<p class="ja-empty-state__description" style="margin:0;">Ask an editor or admin to create the first project.</p>`;
+  return `<div class="portfolio-empty" style="display:flex;align-items:center;justify-content:center;min-height:60vh;">
+    <div class="ja-empty-state" style="max-width:420px;">
+      <div class="ja-empty-state__icon" aria-hidden="true" style="font-size:28px;width:64px;height:64px;">⊕</div>
+      <h1 class="ja-empty-state__title" style="font-size:var(--font-size-xl);">Your development portfolio</h1>
+      <p class="ja-empty-state__description">Create a project, enter assumptions, and Atlas generates cash flow, P&amp;L, debt, equity, and risk automatically.</p>
+      ${actions}
     </div>
   </div>`;
 }
@@ -4810,7 +4879,7 @@ function renderActivity() {
     </div>
     <div class="panel">
       ${log.length === 0
-        ? `<div class="note">No activity logged yet. Make changes to projects, scenarios, or globals — they'll appear here.</div>`
+        ? emptyState({ icon: "◷", title: "No activity yet", description: "Changes to projects, scenarios, and globals are logged here as you edit." })
         : `<div class="scroll-x"><table class="tbl">
             <thead><tr><th style="width:170px;">Timestamp</th><th>Type</th><th>Action</th><th>Detail</th></tr></thead>
             <tbody>${rows}</tbody>
@@ -5718,6 +5787,7 @@ function attachViewEvents(result) {
     const name = document.getElementById("scn-name").value.trim() || "Unnamed";
     const classification = document.getElementById("scn-class")?.value || state.scenario.class || "custom";
     saveCurrentScenario(name, classification);
+    showToast({ title: "Scenario saved", description: `"${name}" added to saved scenarios.`, variant: "positive" });
   });
   // v14.8 (Phase 3.2) — Duplicate / classify / lock controls
   document.getElementById("scn-duplicate")?.addEventListener("click", () => {
@@ -6055,8 +6125,7 @@ function renderWizardCosts(d) {
       </div>
     </div>
     <div class="note" style="margin-top:18px;">
-      <strong>Coming soon:</strong> upload an Excel or CSV cost breakdown directly into the wizard. For now,
-      detailed line-item costs go on the Inputs tab after the project is created.
+      <strong>Pro tip:</strong> for detailed line-item costs (CSI takeoff, scope by trade), open the Inputs tab after the project is created.
     </div>
   `;
 }
