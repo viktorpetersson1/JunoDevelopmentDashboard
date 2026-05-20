@@ -2391,6 +2391,23 @@ tr.drag-over-after td { border-bottom: 2px solid var(--accent); }
   border-radius: var(--radius-sm);
   background: var(--surface-2);
 }
+
+/* v14.31 — Wizard bulk-import affordance on the Basics step.
+   Quiet inline row: label + button. Replaces the standalone "Import CSV"
+   buttons that used to live in the Portfolio + Projects-list headers. */
+.wizard-import-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+}
+.wizard-import-row > div { min-width: 0; flex: 1; }
+.wizard-import-row .btn { flex-shrink: 0; white-space: nowrap; }
 .wizard-templates-label {
   font-size: 10px;
   font-weight: 600;

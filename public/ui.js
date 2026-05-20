@@ -1074,8 +1074,6 @@ function renderPortfolio(r) {
       </div>
       ${canEdit() ? `<div class="row gap-sm wrap">
         <button class="btn" id="portfolio-new-project-btn">+ New project</button>
-        <button class="btn secondary" id="portfolio-import-btn">Import CSV</button>
-        <input type="file" id="portfolio-import-file" accept=".csv,text/csv" style="display:none;">
       </div>` : ""}
     </div>
 
@@ -1308,8 +1306,6 @@ function renderProjectsList(r) {
       <div class="section-title" style="margin:0;">Projects (${state.projects.length})</div>
       <div class="row gap-sm">
         <button class="btn" id="add-project-btn">+ Add project</button>
-        <button class="btn secondary" id="import-csv-btn">Import CSV</button>
-        <input type="file" id="import-csv-file" accept=".csv,text/csv" style="display:none;">
       </div>
     </div>
     <div class="panel projects-table-mobile-cards">
@@ -4975,6 +4971,9 @@ function attachViewEvents(result) {
   }
 
   // Import CSV button + file picker
+  // v14.31 — Projects-list Import CSV button removed (moved into wizard).
+  // The handler below targets a now-orphan ID; left as a defensive no-op
+  // in case any legacy markup is still in the wild.
   document.getElementById("import-csv-btn")?.addEventListener("click", () => document.getElementById("import-csv-file")?.click());
   document.getElementById("import-csv-file")?.addEventListener("change", async (e) => {
     const file = e.target.files?.[0];
@@ -5627,6 +5626,16 @@ function renderWizardBasics(d) {
   return `
     <h2>Project basics</h2>
     <p class="muted">Identify the project. Only the name is required — the rest can be filled in later.</p>
+
+    <div class="wizard-import-row">
+      <div>
+        <strong style="font-size:13px;">Bulk import?</strong>
+        <div class="muted" style="font-size:12px;margin-top:2px;">Got a CSV with multiple projects? Skip the wizard and import them all at once.</div>
+      </div>
+      <button type="button" class="btn small secondary" id="wizard-import-csv-btn">⤓ Import from CSV</button>
+      <input type="file" id="wizard-import-csv-file" accept=".csv,text/csv" style="display:none;">
+    </div>
+
     ${templatePicker}
     <div class="form-grid">
       <div class="form-row full">
@@ -6129,6 +6138,31 @@ function attachWizardEvents() {
     const id = submitWizardDraft();
     if (id) setView("project_detail", id);
   });
+
+  // v14.31 — Bulk CSV import from inside the wizard. Bypasses the
+  // single-project flow when the user already has a spreadsheet with
+  // multiple projects. After a successful import, close the wizard and
+  // route the user to the Projects list to verify.
+  const wizardImportBtn = document.getElementById("wizard-import-csv-btn");
+  const wizardImportFile = document.getElementById("wizard-import-csv-file");
+  if (wizardImportBtn && wizardImportFile) {
+    wizardImportBtn.addEventListener("click", () => wizardImportFile.click());
+    wizardImportFile.addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const text = await file.text();
+      const result = importProjectsFromCSV(text);
+      e.target.value = "";
+      if (!result.ok) {
+        alert(`Import failed: ${result.error}\n\nRequired columns: name, start_date (YYYY-MM), villa_sqft, land_cost_usd.\nOptional: address, status, program_months, build_cost_per_sqft, target_margin, interest_rate_apr, ltc_pct, soft_costs_lump_sum, sale_price_override_usd, sale_price_per_sqft_override.`);
+        return;
+      }
+      // Discard the wizard draft (user chose bulk import instead) and close
+      discardWizardDraft();
+      alert(`Imported ${result.added.length} project${result.added.length === 1 ? "" : "s"}.`);
+      setView("projects");
+    });
+  }
 
   // v14.24 — Other fees: add / edit / remove
   document.getElementById("add-other-fee")?.addEventListener("click", () => {
