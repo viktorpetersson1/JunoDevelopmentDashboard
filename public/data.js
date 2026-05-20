@@ -41,7 +41,7 @@ export const BASELINE_GLOBALS = {
   cash_equity_ratio: 0.25,                  // source: Project 2-11!M19
   equity_at_closing_pct: 0.75,              // source: Project 2-11!M18 (0.75; P2 = 1.00)
   default_build_cost_per_sqft: 470,         // source: Summary!D91
-  default_kingshaus_cost_per_sqft: 93,      // derived: 6 GC Total Kingshaus 514,099 / typical 5,500 sqft villa
+  default_kingshaus_cost_per_sqft: 0,       // v14.28 — Kingshaus removed as a separate variable. Rolled into build cost.
   // v5: 6 GC unit costs from [1]6 GC - SE Costs.xlsx external link, used per villa (not per sqft)
   kingshaus_breakdown_per_villa: {
     panels_materials: 74577,

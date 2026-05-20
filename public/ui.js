@@ -1233,7 +1233,6 @@ function renderAnnualTable(r) {
     ["Sales", "sales", "pos"],
     ["Land cost", "land", "neg"],
     ["Construction", "build", "neg"],
-    ["Kingshaus", "kingshaus", "neg"],
     ["Soft costs", "soft", "neg"],
     ["Overheads", "opex", "neg"],
     ["Financing", "interest", "neg"],
@@ -1609,7 +1608,6 @@ function renderSourcesUses(p, res) {
   const uses = [
     { label: "Land",                              value: -res.monthly.land_cost.reduce((a,b)=>a+b,0) },
     { label: "Construction",                      value: -res.monthly.build_cost.reduce((a,b)=>a+b,0) },
-    { label: "Kingshaus / superstructure",        value: -res.monthly.kingshaus.reduce((a,b)=>a+b,0) },
     { label: "Soft costs",                        value: -res.monthly.soft_cost.reduce((a,b)=>a+b,0) },
     { label: "Financing (interest + fees)",       value: k.total_interest },
   ];
@@ -1733,13 +1731,11 @@ function renderActualsVariance(p, res) {
   }
   const land_forecast = -res.monthly.land_cost.reduce((a, b) => a + b, 0);
   const build_forecast = -res.monthly.build_cost.reduce((a, b) => a + b, 0);
-  const king_forecast = -res.monthly.kingshaus.reduce((a, b) => a + b, 0);
   const soft_forecast = -res.monthly.soft_cost.reduce((a, b) => a + b, 0);
   const fin_forecast = -res.monthly.interest.reduce((a, b) => a + b, 0);
   const rows = [
     ["Land",         land_forecast,  actuals.land || 0],
     ["Construction", build_forecast, actuals.construction || 0],
-    ["Kingshaus",    king_forecast,  actuals.kingshaus || 0],
     ["Soft costs",   soft_forecast,  actuals.soft || 0],
     ["Financing",    fin_forecast,   actuals.financing || 0],
   ];
@@ -1782,7 +1778,7 @@ function renderProjectForm(p, res) {
   const f = (key, label, type = "number", step = "any", attrs = "") => {
     const raw = p[key];
     const value = raw == null ? "" : raw;
-    const isOverride = ["build_cost_per_sqft","kingshaus_cost_per_sqft","target_margin","interest_rate_apr","ltc_pct"].includes(key);
+    const isOverride = ["build_cost_per_sqft","target_margin","interest_rate_apr","ltc_pct"].includes(key);
     const emptyHint = isOverride && raw == null ? "global default" : "";
     return `
       <div class="form-row">
@@ -1809,7 +1805,6 @@ function renderProjectForm(p, res) {
       ${f("villa_sqft","Villa sqft","number","10")}
       ${f("land_cost_usd","Land cost (USD)","number","1000")}
       ${f("build_cost_per_sqft","Build $/sqft")}
-      ${f("kingshaus_cost_per_sqft","Kingshaus $/sqft")}
       ${f("target_margin","Target margin")}
       ${f("interest_rate_apr","Interest APR")}
       ${f("ltc_pct","LTC")}
@@ -1830,7 +1825,7 @@ function renderProjectForm(p, res) {
     <details style="margin-top:16px;" ${(p.actuals && Object.values(p.actuals).some(v => v > 0)) ? "open" : ""}>
       <summary style="cursor:pointer;font-size:12px;color:var(--fg-2);font-weight:500;">Actuals — cost paid to date (vs forecast)</summary>
       <div class="form-grid" style="margin-top:10px;">
-        ${["land","construction","kingshaus","soft","financing"].map(k =>
+        ${["land","construction","soft","financing"].map(k =>
           `<div class="form-row"><label>${k.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())} actual (USD)</label>
             <input class="input" data-actual="${k}" type="number" step="1000" value="${p.actuals?.[k] ?? 0}"></div>`
         ).join("")}
@@ -2031,43 +2026,111 @@ function renderProjectInputs(p, res) {
     inputRow({ label: "Soft costs (lump sum)", unit: "USD", field: "soft_costs_lump_sum", value: p.soft_costs_lump_sum ?? 0, kind: "project-required", projectId: p.id, type: "number", helper: "Permits, design, legal, etc. Used unless the soft-cost breakdown below has nonzero values." }),
   ]);
 
-  const kingshaus = inputsSection("Kingshaus / superstructure", "Prefab timber panel + Kingshaus contribution.", [
-    inputRow({ label: "Kingshaus cost", unit: "$/sqft", field: "kingshaus_cost_per_sqft", value: p.kingshaus_cost_per_sqft, kind: "project-override", projectId: p.id, type: "number", placeholder: `Default: $${g.default_kingshaus_cost_per_sqft}` }),
-  ]);
+  // v14.28 — Kingshaus section removed. Build cost should now include
+  // anything that used to be tracked separately (prefab panel, superstructure).
+  const kingshaus = "";
 
-  // v14.25 — Full per-project financing block (matches the wizard's
-  // Financing step). Lender + senior loan + standard fees + other fees.
+  // v14.28 — Combined Finance section: lender + standard fees + Other fees
+  // (free-form, addable) + a totals summary (Total lending / Total interest /
+  // Total other financing costs / All-in cost of financing).
   const otherFees = Array.isArray(p.other_fees) ? p.other_fees : [];
-  const financing = inputsSection("Financing", "Senior construction debt. KPC LOC ($6M @ 6%) is modeled portfolio-wide and shown on the Capital screen.", [
+
+  // Compute live finance numbers for the totals summary
+  const _land = p.land_cost_usd ?? g.default_land_cost_usd;
+  const _bpsf = p.build_cost_per_sqft ?? g.default_build_cost_per_sqft;
+  const _build = _bpsf * totalSqft;
+  const _cont = (_land + _build) * (p.contingency_pct ?? g.contingency_pct ?? 0.05);
+  const _close = p.closing_costs_usd ?? 0;
+  const _reserve = p.interest_reserve_usd ?? 0;
+  const _ltv = p.senior_ltv_pct ?? 0.75;
+  const _ltcBase = _land + _build + _cont + _close + _reserve;
+  const _seniorLoan = Math.round(_ltcBase * _ltv);
+  const _orig = (p.origination_fee_pct ?? 0.01) * _seniorLoan;
+  const _exit = (p.exit_fee_pct ?? 0.005) * _seniorLoan;
+  const _servicing = p.loan_servicing_fee_usd ?? 0;
+  const _otherFeesTotal = otherFees.reduce((a, f) => a + (Number(f.amount_usd) || 0), 0);
+  const _otherFinanceFees = _orig + _exit + _servicing + _otherFeesTotal;
+  const _interest = res?.kpis?.total_interest || 0;
+  const _allInFinanceCost = _interest + _otherFinanceFees;
+
+  // Finance terms rows (lender, LTV, interest rate, contingency)
+  const financeTermsRows = [
     inputRow({ label: "Lender name", field: "lender_name", value: p.lender_name || "", kind: "project-override", projectId: p.id, placeholder: "e.g. Harrison Capital (USCNYC)" }),
     inputRow({ label: "Loan-to-cost", unit: "LTV (decimal)", field: "senior_ltv_pct", value: p.senior_ltv_pct ?? 0.75, kind: "project-required", projectId: p.id, type: "number", helper: "Applied to LTC base (land + build + contingency + closing + interest reserve)." }),
     inputRow({ label: "Interest rate", unit: "APR (decimal)", field: "interest_rate_apr", value: p.interest_rate_apr, kind: "project-override", projectId: p.id, type: "number", placeholder: `Default: ${g.interest_rate_apr}`, helper: `Default ${(g.interest_rate_apr * 100).toFixed(2)}%.` }),
     inputRow({ label: "Contingency", unit: "% of hard cost", field: "contingency_pct", value: p.contingency_pct, kind: "project-override", projectId: p.id, type: "number", placeholder: `Default: ${g.contingency_pct}` }),
+  ];
+
+  // Fee rows (origination, exit, interest reserve, servicing, closing)
+  const feeRows = [
     inputRow({ label: "Origination fee", unit: "% of loan", field: "origination_fee_pct", value: p.origination_fee_pct ?? 0.01, kind: "project-required", projectId: p.id, type: "number" }),
     inputRow({ label: "Exit fee", unit: "% of loan", field: "exit_fee_pct", value: p.exit_fee_pct ?? 0.005, kind: "project-required", projectId: p.id, type: "number" }),
     inputRow({ label: "Interest reserve", unit: "USD", field: "interest_reserve_usd", value: p.interest_reserve_usd ?? 0, kind: "project-required", projectId: p.id, type: "number", helper: "Pre-funded at closing. Financed by the loan." }),
     inputRow({ label: "Loan servicing fee", unit: "USD", field: "loan_servicing_fee_usd", value: p.loan_servicing_fee_usd ?? 0, kind: "project-required", projectId: p.id, type: "number" }),
     inputRow({ label: "Closing costs", unit: "USD", field: "closing_costs_usd", value: p.closing_costs_usd ?? 0, kind: "project-required", projectId: p.id, type: "number", helper: "Transfer tax, recording, title, legal, appraisal, environmental." }),
-  ]);
+  ];
 
-  // v14.25 — Other fees editor (per-project, free-form description + amount).
-  const otherFeesHtml = `
-    <div class="panel inputs-section">
-      <h3>Other fees</h3>
-      <div class="panel-subtitle">Custom financing or transaction fees specific to this project (e.g. broker fee, environmental study, RE attorney).</div>
-      <div class="other-fees">
-        ${otherFees.length === 0 ? `<div class="other-fees-empty muted">No other fees. Click below to add one.</div>` : ""}
-        ${otherFees.map((f, idx) => `
-          <div class="other-fee-row">
-            <input class="input" type="text" data-project-other-fee="${idx}" data-other-field="description" value="${escapeHtml(f.description || "")}" placeholder="Description">
-            <input class="input num" type="number" inputmode="decimal" step="100" min="0" data-project-other-fee="${idx}" data-other-field="amount_usd" value="${f.amount_usd || 0}">
-            <button class="btn small ghost row-remove-btn" data-remove-project-other-fee="${idx}" title="Remove fee" aria-label="Remove fee">✕</button>
-          </div>
-        `).join("")}
-        <button class="btn small secondary mt-12" id="add-project-other-fee">+ Add other fee</button>
+  // Other fees editor — inline rows + Add button — now lives INSIDE the Finance section
+  const otherFeesEditor = `
+    <div class="finance-subhead">Other financing fees</div>
+    <div class="other-fees">
+      ${otherFees.length === 0 ? `<div class="other-fees-empty muted">None. Add custom fees (broker, environmental, attorney, etc.) below.</div>` : ""}
+      ${otherFees.map((f, idx) => `
+        <div class="other-fee-row">
+          <input class="input" type="text" data-project-other-fee="${idx}" data-other-field="description" value="${escapeHtml(f.description || "")}" placeholder="Description">
+          <input class="input num" type="number" inputmode="decimal" step="100" min="0" data-project-other-fee="${idx}" data-other-field="amount_usd" value="${f.amount_usd || 0}">
+          <button class="btn small ghost row-remove-btn" data-remove-project-other-fee="${idx}" title="Remove fee" aria-label="Remove fee">✕</button>
+        </div>
+      `).join("")}
+      <button class="btn small secondary mt-12" id="add-project-other-fee">+ Add fee</button>
+    </div>
+  `;
+
+  // Totals summary — the key "user wants to see this clearly" block
+  const financeTotalsHtml = `
+    <div class="finance-totals">
+      <div class="finance-totals-label">Finance summary</div>
+      <div class="finance-totals-grid">
+        <div class="finance-totals-row">
+          <span class="finance-totals-row-label">Total lending</span>
+          <span class="finance-totals-row-value">${fmt.usdM(_seniorLoan)}</span>
+          <span class="finance-totals-row-meta muted">Senior loan @ ${(_ltv*100).toFixed(0)}% LTC</span>
+        </div>
+        <div class="finance-totals-row">
+          <span class="finance-totals-row-label">Total interest cost</span>
+          <span class="finance-totals-row-value">${fmt.usdM(_interest)}</span>
+          <span class="finance-totals-row-meta muted">${(p.interest_rate_apr ?? g.interest_rate_apr) * 100 | 0}% APR over project life</span>
+        </div>
+        <div class="finance-totals-row">
+          <span class="finance-totals-row-label">Total other financing costs</span>
+          <span class="finance-totals-row-value">${fmt.usdM(_otherFinanceFees)}</span>
+          <span class="finance-totals-row-meta muted">Orig + exit + servicing + other</span>
+        </div>
+        <div class="finance-totals-row finance-totals-row-total">
+          <span class="finance-totals-row-label"><strong>All-in cost of financing</strong></span>
+          <span class="finance-totals-row-value"><strong>${fmt.usdM(_allInFinanceCost)}</strong></span>
+          <span class="finance-totals-row-meta muted">Interest + fees</span>
+        </div>
       </div>
     </div>
   `;
+
+  // Combined Finance section markup — uses inputsSection helper but appends
+  // the other-fees editor + totals summary inside the same panel.
+  const financing = `<div class="panel inputs-section">
+    <h3>Financing</h3>
+    <div class="panel-subtitle">Senior construction debt. KPC LOC ($6M @ 6%) is modeled portfolio-wide and shown on the Capital screen.</div>
+    <div class="finance-subhead">Lender &amp; terms</div>
+    <div class="input-rows">${financeTermsRows.join("")}</div>
+    <div class="finance-subhead">Standard fees</div>
+    <div class="input-rows">${feeRows.join("")}</div>
+    ${otherFeesEditor}
+    ${financeTotalsHtml}
+  </div>`;
+
+  // Backward-compat — kept as empty so the old separate "Other fees" section
+  // below the rail doesn't render twice.
+  const otherFeesHtml = "";
 
   const revenue = inputsSection("Revenue", "If you have a target sale price, set it here. Otherwise leave blank and the engine derives sale from cost × (1 + margin).", [
     inputRow({ label: "Goal sale price", unit: "USD", field: "sale_price_override_usd", value: p.sale_price_override_usd, kind: "project-override", projectId: p.id, type: "number", placeholder: "Derived from cost+margin" }),
@@ -2108,9 +2171,7 @@ function renderProjectInputs(p, res) {
     { id: "sec-timing",    label: "Timing" },
     { id: "sec-land",      label: "Land" },
     { id: "sec-build",     label: "Build costs" },
-    { id: "sec-kingshaus", label: "Kingshaus" },
     { id: "sec-financing", label: "Financing" },
-    { id: "sec-other",     label: "Other fees" },
     { id: "sec-revenue",   label: "Revenue" },
     { id: "sec-globals",   label: "Global defaults" },
   ];
@@ -2193,9 +2254,7 @@ function renderProjectInputs(p, res) {
         ${sec("sec-timing",    timing)}
         ${sec("sec-land",      land)}
         ${sec("sec-build",     buildCosts)}
-        ${sec("sec-kingshaus", kingshaus)}
         ${sec("sec-financing", financing)}
-        ${sec("sec-other",     otherFeesHtml)}
         ${sec("sec-revenue",   revenue)}
         ${globalsBlock}
       </div>
@@ -2467,7 +2526,6 @@ function renderProjectActualsTab(p, res) {
   const lines = [
     { key: "land",         label: "Land",                forecast: -m.land_cost.reduce((a,b)=>a+b,0) },
     { key: "construction", label: "Construction",        forecast: -m.build_cost.reduce((a,b)=>a+b,0) },
-    { key: "kingshaus",    label: "Kingshaus / superstructure", forecast: -m.kingshaus.reduce((a,b)=>a+b,0) },
     { key: "soft",         label: "Soft costs",          forecast: -m.soft_cost.reduce((a,b)=>a+b,0) },
     { key: "financing",    label: "Financing",           forecast: -m.interest.reduce((a,b)=>a+b,0) },
   ];
@@ -2982,7 +3040,7 @@ function renderProjectTimelineTab(p, res) {
     sections: [
       { id: "pt-header",     title: "Header",            subtitle: "Project, market, asset type, stage at a glance.", html: renderTimelineHeader(p, res) },
       { id: "pt-milestones", title: "Milestones",        subtitle: "Visual timeline from purchase through sale with key dates.", html: renderTimelineMilestoneBar(p, res) },
-      { id: "pt-burn",       title: "Monthly burn schedule", subtitle: "Outflows by category — land, construction, Kingshaus, soft costs, financing.", html: `<div class="chart-frame"><canvas id="chart-burn"></canvas></div>` },
+      { id: "pt-burn",       title: "Monthly burn schedule", subtitle: "Outflows by category — land, construction, soft costs, financing.", html: `<div class="chart-frame"><canvas id="chart-burn"></canvas></div>` },
       { id: "pt-pressure",   title: "Capital pressure",  subtitle: "When this project pulls hardest on the portfolio's capital.", html: renderCapitalPressureHeatmap(p, res) },
       { id: "pt-simulator",  title: "Delay simulator",   subtitle: "Preview KPI impact of a timing shift without saving.", html: renderDelaySimulator(p, res) },
       { id: "pt-sales",      title: "Sales events",      subtitle: "Listing, under-contract, closing dates and prices.", html: renderSalesEvents(p, res) },
@@ -3135,7 +3193,6 @@ function renderProjectMonthlyTable(res) {
     ["Sales", "sales"],
     ["Land cost", "land_cost"],
     ["Build cost", "build_cost"],
-    ["Kingshaus", "kingshaus"],
     ["Interest", "interest"],
     ["Debt drawn", "debt_drawn"],
     ["Debt repaid", "debt_repaid"],
@@ -3165,7 +3222,6 @@ function renderCashflow(r) {
     ["Sales", "sales"],
     ["Land cost", "land_cost"],
     ["Construction", "build_cost"],
-    ["Kingshaus", "kingshaus"],
     ["Overhead", "overhead"],
     ["Interest", "interest"],
     ["Debt drawn", "debt_drawn"],
@@ -4500,13 +4556,12 @@ function renderSettings() {
         <h3>Financial assumptions</h3>
         <div class="form-grid">
           ${f("interest_rate_apr","Interest rate APR")}
-          ${f("ltc_pct","LTC (build / Kingshaus / soft)")}
+          ${f("ltc_pct","LTC (build / soft)")}
           ${f("ltc_land_pct","LTC (land)")}
           ${f("contingency_pct","Contingency % of hard costs")}
           ${f("cash_equity_ratio","Cash equity ratio")}
           ${f("equity_at_closing_pct","Equity at closing")}
           ${f("default_build_cost_per_sqft","Default build $/sqft")}
-          ${f("default_kingshaus_cost_per_sqft","Default Kingshaus $/sqft")}
           ${f("target_margin","Target margin")}
           ${f("default_land_cost_usd","Default land cost (USD)")}
           ${f("default_program_months","Default program months","number","1")}
@@ -4674,27 +4729,6 @@ function renderSettings() {
         ${f("hypothetical_lp_pref_pct","LP preferred return")}
         ${f("hypothetical_lp_hurdle_pct","LP hurdle IRR")}
         ${f("hypothetical_lp_carry_pct","Sponsor carry on LP excess")}
-      </div>
-    </div>
-
-    <div class="panel mb-24">
-      <h3>Kingshaus unit costs (per villa, from 6 Great Circle reference)</h3>
-      <div class="panel-subtitle">Source: external link <code>[1]6 GC - SE Costs!E5:E11</code> in the original workbook. When the toggle below is on, the engine uses the breakdown total (fixed per villa) instead of <code>$/sqft × sqft</code>.</div>
-      <div class="form-grid">
-        ${Object.entries(g.kingshaus_breakdown_per_villa || {}).map(([k, v]) => `
-          <div class="form-row">
-            <label>${k.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())} (USD)</label>
-            <input class="input" data-kingshaus="${k}" type="number" step="100" value="${v}">
-          </div>
-        `).join("")}
-      </div>
-      <div class="form-row mt-16">
-        <label>Use breakdown total instead of $/sqft</label>
-        <select class="input" data-global-select="use_kingshaus_breakdown">
-          <option value="false" ${!g.use_kingshaus_breakdown?"selected":""}>No (use $/sqft × sqft per project)</option>
-          <option value="true" ${g.use_kingshaus_breakdown?"selected":""}>Yes (use fixed total per villa)</option>
-        </select>
-        <div class="hint">Total: $${Object.values(g.kingshaus_breakdown_per_villa || {}).reduce((a,b)=>a+b, 0).toLocaleString()}/villa.</div>
       </div>
     </div>
 
@@ -4948,7 +4982,7 @@ function attachViewEvents(result) {
     if (result.ok) {
       alert(`Imported ${result.added.length} project${result.added.length === 1 ? "" : "s"} from ${file.name}.`);
     } else {
-      alert(`Import failed: ${result.error}\n\nRequired columns: name, start_date (YYYY-MM), villa_sqft, land_cost_usd.\nOptional: address, status, program_months, build_cost_per_sqft, kingshaus_cost_per_sqft, target_margin, interest_rate_apr, ltc_pct, soft_costs_lump_sum, sale_price_override_usd, sale_price_per_sqft_override.`);
+      alert(`Import failed: ${result.error}\n\nRequired columns: name, start_date (YYYY-MM), villa_sqft, land_cost_usd.\nOptional: address, status, program_months, build_cost_per_sqft, target_margin, interest_rate_apr, ltc_pct, soft_costs_lump_sum, sale_price_override_usd, sale_price_per_sqft_override.`);
     }
     e.target.value = "";
   });
@@ -5155,16 +5189,6 @@ function attachViewEvents(result) {
     });
   }
 
-  for (const inp of document.querySelectorAll("[data-kingshaus]")) {
-    inp.addEventListener("change", (e) => {
-      const key = e.target.dataset.kingshaus;
-      const value = Number(e.target.value) || 0;
-      const breakdown = { ...(state.globals.kingshaus_breakdown_per_villa || {}) };
-      breakdown[key] = value;
-      updateGlobal("kingshaus_breakdown_per_villa", breakdown);
-    });
-  }
-
   for (const inp of document.querySelectorAll("[data-market]")) {
     inp.addEventListener("change", (e) => {
       const idx = Number(e.target.dataset.market);
@@ -5254,7 +5278,7 @@ function attachViewEvents(result) {
   document.getElementById("export-cashflow-csv")?.addEventListener("click", () => {
     const r = aggregatePortfolio(state.projects, state.globals, state.scenario);
     const rows = [["Metric", ...r.timeline, "Total"]];
-    const metrics = [["Sales", "sales"], ["Land", "land_cost"], ["Build", "build_cost"], ["Kingshaus", "kingshaus"], ["Soft", "soft_cost"], ["Overhead", "overhead"], ["Interest", "interest"], ["Debt drawn", "debt_drawn"], ["Debt repaid", "debt_repaid"], ["Debt balance", "debt_balance"], ["Equity drawn", "equity_drawn"], ["Equity returned", "equity_returned"], ["Equity balance", "equity_balance"], ["Net cash", "net_cash"]];
+    const metrics = [["Sales", "sales"], ["Land", "land_cost"], ["Build", "build_cost"], ["Soft", "soft_cost"], ["Overhead", "overhead"], ["Interest", "interest"], ["Debt drawn", "debt_drawn"], ["Debt repaid", "debt_repaid"], ["Debt balance", "debt_balance"], ["Equity drawn", "equity_drawn"], ["Equity returned", "equity_returned"], ["Equity balance", "equity_balance"], ["Net cash", "net_cash"]];
     for (const [label, key] of metrics) {
       const series = r.monthly[key];
       const total = series.reduce((a, b) => a + b, 0);
@@ -5344,7 +5368,6 @@ function attachViewEvents(result) {
           ${annualRows("Sales", "sales")}
           ${annualRows("Land cost", "land")}
           ${annualRows("Construction", "build")}
-          ${annualRows("Kingshaus", "kingshaus")}
           ${annualRows("Soft costs", "soft")}
           ${annualRows("Overhead", "opex")}
           ${annualRows("Financing", "interest")}
@@ -5366,10 +5389,10 @@ function attachViewEvents(result) {
   document.getElementById("export-annual-csv")?.addEventListener("click", () => {
     const r = aggregatePortfolio(state.projects, state.globals, state.scenario);
     const years = Object.keys(r.annual).sort();
-    const rows = [["FY", "Sales", "Land", "Build", "Kingshaus", "Soft", "Opex", "Interest", "Profit before tax"]];
+    const rows = [["FY", "Sales", "Land", "Build", "Soft", "Opex", "Interest", "Profit before tax"]];
     for (const y of years) {
       const a = r.annual[y];
-      rows.push([y, Math.round(a.sales), Math.round(a.land), Math.round(a.build), Math.round(a.kingshaus), Math.round(a.soft), Math.round(a.opex), Math.round(a.interest), Math.round(a.profit_before_tax)]);
+      rows.push([y, Math.round(a.sales), Math.round(a.land), Math.round(a.build), Math.round(a.soft), Math.round(a.opex), Math.round(a.interest), Math.round(a.profit_before_tax)]);
     }
     downloadCSV(rows, `juno-annual-pnl-${state.scenario.name.replace(/\s+/g, "-")}.csv`);
   });
@@ -5707,7 +5730,7 @@ function renderWizardCosts(d) {
   const g = state.globals;
   return `
     <h2>Costs</h2>
-    <p class="muted">At the sourcing stage we just need land + build $/sqft. Detailed cost breakdown (Kingshaus, soft costs, change orders) can be filled in later on the project's <strong>Inputs</strong> tab.</p>
+    <p class="muted">At the sourcing stage we just need land + build $/sqft. Detailed cost breakdown (soft costs, change orders) can be filled in later on the project's <strong>Inputs</strong> tab.</p>
     <div class="form-grid">
       <div class="form-row">
         <label>Land cost (USD)</label>
@@ -5842,9 +5865,9 @@ function renderWizardFinancing(d) {
       </div>
     </div>
 
-    <div class="section-title" style="margin-top:16px;">Other fees</div>
+    <div class="finance-subhead" style="margin-top:16px;">Other financing fees</div>
     <div class="other-fees">
-      ${otherFees.length === 0 ? `<div class="muted other-fees-empty">No other fees. Click below to add one (e.g. environmental study, broker fee).</div>` : ""}
+      ${otherFees.length === 0 ? `<div class="muted other-fees-empty">None. Add custom fees (broker, environmental study, attorney, etc.) below.</div>` : ""}
       ${otherFees.map((f, idx) => `
         <div class="other-fee-row">
           <input class="input" type="text" data-other-fee="${idx}" data-field="description" value="${escapeHtml(f.description || "")}" placeholder="Description (e.g. environmental study)">
@@ -5852,7 +5875,29 @@ function renderWizardFinancing(d) {
           <button class="btn small ghost row-remove-btn" data-remove-other-fee="${idx}" title="Remove fee" aria-label="Remove fee">✕</button>
         </div>
       `).join("")}
-      <button class="btn small secondary mt-12" id="add-other-fee">+ Add other fee</button>
+      <button class="btn small secondary mt-12" id="add-other-fee">+ Add fee</button>
+    </div>
+
+    <div class="finance-totals" style="margin-top:20px;">
+      <div class="finance-totals-label">Finance summary</div>
+      <div class="finance-totals-grid">
+        <div class="finance-totals-row">
+          <span class="finance-totals-row-label">Total lending</span>
+          <span class="finance-totals-row-value">${fmt.usdM(seniorLoan)}</span>
+          <span class="finance-totals-row-meta muted">Senior loan @ ${(ltv*100).toFixed(0)}% LTC</span>
+        </div>
+        <div class="finance-totals-row">
+          <span class="finance-totals-row-label">Total other financing costs</span>
+          <span class="finance-totals-row-value">${fmt.usdM(financeFeesTotal)}</span>
+          <span class="finance-totals-row-meta muted">Orig + exit + servicing + other</span>
+        </div>
+        <div class="finance-totals-row finance-totals-row-total">
+          <span class="finance-totals-row-label"><strong>Capital injection needed</strong></span>
+          <span class="finance-totals-row-value"><strong>${fmt.usdM(capitalInjection)}</strong></span>
+          <span class="finance-totals-row-meta muted">Total all-in − senior loan</span>
+        </div>
+      </div>
+      <div class="muted" style="margin-top:10px;font-size:11px;">Interest cost is computed once the project is created (engine needs the full schedule). See the Review step for the full picture.</div>
     </div>
 
     <div class="section-title" style="margin-top:24px;">Capital stack preview</div>
@@ -6249,7 +6294,6 @@ function drawCashflowChart(r, isDark) {
         { label: "Sales",     data: m.sales,      backgroundColor: tk.palette[2], borderRadius: 2 }, // sage green
         { label: "Land",      data: m.land_cost,  backgroundColor: tk.palette[0], borderRadius: 2 }, // near-black ink (workhorse)
         { label: "Build",     data: m.build_cost, backgroundColor: tk.palette[5], borderRadius: 2 }, // warm grey
-        { label: "Kingshaus", data: m.kingshaus,  backgroundColor: tk.palette[1], borderRadius: 2 }, // muted blue
         { label: "Overhead",  data: m.overhead,   backgroundColor: tk.palette[4], borderRadius: 2 }, // dusty rose
         { label: "Interest",  data: m.interest,   backgroundColor: tk.palette[3], borderRadius: 2 }, // warm orange (negative)
       ],
@@ -6297,7 +6341,6 @@ function drawProjectChart(r, isDark) {
       { label: "Sales",     data: res.monthly.sales,      backgroundColor: tk.palette[2], borderRadius: 2 },
       { label: "Land",      data: res.monthly.land_cost,  backgroundColor: tk.palette[0], borderRadius: 2 },
       { label: "Build",     data: res.monthly.build_cost, backgroundColor: tk.palette[5], borderRadius: 2 },
-      { label: "Kingshaus", data: res.monthly.kingshaus,  backgroundColor: tk.palette[1], borderRadius: 2 },
       { label: "Interest",  data: res.monthly.interest,   backgroundColor: tk.palette[3], borderRadius: 2 },
     ]},
     options: rampChartOptions({ stacked: true, yIsCurrency: true }),
@@ -6323,7 +6366,6 @@ function drawBurnChart(r, isDark) {
     data: { labels, datasets: [
       { label: "Land",       data: abs(m.land_cost),  backgroundColor: tk.palette[0], borderRadius: 2 },
       { label: "Build",      data: abs(m.build_cost), backgroundColor: tk.palette[5], borderRadius: 2 },
-      { label: "Kingshaus",  data: abs(m.kingshaus),  backgroundColor: tk.palette[1], borderRadius: 2 },
       { label: "Soft costs", data: abs(m.soft_cost),  backgroundColor: tk.palette[4], borderRadius: 2 },
       { label: "Financing",  data: abs(m.interest),   backgroundColor: tk.palette[3], borderRadius: 2 },
     ]},

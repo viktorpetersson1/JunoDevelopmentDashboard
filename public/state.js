@@ -165,6 +165,11 @@ function migrateProjectShape(p) {
   // Legacy mirror — engine still reads program_months. Recompute every load.
   p.program_months = p.sourcing_months + p.permitting_preconstruction_months + p.construction_months + p.sales_months;
 
+  // v14.28 — Kingshaus removed as a separate variable. Zero out any legacy
+  // per-project override so the engine slot computes 0 going forward.
+  // Users should now roll Kingshaus costs into their build $/sqft.
+  p.kingshaus_cost_per_sqft = 0;
+
   // External lender fields — safe defaults so legacy projects don't break.
   if (p.senior_ltv_pct == null) p.senior_ltv_pct = p.ltc_pct ?? 0.75;
   if (p.origination_fee_pct == null) p.origination_fee_pct = 0.01;
