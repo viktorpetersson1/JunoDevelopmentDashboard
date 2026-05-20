@@ -1494,65 +1494,49 @@ function renderProjectSummaryTab(p, res, m) {
     </tr>`;
   }).join("");
 
-  return `
-    <!-- v14.2 KPI row — 8 cards per brief -->
-    <div class="kpi-row">
-      ${kpiCard("Total dev cost", fmt.usdM(res.kpis.total_dev_cost), `${fmt.num(res.kpis.total_cost_per_sqft, 0)}/sqft`)}
-      ${kpiCard("Gross sale value", fmt.usdM(res.kpis.total_sales), `${fmt.num(res.kpis.sale_price_per_sqft, 0)}/sqft`)}
-      ${kpiCard("Projected profit", fmt.usdM(res.kpis.gross_profit), fmt.pct(res.kpis.profit_margin_pct), res.kpis.gross_profit >= 0 ? "pos" : "neg")}
-      ${kpiCard("Margin", fmt.pct(res.kpis.profit_margin_pct), `Profit / sales`)}
-      ${kpiCard("Peak equity", fmt.usdM(res.kpis.peak_equity), `Project-level`)}
-      ${kpiCard("Max debt", fmt.usdM(res.kpis.peak_debt), `Project-level`)}
-      ${kpiCard("Annualized IRR", res.kpis.irr_annual == null ? "—" : fmt.pct(res.kpis.irr_annual), `Equity cash flow`)}
-      ${kpiCard("MOIC", `${(res.kpis.moic || 0).toFixed(2)}x`, `Equity multiple`)}
-    </div>
-
-    <!-- v14.2 Timeline + Cash flow chart -->
-    <div class="panel-row">
-      ${renderProjectTimeline(p, res)}
-      <div class="panel">
-        <h3>Monthly cash flow</h3>
-        <div class="panel-subtitle">${m.dates[0]} → ${m.dates[m.dates.length-1]} · debt &amp; equity overlay</div>
-        <div class="chart-frame"><canvas id="chart-project"></canvas></div>
-      </div>
-    </div>
-
-    <!-- v14.2 Forecast vs Actuals band (promoted per Phase 1 dev plan) -->
-    ${renderActualsVariance(p, res)}
-
-    <!-- v14.2 Lower band: Sources vs Uses · Risks · Recent changes -->
-    <div class="panel-three-row mb-24">
-      ${renderSourcesUses(p, res)}
-      ${renderProjectRiskCards(p, res)}
-      ${renderProjectRecentChanges(p)}
-    </div>
-
-    <!-- Edit assumptions — collapsed by default. Anchored from the header button. -->
-    <div class="panel mb-24" id="edit-assumptions">
-      <details ${state.ui._inputs_open ? "open" : ""}>
-        <summary style="cursor:pointer;font-weight:600;">Edit assumptions</summary>
-        <div class="panel-subtitle" style="margin-top:8px;">Blank override fields use global defaults. Changes save automatically.</div>
-        ${renderProjectForm(p, res)}
-      </details>
-    </div>
-
-    <!-- Sensitivity for this project — Phase 3 will fold this into the Risks center -->
-    <div class="panel mb-24">
-      <h3>Sensitivity</h3>
-      <div class="panel-subtitle">Profit impact of one-factor changes vs current scenario.</div>
-      <table class="tbl">
-        <thead><tr><th>Case</th><th>Profit</th><th>Δ vs current</th></tr></thead>
-        <tbody>${sensRows}</tbody>
-      </table>
-    </div>
-
-    <div class="panel mb-24" id="takeoff-panel-container"></div>
-
-    <div class="panel mb-24">
-      <h3>Monthly forecast</h3>
-      <div class="scroll-x">${renderProjectMonthlyTable(res)}</div>
-    </div>
-  `;
+  return pageShell({
+    railLabel: "SUMMARY",
+    railItems: [
+      { id: "ps-overview",    label: "Overview" },
+      { id: "ps-timeline",    label: "Timeline" },
+      { id: "ps-cashflow",    label: "Cash flow" },
+      { id: "ps-actuals",     label: "Forecast vs actuals" },
+      { id: "ps-sources",     label: "Sources & uses" },
+      { id: "ps-risks",       label: "Risk cards" },
+      { id: "ps-recent",      label: "Recent changes" },
+      { id: "ps-sensitivity", label: "Sensitivity" },
+      { id: "ps-monthly",     label: "Monthly forecast" },
+    ],
+    kpiTiles: [
+      { label: "Dev cost",   value: fmt.usdM(res.kpis.total_dev_cost) },
+      { label: "Sale value", value: fmt.usdM(res.kpis.total_sales) },
+      { label: "Profit",     value: fmt.usdM(res.kpis.gross_profit), cls: res.kpis.gross_profit >= 0 ? "pos" : "neg" },
+      { label: "Margin",     value: fmt.pct(res.kpis.profit_margin_pct) },
+      { label: "IRR",        value: res.kpis.irr_annual == null ? "—" : fmt.pct(res.kpis.irr_annual) },
+      { label: "MOIC",       value: `${(res.kpis.moic || 0).toFixed(2)}x` },
+    ],
+    sections: [
+      { id: "ps-overview", title: "Project overview", subtitle: "Headline cost, revenue, profit, and return metrics for this project.", html: `
+        <div class="kpi-grid">
+          ${kpiCard("Total dev cost", fmt.usdM(res.kpis.total_dev_cost), `${fmt.num(res.kpis.total_cost_per_sqft, 0)}/sqft`)}
+          ${kpiCard("Gross sale value", fmt.usdM(res.kpis.total_sales), `${fmt.num(res.kpis.sale_price_per_sqft, 0)}/sqft`)}
+          ${kpiCard("Projected profit", fmt.usdM(res.kpis.gross_profit), fmt.pct(res.kpis.profit_margin_pct), res.kpis.gross_profit >= 0 ? "pos" : "neg")}
+          ${kpiCard("Peak equity", fmt.usdM(res.kpis.peak_equity), `Project-level`)}
+        </div>
+      `},
+      { id: "ps-timeline", title: "Timeline", subtitle: "Milestone bar from start through sale with key dates.", html: renderProjectTimeline(p, res).replace(/^<div class="panel">|<\/div>$/g, "").replace(/<h3>Timeline<\/h3>/, "") },
+      { id: "ps-cashflow", title: "Monthly cash flow", subtitle: `${m.dates[0]} → ${m.dates[m.dates.length-1]} · debt & equity overlay.`, html: `<div class="chart-frame"><canvas id="chart-project"></canvas></div>` },
+      { id: "ps-actuals", title: "Forecast vs actuals", subtitle: "Variance flags across cost categories.", html: renderActualsVariance(p, res) },
+      { id: "ps-sources", title: "Sources & uses", subtitle: "Where capital comes from and where it goes for this project.", html: renderSourcesUses(p, res) },
+      { id: "ps-risks", title: "Risk cards", subtitle: "Per-category risk findings on this project.", html: renderProjectRiskCards(p, res) },
+      { id: "ps-recent", title: "Recent changes", subtitle: "Latest edits to this project's inputs and overrides.", html: renderProjectRecentChanges(p) },
+      { id: "ps-sensitivity", title: "Sensitivity", subtitle: "Profit impact of one-factor changes vs current scenario.", html: `<table class="tbl">
+          <thead><tr><th>Case</th><th>Profit</th><th>Δ vs current</th></tr></thead>
+          <tbody>${sensRows}</tbody>
+        </table>` },
+      { id: "ps-monthly", title: "Monthly forecast", subtitle: "Full month-by-month projection.", html: `<div class="scroll-x">${renderProjectMonthlyTable(res)}</div>` },
+    ],
+  });
 }
 
 // v14.2 — Project Summary: Timeline panel
@@ -2439,31 +2423,39 @@ function renderProjectCapitalTab(p, res) {
   const k = res.kpis;
   const loc = state.globals.kpc_loc || {};
 
-  return `
-    <div class="panel mb-24">
-      <h3>This project's capital stack</h3>
-      <div class="panel-subtitle">Project-level view of how this villa is funded. Portfolio-wide LOC capacity is enforced on the top-level Capital screen.</div>
-      <div class="kpi-row">
-        ${kpiCard("Senior debt peak", fmt.usdM(k.peak_debt), `Construction loan`)}
-        ${kpiCard("Equity / LOC peak", fmt.usdM(k.peak_equity), `Funded via KPC LOC until exhausted`)}
-        ${kpiCard("Total dev cost", fmt.usdM(k.total_dev_cost), `Across project lifecycle`)}
-        ${kpiCard("Sale proceeds", fmt.usdM(k.total_sales), `Repays debt + LOC, then owners`)}
-      </div>
-    </div>
-
-    <div class="panel mb-24">
-      <h3>Sources vs Uses (this project)</h3>
-      <div class="panel-subtitle">Where capital comes from vs where it goes for this single project.</div>
-      ${renderSourcesUses(p, res).replace(/<div class="panel">|<\/div>$/g, "").replace(/<h3>.*?<\/h3>/, "").replace(/<div class="panel-subtitle">.*?<\/div>/, "")}
-    </div>
-
-    <div class="note mb-24">
-      <strong>Note on LOC allocation:</strong> The KPC LOC is portfolio-wide ($${(loc.facility_size_usd/1e6).toFixed(0)}M @ ${(loc.interest_rate_apr * 100).toFixed(1)}% APR).
-      The top-level Capital screen shows the actual LOC drawdown curve and any funding gaps.
-      Until the engine allocates LOC capacity per project explicitly, this tab treats "equity" as a single bucket
-      (LOC + owner equity).
-    </div>
-  `;
+  return pageShell({
+    railLabel: "CAPITAL",
+    railItems: [
+      { id: "pc-overview", label: "Capital stack" },
+      { id: "pc-flows",    label: "Sources & uses" },
+      { id: "pc-note",     label: "LOC allocation note" },
+    ],
+    kpiTiles: [
+      { label: "Senior debt peak",  value: fmt.usdM(k.peak_debt) },
+      { label: "Equity / LOC peak", value: fmt.usdM(k.peak_equity) },
+      { label: "Total dev cost",    value: fmt.usdM(k.total_dev_cost) },
+      { label: "Sale proceeds",     value: fmt.usdM(k.total_sales) },
+    ],
+    sections: [
+      { id: "pc-overview", title: "This project's capital stack", subtitle: "Project-level view of how this villa is funded. Portfolio-wide LOC capacity is enforced on the top-level Capital screen.", html: `
+        <div class="kpi-grid">
+          ${kpiCard("Senior debt peak", fmt.usdM(k.peak_debt), `Construction loan`)}
+          ${kpiCard("Equity / LOC peak", fmt.usdM(k.peak_equity), `Funded via KPC LOC until exhausted`)}
+          ${kpiCard("Total dev cost", fmt.usdM(k.total_dev_cost), `Across project lifecycle`)}
+          ${kpiCard("Sale proceeds", fmt.usdM(k.total_sales), `Repays debt + LOC, then owners`)}
+        </div>
+      `},
+      { id: "pc-flows", title: "Sources vs Uses", subtitle: "Where capital comes from vs where it goes for this single project.", html: renderSourcesUses(p, res) },
+      { id: "pc-note", title: "LOC allocation note", subtitle: "", html: `
+        <div class="note">
+          The KPC LOC is portfolio-wide ($${(loc.facility_size_usd/1e6).toFixed(0)}M @ ${(loc.interest_rate_apr * 100).toFixed(1)}% APR).
+          The top-level Capital screen shows the actual LOC drawdown curve and any funding gaps.
+          Until the engine allocates LOC capacity per project explicitly, this tab treats "equity" as a single bucket
+          (LOC + owner equity).
+        </div>
+      `},
+    ],
+  });
 }
 
 // v14.9 (Phase 3.3) — Project Actuals tab
@@ -2534,66 +2526,69 @@ function renderProjectActualsTab(p, res) {
     </div>`;
   }).join("");
 
-  return `
-    ${kpiStrip}
-
-    <div class="panel mb-24">
-      <h3>Forecast vs actuals</h3>
-      <div class="panel-subtitle">Enter the amount paid to date for each line. Variance is computed live (actual − forecast). Save is automatic.</div>
-      <div class="actuals-list">
-        ${entryRowsHtml}
+  const actualsListHtml = `<div class="actuals-list">
+      ${entryRowsHtml}
+    </div>
+    <div class="actuals-row actuals-total" style="margin-top:14px;">
+      <div class="actuals-row-label"><strong>Total dev cost</strong></div>
+      <div class="actuals-row-forecast">
+        <div class="muted" style="font-size:10px;letter-spacing:0.04em;text-transform:uppercase;">Forecast</div>
+        <div><strong>${fmt.usdM(totalForecast)}</strong></div>
       </div>
-      <div class="actuals-row actuals-total" style="margin-top:14px;">
-        <div class="actuals-row-label"><strong>Total dev cost</strong></div>
-        <div class="actuals-row-forecast">
-          <div class="muted" style="font-size:10px;letter-spacing:0.04em;text-transform:uppercase;">Forecast</div>
-          <div><strong>${fmt.usdM(totalForecast)}</strong></div>
-        </div>
-        <div class="actuals-row-actual">
-          <div class="muted" style="font-size:10px;letter-spacing:0.04em;text-transform:uppercase;">Actual paid</div>
-          <div><strong>${fmt.usdM(totalActual)}</strong></div>
-        </div>
-        <div class="actuals-row-variance">
-          <div class="muted" style="font-size:10px;letter-spacing:0.04em;text-transform:uppercase;">Variance</div>
-          <div class="num ${totalVariance <= 0 ? "pos" : "neg"}"><strong>${totalVariance >= 0 ? "+" : "−"}${fmt.usdM(Math.abs(totalVariance))}</strong> <span class="muted" style="font-weight:400;">(${fmt.pct(totalVariancePct)})</span></div>
-        </div>
-        <div class="actuals-row-flag">
-          <span class="variance-flag ${totalFlag.cls}">${totalFlag.label}</span>
-        </div>
+      <div class="actuals-row-actual">
+        <div class="muted" style="font-size:10px;letter-spacing:0.04em;text-transform:uppercase;">Actual paid</div>
+        <div><strong>${fmt.usdM(totalActual)}</strong></div>
+      </div>
+      <div class="actuals-row-variance">
+        <div class="muted" style="font-size:10px;letter-spacing:0.04em;text-transform:uppercase;">Variance</div>
+        <div class="num ${totalVariance <= 0 ? "pos" : "neg"}"><strong>${totalVariance >= 0 ? "+" : "−"}${fmt.usdM(Math.abs(totalVariance))}</strong> <span class="muted" style="font-weight:400;">(${fmt.pct(totalVariancePct)})</span></div>
+      </div>
+      <div class="actuals-row-flag">
+        <span class="variance-flag ${totalFlag.cls}">${totalFlag.label}</span>
+      </div>
+    </div>`;
+
+  const contingencyHtml = `<div class="form-grid">
+      <div class="form-row">
+        <label>Contingency budget</label>
+        <input class="input" type="text" value="${fmt.usdM(contingencyBudget)}" disabled>
+        <div class="hint">${fmt.pct(state.globals.contingency_pct ?? 0.05)} × total hard cost forecast</div>
+      </div>
+      <div class="form-row">
+        <label>Contingency drawn (USD)</label>
+        <input class="input" type="number" inputmode="decimal" step="1000" data-field="contingency_used_usd" value="${contingency}">
+        <div class="hint">${fmt.pct(contingencyBurnPct)} of budget consumed</div>
       </div>
     </div>
+    ${contingencyBurnPct >= 0.8 ? `<div class="note neg" style="margin-top:14px;">
+      <strong>Contingency nearly exhausted (${fmt.pct(contingencyBurnPct)}).</strong> Overruns from here flow directly to margin compression.
+    </div>` : contingencyBurnPct >= 0.5 ? `<div class="note warn" style="margin-top:14px;">
+      Contingency burn over 50%. Track closely; consider scope freeze on discretionary items.
+    </div>` : ""}`;
 
-    <div class="panel mb-24">
-      <h3>Contingency tracking</h3>
-      <div class="panel-subtitle">${fmt.pct(state.globals.contingency_pct ?? 0.05)} standard contingency on hard costs. Drawing here absorbs cost overruns before they hit margin.</div>
-      <div class="form-grid">
-        <div class="form-row">
-          <label>Contingency budget</label>
-          <input class="input" type="text" value="${fmt.usdM(contingencyBudget)}" disabled>
-          <div class="hint">${fmt.pct(state.globals.contingency_pct ?? 0.05)} × total hard cost forecast</div>
-        </div>
-        <div class="form-row">
-          <label>Contingency drawn (USD)</label>
-          <input class="input" type="number" inputmode="decimal" step="1000" data-field="contingency_used_usd" value="${contingency}">
-          <div class="hint">${fmt.pct(contingencyBurnPct)} of budget consumed</div>
-        </div>
-      </div>
-      ${contingencyBurnPct >= 0.8 ? `<div class="note neg" style="margin-top:14px;">
-        <strong>Contingency nearly exhausted (${fmt.pct(contingencyBurnPct)}).</strong> Overruns from here flow directly to margin compression.
-      </div>` : contingencyBurnPct >= 0.5 ? `<div class="note warn" style="margin-top:14px;">
-        Contingency burn over 50%. Track closely; consider scope freeze on discretionary items.
-      </div>` : ""}
-    </div>
-
-    <div class="panel mb-24">
-      <h3>What's next</h3>
-      <div class="muted" style="font-size:12px;line-height:1.6;">
+  return pageShell({
+    railLabel: "ACTUALS",
+    railItems: [
+      { id: "pa-overview",    label: "Variance vs forecast" },
+      { id: "pa-contingency", label: "Contingency" },
+      { id: "pa-roadmap",     label: "What's next" },
+    ],
+    kpiTiles: [
+      { label: "Forecast",        value: fmt.usdM(totalForecast) },
+      { label: "Actual to date",  value: fmt.usdM(totalActual) },
+      { label: "Variance",        value: `${totalVariance >= 0 ? "+" : "−"}${fmt.usdM(Math.abs(totalVariance))}`, cls: totalVariance <= 0 ? "pos" : totalVariance < totalForecast * 0.05 ? "" : "neg" },
+      { label: "Contingency burn", value: fmt.pct(contingencyBurnPct), cls: contingencyBurnPct >= 0.8 ? "neg" : contingencyBurnPct >= 0.5 ? "" : "pos" },
+    ],
+    sections: [
+      { id: "pa-overview", title: "Forecast vs actuals", subtitle: "Enter the amount paid to date for each line. Variance is computed live (actual − forecast). Save is automatic.", html: actualsListHtml },
+      { id: "pa-contingency", title: "Contingency tracking", subtitle: `${fmt.pct(state.globals.contingency_pct ?? 0.05)} standard contingency on hard costs. Drawing here absorbs cost overruns before they hit margin.`, html: contingencyHtml },
+      { id: "pa-roadmap", title: "What's next", subtitle: "Coming in Phase 4 actuals enhancements.", html: `<div class="muted" style="font-size:13px;line-height:1.6;">
         Phase 4 will add: <strong>notes per line</strong> (free-form explanation of overruns),
         <strong>actuals timeline view</strong> (monthly cumulative actuals vs forecast curve),
         and <strong>change order log</strong> tying contingency draws to specific events.
-      </div>
-    </div>
-  `;
+      </div>` },
+    ],
+  });
 }
 
 // v14.10 (Phase 3.4) — Project Risks tab
@@ -2637,31 +2632,29 @@ function renderProjectRisksTab(p, res) {
     low: findings.filter(f => f.severity === "low").length,
   };
 
-  return `
-    <div class="kpi-row">
-      ${kpiCard("Active findings", `${findings.length}`, findings.length === 0 ? "All clear" : "Review and act", findings.length === 0 ? "pos" : "")}
-      ${kpiCard("High severity", `${severityCounts.high}`, "Act now", severityCounts.high > 0 ? "neg" : "")}
-      ${kpiCard("Medium severity", `${severityCounts.medium}`, "Plan a mitigation", severityCounts.medium > 0 ? "warn" : "")}
-      ${kpiCard("Low severity", `${severityCounts.low}`, "Monitor", severityCounts.low > 0 ? "" : "")}
-    </div>
-
-    ${renderProjectRiskCards(p, res)}
-
-    <div class="panel mb-24">
-      <h3>Active findings for this project</h3>
-      <div class="panel-subtitle">Sourced from the portfolio-wide risk engine. Findings here cite ${escapeHtml(p.name)} specifically.</div>
-      ${findingsHtml}
-    </div>
-
-    <div class="panel mb-24">
-      <h3>What's next</h3>
-      <div class="muted" style="font-size:12px;line-height:1.6;">
+  return pageShell({
+    railLabel: "RISKS",
+    railItems: [
+      { id: "pr-cards",    label: "Risk cards" },
+      { id: "pr-findings", label: "Active findings" },
+      { id: "pr-roadmap",  label: "What's next" },
+    ],
+    kpiTiles: [
+      { label: "Active findings",  value: `${findings.length}`,        cls: findings.length === 0 ? "pos" : "" },
+      { label: "High severity",    value: `${severityCounts.high}`,    cls: severityCounts.high > 0 ? "neg" : "" },
+      { label: "Medium severity",  value: `${severityCounts.medium}`,  cls: severityCounts.medium > 0 ? "" : "" },
+      { label: "Low severity",     value: `${severityCounts.low}` },
+    ],
+    sections: [
+      { id: "pr-cards", title: "Risk cards", subtitle: "Per-category health checks for this project (peak equity, peak debt, IRR, margin, MOIC).", html: renderProjectRiskCards(p, res) },
+      { id: "pr-findings", title: "Active findings", subtitle: `Sourced from the portfolio-wide risk engine. Findings here cite ${escapeHtml(p.name)} specifically.`, html: findingsHtml },
+      { id: "pr-roadmap", title: "What's next", subtitle: "Future iterations of the risk register.", html: `<div class="muted" style="font-size:13px;line-height:1.6;">
         Future iterations: <strong>acknowledge / dismiss</strong> findings, <strong>assign owners</strong>, and
         <strong>track mitigations to completion</strong>. For now the engine recomputes on every state change,
         so resolved triggers (e.g. fixing an over-LTC project) disappear from this view automatically.
-      </div>
-    </div>
-  `;
+      </div>` },
+    ],
+  });
 }
 
 // v14.10 (Phase 3.4) — Project Activity tab
@@ -2732,41 +2725,41 @@ function renderProjectActivityTab(p) {
     return "";
   };
 
-  return `
-    <div class="kpi-row">
-      ${kpiCard("Total events", `${entries.length}`, `Across ${days.length} day${days.length === 1 ? "" : "s"}`)}
-      ${kpiCard("Project edits", `${entries.filter(e => e.category === "project").length}`, "Direct project changes")}
-      ${kpiCard("Scenario events", `${entries.filter(e => e.category === "scenario").length}`, "Scenario changes affecting this project")}
-      ${kpiCard("Last activity", entries[0]?.ts ? new Date(entries[0].ts).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—", "Most recent event")}
-    </div>
-
-    <div class="panel mb-24">
-      <h3>Project history</h3>
-      <div class="panel-subtitle">Every edit that touches ${escapeHtml(p.name)}, newest first. Synced server-side via activity_log.</div>
-      <div class="activity-feed">
-        ${days.map(day => `
-          <div class="activity-day">
-            <div class="activity-day-label">${dayLabel(day)}</div>
-            <div class="activity-day-entries">
-              ${groups[day].map(e => `
-                <div class="activity-entry">
-                  <div class="activity-entry-time muted">${e.ts ? new Date(e.ts).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "—"}</div>
-                  <div class="activity-entry-body">
-                    <div class="activity-entry-line">
-                      ${categoryChip(e.category)}
-                      <span class="activity-entry-message">${escapeHtml(e.message || "(unspecified)")}</span>
-                    </div>
-                    ${detailSnippet(e)}
-                    <div class="activity-entry-meta muted">${e.user_email ? escapeHtml(e.user_email) : "system"}</div>
+  const feedHtml = `<div class="activity-feed">
+      ${days.map(day => `
+        <div class="activity-day">
+          <div class="activity-day-label">${dayLabel(day)}</div>
+          <div class="activity-day-entries">
+            ${groups[day].map(e => `
+              <div class="activity-entry">
+                <div class="activity-entry-time muted">${e.ts ? new Date(e.ts).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "—"}</div>
+                <div class="activity-entry-body">
+                  <div class="activity-entry-line">
+                    ${categoryChip(e.category)}
+                    <span class="activity-entry-message">${escapeHtml(e.message || "(unspecified)")}</span>
                   </div>
+                  ${detailSnippet(e)}
+                  <div class="activity-entry-meta muted">${e.user_email ? escapeHtml(e.user_email) : "system"}</div>
                 </div>
-              `).join("")}
-            </div>
+              </div>
+            `).join("")}
           </div>
-        `).join("")}
-      </div>
-    </div>
-  `;
+        </div>
+      `).join("")}
+    </div>`;
+
+  return pageShell({
+    railItems: [],
+    kpiTiles: [
+      { label: "Total events",    value: `${entries.length}` },
+      { label: "Project edits",   value: `${entries.filter(e => e.category === "project").length}` },
+      { label: "Scenario events", value: `${entries.filter(e => e.category === "scenario").length}` },
+      { label: "Last activity",   value: entries[0]?.ts ? new Date(entries[0].ts).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—" },
+    ],
+    sections: [
+      { id: "pact-history", title: "Project history", subtitle: `Every edit that touches ${escapeHtml(p.name)}, newest first. Synced server-side via activity_log.`, html: feedHtml },
+    ],
+  });
 }
 
 // v14.11 (Phase 4.1) — Project Sales tab
@@ -2897,13 +2890,72 @@ function renderProjectSalesTab(p, res) {
     </table>
   </div>`;
 
-  return `
-    ${kpiStrip}
-    ${lifecycleBar}
-    ${priceToListPanel}
-    ${waterfallPanel}
-    ${ownerTable}
-  `;
+  return pageShell({
+    railLabel: "SALES",
+    railItems: [
+      { id: "psa-lifecycle", label: "Lifecycle" },
+      ...(listPrice && actualSale ? [{ id: "psa-realization", label: "Price realization" }] : []),
+      { id: "psa-waterfall", label: "Sale waterfall" },
+      { id: "psa-owners",    label: "Owner distributions" },
+    ],
+    kpiTiles: [
+      { label: "List price",     value: listPrice ? fmt.usdM(listPrice) : "—" },
+      { label: "Days on market", value: dom != null ? `${dom} d` : "—" },
+      { label: "Sale price",     value: actualSale ? fmt.usdM(actualSale) : "—" },
+      { label: "Net to owners",  value: actualSale || stageId === "sold" ? fmt.usdM(netToOwners) : "—", cls: actualSale && netToOwners > 0 ? "pos" : actualSale && netToOwners < 0 ? "neg" : "" },
+    ],
+    sections: [
+      { id: "psa-lifecycle", title: "Lifecycle", subtitle: "Sale milestones from listing through closing. Fill in dates on the Inputs tab as the deal progresses.", html: `
+        <div class="sales-lifecycle">
+          ${lifecycleSteps.map((s, i) => {
+            const done = !!s.date;
+            const isNext = !done && i === lastCompletedIdx + 1;
+            const cls = done ? "done" : isNext ? "next" : "future";
+            return `<div class="sales-step ${cls}">
+              <div class="sales-step-marker">${done ? "✓" : i + 1}</div>
+              <div class="sales-step-body">
+                <div class="sales-step-label">${s.label}</div>
+                <div class="sales-step-meta muted">${s.date ? fmt.ymShort(s.date) : isNext ? "next" : "—"}</div>
+                ${s.price ? `<div class="sales-step-price">${fmt.usdM(s.price)}</div>` : ""}
+              </div>
+            </div>`;
+          }).join("")}
+        </div>
+        ${inactive ? `<div class="note" style="margin-top:14px;">Project is in <strong>${escapeHtml(LIFECYCLE_STAGES.find(s => s.id === stageId)?.label || stageId)}</strong> — sales workflow opens once it moves into <strong>Pre-sales</strong>.</div>` : ""}
+      `},
+      ...(listPrice && actualSale ? [{ id: "psa-realization", title: "Price realization", subtitle: "Actual sale vs the list price you put in market.", html: `<table class="tbl">
+          <tbody>
+            <tr><td>List price</td><td class="num">${fmt.usdM(listPrice)}</td></tr>
+            <tr><td>Actual sale price</td><td class="num">${fmt.usdM(actualSale)}</td></tr>
+            <tr><td><strong>Variance</strong></td><td class="num ${actualSale >= listPrice ? "pos" : "neg"}"><strong>${actualSale >= listPrice ? "+" : "−"}${fmt.usdM(Math.abs(actualSale - listPrice))}</strong> <span class="muted" style="font-weight:400;">(${fmt.pct(priceToList)})</span></td></tr>
+            ${listingToClose != null ? `<tr><td>List → close</td><td class="num">${listingToClose} d</td></tr>` : ""}
+          </tbody>
+        </table>` }] : []),
+      { id: "psa-waterfall", title: "Sale waterfall", subtitle: `How proceeds flow from the buyer to the cap table. Uses ${actualSale ? `<strong>actual sale price</strong>` : `forecasted sale price`}; LOC and equity allocations are project pro-rata of the portfolio totals.`, html: `<table class="tbl">
+          <tbody>
+            <tr><td>Gross sale proceeds</td><td class="num pos">${fmt.usdM(grossSale)}</td></tr>
+            <tr><td>Senior construction debt repayment</td><td class="num neg">${fmt.usdM(-seniorDebtAtSale)}</td></tr>
+            <tr><td>Senior debt accrued interest</td><td class="num neg">${fmt.usdM(totalInterest)}</td></tr>
+            <tr><td>KPC LOC repayment (project share)</td><td class="num neg">${fmt.usdM(-locShare)}</td></tr>
+            <tr><td>Owner equity contribution returned</td><td class="num neg">${fmt.usdM(-ownerEquityShare)}</td></tr>
+            <tr><td><strong>Net to owners</strong></td><td class="num ${netToOwners >= 0 ? "pos" : "neg"}"><strong>${fmt.usdM(netToOwners)}</strong></td></tr>
+          </tbody>
+        </table>` },
+      { id: "psa-owners", title: "Owner distributions", subtitle: "Net proceeds distributed pro-rata to ownership share. KPC is NOT in this table — it provided debt (LOC), not equity.", html: `<table class="tbl">
+          <thead><tr><th>Owner</th><th>Share</th><th>Distribution</th></tr></thead>
+          <tbody>
+            ${distributions.map(d => `<tr>
+              <td>${escapeHtml(d.name)}</td>
+              <td class="num">${fmt.pct(d.share_pct, 1)}</td>
+              <td class="num ${d.distribution >= 0 ? "pos" : "neg"}">${fmt.usdM(d.distribution)}</td>
+            </tr>`).join("")}
+          </tbody>
+          <tfoot>
+            <tr><td><strong>Total</strong></td><td class="num"><strong>100.0%</strong></td><td class="num ${netToOwners >= 0 ? "pos" : "neg"}"><strong>${fmt.usdM(netToOwners)}</strong></td></tr>
+          </tfoot>
+        </table>` },
+    ],
+  });
 }
 
 // v14.5 (Phase 2.2) — Timeline tab
@@ -2911,18 +2963,31 @@ function renderProjectSalesTab(p, res) {
 // capital pressure heatmap, sales events, and a delay simulator that previews KPI
 // impact without saving anything.
 function renderProjectTimelineTab(p, res) {
-  return `
-    ${renderTimelineHeader(p, res)}
-    ${renderTimelineMilestoneBar(p, res)}
-    <div class="panel mb-24">
-      <h3>Monthly burn schedule</h3>
-      <div class="panel-subtitle">Outflows by category — land, construction, Kingshaus, soft costs, financing.</div>
-      <div class="chart-frame"><canvas id="chart-burn"></canvas></div>
-    </div>
-    ${renderCapitalPressureHeatmap(p, res)}
-    ${renderDelaySimulator(p, res)}
-    ${renderSalesEvents(p, res)}
-  `;
+  return pageShell({
+    railLabel: "TIMELINE",
+    railItems: [
+      { id: "pt-header",    label: "Header" },
+      { id: "pt-milestones", label: "Milestones" },
+      { id: "pt-burn",       label: "Monthly burn" },
+      { id: "pt-pressure",   label: "Capital pressure" },
+      { id: "pt-simulator",  label: "Delay simulator" },
+      { id: "pt-sales",      label: "Sales events" },
+    ],
+    kpiTiles: [
+      { label: "Total dev cost", value: fmt.usdM(res.kpis.total_dev_cost) },
+      { label: "Program",        value: `${p.program_months} months` },
+      { label: "Sale date",      value: fmt.ymShort(res.sale_date) },
+      { label: "Peak debt",      value: fmt.usdM(res.kpis.peak_debt) },
+    ],
+    sections: [
+      { id: "pt-header",     title: "Header",            subtitle: "Project, market, asset type, stage at a glance.", html: renderTimelineHeader(p, res) },
+      { id: "pt-milestones", title: "Milestones",        subtitle: "Visual timeline from purchase through sale with key dates.", html: renderTimelineMilestoneBar(p, res) },
+      { id: "pt-burn",       title: "Monthly burn schedule", subtitle: "Outflows by category — land, construction, Kingshaus, soft costs, financing.", html: `<div class="chart-frame"><canvas id="chart-burn"></canvas></div>` },
+      { id: "pt-pressure",   title: "Capital pressure",  subtitle: "When this project pulls hardest on the portfolio's capital.", html: renderCapitalPressureHeatmap(p, res) },
+      { id: "pt-simulator",  title: "Delay simulator",   subtitle: "Preview KPI impact of a timing shift without saving.", html: renderDelaySimulator(p, res) },
+      { id: "pt-sales",      title: "Sales events",      subtitle: "Listing, under-contract, closing dates and prices.", html: renderSalesEvents(p, res) },
+    ],
+  });
 }
 
 function renderTimelineHeader(p, res) {
