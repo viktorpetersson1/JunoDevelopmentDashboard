@@ -1080,10 +1080,9 @@ function renderPortfolio(r) {
     </div>
 
     ${pageShell({
+      pageKey: "portfolio",
       railLabel: "PORTFOLIO",
       railItems: [
-        { id: "po-performance", label: "Performance" },
-        { id: "po-capital",     label: "Capital" },
         { id: "po-flows",       label: "Cash flow + balances" },
         { id: "po-pipeline",    label: "Pipeline + risk" },
         { id: "po-table",       label: "Projects" },
@@ -1101,22 +1100,6 @@ function renderPortfolio(r) {
         { label: "Max debt",         value: fmt.usdM(k.max_debt_outstanding) },
       ],
       sections: [
-        { id: "po-performance", title: "Performance", subtitle: "Active deals, revenue, profit and margin across the model horizon.", html: `
-          <div class="kpi-grid">
-            ${kpiCard("Active projects", `${k.active_project_count}`, `${totalProjects} total${soldCount > 0 ? ` · ${soldCount} sold` : ""}`)}
-            ${kpiCard("Projected revenue", fmt.usdM(k.total_sales), `Across model horizon`)}
-            ${kpiCard("Projected profit", fmt.usdM(k.total_profit_before_tax), state.globals.apply_tax ? `After tax: ${fmt.usdM(k.total_profit_after_tax)}` : `Pre-tax`, profitCls)}
-            ${kpiCard("Portfolio margin", fmt.pct(portfolioMargin), `Profit / sales (pre-tax)`)}
-          </div>
-        `},
-        { id: "po-capital", title: "Capital", subtitle: "Equity called, debt outstanding, MOIC across the active pipeline.", html: `
-          <div class="kpi-grid">
-            ${kpiCard("Peak equity required", fmt.usdM(k.peak_equity_required), `Month: ${fmt.ymShort(k.peak_equity_month)}`, peakEqCls)}
-            ${kpiCard("Max debt outstanding", fmt.usdM(k.max_debt_outstanding), `Month: ${fmt.ymShort(k.max_debt_month)}`, maxDebtCls)}
-            ${kpiCard("Total equity in", fmt.usdM(k.total_equity_in), `Owner cash deployed`)}
-            ${kpiCard("Gross MOIC", `${k.moic_gross.toFixed(2)}x`, `Multiple on invested capital`, moicCls)}
-          </div>
-        `},
         { id: "po-flows", title: "Cash flow + balances", subtitle: "Monthly cash flow (sales positive, costs negative) and running debt vs equity balances.", html: `
           <div class="panel-row">
             <div class="panel">
@@ -1201,15 +1184,28 @@ function kpiCard(label, value, meta = "", cls = "") {
   return `<div class="kpi ${cls}"><div class="label">${label}</div><div class="value">${value}</div>${metaHtml}</div>`;
 }
 
-// v14.27 — Generic page shell. Wraps any view in the section-rail + KPI strip +
-// section dividers layout. Pass:
-//   railItems:  [{ id, label }]  — anchors for the left rail; pass [] to hide rail
-//   kpiTiles:   [{ label, value, cls }]  — tiles for the sticky strip; pass [] to hide
-//   sections:   [{ id, html, title?, subtitle? }]  — content sections
-// The section helper injects an h2 title automatically if you pass `title`, so the
-// rail label can match. If you pass raw `html` it's responsible for its own headings.
-function pageShell({ railItems = [], kpiTiles = [], sections = [], railLabel = "SECTIONS" }) {
+// v14.30 — Generic page shell, TAB MODE.
+// Renders only ONE section at a time. Clicking a rail link switches the
+// active section (no scrolling). Active section id is stored per page
+// in state.ui.pageRailActive[pageKey] so the user's choice persists
+// across re-renders (autosave, scenario change, etc.).
+//
+// Params:
+//   pageKey:    unique string per view ("portfolio", "capital", etc.).
+//               Defaults to railLabel.toLowerCase() if not supplied.
+//   railItems:  [{ id, label }]  — vertical tabs; pass [] to hide rail
+//   kpiTiles:   [{ label, value, cls }] — sticky strip; pass [] to hide
+//   sections:   [{ id, html, title?, subtitle? }] — content panels
+//               (one rendered at a time; the rest are not mounted)
+function pageShell({ railItems = [], kpiTiles = [], sections = [], railLabel = "SECTIONS", pageKey }) {
   const hasRail = railItems.length > 0;
+  const key = pageKey || (railLabel ? railLabel.toLowerCase() : "page");
+  const stored = state.ui.pageRailActive?.[key];
+  // Active section: stored if valid, else fallback to first section
+  const validIds = new Set(sections.map(s => s.id));
+  const activeId = (stored && validIds.has(stored)) ? stored : (sections[0]?.id);
+  const active = sections.find(s => s.id === activeId);
+
   const kpiClass = kpiTiles.length === 4 ? " cols-4" : kpiTiles.length === 5 ? " cols-5" : "";
   const kpiHtml = kpiTiles.length === 0 ? "" : `
     <div class="page-kpi-strip${kpiClass}">
@@ -1220,22 +1216,25 @@ function pageShell({ railItems = [], kpiTiles = [], sections = [], railLabel = "
         </div>
       `).join("")}
     </div>`;
-  const sectionsHtml = sections.map(s => {
-    const title = s.title ? `<h2 class="page-section-title">${s.title}</h2>` : "";
-    const subtitle = s.subtitle ? `<div class="page-section-subtitle">${s.subtitle}</div>` : "";
-    return `<section id="${s.id}" class="page-section">${title}${subtitle}${s.html || ""}</section>`;
-  }).join("");
+
+  const activeHtml = active ? (() => {
+    const title = active.title ? `<h2 class="page-section-title">${active.title}</h2>` : "";
+    const subtitle = active.subtitle ? `<div class="page-section-subtitle">${active.subtitle}</div>` : "";
+    return `<section id="${active.id}" class="page-section page-section-active">${title}${subtitle}${active.html || ""}</section>`;
+  })() : "";
+
   const railHtml = !hasRail ? "" : `
     <aside class="page-rail" role="navigation" aria-label="Page sections">
       <div class="page-rail-label">${railLabel}</div>
-      ${railItems.map(r => `<button class="page-rail-link" data-page-rail="${r.id}">${r.label}</button>`).join("")}
+      ${railItems.map(r => `<button class="page-rail-link${r.id === activeId ? " active" : ""}" data-page-rail="${r.id}" data-page-key="${key}">${r.label}</button>`).join("")}
     </aside>`;
+
   return `
     <div class="page-shell${hasRail ? "" : " no-rail"}">
       ${railHtml}
       <div class="page-content">
         ${kpiHtml}
-        ${sectionsHtml}
+        ${activeHtml}
       </div>
     </div>
   `;
@@ -1509,9 +1508,9 @@ function renderProjectSummaryTab(p, res, m) {
   }).join("");
 
   return pageShell({
+    pageKey: "project_summary",
     railLabel: "SUMMARY",
     railItems: [
-      { id: "ps-overview",    label: "Overview" },
       { id: "ps-timeline",    label: "Timeline" },
       { id: "ps-cashflow",    label: "Cash flow" },
       { id: "ps-actuals",     label: "Forecast vs actuals" },
@@ -1530,14 +1529,6 @@ function renderProjectSummaryTab(p, res, m) {
       { label: "MOIC",       value: `${(res.kpis.moic || 0).toFixed(2)}x` },
     ],
     sections: [
-      { id: "ps-overview", title: "Project overview", subtitle: "Headline cost, revenue, profit, and return metrics for this project.", html: `
-        <div class="kpi-grid">
-          ${kpiCard("Total dev cost", fmt.usdM(res.kpis.total_dev_cost), `${fmt.num(res.kpis.total_cost_per_sqft, 0)}/sqft`)}
-          ${kpiCard("Gross sale value", fmt.usdM(res.kpis.total_sales), `${fmt.num(res.kpis.sale_price_per_sqft, 0)}/sqft`)}
-          ${kpiCard("Projected profit", fmt.usdM(res.kpis.gross_profit), fmt.pct(res.kpis.profit_margin_pct), res.kpis.gross_profit >= 0 ? "pos" : "neg")}
-          ${kpiCard("Peak equity", fmt.usdM(res.kpis.peak_equity), `Project-level`)}
-        </div>
-      `},
       { id: "ps-timeline", title: "Timeline", subtitle: "Milestone bar from start through sale with key dates.", html: renderProjectTimeline(p, res).replace(/^<div class="panel">|<\/div>$/g, "").replace(/<h3>Timeline<\/h3>/, "") },
       { id: "ps-cashflow", title: "Monthly cash flow", subtitle: `${m.dates[0]} → ${m.dates[m.dates.length-1]} · debt & equity overlay.`, html: `<div class="chart-frame"><canvas id="chart-project"></canvas></div>` },
       { id: "ps-actuals", title: "Forecast vs actuals", subtitle: "Variance flags across cost categories.", html: renderActualsVariance(p, res) },
@@ -2347,9 +2338,9 @@ function renderCapitalOverview(r) {
     ${gapBanner}
 
     ${pageShell({
+      pageKey: "capital",
       railLabel: "CAPITAL",
       railItems: [
-        { id: "ca-overview", label: "Overview" },
         { id: "ca-drawdown", label: "LOC drawdown" },
         { id: "ca-stack",    label: "Capital stack" },
         { id: "ca-flows",    label: "Sources & uses" },
@@ -2364,14 +2355,6 @@ function renderCapitalOverview(r) {
         { label: "Total equity called", value: fmt.usdM(totalEquityCalled) },
       ],
       sections: [
-        { id: "ca-overview", title: "Overview", subtitle: "Headline capital metrics for the active scenario. Tiles above repeat for visibility while scrolling.", html: `
-          <div class="kpi-grid">
-            ${kpiCard("KPC LOC peak", fmt.usdM(peakLoc), `${fmt.pct(peakDrawnPct)} of ${fmt.usdM(loc.facility_size_usd || 0)} cap`, peakDrawnPct > 0.9 ? "warn" : "")}
-            ${kpiCard("LOC interest accrued", fmt.usdM(totalLocInterest), `${(loc.interest_rate_apr * 100).toFixed(1)}% APR · capitalized`)}
-            ${kpiCard("Owner equity needed", fmt.usdM(trueEquityTotal), trueEquityTotal > 0 ? "Above LOC cap" : "LOC covers everything", trueEquityTotal > 0 ? "warn" : "pos")}
-            ${kpiCard("Funding-gap months", `${breachMonths}`, breachMonths > 0 ? "LOC insufficient" : "All covered by LOC", breachMonths > 0 ? "neg" : "pos")}
-          </div>
-        `},
         { id: "ca-drawdown", title: "KPC LOC drawdown", subtitle: "Outstanding balance vs facility cap over the model horizon.", html: `
           <div class="chart-frame"><canvas id="chart-loc-drawdown"></canvas></div>
         `},
@@ -2473,6 +2456,7 @@ function renderRisksCenter(r) {
     </div>
 
     ${pageShell({
+      pageKey: "risks_center",
       railLabel: "CATEGORIES",
       railItems,
       kpiTiles: [
@@ -2498,9 +2482,9 @@ function renderProjectCapitalTab(p, res) {
   const loc = state.globals.kpc_loc || {};
 
   return pageShell({
+    pageKey: "project_capital",
     railLabel: "CAPITAL",
     railItems: [
-      { id: "pc-overview", label: "Capital stack" },
       { id: "pc-flows",    label: "Sources & uses" },
       { id: "pc-note",     label: "LOC allocation note" },
     ],
@@ -2511,14 +2495,6 @@ function renderProjectCapitalTab(p, res) {
       { label: "Sale proceeds",     value: fmt.usdM(k.total_sales) },
     ],
     sections: [
-      { id: "pc-overview", title: "This project's capital stack", subtitle: "Project-level view of how this villa is funded. Portfolio-wide LOC capacity is enforced on the top-level Capital screen.", html: `
-        <div class="kpi-grid">
-          ${kpiCard("Senior debt peak", fmt.usdM(k.peak_debt), `Construction loan`)}
-          ${kpiCard("Equity / LOC peak", fmt.usdM(k.peak_equity), `Funded via KPC LOC until exhausted`)}
-          ${kpiCard("Total dev cost", fmt.usdM(k.total_dev_cost), `Across project lifecycle`)}
-          ${kpiCard("Sale proceeds", fmt.usdM(k.total_sales), `Repays debt + LOC, then owners`)}
-        </div>
-      `},
       { id: "pc-flows", title: "Sources vs Uses", subtitle: "Where capital comes from vs where it goes for this single project.", html: renderSourcesUses(p, res) },
       { id: "pc-note", title: "LOC allocation note", subtitle: "", html: `
         <div class="note">
@@ -2640,6 +2616,7 @@ function renderProjectActualsTab(p, res) {
     </div>` : ""}`;
 
   return pageShell({
+    pageKey: "project_actuals",
     railLabel: "ACTUALS",
     railItems: [
       { id: "pa-overview",    label: "Variance vs forecast" },
@@ -2706,6 +2683,7 @@ function renderProjectRisksTab(p, res) {
   };
 
   return pageShell({
+    pageKey: "project_risks",
     railLabel: "RISKS",
     railItems: [
       { id: "pr-cards",    label: "Risk cards" },
@@ -2822,6 +2800,7 @@ function renderProjectActivityTab(p) {
     </div>`;
 
   return pageShell({
+    pageKey: "project_activity",
     railItems: [],
     kpiTiles: [
       { label: "Total events",    value: `${entries.length}` },
@@ -2964,6 +2943,7 @@ function renderProjectSalesTab(p, res) {
   </div>`;
 
   return pageShell({
+    pageKey: "project_sales",
     railLabel: "SALES",
     railItems: [
       { id: "psa-lifecycle", label: "Lifecycle" },
@@ -3037,6 +3017,7 @@ function renderProjectSalesTab(p, res) {
 // impact without saving anything.
 function renderProjectTimelineTab(p, res) {
   return pageShell({
+    pageKey: "project_timeline",
     railLabel: "TIMELINE",
     railItems: [
       { id: "pt-header",    label: "Header" },
@@ -3265,6 +3246,7 @@ function renderCashflow(r) {
   // v14.27 — Single-section page, no rail needed. The bold section
   // heading + subtitle gives it the same chrome as the bigger pages.
   return pageShell({
+    pageKey: "cashflow",
     railItems: [],
     kpiTiles: [
       { label: "Total sales",     value: fmt.usdM(r.kpis.total_sales) },
@@ -3310,6 +3292,7 @@ function renderPipeline(r) {
   ganttHtml += `</div>`;
 
   return pageShell({
+    pageKey: "pipeline",
     railItems: [],
     kpiTiles: [
       { label: "Projects", value: `${projects.length}` },
@@ -3386,6 +3369,7 @@ function renderWaterfall(r) {
   // below the shell as legacy panels (they're conditional and complex
   // enough that wrapping risks regressions).
   const waterfallShell = pageShell({
+    pageKey: "waterfall",
     railLabel: "WATERFALL",
     railItems: [
       { id: "wf-timeline",  label: "Equity timeline" },
@@ -3587,6 +3571,7 @@ function renderScenario(r) {
       </div>
     </div>
     ${pageShell({
+      pageKey: "scenario",
       railLabel: "SCENARIOS",
       railItems: [
         { id: "sc-active",     label: "Active scenario" },
@@ -3933,6 +3918,7 @@ function renderSensitivity(r) {
   }
 
   return pageShell({
+    pageKey: "sensitivity",
     railLabel: "SENSITIVITY",
     railItems: [
       { id: "se-tornado", label: "Tornado" },
@@ -4104,6 +4090,7 @@ function renderRisk(r) {
   })() : `<div class="muted" style="font-size:12px;">Run a simulation to see the interpretation.</div>`;
 
   return pageShell({
+    pageKey: "stress_test",
     railLabel: "STRESS TEST",
     railItems: [
       { id: "st-distributions", label: "Distributions" },
@@ -5144,16 +5131,34 @@ function attachViewEvents(result) {
     btn.addEventListener("click", () => setProjectTab(btn.dataset.projectTab));
   }
 
-  // v14.27 — Universal section rail wiring. Works for any view that uses
-  // pageShell() OR the legacy .inputs-rail-link selector. Both flavours
-  // share the same .page-section[id] anchors.
-  const pageRailLinks = document.querySelectorAll("[data-page-rail], [data-rail].inputs-rail-link");
-  if (pageRailLinks.length) {
-    const sections = Array.from(document.querySelectorAll(".page-section[id], .inputs-section-v2[id]"));
-    const railIdOf = (a) => a.dataset.pageRail || a.dataset.rail;
-    for (const a of pageRailLinks) {
+  // v14.30 — Page-rail click handler (TAB MODE).
+  // Clicking a rail link switches the active section via
+  // state.ui.pageRailActive[pageKey]. notify() re-renders with the new
+  // active section visible. No scroll-spy, no IntersectionObserver — at
+  // most one section is in the DOM at any time.
+  for (const a of document.querySelectorAll("[data-page-rail]")) {
+    a.addEventListener("click", () => {
+      const key = a.dataset.pageKey;
+      const id = a.dataset.pageRail;
+      if (!key || !id) return;
+      if (!state.ui.pageRailActive) state.ui.pageRailActive = {};
+      state.ui.pageRailActive[key] = id;
+      notify();
+      // After re-render, scroll the page to top so the user sees the new
+      // section from the start, not wherever they were on the old one.
+      window.scrollTo({ top: 0, behavior: "auto" });
+    });
+  }
+
+  // Legacy Inputs-page rail (uses .inputs-rail-link + scroll-spy, NOT
+  // tab-switching — the Inputs form intentionally needs all sections
+  // visible in one column for editing).
+  const inputsRailLinks = document.querySelectorAll(".inputs-rail-link[data-rail]");
+  if (inputsRailLinks.length) {
+    const sections = Array.from(document.querySelectorAll(".inputs-section-v2[id]"));
+    for (const a of inputsRailLinks) {
       a.addEventListener("click", () => {
-        const target = document.getElementById(railIdOf(a));
+        const target = document.getElementById(a.dataset.rail);
         if (target) {
           const y = target.getBoundingClientRect().top + window.pageYOffset - 200;
           window.scrollTo({ top: y, behavior: "smooth" });
@@ -5161,7 +5166,7 @@ function attachViewEvents(result) {
       });
     }
     const setActive = (id) => {
-      for (const a of pageRailLinks) a.classList.toggle("active", railIdOf(a) === id);
+      for (const a of inputsRailLinks) a.classList.toggle("active", a.dataset.rail === id);
     };
     if (sections.length && "IntersectionObserver" in window) {
       const observer = new IntersectionObserver((entries) => {

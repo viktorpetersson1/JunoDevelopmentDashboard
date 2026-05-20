@@ -42,6 +42,7 @@ export const state = {
     avatarMenuOpen: false,  // v14.20 (design reset Phase 4): avatar dropdown menu open/closed
     settingsDrawer: { open: false, tab: "settings" },  // v14.21: half-pane settings drawer (General / History / Suggestions / Users)
     inputsGlobalsOpen: false,  // v14.26: project Inputs tab — "Global defaults" accordion at the bottom
+    pageRailActive: {},  // v14.30: per-view active section id for tab-style pageShell — { [pageKey]: sectionId }
     wizard: { open: false, step: 0, draft: null },  // v14.1: New Project wizard state
   },
 };
