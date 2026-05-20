@@ -4220,6 +4220,65 @@ button.btn.danger:hover {
 .badge.sold      { background: var(--color-positive-soft); color: var(--color-positive); }
 .badge.excluded  { background: var(--color-negative-soft); color: var(--color-negative); }
 
+/* ============================================================
+   Phase 3 (v14.36 design system) — Surface-by-surface alignment.
+   Content area lifts to white. Page title: 28px/500/snug.
+   Horizontal .view-tabs strip for Portfolio, Projects, Cashflow,
+   Capital, and Risks top-level views.
+   ============================================================ */
+
+/* Content area: white (lift from sunken grey) */
+.ja-page-shell__content { background: var(--color-surface-base); }
+
+/* Page title: 28px / weight 500 / snug tracking — design-system spec */
+.page-title {
+  font-size: var(--font-size-3xl);           /* 28px */
+  font-weight: var(--font-weight-medium);    /* 500 */
+  letter-spacing: var(--letter-spacing-snug);
+  color: var(--color-text-primary);
+  margin: 0;
+  line-height: var(--line-height-tight);
+}
+
+/* ---- HORIZONTAL VIEW-TAB STRIP ---- */
+/* Top-level page navigation bar rendered above the pageShell content. */
+.view-tabs {
+  display: flex;
+  align-items: flex-end;
+  gap: 0;
+  border-bottom: 1px solid var(--color-border-hairline);
+  margin: 0 0 28px;
+  overflow-x: auto;
+  scrollbar-width: none; /* Firefox */
+}
+.view-tabs::-webkit-scrollbar { display: none; }
+
+.view-tab {
+  flex-shrink: 0;
+  padding: 8px 16px 10px;
+  font-size: var(--font-size-sm);         /* 13px */
+  font-weight: var(--font-weight-book);   /* 400 */
+  color: var(--color-text-tertiary);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px; /* overlap hairline so active tab sits flush */
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: var(--letter-spacing-base);
+  transition:
+    color               var(--duration-fast) var(--easing-standard),
+    border-bottom-color var(--duration-fast) var(--easing-standard);
+  white-space: nowrap;
+  line-height: 1.4;
+}
+.view-tab:hover { color: var(--color-text-primary); }
+.view-tab--active {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+  border-bottom-color: var(--color-text-primary);
+}
+
 /* ---------- responsive ---------- */
 
 @media (max-width: 900px) {

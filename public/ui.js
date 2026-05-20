@@ -913,6 +913,14 @@ function attachTopbarEvents() {
       }
     });
   }
+
+  // v14.36 — Cross-view navigation from the horizontal view-tab strip.
+  for (const btn of document.querySelectorAll("[data-view-href]")) {
+    btn.addEventListener("click", () => {
+      const href = btn.dataset.viewHref;
+      if (href) setView(href);
+    });
+  }
 }
 
 // ---------- main view dispatcher ----------
@@ -1298,6 +1306,17 @@ function renderPortfolio(r) {
       </tbody>
     </table></div>`;
 
+  // v14.36 — Horizontal tab strip replaces the vertical page rail.
+  const _fin = canSeeFinancials();
+  const _activePoSection = state.ui.pageRailActive?.portfolio || "po-projects";
+  const _portfolioTabs = [
+    { label: "Overview",    sectionId: "po-projects",    pageKey: "portfolio", active: _activePoSection === "po-projects"    },
+    ...(_fin ? [{ label: "Performance", sectionId: "po-performance", pageKey: "portfolio", active: _activePoSection === "po-performance" }] : []),
+    ...(_fin ? [{ label: "Financial",   sectionId: "po-financial",   pageKey: "portfolio", active: _activePoSection === "po-financial"   }] : []),
+    { label: "Sales cycle", sectionId: "po-sales",       pageKey: "portfolio", active: _activePoSection === "po-sales"       },
+    ...(_fin ? [{ label: "Annual P&L",  sectionId: "po-pl",          pageKey: "portfolio", active: _activePoSection === "po-pl"          }] : []),
+  ];
+
   return `
     <!-- v14.3 Portfolio header with global controls + CTAs -->
     <div class="portfolio-header mb-24">
@@ -1310,18 +1329,12 @@ function renderPortfolio(r) {
       </div>` : ""}
     </div>
 
+    ${renderViewTabStrip(_portfolioTabs)}
+
     ${pageShell({
       pageKey: "portfolio",
       railLabel: "PORTFOLIO",
-      railItems: [
-        { id: "po-projects",    label: "Projects" },
-        { id: "po-performance", label: "Performance" },
-        { id: "po-financial",   label: "Financial" },
-        { id: "po-pipeline",    label: "Pipeline + risk" },
-        { id: "po-sales",       label: "Sales cycle" },
-        { id: "po-pl",          label: "Annual P&L" },
-        ...(alerts.length ? [{ id: "po-risks", label: "Risk thresholds" }] : []),
-      ],
+      railItems: [],
       kpiTiles: [
         { label: "Active projects",  value: `${k.active_project_count}` },
         { label: "Revenue",          value: fmt.usdM(k.total_sales) },
@@ -1412,6 +1425,26 @@ function kpiCard(label, value, meta = "", cls = "") {
   const metaStr = meta == null ? "" : meta;
   const metaHtml = metaStr === "" ? "" : `<div class="meta">${metaStr}</div>`;
   return `<div class="kpi ${cls}"><div class="label">${label}</div><div class="value">${value}</div>${metaHtml}</div>`;
+}
+
+// v14.36 — Horizontal tab strip for top-level views.
+// Each tab either switches a section within the current pageShell
+// (using data-page-rail + data-page-key, handled by existing rail events)
+// or navigates to a different view (using data-view-href, handled by
+// attachTopbarEvents). Rendered ABOVE the pageShell content.
+//
+// Tab shape: { label, sectionId?, pageKey?, href?, active }
+//   sectionId + pageKey — in-page section switch
+//   href               — cross-view navigation via setView()
+//   active             — whether this tab is the current selection
+function renderViewTabStrip(tabs) {
+  const items = tabs.map(t => {
+    const attrs = t.href
+      ? `data-view-href="${escapeHtml(t.href)}"`
+      : `data-page-rail="${escapeHtml(t.sectionId)}" data-page-key="${escapeHtml(t.pageKey)}"`;
+    return `<button class="view-tab${t.active ? " view-tab--active" : ""}" ${attrs}>${escapeHtml(t.label)}</button>`;
+  });
+  return `<div class="view-tabs">${items.join("")}</div>`;
 }
 
 // v14.30 — Generic page shell, TAB MODE.
@@ -1534,6 +1567,10 @@ function renderProjectsList(r) {
   }).join("");
 
   return `
+    ${renderViewTabStrip([
+      { label: "All projects", href: "projects",  active: true  },
+      { label: "Pipeline",     href: "pipeline",  active: false },
+    ])}
     <div class="row between mb-12">
       <div class="section-title" style="margin:0;">Projects (${state.projects.length})</div>
       <div class="row gap-sm">
@@ -2554,6 +2591,10 @@ function renderCapitalOverview(r) {
 
   // High-level KPI strip
   return `
+    ${renderViewTabStrip([
+      { label: "Capital overview", href: "capital_overview", active: true  },
+      { label: "Owner waterfall",  href: "waterfall",        active: false },
+    ])}
     <div class="row between mb-12">
       <div>
         <h1 class="page-title">Capital</h1>
@@ -2676,6 +2717,11 @@ function renderRisksCenter(r) {
   });
 
   return `
+    ${renderViewTabStrip([
+      { label: "Risks center", href: "risks_center", active: true  },
+      { label: "Stress test",  href: "risk",         active: false },
+      { label: "Sensitivity",  href: "sensitivity",  active: false },
+    ])}
     <div class="row between mb-12">
       <div>
         <h1 class="page-title">Risks</h1>
@@ -3471,9 +3517,14 @@ function renderCashflow(r) {
   }
   tableHtml += `</tbody></table></div>`;
 
-  // v14.27 — Single-section page, no rail needed. The bold section
-  // heading + subtitle gives it the same chrome as the bigger pages.
-  return pageShell({
+  // v14.27 — Single-section page; view-tabs provide cross-view navigation
+  // to Scenarios, Sensitivity and Stress test (sibling views).
+  return renderViewTabStrip([
+    { label: "Cash flow",   href: "cashflow",    active: true  },
+    { label: "Scenarios",   href: "scenario",    active: false },
+    { label: "Sensitivity", href: "sensitivity", active: false },
+    { label: "Stress test", href: "risk",        active: false },
+  ]) + pageShell({
     pageKey: "cashflow",
     railItems: [],
     kpiTiles: [
