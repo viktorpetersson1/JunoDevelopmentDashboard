@@ -1,0 +1,394 @@
+/* ==========================================================================
+   Juno Atlas — Patterns Layer
+   --------------------------------------------------------------------------
+   Shared CSS for all composed page patterns (AppShell, ListPage, FormPage,
+   TabbedPage, KpiPattern, TwoColPattern).
+
+   Conventions:
+   - Class prefix: ja-  (continues from layout/data/feedback layers)
+   - All spacing/color values use var(--token-name) from tokens.css
+   - No !important — specificity handled by selector structure
+   ========================================================================== */
+
+/* ──────────────────────────────────────────────────────────────────────────
+   APP SHELL
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * .ja-app-shell
+ * Thin wrapper around <PageShell>. No additional layout of its own —
+ * PageShell owns the sidebar/topbar/content grid. This class exists
+ * purely for theming hooks and debug identification.
+ */
+.ja-app-shell {
+  min-height: 100vh;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   LIST PAGE
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Page header row — title left, primary action button right
+ */
+.ja-list-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.ja-list-page__title-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.ja-list-page__title {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-tight);
+  color: var(--color-text-primary);
+  margin: 0;
+  line-height: var(--line-height-tight);
+}
+
+.ja-list-page__subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+  line-height: var(--line-height-base);
+}
+
+.ja-list-page__header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+/**
+ * Toolbar — filter chips + search + result count
+ */
+.ja-list-page__toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.ja-list-page__filters {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.ja-list-page__search {
+  flex: 0 0 260px;
+  min-width: 160px;
+}
+
+.ja-list-page__spacer {
+  flex: 1;
+}
+
+.ja-list-page__count {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/**
+ * Empty-state wrapper — centered in available space
+ */
+.ja-list-page__empty {
+  margin-top: var(--space-16);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   FORM PAGE
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Page header — title + breadcrumbs left, save button right
+ */
+.ja-form-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.ja-form-page__title-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ja-form-page__title {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-tight);
+  color: var(--color-text-primary);
+  margin: 0;
+  line-height: var(--line-height-tight);
+}
+
+.ja-form-page__header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+/**
+ * Two-column layout: 1.55fr form | 1fr rail
+ */
+.ja-form-page__body {
+  display: grid;
+  grid-template-columns: 1.55fr 1fr;
+  grid-template-areas: "form rail";
+  gap: var(--space-6);
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .ja-form-page__body {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "form"
+      "rail";
+  }
+}
+
+.ja-form-page__sections {
+  grid-area: form;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+.ja-form-page__rail {
+  grid-area: rail;
+  position: sticky;
+  top: calc(var(--layout-topbar-height) + var(--space-6));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/**
+ * Individual section body — fields rendered inside a <Section>
+ */
+.ja-form-page__fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.ja-form-page__fields-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+@media (max-width: 640px) {
+  .ja-form-page__fields-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/**
+ * Footer action bar
+ */
+.ja-form-page__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-8);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--color-border-hairline);
+}
+
+/* Dirty indicator dot */
+.ja-form-page__dirty-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-accent-blue);
+  flex-shrink: 0;
+  align-self: center;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   TABBED PAGE
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Page header — title + meta left, actions right
+ */
+.ja-tabbed-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.ja-tabbed-page__title-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.ja-tabbed-page__title {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-tight);
+  color: var(--color-text-primary);
+  margin: 0;
+  line-height: var(--line-height-tight);
+}
+
+.ja-tabbed-page__subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.ja-tabbed-page__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+/**
+ * TabStrip override — tight margin spec: 4px top, 16px bottom
+ */
+.ja-tabbed-page .ja-tab-strip {
+  margin: var(--space-1) 0 var(--space-4);
+}
+
+.ja-tabbed-page__content {
+  /* Passthrough — children own their own layout */
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   KPI PATTERN
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * KPIStrip row at the top
+ */
+.ja-kpi-pattern__strip {
+  margin-bottom: var(--space-6);
+}
+
+/**
+ * Two-column body: 1.55fr chart card | 1fr rail
+ */
+.ja-kpi-pattern__body {
+  display: grid;
+  grid-template-columns: 1.55fr 1fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .ja-kpi-pattern__body {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ja-kpi-pattern__chart-card {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  min-width: 0;
+}
+
+.ja-kpi-pattern__chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6) var(--space-4);
+  border-bottom: 1px solid var(--color-border-hairline);
+}
+
+.ja-kpi-pattern__chart-title {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  letter-spacing: var(--letter-spacing-snug);
+  margin: 0;
+}
+
+.ja-kpi-pattern__chart-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ja-kpi-pattern__chart-body {
+  padding: var(--space-6);
+}
+
+.ja-kpi-pattern__rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   TWO-COLUMN PATTERN
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Pure layout shell — 1.55fr main + 1fr rail, no visual opinions.
+ * CSS variable --ja-twocol-gap controls the gap (default 24px).
+ * CSS variable --ja-twocol-stack controls the breakpoint (default 1024px).
+ */
+.ja-two-col {
+  display: grid;
+  grid-template-columns: 1.55fr 1fr;
+  gap: var(--ja-twocol-gap, var(--space-6));
+  align-items: start;
+}
+
+.ja-two-col__main {
+  min-width: 0;
+}
+
+.ja-two-col__rail {
+  min-width: 0;
+}
+
+/* Responsive stacking — driven by CSS container or media query */
+@media (max-width: 1024px) {
+  .ja-two-col {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   SHARED UTILITIES
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Page-level container — used within patterns that render a full page block
+ * rather than just a slot inside AppShell.
+ */
+.ja-page-block {
+  width: 100%;
+}

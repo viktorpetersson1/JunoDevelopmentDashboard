@@ -1,0 +1,1101 @@
+/* ==========================================================================
+   Juno Atlas — Primitives CSS
+   --------------------------------------------------------------------------
+   All primitive component styles. Prefix: ja-
+   Reference tokens via CSS custom properties from tokens.css.
+   Import tokens.css before this file in your root stylesheet.
+   ========================================================================== */
+
+/* ==========================================================================
+   SHARED UTILITIES
+   ========================================================================== */
+
+.ja-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ==========================================================================
+   BUTTON
+   ========================================================================== */
+
+.ja-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm); /* 6px per spec */
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--letter-spacing-base);
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  transition:
+    background-color var(--duration-fast) var(--easing-standard),
+    border-color var(--duration-fast) var(--easing-standard),
+    color var(--duration-fast) var(--easing-standard),
+    box-shadow var(--duration-fast) var(--easing-standard),
+    opacity var(--duration-fast) var(--easing-standard);
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  outline: none;
+  padding: 0 12px;
+}
+
+.ja-button:focus-visible {
+  box-shadow: var(--shadow-focus-ring);
+}
+
+/* Sizes */
+.ja-button--sm {
+  height: 28px;
+  padding: 0 10px;
+  font-size: var(--font-size-xs);
+  border-radius: 5px;
+}
+
+.ja-button--md {
+  height: 32px;
+  padding: 0 12px;
+  font-size: var(--font-size-sm);
+}
+
+.ja-button--lg {
+  height: 36px;
+  padding: 0 14px;
+  font-size: var(--font-size-sm);
+}
+
+/* Variants */
+.ja-button--primary {
+  background: var(--color-accent-lime);
+  color: var(--color-text-on-lime);
+  border-color: var(--color-accent-lime);
+}
+
+.ja-button--primary:hover:not(:disabled) {
+  background: var(--color-accent-lime-hover);
+  border-color: var(--color-accent-lime-hover);
+}
+
+.ja-button--primary:active:not(:disabled) {
+  background: var(--color-accent-lime-pressed);
+  border-color: var(--color-accent-lime-pressed);
+}
+
+.ja-button--secondary {
+  background: var(--color-surface-base);
+  color: var(--color-text-primary);
+  border-color: var(--color-border-hairline);
+}
+
+.ja-button--secondary:hover:not(:disabled) {
+  background: var(--color-surface-muted);
+  border-color: var(--color-border-strong);
+}
+
+.ja-button--secondary:active:not(:disabled) {
+  background: var(--color-surface-muted);
+}
+
+.ja-button--ghost {
+  background: transparent;
+  color: var(--color-text-secondary);
+  border-color: transparent;
+}
+
+.ja-button--ghost:hover:not(:disabled) {
+  background: var(--color-surface-muted);
+  color: var(--color-text-primary);
+}
+
+.ja-button--ghost:active:not(:disabled) {
+  background: var(--color-surface-muted);
+}
+
+.ja-button--danger {
+  background: var(--color-surface-base);
+  color: var(--color-negative);
+  border-color: var(--color-border-hairline);
+}
+
+.ja-button--danger:hover:not(:disabled) {
+  background: var(--color-negative-soft);
+  border-color: var(--color-negative);
+}
+
+.ja-button--danger:active:not(:disabled) {
+  background: var(--color-negative-soft);
+}
+
+/* Disabled */
+.ja-button:disabled,
+.ja-button[aria-disabled="true"] {
+  opacity: 0.38;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Loading */
+.ja-button--loading {
+  pointer-events: none;
+}
+
+.ja-button__spinner {
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: ja-spin 0.6s linear infinite;
+  flex-shrink: 0;
+}
+
+.ja-button--loading .ja-button__content {
+  opacity: 0.6;
+}
+
+/* Full width */
+.ja-button--full-width {
+  width: 100%;
+}
+
+/* Icon slots */
+.ja-button__icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+}
+
+.ja-button__icon svg {
+  width: 100%;
+  height: 100%;
+  stroke-width: 1.6;
+}
+
+/* ==========================================================================
+   ICON BUTTON
+   ========================================================================== */
+
+.ja-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  transition:
+    background-color var(--duration-fast) var(--easing-standard),
+    border-color var(--duration-fast) var(--easing-standard),
+    box-shadow var(--duration-fast) var(--easing-standard);
+  outline: none;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.ja-icon-button:focus-visible {
+  box-shadow: var(--shadow-focus-ring);
+}
+
+.ja-icon-button:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Sizes */
+.ja-icon-button--sm {
+  width: 28px;
+  height: 28px;
+  border-radius: 5px;
+}
+
+.ja-icon-button--md {
+  width: 32px;
+  height: 32px;
+}
+
+.ja-icon-button--lg {
+  width: 36px;
+  height: 36px;
+}
+
+/* Variants */
+.ja-icon-button--ghost {
+  background: transparent;
+  border-color: transparent;
+}
+
+.ja-icon-button--ghost:hover:not(:disabled) {
+  background: #F4F4F2;
+  color: var(--color-text-primary);
+}
+
+.ja-icon-button--ghost:active:not(:disabled) {
+  background: var(--color-surface-muted);
+}
+
+.ja-icon-button--outline {
+  border-color: var(--color-border-hairline);
+  background: var(--color-surface-base);
+}
+
+.ja-icon-button--outline:hover:not(:disabled) {
+  background: var(--color-surface-muted);
+  border-color: var(--color-border-strong);
+  color: var(--color-text-primary);
+}
+
+.ja-icon-button--outline:active:not(:disabled) {
+  background: var(--color-surface-muted);
+}
+
+.ja-icon-button svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 1.6;
+  display: block;
+}
+
+/* ==========================================================================
+   PILL (Badge)
+   ========================================================================== */
+
+.ja-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 12px; /* full-pill per spec */
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-micro); /* 11px */
+  font-weight: var(--font-weight-medium);
+  letter-spacing: -0.005em;
+  line-height: 1;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.ja-pill__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Variants */
+.ja-pill--positive {
+  background: var(--color-positive-soft);
+  color: var(--color-positive);
+}
+
+.ja-pill--positive .ja-pill__dot {
+  background: var(--color-positive);
+}
+
+.ja-pill--warning {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+}
+
+.ja-pill--warning .ja-pill__dot {
+  background: var(--color-warning);
+}
+
+.ja-pill--negative {
+  background: var(--color-negative-soft);
+  color: var(--color-negative);
+}
+
+.ja-pill--negative .ja-pill__dot {
+  background: var(--color-negative);
+}
+
+.ja-pill--info {
+  background: var(--color-info-soft);
+  color: var(--color-info);
+}
+
+.ja-pill--info .ja-pill__dot {
+  background: var(--color-info);
+}
+
+.ja-pill--muted {
+  background: var(--color-surface-muted);
+  color: var(--color-text-secondary);
+}
+
+.ja-pill--muted .ja-pill__dot {
+  background: var(--color-text-quaternary);
+}
+
+/* ==========================================================================
+   AVATAR
+   ========================================================================== */
+
+.ja-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  background: var(--color-surface-muted);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-body);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0;
+  line-height: 1;
+  user-select: none;
+  flex-shrink: 0;
+  position: relative;
+}
+
+/* Sizes */
+.ja-avatar--sm {
+  width: 24px;
+  height: 24px;
+  font-size: 10px;
+}
+
+.ja-avatar--md {
+  width: 32px;
+  height: 32px;
+  font-size: var(--font-size-xs);
+}
+
+.ja-avatar--lg {
+  width: 40px;
+  height: 40px;
+  font-size: var(--font-size-sm);
+}
+
+.ja-avatar--xl {
+  width: 56px;
+  height: 56px;
+  font-size: var(--font-size-md);
+}
+
+.ja-avatar__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: var(--radius-full);
+}
+
+.ja-avatar__initials {
+  position: relative;
+  z-index: 1;
+  font-feature-settings: normal;
+  letter-spacing: 0.01em;
+}
+
+/* ==========================================================================
+   INPUT
+   ========================================================================== */
+
+.ja-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.ja-field__label {
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  letter-spacing: var(--letter-spacing-base);
+  line-height: var(--line-height-snug);
+}
+
+.ja-field__hint {
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-tertiary);
+  letter-spacing: var(--letter-spacing-base);
+  line-height: var(--line-height-snug);
+}
+
+.ja-field__hint--error {
+  color: var(--color-negative);
+}
+
+.ja-input-wrap {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-base);
+  transition:
+    border-color var(--duration-fast) var(--easing-standard),
+    box-shadow var(--duration-fast) var(--easing-standard);
+  overflow: hidden;
+}
+
+.ja-input-wrap:focus-within {
+  border-color: var(--color-border-focus);
+  box-shadow: inset 0 0 0 1px var(--color-border-focus);
+}
+
+.ja-input-wrap--invalid {
+  border-color: var(--color-negative);
+}
+
+.ja-input-wrap--invalid:focus-within {
+  border-color: var(--color-negative);
+  box-shadow: inset 0 0 0 1px var(--color-negative);
+}
+
+.ja-input-wrap--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--color-surface-muted);
+}
+
+.ja-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  font-feature-settings: var(--font-feature-body);
+  letter-spacing: var(--letter-spacing-base);
+  padding: 0 10px;
+  line-height: 1;
+}
+
+.ja-input[type="number"] {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feature-numeric);
+}
+
+.ja-input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.ja-input:disabled {
+  cursor: not-allowed;
+}
+
+.ja-input-affix {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 10px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  background: var(--color-surface-sunken);
+  border-color: inherit;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.ja-input-affix--prefix {
+  border-right: 1px solid var(--color-border-hairline);
+}
+
+.ja-input-affix--suffix {
+  border-left: 1px solid var(--color-border-hairline);
+}
+
+/* When prefix/suffix has no background */
+.ja-input-affix--icon {
+  background: transparent;
+  padding: 0 8px;
+  color: var(--color-text-tertiary);
+}
+
+/* ==========================================================================
+   SELECT
+   ========================================================================== */
+
+.ja-select-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.ja-select-inner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 32px;
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-base);
+  transition:
+    border-color var(--duration-fast) var(--easing-standard),
+    box-shadow var(--duration-fast) var(--easing-standard);
+}
+
+.ja-select-inner:focus-within {
+  border-color: var(--color-border-focus);
+  box-shadow: inset 0 0 0 1px var(--color-border-focus);
+}
+
+.ja-select-inner--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--color-surface-muted);
+}
+
+.ja-select {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  font-feature-settings: var(--font-feature-body);
+  letter-spacing: var(--letter-spacing-base);
+  padding: 0 30px 0 10px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.ja-select:disabled {
+  cursor: not-allowed;
+}
+
+.ja-select option {
+  font-family: var(--font-family-body);
+}
+
+.ja-select__chevron {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--color-text-tertiary);
+  display: flex;
+  align-items: center;
+}
+
+.ja-select__chevron svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 1.6;
+}
+
+/* ==========================================================================
+   SWITCH
+   ========================================================================== */
+
+.ja-switch-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ja-switch-wrap--disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.ja-switch {
+  position: relative;
+  width: 24px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.ja-switch__input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.ja-switch__track {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-full);
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border-strong);
+  transition:
+    background-color var(--duration-base) var(--easing-standard),
+    border-color var(--duration-base) var(--easing-standard);
+}
+
+.ja-switch__input:checked + .ja-switch__track {
+  background: var(--color-text-primary);
+  border-color: var(--color-text-primary);
+}
+
+.ja-switch__thumb {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 10px;
+  height: 10px;
+  background: var(--color-surface-base);
+  border-radius: 50%;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--duration-base) var(--easing-out);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.ja-switch__input:checked ~ .ja-switch__thumb {
+  transform: translateX(10px);
+}
+
+.ja-switch__input:focus-visible ~ .ja-switch__track {
+  box-shadow: var(--shadow-focus-ring);
+}
+
+.ja-switch__label {
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-book);
+  color: var(--color-text-primary);
+  letter-spacing: var(--letter-spacing-base);
+  line-height: var(--line-height-snug);
+}
+
+/* ==========================================================================
+   CHECKBOX
+   ========================================================================== */
+
+.ja-checkbox-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ja-checkbox-wrap--disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.ja-checkbox {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.ja-checkbox__input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.ja-checkbox__box {
+  position: absolute;
+  inset: 0;
+  border-radius: 3px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface-base);
+  transition:
+    background-color var(--duration-fast) var(--easing-standard),
+    border-color var(--duration-fast) var(--easing-standard);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ja-checkbox__input:checked + .ja-checkbox__box,
+.ja-checkbox__input[data-indeterminate="true"] + .ja-checkbox__box {
+  background: var(--color-text-primary);
+  border-color: var(--color-text-primary);
+}
+
+.ja-checkbox__check {
+  display: none;
+  color: var(--color-text-inverse);
+}
+
+.ja-checkbox__indeterminate {
+  display: none;
+  color: var(--color-text-inverse);
+}
+
+.ja-checkbox__input:checked + .ja-checkbox__box .ja-checkbox__check {
+  display: block;
+}
+
+.ja-checkbox__input[data-indeterminate="true"] + .ja-checkbox__box .ja-checkbox__indeterminate {
+  display: block;
+}
+
+.ja-checkbox__input:focus-visible + .ja-checkbox__box {
+  box-shadow: var(--shadow-focus-ring);
+}
+
+.ja-checkbox__label {
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-book);
+  color: var(--color-text-primary);
+  letter-spacing: var(--letter-spacing-base);
+  line-height: var(--line-height-snug);
+}
+
+/* ==========================================================================
+   RADIO
+   ========================================================================== */
+
+.ja-radio-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ja-radio-wrap--disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.ja-radio {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.ja-radio__input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.ja-radio__circle {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface-base);
+  transition:
+    background-color var(--duration-fast) var(--easing-standard),
+    border-color var(--duration-fast) var(--easing-standard);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ja-radio__input:checked + .ja-radio__circle {
+  background: var(--color-text-primary);
+  border-color: var(--color-text-primary);
+}
+
+.ja-radio__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-text-inverse);
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--easing-standard);
+  flex-shrink: 0;
+}
+
+.ja-radio__input:checked + .ja-radio__circle .ja-radio__dot {
+  opacity: 1;
+}
+
+.ja-radio__input:focus-visible + .ja-radio__circle {
+  box-shadow: var(--shadow-focus-ring);
+}
+
+.ja-radio__label {
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-book);
+  color: var(--color-text-primary);
+  letter-spacing: var(--letter-spacing-base);
+  line-height: var(--line-height-snug);
+}
+
+/* ==========================================================================
+   FILTER CHIP
+   ========================================================================== */
+
+.ja-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border-hairline);
+  background: var(--color-surface-base);
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  letter-spacing: var(--letter-spacing-base);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  transition:
+    background-color var(--duration-fast) var(--easing-standard),
+    border-color var(--duration-fast) var(--easing-standard),
+    color var(--duration-fast) var(--easing-standard);
+  outline: none;
+}
+
+.ja-filter-chip:hover:not(:disabled) {
+  background: var(--color-surface-muted);
+}
+
+.ja-filter-chip:focus-visible {
+  box-shadow: var(--shadow-focus-ring);
+}
+
+.ja-filter-chip--active {
+  background: var(--color-text-primary);
+  color: var(--color-text-inverse);
+  border-color: var(--color-text-primary);
+}
+
+.ja-filter-chip--active:hover:not(:disabled) {
+  background: #222222;
+  border-color: #222222;
+}
+
+.ja-filter-chip__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  background: rgba(0, 0, 0, 0.1);
+  color: inherit;
+  line-height: 1;
+}
+
+.ja-filter-chip--active .ja-filter-chip__badge {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.ja-filter-chip__clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  opacity: 0.7;
+  transition: opacity var(--duration-fast) var(--easing-standard);
+}
+
+.ja-filter-chip__clear:hover {
+  opacity: 1;
+}
+
+.ja-filter-chip__clear svg {
+  width: 10px;
+  height: 10px;
+  stroke-width: 2;
+}
+
+/* ==========================================================================
+   SCENARIO CHIP
+   ========================================================================== */
+
+.ja-scenario-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid transparent;
+  background: transparent;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  letter-spacing: var(--letter-spacing-base);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  transition:
+    background-color var(--duration-fast) var(--easing-standard),
+    border-color var(--duration-fast) var(--easing-standard),
+    color var(--duration-fast) var(--easing-standard);
+  outline: none;
+}
+
+.ja-scenario-chip:hover:not(.ja-scenario-chip--active) {
+  color: var(--color-text-primary);
+  background: var(--color-surface-muted);
+}
+
+.ja-scenario-chip:focus-visible {
+  box-shadow: var(--shadow-focus-ring);
+}
+
+.ja-scenario-chip--active {
+  background: var(--color-surface-muted);
+  border-color: var(--color-border-strong);
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.ja-scenario-chip__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-text-tertiary);
+  flex-shrink: 0;
+  transition: background-color var(--duration-fast) var(--easing-standard);
+}
+
+.ja-scenario-chip--active .ja-scenario-chip__dot {
+  background: var(--color-text-primary);
+}
+
+/* Scenario color dots */
+.ja-scenario-chip--base .ja-scenario-chip__dot {
+  background: var(--color-text-tertiary);
+}
+
+.ja-scenario-chip--base.ja-scenario-chip--active .ja-scenario-chip__dot {
+  background: var(--color-text-primary);
+}
+
+.ja-scenario-chip--optimistic .ja-scenario-chip__dot {
+  background: var(--color-positive);
+}
+
+.ja-scenario-chip--pessimistic .ja-scenario-chip__dot {
+  background: var(--color-negative);
+}
+
+/* ==========================================================================
+   BREADCRUMB
+   ========================================================================== */
+
+.ja-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-book);
+  letter-spacing: var(--letter-spacing-base);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex-wrap: wrap;
+}
+
+.ja-breadcrumb__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+
+.ja-breadcrumb__link {
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  transition: color var(--duration-fast) var(--easing-standard);
+  border-radius: 3px;
+  outline: none;
+  padding: 1px 2px;
+  margin: 0 -2px;
+}
+
+.ja-breadcrumb__link:hover {
+  color: var(--color-text-primary);
+}
+
+.ja-breadcrumb__link:focus-visible {
+  box-shadow: var(--shadow-focus-ring);
+  color: var(--color-text-primary);
+}
+
+.ja-breadcrumb__current {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.ja-breadcrumb__sep {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 5px;
+  color: var(--color-text-quaternary);
+  flex-shrink: 0;
+}
+
+.ja-breadcrumb__sep svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 1.6;
+  display: block;
+}
+
+/* ==========================================================================
+   KEYFRAMES
+   ========================================================================== */
+
+@keyframes ja-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ja-button__spinner {
+    animation: none;
+    border: 1.5px solid currentColor;
+    opacity: 0.5;
+  }
+}
