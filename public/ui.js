@@ -1006,6 +1006,65 @@ function renderPortfolioTable(by_project) {
   </div>`;
 }
 
+// v14.32 — Project tiles, grouped by Active (committed) and Prospective
+// (pipeline). Replaces the Portfolio table on the Portfolio page.
+// Each tile is clickable → opens the project workspace.
+function renderProjectTilesGrouped(by_project) {
+  const tile = (res, p, excluded) => {
+    const next = nextMilestone(p, res);
+    const stageId = p.stage || "sourcing";
+    const stage = LIFECYCLE_STAGES.find(s => s.id === stageId) || LIFECYCLE_STAGES[0];
+    const stageColor = STAGE_GROUP_COLORS[stage.group] || "#7a7a73";
+    const profitCls = res.kpis.gross_profit >= 0 ? "pos" : "neg";
+    return `<button class="project-tile" data-action="open-project" data-id="${p.id}" type="button">
+      <div class="project-tile-head">
+        <div class="project-tile-stage" style="background:${stageColor}22;color:${stageColor};border:1px solid ${stageColor}55;">${stage.label}</div>
+        ${excluded ? `<span class="badge excluded">Excluded</span>` : ""}
+      </div>
+      <div class="project-tile-name">${escapeHtml(p.name)}</div>
+      <div class="project-tile-address muted">${escapeHtml(p.address || "—")}</div>
+      <div class="project-tile-kpis">
+        <div class="tile-kpi"><div class="tile-kpi-label">Profit</div><div class="tile-kpi-value ${profitCls}">${fmt.usdM(res.kpis.gross_profit)}</div></div>
+        <div class="tile-kpi"><div class="tile-kpi-label">Margin</div><div class="tile-kpi-value">${fmt.pct(res.kpis.profit_margin_pct)}</div></div>
+        <div class="tile-kpi"><div class="tile-kpi-label">Peak equity</div><div class="tile-kpi-value">${fmt.usdM(res.kpis.peak_equity)}</div></div>
+      </div>
+      <div class="project-tile-footer">
+        <div class="project-tile-dates muted">
+          <span>${fmt.ymShort(p.start_date)} → ${fmt.ymShort(res.sale_date)}</span>
+        </div>
+        ${next.date || next.label !== "—" ? `<div class="project-tile-next muted">Next: ${escapeHtml(next.label)}${next.date ? ` (${fmt.ymShort(next.date)})` : ""}</div>` : ""}
+      </div>
+    </button>`;
+  };
+
+  // Group projects. Status "committed" = Active, "pipeline" = Prospective,
+  // "sold" / "archived" = Closed (collapsed under a small footer).
+  const items = by_project.map(res => {
+    const p = state.projects.find(x => x.id === res.project_id);
+    if (!p) return null;
+    const excluded = state.scenario.excluded_project_ids.includes(res.project_id);
+    return { res, p, excluded };
+  }).filter(Boolean);
+
+  const active = items.filter(i => i.p.status === "committed" && !["sold", "archived"].includes(i.p.stage));
+  const prospective = items.filter(i => i.p.status === "pipeline" && !["sold", "archived"].includes(i.p.stage));
+  const closed = items.filter(i => ["sold", "archived"].includes(i.p.stage));
+
+  const group = (label, list, emptyMsg) => `<div class="project-tile-group">
+    <div class="project-tile-group-header">
+      <h3>${label}</h3>
+      <span class="muted" style="font-size:12px;">${list.length} project${list.length === 1 ? "" : "s"}</span>
+    </div>
+    ${list.length === 0
+      ? `<div class="project-tile-empty muted">${emptyMsg}</div>`
+      : `<div class="project-tile-grid">${list.map(i => tile(i.res, i.p, i.excluded)).join("")}</div>`}
+  </div>`;
+
+  return `${group("Active", active, "No active projects. Move a prospective project to Committed when you've secured the site.")}
+          ${group("Prospective", prospective, "No prospective projects in the pipeline.")}
+          ${closed.length > 0 ? group("Closed", closed, "") : ""}`;
+}
+
 // Empty state for a brand new account with zero projects.
 function renderPortfolioEmpty() {
   const canCreate = canEdit();
@@ -1065,12 +1124,46 @@ function renderPortfolio(r) {
   const totalProjects = state.projects.length;
   const soldCount = state.projects.filter(p => p.status === "sold").length;
 
+  // v14.32 — Fiscal-year period context for the headline KPIs.
+  // Without this label, "Revenue $6.7M" is ambiguous — is it this year? lifetime?
+  // The portfolio totals span the whole model horizon, so show that explicitly.
+  const periodStart = r.timeline?.[0] ?? state.globals.model_start ?? "";
+  const periodEnd = r.timeline?.[r.timeline.length - 1] ?? "";
+  const periodStartYear = periodStart ? periodStart.slice(0, 4) : "";
+  const periodEndYear = periodEnd ? periodEnd.slice(0, 4) : "";
+  const periodLabel = periodStartYear && periodEndYear && periodStartYear !== periodEndYear
+    ? `${periodStartYear}–${periodEndYear}`
+    : periodStartYear || "—";
+  const periodYears = (periodEndYear && periodStartYear) ? (Number(periodEndYear) - Number(periodStartYear) + 1) : 0;
+  const periodMeta = periodYears > 0 ? `Totals across ${periodLabel} · ${periodYears} year${periodYears === 1 ? "" : "s"}` : "";
+
+  // Annual-P&L derived rows for the new Performance section (per-FY breakdown)
+  const annualYears = Object.keys(r.annual || {}).sort();
+  const performanceRowsHtml = annualYears.length === 0 ? "" : `
+    <div class="scroll-x"><table class="tbl">
+      <thead><tr><th>Fiscal year</th><th>Revenue</th><th>Profit (pre-tax)</th><th>Margin</th></tr></thead>
+      <tbody>
+        ${annualYears.map(y => {
+          const a = r.annual[y] || {};
+          const rev = a.sales || 0;
+          const profit = a.profit_before_tax || 0;
+          const margin = rev !== 0 ? profit / rev : 0;
+          return `<tr>
+            <td><strong>${y}</strong></td>
+            <td class="num">${fmt.usdM(rev)}</td>
+            <td class="num ${profit >= 0 ? "pos" : "neg"}">${fmt.usdM(profit)}</td>
+            <td class="num">${fmt.pct(margin)}</td>
+          </tr>`;
+        }).join("")}
+      </tbody>
+    </table></div>`;
+
   return `
     <!-- v14.3 Portfolio header with global controls + CTAs -->
     <div class="portfolio-header mb-24">
       <div>
         <h1 class="page-title">Portfolio</h1>
-        <div class="muted" style="font-size:12px;margin-top:4px;">${escapeHtml(state.scenario.name)} · ${k.active_project_count} of ${totalProjects} projects active${soldCount > 0 ? ` · ${soldCount} sold` : ""}</div>
+        <div class="muted" style="font-size:12px;margin-top:4px;">${escapeHtml(state.scenario.name)} · ${k.active_project_count} of ${totalProjects} projects active${soldCount > 0 ? ` · ${soldCount} sold` : ""}${periodMeta ? ` · ${periodMeta}` : ""}</div>
       </div>
       ${canEdit() ? `<div class="row gap-sm wrap">
         <button class="btn" id="portfolio-new-project-btn">+ New project</button>
@@ -1081,10 +1174,10 @@ function renderPortfolio(r) {
       pageKey: "portfolio",
       railLabel: "PORTFOLIO",
       railItems: [
-        { id: "po-flows",       label: "Cash flow + balances" },
+        { id: "po-projects",    label: "Projects" },
+        { id: "po-financial",   label: "Financial" },
         { id: "po-pipeline",    label: "Pipeline + risk" },
-        { id: "po-table",       label: "Projects" },
-        { id: "po-yield",       label: "Yield metrics" },
+        { id: "po-performance", label: "Performance" },
         { id: "po-sales",       label: "Sales cycle" },
         { id: "po-pl",          label: "Annual P&L" },
         ...(alerts.length ? [{ id: "po-risks", label: "Risk thresholds" }] : []),
@@ -1098,7 +1191,8 @@ function renderPortfolio(r) {
         { label: "Max debt",         value: fmt.usdM(k.max_debt_outstanding) },
       ],
       sections: [
-        { id: "po-flows", title: "Cash flow + balances", subtitle: "Monthly cash flow (sales positive, costs negative) and running debt vs equity balances.", html: `
+        { id: "po-projects", title: "Projects", subtitle: "Active projects and what's in the pipeline. Click a tile to open the project workspace.", html: renderProjectTilesGrouped(r.by_project) },
+        { id: "po-financial", title: "Financial", subtitle: `Monthly cash flow, running balances, and yield benchmarks across ${periodLabel}.`, html: `
           <div class="panel-row">
             <div class="panel">
               <h3>Net cash flow</h3>
@@ -1111,17 +1205,8 @@ function renderPortfolio(r) {
               <div class="chart-frame"><canvas id="chart-balances"></canvas></div>
             </div>
           </div>
-        `},
-        { id: "po-pipeline", title: "Pipeline + risk", subtitle: "Where projects sit across the lifecycle and which ones are flagged.", html: `
-          <div class="panel-row">
-            ${renderPipelineByStage(state.projects)}
-            ${renderRiskWatchlist(r.by_project)}
-          </div>
-        `},
-        { id: "po-table", title: "Projects", subtitle: "Active projects and what comes next. Click a project name to open its workspace.", html: renderPortfolioTable(r.by_project) },
-        { id: "po-yield", title: "Yield metrics", subtitle: "Real-estate development KPIs for benchmarking against market cap rates and competing strategies.", html: `
-          <div class="kpi-section">
-            <div class="kpi-section-label">Returns</div>
+          <div class="kpi-section" style="margin-top:24px;">
+            <div class="kpi-section-label">Yield metrics</div>
             <div class="kpi-grid">
               ${kpiCard("Yield on cost", fmt.pct(k.portfolio_yield_on_cost), "Profit / all-in cost (incl. financing)", k.portfolio_yield_on_cost >= 0.15 ? "pos" : k.portfolio_yield_on_cost >= 0.08 ? "" : "neg")}
               ${kpiCard("Cash-on-cash", k.cash_on_cash == null ? "—" : fmt.pct(k.cash_on_cash), "Annualized equity return", k.cash_on_cash >= 0.15 ? "pos" : k.cash_on_cash >= 0.08 ? "" : "neg")}
@@ -1129,7 +1214,7 @@ function renderPortfolio(r) {
               ${kpiCard("Profit per sqft", `$${Math.round(k.portfolio_profit_per_sqft).toLocaleString()}`, `Total ${fmt.num(k.total_sqft)} sqft built`)}
             </div>
           </div>
-          <div class="kpi-section" style="margin-bottom:0;margin-top:20px;">
+          <div class="kpi-section" style="margin-top:20px;margin-bottom:0;">
             <div class="kpi-section-label">Operating health</div>
             <div class="kpi-grid">
               ${kpiCard("Effective margin", fmt.pct(k.total_sales > 0 ? k.total_profit_before_tax / k.total_sales : 0), "Profit / sales (pre-tax)")}
@@ -1137,6 +1222,13 @@ function renderPortfolio(r) {
             </div>
           </div>
         `},
+        { id: "po-pipeline", title: "Pipeline + risk", subtitle: "Where projects sit across the lifecycle and which ones are flagged.", html: `
+          <div class="panel-row">
+            ${renderPipelineByStage(state.projects)}
+            ${renderRiskWatchlist(r.by_project)}
+          </div>
+        `},
+        { id: "po-performance", title: "Performance by fiscal year", subtitle: `The headline KPIs (Revenue ${fmt.usdM(k.total_sales)} · Profit ${fmt.usdM(k.total_profit_before_tax)}) are sums across ${periodLabel}. This breakdown shows when revenue and profit actually land.`, html: performanceRowsHtml || `<div class="muted">No data in model window yet.</div>` },
         { id: "po-sales", title: "Sales cycle", subtitle: (() => {
             const s = k.sales_metrics;
             if (!s || s.sold_count === 0) return "No closed sales yet. Fill in listing/closing dates and prices on each Project detail to populate these.";

@@ -2688,6 +2688,121 @@ tr.drag-over-after td { border-bottom: 2px solid var(--accent); }
 .wizard-summary .kpi-section .kpi-section-label { margin-bottom: 8px; }
 .wizard-summary .kpi-section .kpi-grid { gap: 10px; }
 
+/* v14.32 — Project tiles on the Portfolio "Projects" section.
+   Grouped by Active / Prospective / Closed. Each tile is a clickable
+   button that opens the project workspace. */
+.project-tile-group { margin-bottom: 28px; }
+.project-tile-group:last-child { margin-bottom: 0; }
+.project-tile-group-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.project-tile-group-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.project-tile-empty {
+  font-size: 13px;
+  padding: 14px 4px;
+  font-style: italic;
+}
+.project-tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+.project-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  background: var(--surface-card-elev);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+  transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+.project-tile:hover {
+  border-color: var(--border-default);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+.project-tile:focus-visible {
+  outline: 2px solid var(--accent-500);
+  outline-offset: 2px;
+}
+.project-tile-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.project-tile-stage {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+.project-tile-name {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  margin-top: 2px;
+}
+.project-tile-address {
+  font-size: 11px;
+  line-height: 1.35;
+}
+.project-tile-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+.project-tile-kpis .tile-kpi { display: flex; flex-direction: column; gap: 2px; }
+.project-tile-kpis .tile-kpi-label {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.project-tile-kpis .tile-kpi-value {
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.project-tile-kpis .tile-kpi-value.pos { color: var(--positive-500); }
+.project-tile-kpis .tile-kpi-value.neg { color: var(--negative-500); }
+.project-tile-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+  margin-top: 2px;
+}
+.project-tile-dates,
+.project-tile-next { font-size: 11px; }
+
 /* v14.29 — Risk-threshold rows on the Portfolio "Risk thresholds" section.
    Replaces the noisy alert banner that used to sit above the KPI strip. */
 .risk-thresholds-list {
