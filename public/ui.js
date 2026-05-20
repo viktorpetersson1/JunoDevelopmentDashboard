@@ -1079,8 +1079,6 @@ function renderPortfolio(r) {
       </div>` : ""}
     </div>
 
-    ${alertBanner}
-
     ${pageShell({
       railLabel: "PORTFOLIO",
       railItems: [
@@ -1092,6 +1090,7 @@ function renderPortfolio(r) {
         { id: "po-yield",       label: "Yield metrics" },
         { id: "po-sales",       label: "Sales cycle" },
         { id: "po-pl",          label: "Annual P&L" },
+        ...(alerts.length ? [{ id: "po-risks", label: "Risk thresholds" }] : []),
       ],
       kpiTiles: [
         { label: "Active projects",  value: `${k.active_project_count}` },
@@ -1173,6 +1172,22 @@ function renderPortfolio(r) {
           })()
         },
         { id: "po-pl", title: "Annual P&L roll-up", subtitle: `Fiscal-year mode: <strong>${state.globals.fiscal_year_mode === "juno13" ? "Juno 13-month" : "Calendar (Jan–Dec)"}</strong>${state.globals.fiscal_year_mode === "juno13" ? " — matches Juno Forecast cols BA–BD" : " — Jan 2030 shows as a partial FY30 column"}. Toggle in Settings.`, html: renderAnnualTable(r) },
+        // v14.29 — Risk thresholds section. Replaces the alert banner that
+        // used to sit above the KPI strip and consume too much vertical
+        // space at the top of the Portfolio page.
+        ...(alerts.length ? [{
+          id: "po-risks",
+          title: `${alerts.length} risk threshold${alerts.length === 1 ? "" : "s"} breached`,
+          subtitle: "Portfolio-level alerts when key KPIs fall outside the limits set in Settings → General → Risk thresholds.",
+          html: `
+            <div class="risk-thresholds-list">
+              ${alerts.map(a => `<div class="risk-threshold-row ${a.severity}">
+                <span class="risk-threshold-dot"></span>
+                <span class="risk-threshold-msg">${a.msg}</span>
+              </div>`).join("")}
+            </div>
+          `,
+        }] : []),
       ],
     })}
   `;

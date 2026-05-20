@@ -2671,6 +2671,36 @@ tr.drag-over-after td { border-bottom: 2px solid var(--accent); }
 .wizard-summary .kpi-section .kpi-section-label { margin-bottom: 8px; }
 .wizard-summary .kpi-section .kpi-grid { gap: 10px; }
 
+/* v14.29 — Risk-threshold rows on the Portfolio "Risk thresholds" section.
+   Replaces the noisy alert banner that used to sit above the KPI strip. */
+.risk-thresholds-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.risk-threshold-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--warning-500);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: var(--text-primary);
+}
+.risk-threshold-row.neg { border-left-color: var(--negative-500); }
+.risk-threshold-row .risk-threshold-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--warning-500);
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+.risk-threshold-row.neg .risk-threshold-dot { background: var(--negative-500); }
+.risk-threshold-row .risk-threshold-msg { line-height: 1.45; }
+
 /* v14.28 — Finance section subheads + totals summary.
    Used by the project Inputs page Financing section + the wizard's
    Financing step. Quiet subheads structure the lender/fees/totals
