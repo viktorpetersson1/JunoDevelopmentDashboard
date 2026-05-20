@@ -13,27 +13,21 @@ Each decision has my recommendation, the alternatives I considered, and what's a
 
 **My recommendation:** **Vercel + Neon (Postgres)**
 
-| Component | Choice | Plan / cost |
+~~Original recommendation was Vercel + Neon.~~
+
+**RESOLVED 2026-05-20 — Viktor:** Keep existing infrastructure. This is a feature build on top of `juno-app`, not a new deployment.
+
+| Component | What's in place | Notes |
 |---|---|---|
-| Web hosting | Vercel Pro | $20/seat/mo |
-| Database | Neon (Postgres) | Launch plan ~$19/mo for the size we need year 1 |
-| Background jobs | Inngest | Free tier covers year 1 |
-| File storage | Vercel Blob | Pay-per-use, marginal |
-| Email | Resend | Free tier covers year 1 |
-| Monitoring | Sentry (free) + Vercel Analytics | Included |
+| Web hosting | Render (`srv-d6f8uqea2pns73de8amg`) | Live at junoatlas.onrender.com |
+| Database | Supabase (`bjdrpkmanxlomxmgbtjz`) | 11 tables, 13 migrations, RLS active |
+| Auth | Supabase Auth | Email + password, AuthProvider, middleware |
+| File storage | Supabase Storage | `avatars` bucket active |
+| Repo | `C:/Dev/juno-app/` | Next.js 15, React 19, TypeScript 5, Tailwind 3.4 |
 
-**Total year-1 infra:** ~$50-100/month. Lost-in-the-noise relative to the contractor budget.
+No new accounts, no new services, no migration. Build features in place.
 
-**Why Vercel + Neon over alternatives:**
-- **Render / Railway:** Single-region risk; less mature Next.js integration.
-- **AWS direct:** 3× the setup time for solo Claude Code. Not worth it for year 1.
-- **Supabase instead of Neon:** Supabase auth + storage features overlap with Clerk + Vercel, which we don't need. Neon is pure Postgres, simpler.
-
-**Trade-offs accepted:**
-- Vendor lock-in to Vercel for the web layer. Acceptable — Next.js works elsewhere if needed.
-- US-only hosting (see D-004).
-
-**Status:** ⏳ Awaiting approval
+**Status:** ✅ Resolved — keep Render + Supabase
 
 ---
 
@@ -41,24 +35,19 @@ Each decision has my recommendation, the alternatives I considered, and what's a
 
 **Question:** Clerk, Auth.js (NextAuth), or roll our own?
 
-**My recommendation:** **Clerk**
+~~Original recommendation was Clerk.~~
 
-**Why:**
-- 7 owners + admin/viewer accounts. Tiny user base — Clerk free tier covers it (10k MAU).
-- Role-based access (owner / admin / viewer) is a first-class feature.
-- Magic-link login + WebAuthn (passkeys) out of the box. Better security than passwords on day one.
-- Solo Claude Code builds the integration in 2 hours vs. 2 days for Auth.js.
-- Account-recovery, audit logs, session management — all in the dashboard, no code.
+**RESOLVED 2026-05-20 — Viktor:** Keep existing Supabase Auth. No migration.
 
-**Alternatives:**
-- **Auth.js (NextAuth):** Free, but every recovery flow you build yourself. 5x more code surface, and we're solo.
-- **Roll our own:** No. Auth is a tax we pay once to a vendor that does it right.
+What's already in place:
+- `AuthProvider` React context (user, session, profile, signOut, refreshProfile)
+- `AuthGuard` — redirect to `/` if not authenticated
+- `lib/supabase/middleware.ts` — SSR auth middleware, public routes, role guards, session refresh
+- Role system: `lib/roles.ts` with `canView()`, `getPageAccess()`, `ROLE_LABELS`
 
-**Trade-offs:**
-- $25/month at the 100-MAU tier we'll hit in P2 (when KPS users come in). Acceptable.
-- Vendor lock-in. Mitigated by Clerk's standard JWT + session-export API.
+All new features use the existing auth layer. References to Clerk in CLAUDE.md and other handoff docs should be read as "Supabase Auth".
 
-**Status:** ⏳ Awaiting approval
+**Status:** ✅ Resolved — keep Supabase Auth
 
 ---
 
@@ -81,7 +70,7 @@ Each decision has my recommendation, the alternatives I considered, and what's a
 - Confirm `atlas` subdomain is unused.
 - Decide who maintains DNS records (Viktor, or someone on the Juno team).
 
-**Status:** ⏳ Awaiting confirmation that you own juno.dev and the subdomain is free
+**Status:** ⏸ Deferred — not needed now. App stays at junoatlas.onrender.com.
 
 ---
 
@@ -103,7 +92,7 @@ Each decision has my recommendation, the alternatives I considered, and what's a
 **Open question for you:**
 - Are any owners or KPS staff governed by personal data-residency requirements that I should know about (e.g. you personally hold an EU residency that imposes constraints)?
 
-**Status:** ⏳ Awaiting confirmation. Recommended: US.
+**Status:** ✅ Resolved — US confirmed. Render Oregon + Supabase us-east-1 already in place.
 
 ---
 
@@ -285,18 +274,18 @@ This matches a typical closely-held syndicate.
 
 ## Status summary
 
-| ID | Topic | Status | Awaiting |
+| ID | Topic | Status | Notes |
 |---|---|---|---|
-| D-001 | Hosting (Vercel + Neon) | ⏳ | Approval |
-| D-002 | Auth (Clerk) | ⏳ | Approval |
-| D-003 | Domain (atlas.juno.dev) | ⏳ | Confirmation Juno owns juno.dev |
-| D-004 | Data residency (US) | ⏳ | Confirmation no constraint |
-| D-005 | Excel master canonical | ⏳ | Confirmation of file + scratch tabs |
+| D-001 | Hosting | ✅ Resolved | Keep Render + Supabase |
+| D-002 | Auth | ✅ Resolved | Keep Supabase Auth |
+| D-003 | Domain | ⏸ Deferred | Not needed now |
+| D-004 | Data residency (US) | ✅ Resolved | US confirmed |
+| D-005 | Excel master canonical | ⏳ | Confirm file + scratch tabs |
 | D-006 | P0 deadline (17 Jun) | ⏳ | Approval |
 | D-007 | Pricing data source (manual v1) | ⏳ | Approval |
 | D-008 | Owner email convention | ⏳ | Choice |
 | D-009 | Currency (USD-only year 1) | ⏳ | Approval |
-| D-010 | Backup (Neon Scale + dumps) | ⏳ | Approval |
+| D-010 | Backup | ⏳ | Supabase handles PITR; confirm retention |
 | D-011 | Visibility tiers | ⏳ | Approval |
 | D-012 | Cadence convergence | ⏳ | FYI |
 
