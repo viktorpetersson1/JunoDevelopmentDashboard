@@ -1580,40 +1580,79 @@ tr.drag-over-after td { border-bottom: 2px solid var(--accent); }
 
 .inputs-col { display: flex; flex-direction: column; gap: 16px; }
 
-.inputs-section { padding: 18px 20px; }
-.inputs-section h3 { margin: 0 0 4px 0; }
-.inputs-section .panel-subtitle { margin-bottom: 14px; }
+.inputs-section { padding: 24px 24px; }
+.inputs-section h3 {
+  /* v14.25 — Bolder section headers to match Settings drawer */
+  margin: 0 0 4px 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+}
+.inputs-section .panel-subtitle {
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  line-height: 1.4;
+}
 
 .input-rows {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 4px;
 }
 .input-row {
+  /* v14.25 — Stripe-style settings row: label left, control right,
+     subtle divider between rows, hover lift. Meta column only takes
+     space when it has content (auto column collapses when empty). */
   display: grid;
-  grid-template-columns: minmax(160px, 1.2fr) minmax(140px, 1fr) auto;
-  gap: 10px 14px;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 280px) auto;
+  gap: 8px 16px;
   align-items: center;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--border-subtle);
 }
-.input-row-label { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.input-row-label .label-text { font-size: 12px; font-weight: 500; color: var(--fg); }
-.input-row-label .label-unit { font-size: 10px; }
-.input-row-control { display: flex; align-items: center; gap: 8px; }
-.input-row-control .input { min-width: 0; }
+.input-row:last-child { border-bottom: none; }
+.input-row-label { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.input-row-label .label-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: 0;
+}
+.input-row-label .label-unit {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+.input-row-control { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+.input-row-control .input {
+  min-width: 0;
+  width: 100%;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.input-row-control select.input,
+.input-row-control input[type="text"],
+.input-row-control input[type="url"],
+.input-row-control input[type="email"] {
+  text-align: left;
+  font-variant-numeric: normal;
+}
 .input-row-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   justify-content: flex-end;
   font-size: 10px;
 }
+.input-row-meta:empty { display: none; }
 .input-row-helper {
   grid-column: 1 / -1;
   font-size: 11px;
-  color: var(--fg-3);
+  color: var(--text-tertiary);
   line-height: 1.4;
   padding-left: 2px;
-  margin-top: -4px;
+  margin-top: 0;
 }
 
 /* Source-tag badges — small, restrained, color-coded by origin */

@@ -1836,10 +1836,13 @@ function renderProjectForm(p, res) {
 //   "scenario"  — modified by the active scenario
 //   "computed"  — derived (e.g. sale_date = start + program_months)
 function sourceTagFor({ kind, projectValue }) {
+  // v14.25 — Hide tag for "project-required" rows (no override choice, so the
+  // tag is just noise). Keep tags only where the user benefits from seeing
+  // the source (global / scenario / default-vs-override).
   if (kind === "global") return { label: "Global", title: "Applies to all projects." };
   if (kind === "scenario") return { label: "Scenario", title: "Modified by the active scenario." };
   if (kind === "computed") return { label: "Computed", title: "Derived from other fields." };
-  if (kind === "project-required") return { label: "Project value", title: "Required field on every project." };
+  if (kind === "project-required") return { label: "", title: "" };
   if (kind === "project-override") {
     return projectValue == null || projectValue === ""
       ? { label: "Default", title: "Using the global default. Type a value to override." }
@@ -1945,13 +1948,42 @@ function renderProjectInputs(p, res) {
     inputRow({ label: "Status", field: "status", value: p.status || "pipeline", kind: "project-required", projectId: p.id, type: "select", selectOptions: statusOptions }),
   ]);
 
-  const program = inputsSection("Program", "Build size and duration.", [
-    inputRow({ label: "Villa size", unit: "sqft", field: "villa_sqft", value: p.villa_sqft, kind: "project-required", projectId: p.id, type: "number", helper: "Total conditioned floor area." }),
-    inputRow({ label: "Program duration", unit: "months", field: "program_months", value: p.program_months, kind: "project-required", projectId: p.id, type: "number", helper: "Land purchase → final sale closing." }),
+  // v14.25 — Program section uses the 4-bucket durations (sourcing /
+  // permitting+precon / construction / sales). Total program_months is
+  // DERIVED — shown as a computed pill, not editable. Same for villa sqft
+  // (AG + BG split with derived total).
+  const ag = Number(p.villa_sqft_ag ?? 0);
+  const bg = Number(p.villa_sqft_bg ?? 0);
+  const totalSqft = ag + bg;
+  const sm = Number(p.sourcing_months ?? 0);
+  const pm = Number(p.permitting_preconstruction_months ?? 3);
+  const cm = Number(p.construction_months ?? 9);
+  const slm = Number(p.sales_months ?? 1);
+  const totalMonths = sm + pm + cm + slm;
+  // Derived sale date for the helper line
+  const startMo = p.purchase_date || p.start_date || g.model_start;
+  let derivedSaleDate = "—";
+  try {
+    if (startMo && /^\d{4}-\d{2}/.test(startMo)) {
+      const [y, m] = startMo.split("-").map(Number);
+      const total = m + totalMonths - 1;
+      const ny = y + Math.floor(total / 12);
+      const nm = (total % 12) + 1;
+      derivedSaleDate = `${ny}-${String(nm).padStart(2, "0")}`;
+    }
+  } catch { /* ignore */ }
+
+  const program = inputsSection("Program", "Build size and timing. Total program months and sale date are auto-derived from the buckets below.", [
+    inputRow({ label: "Above-ground area", unit: "sqft", field: "villa_sqft_ag", value: ag, kind: "project-required", projectId: p.id, type: "number" }),
+    inputRow({ label: "Below-ground area", unit: "sqft", field: "villa_sqft_bg", value: bg, kind: "project-required", projectId: p.id, type: "number", helper: `Total conditioned area: <strong>${totalSqft.toLocaleString()} sqft</strong>` }),
+    inputRow({ label: "Sourcing", unit: "months", field: "sourcing_months", value: sm, kind: "project-required", projectId: p.id, type: "number" }),
+    inputRow({ label: "Permitting + pre-construction", unit: "months", field: "permitting_preconstruction_months", value: pm, kind: "project-required", projectId: p.id, type: "number" }),
+    inputRow({ label: "Construction", unit: "months", field: "construction_months", value: cm, kind: "project-required", projectId: p.id, type: "number" }),
+    inputRow({ label: "Sales", unit: "months", field: "sales_months", value: slm, kind: "project-required", projectId: p.id, type: "number", helper: `Total program: <strong>${totalMonths} months</strong> · Derived sale date: <strong>${derivedSaleDate}</strong>` }),
   ]);
 
-  const timing = inputsSection("Timing", "Key dates. Sale date is computed from start + program months unless a closing date is set.", [
-    inputRow({ label: "Start date", field: "start_date", value: p.start_date, kind: "project-required", projectId: p.id, placeholder: "YYYY-MM", helper: "Land purchase / project kick-off month." }),
+  const timing = inputsSection("Key dates", "Start date drives the timeline. Listing / under-contract / closing dates override the derived sale month when set.", [
+    inputRow({ label: "Purchase / start date", field: "purchase_date", value: p.purchase_date || p.start_date || "", kind: "project-required", projectId: p.id, placeholder: "YYYY-MM", helper: "Land closing / project kick-off month." }),
     inputRow({ label: "Listing date", field: "listing_date", value: p.listing_date || "", kind: "project-override", projectId: p.id, placeholder: "YYYY-MM-DD", helper: "When you intend to list. Optional." }),
     inputRow({ label: "Under contract date", field: "under_contract_date", value: p.under_contract_date || "", kind: "project-override", projectId: p.id, placeholder: "YYYY-MM-DD" }),
     inputRow({ label: "Closing date", field: "closing_date", value: p.closing_date || "", kind: "project-override", projectId: p.id, placeholder: "YYYY-MM-DD" }),
@@ -1970,10 +2002,39 @@ function renderProjectInputs(p, res) {
     inputRow({ label: "Kingshaus cost", unit: "$/sqft", field: "kingshaus_cost_per_sqft", value: p.kingshaus_cost_per_sqft, kind: "project-override", projectId: p.id, type: "number", placeholder: `Default: $${g.default_kingshaus_cost_per_sqft}` }),
   ]);
 
+  // v14.25 — Full per-project financing block (matches the wizard's
+  // Financing step). Lender + senior loan + standard fees + other fees.
+  const otherFees = Array.isArray(p.other_fees) ? p.other_fees : [];
   const financing = inputsSection("Financing", "Senior construction debt. KPC LOC ($6M @ 6%) is modeled portfolio-wide and shown on the Capital screen.", [
-    inputRow({ label: "Interest rate", unit: "APR (decimal)", field: "interest_rate_apr", value: p.interest_rate_apr, kind: "project-override", projectId: p.id, type: "number", placeholder: `Default: ${g.interest_rate_apr}`, helper: `Default ${(g.interest_rate_apr * 100).toFixed(2)}% — senior construction loan rate.` }),
-    inputRow({ label: "Loan-to-cost (build)", unit: "decimal", field: "ltc_pct", value: p.ltc_pct, kind: "project-override", projectId: p.id, type: "number", placeholder: `Default: ${g.ltc_pct}`, helper: `Default ${(g.ltc_pct * 100).toFixed(0)}%.` }),
+    inputRow({ label: "Lender name", field: "lender_name", value: p.lender_name || "", kind: "project-override", projectId: p.id, placeholder: "e.g. Harrison Capital (USCNYC)" }),
+    inputRow({ label: "Loan-to-cost", unit: "LTV (decimal)", field: "senior_ltv_pct", value: p.senior_ltv_pct ?? 0.75, kind: "project-required", projectId: p.id, type: "number", helper: "Applied to LTC base (land + build + contingency + closing + interest reserve)." }),
+    inputRow({ label: "Interest rate", unit: "APR (decimal)", field: "interest_rate_apr", value: p.interest_rate_apr, kind: "project-override", projectId: p.id, type: "number", placeholder: `Default: ${g.interest_rate_apr}`, helper: `Default ${(g.interest_rate_apr * 100).toFixed(2)}%.` }),
+    inputRow({ label: "Contingency", unit: "% of hard cost", field: "contingency_pct", value: p.contingency_pct, kind: "project-override", projectId: p.id, type: "number", placeholder: `Default: ${g.contingency_pct}` }),
+    inputRow({ label: "Origination fee", unit: "% of loan", field: "origination_fee_pct", value: p.origination_fee_pct ?? 0.01, kind: "project-required", projectId: p.id, type: "number" }),
+    inputRow({ label: "Exit fee", unit: "% of loan", field: "exit_fee_pct", value: p.exit_fee_pct ?? 0.005, kind: "project-required", projectId: p.id, type: "number" }),
+    inputRow({ label: "Interest reserve", unit: "USD", field: "interest_reserve_usd", value: p.interest_reserve_usd ?? 0, kind: "project-required", projectId: p.id, type: "number", helper: "Pre-funded at closing. Financed by the loan." }),
+    inputRow({ label: "Loan servicing fee", unit: "USD", field: "loan_servicing_fee_usd", value: p.loan_servicing_fee_usd ?? 0, kind: "project-required", projectId: p.id, type: "number" }),
+    inputRow({ label: "Closing costs", unit: "USD", field: "closing_costs_usd", value: p.closing_costs_usd ?? 0, kind: "project-required", projectId: p.id, type: "number", helper: "Transfer tax, recording, title, legal, appraisal, environmental." }),
   ]);
+
+  // v14.25 — Other fees editor (per-project, free-form description + amount).
+  const otherFeesHtml = `
+    <div class="panel inputs-section">
+      <h3>Other fees</h3>
+      <div class="panel-subtitle">Custom financing or transaction fees specific to this project (e.g. broker fee, environmental study, RE attorney).</div>
+      <div class="other-fees">
+        ${otherFees.length === 0 ? `<div class="other-fees-empty muted">No other fees. Click below to add one.</div>` : ""}
+        ${otherFees.map((f, idx) => `
+          <div class="other-fee-row">
+            <input class="input" type="text" data-project-other-fee="${idx}" data-other-field="description" value="${escapeHtml(f.description || "")}" placeholder="Description">
+            <input class="input num" type="number" inputmode="decimal" step="100" min="0" data-project-other-fee="${idx}" data-other-field="amount_usd" value="${f.amount_usd || 0}">
+            <button class="btn small ghost row-remove-btn" data-remove-project-other-fee="${idx}" title="Remove fee" aria-label="Remove fee">✕</button>
+          </div>
+        `).join("")}
+        <button class="btn small secondary mt-12" id="add-project-other-fee">+ Add other fee</button>
+      </div>
+    </div>
+  `;
 
   const revenue = inputsSection("Revenue", "If you have a target sale price, set it here. Otherwise leave blank and the engine derives sale from cost × (1 + margin).", [
     inputRow({ label: "Goal sale price", unit: "USD", field: "sale_price_override_usd", value: p.sale_price_override_usd, kind: "project-override", projectId: p.id, type: "number", placeholder: "Derived from cost+margin" }),
@@ -2003,8 +2064,8 @@ function renderProjectInputs(p, res) {
 
   return `
     <div class="inputs-grid">
-      <div class="inputs-col">${basics}${program}${timing}${land}</div>
-      <div class="inputs-col">${buildCosts}${kingshaus}${financing}${revenue}</div>
+      <div class="inputs-col">${basics}${program}${timing}${land}${buildCosts}${kingshaus}</div>
+      <div class="inputs-col">${financing}${otherFeesHtml}${revenue}</div>
     </div>
     <div class="inputs-grid">
       <div class="inputs-col">${overheads}${taxes}</div>
@@ -4658,8 +4719,67 @@ function attachViewEvents(result) {
       } else if (e.target.type === "month") {
         value = value || state.globals.model_start;
       }
-      // string fields are kept as-is
-      updateProject(id, { [field]: value });
+      const patch = { [field]: value };
+      // v14.25 — Keep the legacy engine fields in sync when the new
+      // bucketed fields are edited. The engine still reads villa_sqft +
+      // program_months + start_date; the user only edits the new ones.
+      const proj = state.projects.find(x => x.id === id);
+      if (proj) {
+        if (field === "villa_sqft_ag" || field === "villa_sqft_bg") {
+          const ag = field === "villa_sqft_ag" ? (value ?? 0) : (proj.villa_sqft_ag ?? 0);
+          const bg = field === "villa_sqft_bg" ? (value ?? 0) : (proj.villa_sqft_bg ?? 0);
+          patch.villa_sqft = ag + bg;
+        }
+        if (["sourcing_months", "permitting_preconstruction_months", "construction_months", "sales_months"].includes(field)) {
+          const sm = field === "sourcing_months" ? (value ?? 0) : (proj.sourcing_months ?? 0);
+          const pm = field === "permitting_preconstruction_months" ? (value ?? 0) : (proj.permitting_preconstruction_months ?? 3);
+          const cm = field === "construction_months" ? (value ?? 0) : (proj.construction_months ?? 9);
+          const slm = field === "sales_months" ? (value ?? 0) : (proj.sales_months ?? 1);
+          patch.program_months = sm + pm + cm + slm;
+        }
+        if (field === "purchase_date") {
+          patch.start_date = value;  // engine-compat mirror
+        }
+      }
+      updateProject(id, patch);
+    });
+  }
+
+  // v14.25 — Per-project Other fees editor on the Inputs page
+  document.getElementById("add-project-other-fee")?.addEventListener("click", () => {
+    const id = state.ui.selected_project_id;
+    const proj = state.projects.find(x => x.id === id);
+    if (!proj) return;
+    const current = Array.isArray(proj.other_fees) ? proj.other_fees : [];
+    updateProject(id, { other_fees: [...current, { description: "", amount_usd: 0 }] });
+  });
+  for (const el of document.querySelectorAll("[data-project-other-fee]")) {
+    const idx = Number(el.dataset.projectOtherFee);
+    const field = el.dataset.otherField;
+    el.addEventListener("input", () => {
+      const id = state.ui.selected_project_id;
+      const proj = state.projects.find(x => x.id === id);
+      if (!proj) return;
+      const current = Array.isArray(proj.other_fees) ? [...proj.other_fees] : [];
+      if (!current[idx]) current[idx] = { description: "", amount_usd: 0 };
+      const next = { ...current[idx] };
+      if (field === "amount_usd") {
+        next.amount_usd = el.value === "" ? 0 : Number(el.value);
+      } else {
+        next.description = el.value;
+      }
+      current[idx] = next;
+      updateProject(id, { other_fees: current });
+    });
+  }
+  for (const btn of document.querySelectorAll("[data-remove-project-other-fee]")) {
+    btn.addEventListener("click", () => {
+      const idx = Number(btn.dataset.removeProjectOtherFee);
+      const id = state.ui.selected_project_id;
+      const proj = state.projects.find(x => x.id === id);
+      if (!proj) return;
+      const current = Array.isArray(proj.other_fees) ? proj.other_fees : [];
+      updateProject(id, { other_fees: current.filter((_, i) => i !== idx) });
     });
   }
 
