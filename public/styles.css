@@ -1581,9 +1581,178 @@ tr.drag-over-after td { border-bottom: 2px solid var(--accent); }
 .inputs-col { display: flex; flex-direction: column; gap: 16px; }
 
 /* ============================================================
-   v14.26 — Inputs page Option B layout
-   Section rail · sticky KPI strip · single-column dividers
+   v14.27 — Shared "Option B" page layout
+   Section rail · sticky KPI strip · single-column dividers.
+   Used by Inputs (.inputs-shell, kept as alias) + Portfolio, Capital,
+   Risks, Waterfall, Cashflow, Scenarios, Sensitivity, Pipeline, and
+   every project detail tab.
    ============================================================ */
+.page-shell {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 32px;
+  align-items: start;
+}
+.page-shell.no-rail { grid-template-columns: 1fr; }
+
+.page-rail {
+  position: sticky;
+  top: 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+}
+.page-rail-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--text-tertiary);
+  padding: 6px 12px 10px;
+}
+.page-rail-link {
+  background: transparent;
+  border: none;
+  border-left: 2px solid transparent;
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
+  margin: 0;
+  border-radius: 0;
+  width: 100%;
+  font-weight: 500;
+}
+.page-rail-link:hover { color: var(--text-primary); background: var(--surface-card); }
+.page-rail-link.active {
+  color: var(--text-primary);
+  border-left-color: var(--text-primary);
+  font-weight: 600;
+}
+
+.page-content { min-width: 0; }
+
+.page-kpi-strip {
+  position: sticky;
+  top: 49px;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 1px;
+  background: var(--border-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  margin-bottom: 32px;
+  overflow: hidden;
+  box-shadow: 0 1px 0 rgba(10, 10, 10, 0.03);
+}
+.page-kpi-strip.cols-4 { grid-template-columns: repeat(4, 1fr); }
+.page-kpi-strip.cols-5 { grid-template-columns: repeat(5, 1fr); }
+.page-kpi-strip .kpi-tile {
+  background: var(--surface-card-elev);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.page-kpi-strip .kpi-tile .label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.page-kpi-strip .kpi-tile .value {
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+.page-kpi-strip .kpi-tile .value.pos { color: var(--positive-500); }
+.page-kpi-strip .kpi-tile .value.neg { color: var(--negative-500); }
+@media (max-width: 1100px) {
+  .page-kpi-strip,
+  .page-kpi-strip.cols-4,
+  .page-kpi-strip.cols-5 { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 600px)  {
+  .page-kpi-strip,
+  .page-kpi-strip.cols-4,
+  .page-kpi-strip.cols-5 { grid-template-columns: repeat(2, 1fr); }
+}
+
+.page-section {
+  padding: 0 0 32px 0;
+  margin-bottom: 32px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.page-section:last-child { border-bottom: none; margin-bottom: 0; }
+.page-section > h2,
+.page-section > h3,
+.page-section > .page-section-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin: 0 0 6px 0;
+}
+.page-section > .page-section-subtitle {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin: 0 0 18px 0;
+  line-height: 1.45;
+  max-width: 640px;
+}
+/* Sections can contain panels for side-by-side layouts (panel-row) when
+   needed. Bare content lives directly in the section. We don't strip
+   panel chrome here — let each call site decide. */
+.page-section .panel h3 {
+  /* Inner panel titles (chart/table names) stay small; the section heading
+     already provides the big bold title above. */
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+}
+.page-section .panel .panel-subtitle {
+  font-size: 11px;
+  margin-bottom: 12px;
+}
+
+/* Mobile: same collapse logic as inputs page */
+@media (max-width: 900px) {
+  .page-shell { grid-template-columns: 1fr; gap: 16px; }
+  .page-rail {
+    position: static;
+    flex-direction: row;
+    gap: 0;
+    padding: 0;
+    overflow-x: auto;
+    max-height: none;
+    border-bottom: 1px solid var(--border-subtle);
+    margin-bottom: 8px;
+  }
+  .page-rail-label { display: none; }
+  .page-rail-link {
+    border-left: none;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    width: auto;
+  }
+  .page-rail-link.active {
+    border-left: none;
+    border-bottom-color: var(--text-primary);
+  }
+  .page-kpi-strip { top: 0; }
+}
+
+/* === Legacy aliases — Inputs page used .inputs-shell first;
+       keep them mapped so we don't break that view === */
 .inputs-shell {
   display: grid;
   grid-template-columns: 200px 1fr;

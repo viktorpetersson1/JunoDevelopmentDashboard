@@ -1081,91 +1081,100 @@ function renderPortfolio(r) {
 
     ${alertBanner}
 
-    <!-- v14.20 (design reset Phase 5) — KPIs grouped under eyebrow labels.
-         Performance · Capital · Returns. Four cards per row max. -->
-    <div class="kpi-section">
-      <div class="kpi-section-label">Performance</div>
-      <div class="kpi-grid">
-        ${kpiCard("Active projects", `${k.active_project_count}`, `${totalProjects} total${soldCount > 0 ? ` · ${soldCount} sold` : ""}`)}
-        ${kpiCard("Projected revenue", fmt.usdM(k.total_sales), `Across model horizon`)}
-        ${kpiCard("Projected profit", fmt.usdM(k.total_profit_before_tax), state.globals.apply_tax ? `After tax: ${fmt.usdM(k.total_profit_after_tax)}` : `Pre-tax`, profitCls)}
-        ${kpiCard("Portfolio margin", fmt.pct(portfolioMargin), `Profit / sales (pre-tax)`)}
-      </div>
-    </div>
-    <div class="kpi-section">
-      <div class="kpi-section-label">Capital</div>
-      <div class="kpi-grid">
-        ${kpiCard("Peak equity required", fmt.usdM(k.peak_equity_required), `Month: ${fmt.ymShort(k.peak_equity_month)}`, peakEqCls)}
-        ${kpiCard("Max debt outstanding", fmt.usdM(k.max_debt_outstanding), `Month: ${fmt.ymShort(k.max_debt_month)}`, maxDebtCls)}
-        ${kpiCard("Total equity in", fmt.usdM(k.total_equity_in), `Owner cash deployed`)}
-        ${kpiCard("Gross MOIC", `${k.moic_gross.toFixed(2)}x`, `Multiple on invested capital`, moicCls)}
-      </div>
-    </div>
-
-    <!-- Main analytics band: cash flow + debt/equity -->
-    <div class="panel-row">
-      <div class="panel">
-        <h3>Net cash flow</h3>
-        <div class="panel-subtitle">Sales positive · costs negative · stacked by category</div>
-        <div class="chart-frame"><canvas id="chart-cashflow"></canvas></div>
-      </div>
-      <div class="panel">
-        <h3>Cumulative debt vs equity</h3>
-        <div class="panel-subtitle">Running balances across the horizon</div>
-        <div class="chart-frame"><canvas id="chart-balances"></canvas></div>
-      </div>
-    </div>
-
-    <!-- v14.3 Pipeline by stage + Risk watchlist -->
-    <div class="panel-row">
-      ${renderPipelineByStage(state.projects)}
-      ${renderRiskWatchlist(r.by_project)}
-    </div>
-
-    <!-- v14.3 Portfolio table with Next milestone -->
-    ${renderPortfolioTable(r.by_project)}
-
-    <div class="panel mb-24">
-      <h3>Development yield metrics</h3>
-      <div class="panel-subtitle">Real-estate development KPIs for benchmarking against market cap rates and competing strategies.</div>
-      <div class="kpi-section">
-        <div class="kpi-section-label">Returns</div>
-        <div class="kpi-grid">
-          ${kpiCard("Yield on cost", fmt.pct(k.portfolio_yield_on_cost), "Profit / all-in cost (incl. financing)", k.portfolio_yield_on_cost >= 0.15 ? "pos" : k.portfolio_yield_on_cost >= 0.08 ? "" : "neg")}
-          ${kpiCard("Cash-on-cash", k.cash_on_cash == null ? "—" : fmt.pct(k.cash_on_cash), "Annualized equity return", k.cash_on_cash >= 0.15 ? "pos" : k.cash_on_cash >= 0.08 ? "" : "neg")}
-          ${kpiCard("Revenue multiple", `${k.portfolio_revenue_multiple.toFixed(2)}x`, "Sales / all-in cost")}
-          ${kpiCard("Profit per sqft", `$${Math.round(k.portfolio_profit_per_sqft).toLocaleString()}`, `Total ${fmt.num(k.total_sqft)} sqft built`)}
-        </div>
-      </div>
-      <div class="kpi-section" style="margin-bottom:0;">
-        <div class="kpi-section-label">Operating health</div>
-        <div class="kpi-grid">
-          ${kpiCard("Effective margin", fmt.pct(k.total_sales > 0 ? k.total_profit_before_tax / k.total_sales : 0), "Profit / sales (pre-tax)")}
-          ${kpiCard("Contingency burn", fmt.pct(k.contingency.burn_pct), `${fmt.usdM(k.contingency.used_usd)} of ${fmt.usdM(k.contingency.budget_usd)} budget`, k.contingency.burn_pct >= 0.80 ? "neg" : k.contingency.burn_pct >= 0.50 ? "warn" : "pos")}
-        </div>
-      </div>
-    </div>
-
-    ${(() => {
-      const s = k.sales_metrics;
-      if (!s || s.sold_count === 0) return `<div class="panel mb-24"><h3>Sales-cycle metrics</h3><div class="muted" style="font-size:12px;">No closed sales yet. As projects move through pre-sales → under contract → sold, fill in listing/closing dates and prices on each Project detail to populate these.</div></div>`;
-      return `<div class="panel mb-24">
-        <h3>Sales-cycle metrics</h3>
-        <div class="panel-subtitle">Based on ${s.sold_count} closed sale${s.sold_count === 1 ? "" : "s"}.</div>
-        <div class="kpi-row">
-          ${kpiCard("Closed sales", s.sold_count, `Total proceeds: ${fmt.usdM(s.total_actual_sales)}`)}
-          ${kpiCard("Avg days on market", s.avg_dom == null ? "—" : `${Math.round(s.avg_dom)}d`, "List → under contract")}
-          ${kpiCard("Avg listing → close", s.avg_listing_to_close == null ? "—" : `${Math.round(s.avg_listing_to_close)}d`, "List → closed")}
-          ${kpiCard("Price-to-listing", s.avg_price_to_listing_ratio == null ? "—" : fmt.pct(s.avg_price_to_listing_ratio - 1, 1) + " vs ask", `${s.avg_price_to_listing_ratio?.toFixed(3)}× listing`, s.avg_price_to_listing_ratio >= 1 ? "pos" : "neg")}
-        </div>
-      </div>`;
-    })()}
-
-    <div class="panel mb-24">
-      <h3>Annual P&L roll-up</h3>
-      <div class="panel-subtitle">Fiscal-year mode: <strong>${state.globals.fiscal_year_mode === "juno13" ? "Juno 13-month" : "Calendar (Jan–Dec)"}</strong>${state.globals.fiscal_year_mode === "juno13" ? " — matches Juno Forecast cols BA–BD" : " — Jan 2030 shows as a partial FY30 column"}. Toggle in Settings.</div>
-      ${renderAnnualTable(r)}
-    </div>
+    ${pageShell({
+      railLabel: "PORTFOLIO",
+      railItems: [
+        { id: "po-performance", label: "Performance" },
+        { id: "po-capital",     label: "Capital" },
+        { id: "po-flows",       label: "Cash flow + balances" },
+        { id: "po-pipeline",    label: "Pipeline + risk" },
+        { id: "po-table",       label: "Projects" },
+        { id: "po-yield",       label: "Yield metrics" },
+        { id: "po-sales",       label: "Sales cycle" },
+        { id: "po-pl",          label: "Annual P&L" },
+      ],
+      kpiTiles: [
+        { label: "Active projects",  value: `${k.active_project_count}` },
+        { label: "Revenue",          value: fmt.usdM(k.total_sales) },
+        { label: "Profit",           value: fmt.usdM(k.total_profit_before_tax), cls: profitCls },
+        { label: "Margin",           value: fmt.pct(portfolioMargin) },
+        { label: "Peak equity",      value: fmt.usdM(k.peak_equity_required) },
+        { label: "Max debt",         value: fmt.usdM(k.max_debt_outstanding) },
+      ],
+      sections: [
+        { id: "po-performance", title: "Performance", subtitle: "Active deals, revenue, profit and margin across the model horizon.", html: `
+          <div class="kpi-grid">
+            ${kpiCard("Active projects", `${k.active_project_count}`, `${totalProjects} total${soldCount > 0 ? ` · ${soldCount} sold` : ""}`)}
+            ${kpiCard("Projected revenue", fmt.usdM(k.total_sales), `Across model horizon`)}
+            ${kpiCard("Projected profit", fmt.usdM(k.total_profit_before_tax), state.globals.apply_tax ? `After tax: ${fmt.usdM(k.total_profit_after_tax)}` : `Pre-tax`, profitCls)}
+            ${kpiCard("Portfolio margin", fmt.pct(portfolioMargin), `Profit / sales (pre-tax)`)}
+          </div>
+        `},
+        { id: "po-capital", title: "Capital", subtitle: "Equity called, debt outstanding, MOIC across the active pipeline.", html: `
+          <div class="kpi-grid">
+            ${kpiCard("Peak equity required", fmt.usdM(k.peak_equity_required), `Month: ${fmt.ymShort(k.peak_equity_month)}`, peakEqCls)}
+            ${kpiCard("Max debt outstanding", fmt.usdM(k.max_debt_outstanding), `Month: ${fmt.ymShort(k.max_debt_month)}`, maxDebtCls)}
+            ${kpiCard("Total equity in", fmt.usdM(k.total_equity_in), `Owner cash deployed`)}
+            ${kpiCard("Gross MOIC", `${k.moic_gross.toFixed(2)}x`, `Multiple on invested capital`, moicCls)}
+          </div>
+        `},
+        { id: "po-flows", title: "Cash flow + balances", subtitle: "Monthly cash flow (sales positive, costs negative) and running debt vs equity balances.", html: `
+          <div class="panel-row">
+            <div class="panel">
+              <h3>Net cash flow</h3>
+              <div class="panel-subtitle">Sales positive · costs negative · stacked by category</div>
+              <div class="chart-frame"><canvas id="chart-cashflow"></canvas></div>
+            </div>
+            <div class="panel">
+              <h3>Cumulative debt vs equity</h3>
+              <div class="panel-subtitle">Running balances across the horizon</div>
+              <div class="chart-frame"><canvas id="chart-balances"></canvas></div>
+            </div>
+          </div>
+        `},
+        { id: "po-pipeline", title: "Pipeline + risk", subtitle: "Where projects sit across the lifecycle and which ones are flagged.", html: `
+          <div class="panel-row">
+            ${renderPipelineByStage(state.projects)}
+            ${renderRiskWatchlist(r.by_project)}
+          </div>
+        `},
+        { id: "po-table", title: "Projects", subtitle: "Active projects and what comes next. Click a project name to open its workspace.", html: renderPortfolioTable(r.by_project) },
+        { id: "po-yield", title: "Yield metrics", subtitle: "Real-estate development KPIs for benchmarking against market cap rates and competing strategies.", html: `
+          <div class="kpi-section">
+            <div class="kpi-section-label">Returns</div>
+            <div class="kpi-grid">
+              ${kpiCard("Yield on cost", fmt.pct(k.portfolio_yield_on_cost), "Profit / all-in cost (incl. financing)", k.portfolio_yield_on_cost >= 0.15 ? "pos" : k.portfolio_yield_on_cost >= 0.08 ? "" : "neg")}
+              ${kpiCard("Cash-on-cash", k.cash_on_cash == null ? "—" : fmt.pct(k.cash_on_cash), "Annualized equity return", k.cash_on_cash >= 0.15 ? "pos" : k.cash_on_cash >= 0.08 ? "" : "neg")}
+              ${kpiCard("Revenue multiple", `${k.portfolio_revenue_multiple.toFixed(2)}x`, "Sales / all-in cost")}
+              ${kpiCard("Profit per sqft", `$${Math.round(k.portfolio_profit_per_sqft).toLocaleString()}`, `Total ${fmt.num(k.total_sqft)} sqft built`)}
+            </div>
+          </div>
+          <div class="kpi-section" style="margin-bottom:0;margin-top:20px;">
+            <div class="kpi-section-label">Operating health</div>
+            <div class="kpi-grid">
+              ${kpiCard("Effective margin", fmt.pct(k.total_sales > 0 ? k.total_profit_before_tax / k.total_sales : 0), "Profit / sales (pre-tax)")}
+              ${kpiCard("Contingency burn", fmt.pct(k.contingency.burn_pct), `${fmt.usdM(k.contingency.used_usd)} of ${fmt.usdM(k.contingency.budget_usd)} budget`, k.contingency.burn_pct >= 0.80 ? "neg" : k.contingency.burn_pct >= 0.50 ? "warn" : "pos")}
+            </div>
+          </div>
+        `},
+        { id: "po-sales", title: "Sales cycle", subtitle: (() => {
+            const s = k.sales_metrics;
+            if (!s || s.sold_count === 0) return "No closed sales yet. Fill in listing/closing dates and prices on each Project detail to populate these.";
+            return `Based on ${s.sold_count} closed sale${s.sold_count === 1 ? "" : "s"}.`;
+          })(), html: (() => {
+            const s = k.sales_metrics;
+            if (!s || s.sold_count === 0) return "";
+            return `<div class="kpi-grid">
+              ${kpiCard("Closed sales", s.sold_count, `Total proceeds: ${fmt.usdM(s.total_actual_sales)}`)}
+              ${kpiCard("Avg days on market", s.avg_dom == null ? "—" : `${Math.round(s.avg_dom)}d`, "List → under contract")}
+              ${kpiCard("Avg listing → close", s.avg_listing_to_close == null ? "—" : `${Math.round(s.avg_listing_to_close)}d`, "List → closed")}
+              ${kpiCard("Price-to-listing", s.avg_price_to_listing_ratio == null ? "—" : fmt.pct(s.avg_price_to_listing_ratio - 1, 1) + " vs ask", `${s.avg_price_to_listing_ratio?.toFixed(3)}× listing`, s.avg_price_to_listing_ratio >= 1 ? "pos" : "neg")}
+            </div>`;
+          })()
+        },
+        { id: "po-pl", title: "Annual P&L roll-up", subtitle: `Fiscal-year mode: <strong>${state.globals.fiscal_year_mode === "juno13" ? "Juno 13-month" : "Calendar (Jan–Dec)"}</strong>${state.globals.fiscal_year_mode === "juno13" ? " — matches Juno Forecast cols BA–BD" : " — Jan 2030 shows as a partial FY30 column"}. Toggle in Settings.`, html: renderAnnualTable(r) },
+      ],
+    })}
   `;
 }
 
@@ -1175,6 +1184,46 @@ function kpiCard(label, value, meta = "", cls = "") {
   const metaStr = meta == null ? "" : meta;
   const metaHtml = metaStr === "" ? "" : `<div class="meta">${metaStr}</div>`;
   return `<div class="kpi ${cls}"><div class="label">${label}</div><div class="value">${value}</div>${metaHtml}</div>`;
+}
+
+// v14.27 — Generic page shell. Wraps any view in the section-rail + KPI strip +
+// section dividers layout. Pass:
+//   railItems:  [{ id, label }]  — anchors for the left rail; pass [] to hide rail
+//   kpiTiles:   [{ label, value, cls }]  — tiles for the sticky strip; pass [] to hide
+//   sections:   [{ id, html, title?, subtitle? }]  — content sections
+// The section helper injects an h2 title automatically if you pass `title`, so the
+// rail label can match. If you pass raw `html` it's responsible for its own headings.
+function pageShell({ railItems = [], kpiTiles = [], sections = [], railLabel = "SECTIONS" }) {
+  const hasRail = railItems.length > 0;
+  const kpiClass = kpiTiles.length === 4 ? " cols-4" : kpiTiles.length === 5 ? " cols-5" : "";
+  const kpiHtml = kpiTiles.length === 0 ? "" : `
+    <div class="page-kpi-strip${kpiClass}">
+      ${kpiTiles.map(t => `
+        <div class="kpi-tile">
+          <div class="label">${t.label}</div>
+          <div class="value${t.cls ? " " + t.cls : ""}">${t.value}</div>
+        </div>
+      `).join("")}
+    </div>`;
+  const sectionsHtml = sections.map(s => {
+    const title = s.title ? `<h2 class="page-section-title">${s.title}</h2>` : "";
+    const subtitle = s.subtitle ? `<div class="page-section-subtitle">${s.subtitle}</div>` : "";
+    return `<section id="${s.id}" class="page-section">${title}${subtitle}${s.html || ""}</section>`;
+  }).join("");
+  const railHtml = !hasRail ? "" : `
+    <aside class="page-rail" role="navigation" aria-label="Page sections">
+      <div class="page-rail-label">${railLabel}</div>
+      ${railItems.map(r => `<button class="page-rail-link" data-page-rail="${r.id}">${r.label}</button>`).join("")}
+    </aside>`;
+  return `
+    <div class="page-shell${hasRail ? "" : " no-rail"}">
+      ${railHtml}
+      <div class="page-content">
+        ${kpiHtml}
+        ${sectionsHtml}
+      </div>
+    </div>
+  `;
 }
 
 function renderAnnualTable(r) {
@@ -2239,52 +2288,58 @@ function renderCapitalOverview(r) {
 
     ${gapBanner}
 
-    <div class="kpi-row">
-      ${kpiCard("KPC LOC peak", fmt.usdM(peakLoc), `${fmt.pct(peakDrawnPct)} of ${fmt.usdM(loc.facility_size_usd || 0)} cap`, peakDrawnPct > 0.9 ? "warn" : "")}
-      ${kpiCard("LOC interest accrued", fmt.usdM(totalLocInterest), `${(loc.interest_rate_apr * 100).toFixed(1)}% APR · capitalized`)}
-      ${kpiCard("Owner equity needed", fmt.usdM(trueEquityTotal), trueEquityTotal > 0 ? "Above LOC cap" : "LOC covers everything", trueEquityTotal > 0 ? "warn" : "pos")}
-      ${kpiCard("Funding-gap months", `${breachMonths}`, breachMonths > 0 ? "LOC insufficient" : "All covered by LOC", breachMonths > 0 ? "neg" : "pos")}
-      ${kpiCard("Senior debt peak", fmt.usdM(peakDebt), `Month: ${fmt.ymShort(k.max_debt_month)}`)}
-      ${kpiCard("Total equity called", fmt.usdM(totalEquityCalled), "LOC + owner equity")}
-    </div>
-
-    <div class="panel-row">
-      <div class="panel">
-        <h3>KPC LOC drawdown</h3>
-        <div class="panel-subtitle">Outstanding balance vs facility cap over the model horizon.</div>
-        <div class="chart-frame"><canvas id="chart-loc-drawdown"></canvas></div>
-      </div>
-      <div class="panel">
-        <h3>Capital sources stacked</h3>
-        <div class="panel-subtitle">Cumulative draws: senior debt + KPC LOC + owner equity.</div>
-        <div class="chart-frame"><canvas id="chart-capital-stack"></canvas></div>
-      </div>
-    </div>
-
-    <div class="panel-row">
-      <div class="panel">
-        <h3>Sources vs Uses</h3>
-        <div class="panel-subtitle">Portfolio totals across the horizon.</div>
-        <div class="sources-uses">
-          <div>
-            <div class="section-title" style="margin-bottom:6px;">Sources</div>
-            <table class="tbl">${rowsHtml(sources)}</table>
+    ${pageShell({
+      railLabel: "CAPITAL",
+      railItems: [
+        { id: "ca-overview", label: "Overview" },
+        { id: "ca-drawdown", label: "LOC drawdown" },
+        { id: "ca-stack",    label: "Capital stack" },
+        { id: "ca-flows",    label: "Sources & uses" },
+        { id: "ca-owners",   label: "Owner cap table" },
+      ],
+      kpiTiles: [
+        { label: "KPC LOC peak",        value: fmt.usdM(peakLoc),         cls: peakDrawnPct > 0.9 ? "neg" : "" },
+        { label: "LOC interest",        value: fmt.usdM(totalLocInterest) },
+        { label: "Owner equity needed", value: fmt.usdM(trueEquityTotal), cls: trueEquityTotal > 0 ? "neg" : "pos" },
+        { label: "Funding-gap months",  value: `${breachMonths}`,         cls: breachMonths > 0 ? "neg" : "pos" },
+        { label: "Senior debt peak",    value: fmt.usdM(peakDebt) },
+        { label: "Total equity called", value: fmt.usdM(totalEquityCalled) },
+      ],
+      sections: [
+        { id: "ca-overview", title: "Overview", subtitle: "Headline capital metrics for the active scenario. Tiles above repeat for visibility while scrolling.", html: `
+          <div class="kpi-grid">
+            ${kpiCard("KPC LOC peak", fmt.usdM(peakLoc), `${fmt.pct(peakDrawnPct)} of ${fmt.usdM(loc.facility_size_usd || 0)} cap`, peakDrawnPct > 0.9 ? "warn" : "")}
+            ${kpiCard("LOC interest accrued", fmt.usdM(totalLocInterest), `${(loc.interest_rate_apr * 100).toFixed(1)}% APR · capitalized`)}
+            ${kpiCard("Owner equity needed", fmt.usdM(trueEquityTotal), trueEquityTotal > 0 ? "Above LOC cap" : "LOC covers everything", trueEquityTotal > 0 ? "warn" : "pos")}
+            ${kpiCard("Funding-gap months", `${breachMonths}`, breachMonths > 0 ? "LOC insufficient" : "All covered by LOC", breachMonths > 0 ? "neg" : "pos")}
           </div>
-          <div>
-            <div class="section-title" style="margin-bottom:6px;">Uses</div>
-            <table class="tbl">${rowsHtml(uses)}</table>
+        `},
+        { id: "ca-drawdown", title: "KPC LOC drawdown", subtitle: "Outstanding balance vs facility cap over the model horizon.", html: `
+          <div class="chart-frame"><canvas id="chart-loc-drawdown"></canvas></div>
+        `},
+        { id: "ca-stack", title: "Capital stack", subtitle: "Cumulative draws: senior debt + KPC LOC + owner equity.", html: `
+          <div class="chart-frame"><canvas id="chart-capital-stack"></canvas></div>
+        `},
+        { id: "ca-flows", title: "Sources & uses", subtitle: "Portfolio totals across the horizon.", html: `
+          <div class="sources-uses">
+            <div>
+              <div class="section-title" style="margin-bottom:6px;">Sources</div>
+              <table class="tbl">${rowsHtml(sources)}</table>
+            </div>
+            <div>
+              <div class="section-title" style="margin-bottom:6px;">Uses</div>
+              <table class="tbl">${rowsHtml(uses)}</table>
+            </div>
           </div>
-        </div>
-      </div>
-      <div class="panel">
-        <h3>Owner cap-table</h3>
-        <div class="panel-subtitle">Equity share, owner-equity call exposure, profit allocation. KPC provides debt (not equity) via the LOC and so does not appear in this table.</div>
-        <table class="tbl">
-          <thead><tr><th>Owner</th><th>Share</th><th>Owner equity call</th><th>Profit share</th></tr></thead>
-          <tbody>${ownerRowsHtml}</tbody>
-        </table>
-      </div>
-    </div>
+        `},
+        { id: "ca-owners", title: "Owner cap table", subtitle: "Equity share, owner-equity call exposure, profit allocation. KPC provides debt (not equity) via the LOC and so does not appear in this table.", html: `
+          <table class="tbl">
+            <thead><tr><th>Owner</th><th>Share</th><th>Owner equity call</th><th>Profit share</th></tr></thead>
+            <tbody>${ownerRowsHtml}</tbody>
+          </table>
+        `},
+      ],
+    })}
   `;
 }
 
@@ -2333,6 +2388,24 @@ function renderRisksCenter(r) {
     </div>`;
   }).join("");
 
+  // v14.27 — Each risk category gets its own rail entry so the user can jump
+  // straight to "Sales delay" or "Equity clustering" etc.
+  const railItems = risks.categories.map((cat, i) => ({ id: `ri-${cat.id || i}`, label: cat.label }));
+
+  const categorySections = risks.categories.map((cat, i) => {
+    const findings = cat.findings.sort((a, b) => sevWeight(b.severity) - sevWeight(a.severity));
+    const count = findings.length;
+    const cardsHtml = count > 0
+      ? findings.map(renderCard).join("")
+      : `<div class="muted" style="font-size:12px;padding:12px 4px;">No active findings in this category.</div>`;
+    return {
+      id: `ri-${cat.id || i}`,
+      title: `${cat.label} <span class="risk-category-count ${count > 0 ? "active" : ""}" style="font-size:11px;font-weight:500;letter-spacing:0.04em;text-transform:uppercase;padding:2px 8px;border-radius:9999px;margin-left:8px;vertical-align:middle;">${count} finding${count === 1 ? "" : "s"}</span>`,
+      subtitle: cat.description,
+      html: cardsHtml,
+    };
+  });
+
   return `
     <div class="row between mb-12">
       <div>
@@ -2341,18 +2414,19 @@ function renderRisksCenter(r) {
       </div>
     </div>
 
-    <div class="kpi-row">
-      ${kpiCard("Total findings", `${sev.total}`, sev.total === 0 ? "All clear" : `${sev.high} high · ${sev.medium} medium · ${sev.low} low`, sev.high > 0 ? "neg" : sev.medium > 0 ? "warn" : "pos")}
-      ${kpiCard("High severity", `${sev.high}`, "Act now", sev.high > 0 ? "neg" : "")}
-      ${kpiCard("Medium severity", `${sev.medium}`, "Plan a mitigation", sev.medium > 0 ? "warn" : "")}
-      ${kpiCard("Low severity", `${sev.low}`, "Monitor", sev.low > 0 ? "" : "")}
-      ${kpiCard("Categories with findings", `${Object.values(sev.by_category).filter(n => n > 0).length} of 6`, "Where to focus next")}
-      ${kpiCard("Capital findings", `${sev.by_category.equity_cluster + sev.by_category.funding_gap}`, "Equity / LOC pressure", (sev.by_category.equity_cluster + sev.by_category.funding_gap) > 0 ? "warn" : "")}
-    </div>
-
-    <div class="risk-category-grid">
-      ${categoryPanels}
-    </div>
+    ${pageShell({
+      railLabel: "CATEGORIES",
+      railItems,
+      kpiTiles: [
+        { label: "Total findings", value: `${sev.total}`, cls: sev.high > 0 ? "neg" : sev.medium > 0 ? "" : "pos" },
+        { label: "High severity",   value: `${sev.high}`,   cls: sev.high > 0 ? "neg" : "" },
+        { label: "Medium severity", value: `${sev.medium}`, cls: sev.medium > 0 ? "" : "" },
+        { label: "Low severity",    value: `${sev.low}` },
+        { label: "Active categories", value: `${Object.values(sev.by_category).filter(n => n > 0).length} of 6` },
+        { label: "Capital findings", value: `${sev.by_category.equity_cluster + sev.by_category.funding_gap}`, cls: (sev.by_category.equity_cluster + sev.by_category.funding_gap) > 0 ? "neg" : "" },
+      ],
+      sections: categorySections,
+    })}
   `;
 }
 
@@ -3147,45 +3221,42 @@ function renderWaterfall(r) {
     </tr>`;
   }).join("");
 
-  return `
-    <div class="section-title">Investor waterfall · KPC equity flow</div>
-    <div class="kpi-row">
-      ${kpiCard("Total equity in", fmt.usdM(totalIn), "Capital deployed across all projects")}
-      ${kpiCard("Total equity returned", fmt.usdM(totalOut), "Distributions to KPC")}
-      ${kpiCard("Net gain", fmt.usdM(netGain), `${(totalOut/Math.max(1,totalIn)).toFixed(2)}x MOIC`, netGain >= 0 ? "pos" : "neg")}
-      ${kpiCard("Portfolio IRR", r.kpis.irr_annual == null ? "—" : fmt.pct(r.kpis.irr_annual), "Annualized")}
-      ${kpiCard("Payback", r.kpis.payback_months == null ? "—" : fmt.months(r.kpis.payback_months), "Months to recoup deployed equity")}
-      ${kpiCard("Peak deployed", fmt.usdM(r.kpis.peak_equity_required), `Peak in ${fmt.ymShort(r.kpis.peak_equity_month)}`)}
-    </div>
-
-    <div class="panel mb-24">
-      <h3>Equity timeline — cumulative deployed vs returned</h3>
-      <div class="panel-subtitle">Source: matches KPC Equity Flow tab structure</div>
-      <div class="chart-frame"><canvas id="chart-waterfall"></canvas></div>
-    </div>
-
-    <div class="panel-row">
-      <div class="panel">
-        <h3>By project</h3>
-        <div class="scroll-x"><table class="tbl">
+  // v14.27 — Wrap top-level Waterfall content in page-shell.
+  // Investor waterfall + hypothetical LP + pro-rata check are appended
+  // below the shell as legacy panels (they're conditional and complex
+  // enough that wrapping risks regressions).
+  const waterfallShell = pageShell({
+    railLabel: "WATERFALL",
+    railItems: [
+      { id: "wf-timeline",  label: "Equity timeline" },
+      { id: "wf-projects",  label: "By project" },
+      { id: "wf-annual",    label: "By fiscal year" },
+      { id: "wf-monthly",   label: "Monthly movement" },
+    ],
+    kpiTiles: [
+      { label: "Total equity in",       value: fmt.usdM(totalIn) },
+      { label: "Total equity returned", value: fmt.usdM(totalOut) },
+      { label: "Net gain",              value: fmt.usdM(netGain), cls: netGain >= 0 ? "pos" : "neg" },
+      { label: "Portfolio IRR",         value: r.kpis.irr_annual == null ? "—" : fmt.pct(r.kpis.irr_annual) },
+      { label: "Payback",               value: r.kpis.payback_months == null ? "—" : fmt.months(r.kpis.payback_months) },
+      { label: "Peak deployed",         value: fmt.usdM(r.kpis.peak_equity_required) },
+    ],
+    sections: [
+      { id: "wf-timeline", title: "Equity timeline", subtitle: "Cumulative deployed vs returned over the model horizon. Source: matches KPC Equity Flow tab structure.", html: `<div class="chart-frame"><canvas id="chart-waterfall"></canvas></div>` },
+      { id: "wf-projects", title: "By project", subtitle: "Per-villa equity in, equity returned, hold period, MOIC, IRR, and net gain.", html: `<div class="scroll-x"><table class="tbl">
           <thead><tr><th>Project</th><th>Equity in</th><th>First call</th><th>Returned</th><th>Returned at</th><th>Hold</th><th>MOIC</th><th>IRR</th><th>Gain</th></tr></thead>
           <tbody>${projRows}</tbody>
-        </table></div>
-      </div>
-      <div class="panel">
-        <h3>By fiscal year</h3>
-        <div class="scroll-x"><table class="tbl">
+        </table></div>` },
+      { id: "wf-annual", title: "By fiscal year", subtitle: "Annual equity drawn vs returned with running cumulative net.", html: `<div class="scroll-x"><table class="tbl">
           <thead><tr><th>FY</th><th>Equity drawn</th><th>Equity returned</th><th>Net</th><th>Cumulative net</th></tr></thead>
           <tbody>${annRows}</tbody>
-        </table></div>
-      </div>
-    </div>
+        </table></div>` },
+      { id: "wf-monthly", title: "Monthly equity movement", subtitle: "Drawn (negative) vs returned (positive) by month.", html: `<div class="chart-frame"><canvas id="chart-equity-monthly"></canvas></div>` },
+    ],
+  });
 
-    <div class="panel mb-24">
-      <h3>Monthly equity movement</h3>
-      <div class="panel-subtitle">Drawn (negative) vs returned (positive) by month</div>
-      <div class="chart-frame"><canvas id="chart-equity-monthly"></canvas></div>
-    </div>
+  return `
+    ${waterfallShell}
 
     ${r.waterfall && r.waterfall.length > 0 ? `
     <div class="panel mb-24">
@@ -4942,30 +5013,27 @@ function attachViewEvents(result) {
     btn.addEventListener("click", () => setProjectTab(btn.dataset.projectTab));
   }
 
-  // v14.26 — Inputs page section rail: smooth-scroll on click + scroll-spy
-  // highlighting based on which section is in view.
-  const railLinks = document.querySelectorAll(".inputs-rail-link[data-rail]");
-  if (railLinks.length) {
-    const sections = Array.from(document.querySelectorAll(".inputs-section-v2[id]"));
-    for (const a of railLinks) {
+  // v14.27 — Universal section rail wiring. Works for any view that uses
+  // pageShell() OR the legacy .inputs-rail-link selector. Both flavours
+  // share the same .page-section[id] anchors.
+  const pageRailLinks = document.querySelectorAll("[data-page-rail], [data-rail].inputs-rail-link");
+  if (pageRailLinks.length) {
+    const sections = Array.from(document.querySelectorAll(".page-section[id], .inputs-section-v2[id]"));
+    const railIdOf = (a) => a.dataset.pageRail || a.dataset.rail;
+    for (const a of pageRailLinks) {
       a.addEventListener("click", () => {
-        const target = document.getElementById(a.dataset.rail);
+        const target = document.getElementById(railIdOf(a));
         if (target) {
-          // Account for the sticky KPI strip + tab bar above when scrolling
           const y = target.getBoundingClientRect().top + window.pageYOffset - 200;
           window.scrollTo({ top: y, behavior: "smooth" });
         }
       });
     }
-    // Scroll-spy: highlight the rail link of the section currently in view.
-    // rootMargin: -30% top, -60% bottom — section becomes "active" when its
-    // top crosses ~30% from viewport top.
     const setActive = (id) => {
-      for (const a of railLinks) a.classList.toggle("active", a.dataset.rail === id);
+      for (const a of pageRailLinks) a.classList.toggle("active", railIdOf(a) === id);
     };
     if (sections.length && "IntersectionObserver" in window) {
       const observer = new IntersectionObserver((entries) => {
-        // Find the entry whose top is closest to the top of the viewport
         const visible = entries.filter(e => e.isIntersecting);
         if (visible.length) {
           visible.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
@@ -4973,7 +5041,6 @@ function attachViewEvents(result) {
         }
       }, { rootMargin: "-25% 0px -65% 0px", threshold: 0 });
       sections.forEach(s => observer.observe(s));
-      // Initial highlight: first section
       setActive(sections[0].id);
     }
   }
