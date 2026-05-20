@@ -441,11 +441,129 @@ button.btn.small {
 .settings-drawer-body {
   flex: 1;
   overflow-y: auto;
-  padding: 24px;
+  padding: 0;
   background: var(--surface-page);
 }
+
+/* === Drawer-scoped overrides (v14.21) ===
+   The renderSettings / renderActivity / renderUsers / renderSuggestions
+   functions were built for a full-page layout (2-column form grids, two
+   panels side-by-side). Inside a 720px-max drawer that reads as cramped
+   and noisy. We override:
+   - .section-title hidden (the drawer header already says "Settings")
+   - .panel-row stacks to single column
+   - .panel drops its grouping-card chrome (drawer IS the chrome)
+   - .form-grid becomes single-column with a label/value split row
+   - All inputs align to the right edge with consistent width
+*/
+.settings-drawer-body .section-title { display: none; }
+.settings-drawer-body > div > .section-title:first-child + .panel-row { margin-top: 0; }
+
+.settings-drawer-body .panel-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: 0;
+}
+.settings-drawer-body .panel {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-subtle);
+  border-radius: 0;
+  padding: 20px 24px;
+  box-shadow: none;
+  margin-bottom: 0;
+}
+.settings-drawer-body .panel:last-child { border-bottom: none; }
+.settings-drawer-body .panel h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.005em;
+  margin: 0 0 4px 0;
+}
+.settings-drawer-body .panel h3 + .panel-subtitle,
+.settings-drawer-body .panel-subtitle {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin: 0 0 14px 0;
+  line-height: 1.4;
+}
+
+/* Single-column form rows, label-on-left, value-on-right */
+.settings-drawer-body .form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  grid-template-columns: none;
+}
+.settings-drawer-body .form-row {
+  display: grid;
+  grid-template-columns: 1fr 200px;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.settings-drawer-body .form-row:last-child { border-bottom: none; }
+.settings-drawer-body .form-row label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: 0;
+  text-transform: none;
+  margin: 0;
+  line-height: 1.35;
+}
+.settings-drawer-body .form-row .input {
+  text-align: right;
+  height: 34px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.settings-drawer-body .form-row select.input { text-align: left; }
+.settings-drawer-body .form-row .hint {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: -2px;
+  padding-bottom: 6px;
+}
+
+/* Section heading between two form-grids inside one panel (e.g. "Risk thresholds") */
+.settings-drawer-body .panel h3 + .panel-subtitle + .form-grid,
+.settings-drawer-body .panel .form-grid + h3 {
+  margin-top: 20px;
+}
+
+/* Action button rows (e.g. Data management exports) get cleaner spacing */
+.settings-drawer-body .row.gap-sm.wrap {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+.settings-drawer-body .row.gap-sm.wrap .btn {
+  justify-content: flex-start;
+  width: 100%;
+}
+
+/* Markets / Investors tables — convert horizontal-flex rows into a denser
+   layout that fits the narrow drawer */
+.settings-drawer-body [data-market],
+.settings-drawer-body [data-investor] { font-size: 12px; }
+
+/* Tables inside drawer (History, Suggestions, Users) */
+.settings-drawer-body table.tbl { font-size: 12px; }
+.settings-drawer-body table.tbl th,
+.settings-drawer-body table.tbl td { padding: 8px 10px; }
+
+/* Divider helper used between sections */
+.settings-drawer-body .divider { height: 1px; background: var(--border-subtle); margin: 16px 0; border: none; }
+
 @media (max-width: 720px) {
   .settings-drawer { width: 100vw; min-width: 0; max-width: 100vw; border-left: none; }
+  .settings-drawer-body .form-row { grid-template-columns: 1fr; gap: 6px; }
+  .settings-drawer-body .form-row .input { text-align: left; }
 }
 .avatar-menu {
   position: absolute;
