@@ -1,158 +1,320 @@
 /* ============================================================
-   Phase 1 (design reset 2026-05-19, Ramp-calibrated 2026-05-19) —
-   design.md tokens. See /design.md for the source of truth.
+   Phase 0 (v14.33 design system) — Juno Atlas tokens.
+   Canonical source: design-system/tokens/tokens.css.
+   Kept inline here so the static site loads one stylesheet.
 
-   Ramp-calibrated palette: warm cream paper, mustard accent, warm
-   near-black ink, brick negatives (distinct from accent), soft
-   medium radii, barely-there shadows.
-
-   Legacy token names (--bg / --fg / --accent / etc.) are aliased
-   to the new tokens so existing component CSS keeps working
-   during the migration. Future phases will replace direct legacy
-   references with the new token names and retire the aliases.
+   The "new" tokens use the --color-* / --font-size-* / --space-*
+   naming convention from the design system bundle. Old token
+   names (--surface-page, --text-primary, --fg, --accent, etc.)
+   are aliased below so every existing class keeps rendering
+   during the phased re-skin.
    ============================================================ */
 :root {
-  /* === design.md canonical tokens, calibrated from real Ramp screenshots ===
-     Page is WHITE. Content is grouped on pale grey "section" cards. Interactive
-     items inside section cards go BACK to white. That's the hierarchy. */
+  /* ---------- COLOR (canonical) ---------- */
 
   /* Surfaces */
-  --surface-page:        #FFFFFF;
-  --surface-card:        #F3F2EE;   /* pale warm grey grouping card */
-  --surface-card-elev:   #FFFFFF;   /* interactive component inside a grouping card */
-  --surface-sunken:      #EBEAE5;
-  --surface-overlay:     #FFFFFFF2;
+  --color-surface-base:    #FFFFFF;
+  --color-surface-sunken:  #FAFAF8;
+  --color-surface-raised:  #FFFFFF;
+  --color-surface-muted:   #F4F4F2;
+  --color-surface-inverse: #0D0D0D;
 
   /* Borders */
-  --border-subtle:       #E5E4DF;
-  --border-default:      #D6D4CD;
-  --border-strong:       #B8B5AA;
+  --color-border-hairline: #EFEFEC;
+  --color-border-subtle:   #F4F4F2;
+  --color-border-strong:   #E5E7EB;
+  --color-border-focus:    #0D0D0D;
 
-  /* Text — pure near-black */
-  --text-primary:        #0A0A0A;
-  --text-secondary:      #6B6B68;
-  --text-tertiary:       #9B9A93;
-  --text-disabled:       #BFBDB5;
-  --text-inverse:        #FFFFFF;
+  /* Text */
+  --color-text-primary:     #111111;
+  --color-text-secondary:   #6B7280;
+  --color-text-tertiary:    #8A8F98;
+  --color-text-quaternary:  #B0B5BC;
+  --color-text-inverse:     #FFFFFF;
+  --color-text-on-lime:     #0D0D0D;
 
-  /* Accent — Ramp lime-citron yellow (vivid, confident, not muted) */
+  /* Accent — CTA only */
+  --color-accent-lime:         #DDEC65;
+  --color-accent-lime-hover:   #D1E057;
+  --color-accent-lime-pressed: #C5D44C;
+  --color-accent-blue:         #4F6FFF;
+  --color-accent-blue-soft:    rgba(79, 111, 255, 0.08);
+
+  /* Semantic */
+  --color-positive:       #15803D;
+  --color-positive-soft:  #ECFDF5;
+  --color-warning:        #A16207;
+  --color-warning-soft:   #FEFCE8;
+  --color-negative:       #B91C1C;
+  --color-negative-soft:  #FEF2F2;
+  --color-info:           #1E40AF;
+  --color-info-soft:      #EFF6FF;
+
+  /* ---------- TYPOGRAPHY ---------- */
+
+  --font-family-body: 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  --font-family-mono: 'Geist Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+  --font-weight-light:    300;
+  --font-weight-regular:  400;
+  --font-weight-book:     450;
+  --font-weight-medium:   500;
+  --font-weight-semibold: 600;
+  --font-weight-bold:     700;
+
+  --font-size-micro: 11px;
+  --font-size-xs:    12px;
+  --font-size-sm:    13px;
+  --font-size-base:  14px;
+  --font-size-md:    15px;
+  --font-size-lg:    17px;
+  --font-size-xl:    20px;
+  --font-size-2xl:   24px;
+  --font-size-3xl:   28px;
+  --font-size-kpi:   30px;
+
+  --letter-spacing-tight:      -0.040em;
+  --letter-spacing-semi-tight: -0.035em;
+  --letter-spacing-snug:       -0.025em;
+  --letter-spacing-base:       -0.011em;
+  --letter-spacing-none:        0;
+  --letter-spacing-wide:        0.010em;
+
+  --line-height-tight: 1.15;
+  --line-height-snug:  1.30;
+  --line-height-base:  1.50;
+  --line-height-loose: 1.60;
+
+  --font-feature-body:    'ss01', 'cv11', 'cv02';
+  --font-feature-numeric: 'tnum' 1;
+
+  /* ---------- SPACE — 4px base ---------- */
+  --space-0:  0;
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-7:  28px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-14: 56px;
+  --space-16: 64px;
+  --space-20: 80px;
+
+  /* ---------- LAYOUT ---------- */
+  --layout-sidebar-width:        232px;
+  --layout-content-max-width:    1360px;
+  --layout-content-padding-x:    48px;
+  --layout-content-padding-top:  32px;
+  --layout-content-padding-bot:  80px;
+  --layout-topbar-height:        56px;
+  --layout-row-gap:              24px;
+  --layout-card-gap:             24px;
+
+  /* ---------- RADII ---------- */
+  --radius-none: 0;
+  --radius-xs:   4px;
+  --radius-sm:   6px;
+  --radius-md:   8px;
+  --radius-lg:   10px;
+  --radius-xl:   14px;
+  --radius-2xl:  16px;
+  --radius-full: 999px;
+
+  /* ---------- SHADOWS — minimal; hairlines preferred ---------- */
+  --shadow-none:  none;
+  --shadow-sm:    0 1px 2px  rgba(17, 17, 17, 0.04);
+  --shadow-md:    0 2px 8px  rgba(17, 17, 17, 0.06);
+  --shadow-lg:    0 8px 24px rgba(17, 17, 17, 0.08);
+  --shadow-modal: 0 12px 48px rgba(17, 17, 17, 0.18);
+  --shadow-focus-ring: 0 0 0 2px #FFFFFF, 0 0 0 4px #0D0D0D;
+
+  /* ---------- MOTION ---------- */
+  --duration-instant:    60ms;
+  --duration-fast:       120ms;
+  --duration-base:       180ms;
+  --duration-slow:       240ms;
+  --duration-deliberate: 320ms;
+
+  --easing-standard: cubic-bezier(0.4,  0, 0.2,  1);
+  --easing-out:      cubic-bezier(0.16, 1, 0.3,  1);
+  --easing-in:       cubic-bezier(0.7,  0, 0.84, 0);
+  --easing-in-out:   cubic-bezier(0.65, 0, 0.35, 1);
+  --easing-spring:   cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ---------- Z-INDEX ---------- */
+  --z-base:     0;
+  --z-sticky:   10;
+  --z-dropdown: 100;
+  --z-topbar:   200;
+  --z-drawer:   800;
+  --z-modal:    1000;
+  --z-toast:    1100;
+  --z-tooltip:  1200;
+
+  /* ---------- CHART ---------- */
+  --chart-stroke-width: 2;
+  --chart-stroke-color: var(--color-accent-blue);
+  --chart-fill-opacity: 0.08;
+  --chart-grid-color:   var(--color-border-strong);
+  --chart-axis-font-size: 11px;
+  --chart-axis-color:   var(--color-text-tertiary);
+
+  /* ============================================================
+     LEGACY ALIASES — old token names mapped to the canonical
+     design-system tokens. Removed phase-by-phase as we re-write
+     each component class to consume --color-*, --space-*, etc.
+     directly.
+     ============================================================ */
+
+  /* Old surface scale */
+  --surface-page:        var(--color-surface-base);
+  --surface-card:        var(--color-surface-sunken);
+  --surface-card-elev:   var(--color-surface-raised);
+  --surface-sunken:      var(--color-surface-muted);
+  --surface-overlay:     #FFFFFFF2;
+
+  /* Old border scale */
+  --border-subtle:       var(--color-border-hairline);
+  --border-default:      var(--color-border-strong);
+  --border-strong:       var(--color-border-strong);
+
+  /* Old text scale */
+  --text-primary:        var(--color-text-primary);
+  --text-secondary:      var(--color-text-secondary);
+  --text-tertiary:       var(--color-text-tertiary);
+  --text-disabled:       var(--color-text-quaternary);
+  --text-inverse:        var(--color-text-inverse);
+
+  /* Old accent scale (lime) — values match the new system */
   --accent-50:           #F4FDD8;
   --accent-100:          #E6FB9C;
-  --accent-500:          #DAFB60;
-  --accent-600:          #B7DC34;
-  --accent-700:          #94B324;
+  --accent-500:          var(--color-accent-lime);
+  --accent-600:          var(--color-accent-lime-hover);
+  --accent-700:          var(--color-accent-lime-pressed);
 
-  /* Semantic — contextually saturated (not muted earth tones) */
-  --positive-500:        #4A8047;   /* saturated green for approve / sent */
-  --positive-50:         #E8F0E7;
-  --negative-500:        #E58940;   /* warm orange for negative figures + flagged */
-  --negative-50:         #FCEFE3;
-  --warning-500:         #F0A858;
-  --warning-50:          #FDF1E3;
-  --info-500:            #9CA8E5;   /* muted blue-purple for AI / informational */
-  --info-50:             #ECEFFA;
-  --neutral-500:         #6B6B68;
+  /* Old semantic */
+  --positive-500:        var(--color-positive);
+  --positive-50:         var(--color-positive-soft);
+  --negative-500:        var(--color-negative);
+  --negative-50:         var(--color-negative-soft);
+  --warning-500:         var(--color-warning);
+  --warning-50:          var(--color-warning-soft);
+  --info-500:            var(--color-info);
+  --info-50:             var(--color-info-soft);
+  --neutral-500:         var(--color-text-secondary);
 
-  /* Chart palette — black workhorse, then blue/green/orange/rose for series */
-  --chart-1:             #0A0A0A;   /* near-black ink */
-  --chart-2:             #9CA8E5;   /* muted blue */
-  --chart-3:             #4A8047;   /* sage green */
-  --chart-4:             #E58940;   /* warm orange */
-  --chart-5:             #C97FA9;   /* dusty rose */
-  --chart-6:             #8C7C6E;   /* warm grey */
+  /* Chart palette — keep our existing series colours for now;
+     a Phase 2 follow-up will retrofit charts to use the new
+     blue-primary + semantic colours from the design system. */
+  --chart-1:             var(--color-text-primary);
+  --chart-2:             var(--color-accent-blue);
+  --chart-3:             var(--color-positive);
+  --chart-4:             var(--color-warning);
+  --chart-5:             #C97FA9;
+  --chart-6:             #8C7C6E;
 
-  /* Radii — 8 on buttons, 16 on grouping cards, 20 on modals */
-  --radius-sm:           6px;
-  --radius-md:           8px;
-  --radius-lg:           16px;
-  --radius-xl:           20px;
-  --radius-full:         9999px;
-
-  /* Elevation — barely there. Surface-contrast does most of the work. */
-  --shadow-sm:           0 1px 2px rgba(10,10,10,0.04);
-  --shadow-md:           0 2px 8px rgba(10,10,10,0.05);
-  --shadow-lg:           0 8px 24px rgba(10,10,10,0.07);
-
-  /* Spacing scale (4px base) */
-  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
-  --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px;
-  --space-12: 48px; --space-16: 64px;
-
-  /* Type */
-  --font-sans: 'Inter', 'Söhne', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Söhne Mono', ui-monospace, monospace;
-
-  /* === legacy aliases (mapped to new tokens) ===
-     These keep existing component styles working during the migration.
-     Phases 3+ will replace direct references with the new names.
-
-     IMPORTANT: --surface (legacy "card bg") is mapped to --surface-card-elev
-     (white) rather than --surface-card (pale grey). This keeps existing white
-     KPI cards looking like white cards. Phase 3 will introduce proper grouping
-     cards (pale grey) wrapping clusters of white-on-grey content.
-
-     IMPORTANT: --accent-fg flipped from --text-inverse (white) to --text-primary
-     (black). The new accent is lime-yellow — black text reads on yellow, white
-     does not. */
-  --bg:                  var(--surface-page);
-  --surface:             var(--surface-card-elev);
-  --surface-2:           var(--surface-card);
-  --surface-3:           var(--surface-sunken);
-  --border:              var(--border-subtle);
-  --border-strong:       var(--border-default);
-  --fg:                  var(--text-primary);
-  --fg-2:                var(--text-secondary);
-  --fg-3:                var(--text-tertiary);
-  --accent:              var(--accent-500);
-  --accent-fg:           var(--text-primary);   /* black on yellow */
-  --pos:                 var(--positive-500);
-  --neg:                 var(--negative-500);
-  --info:                var(--neutral-500);
-  --warn:                var(--warning-500);
-  --link:                var(--text-secondary);
+  /* Short aliases used by older component classes */
+  --bg:                  var(--color-surface-base);
+  --surface:             var(--color-surface-raised);
+  --surface-2:           var(--color-surface-sunken);
+  --surface-3:           var(--color-surface-muted);
+  --border:              var(--color-border-hairline);
+  --fg:                  var(--color-text-primary);
+  --fg-2:                var(--color-text-secondary);
+  --fg-3:                var(--color-text-tertiary);
+  --accent:              var(--color-accent-lime);
+  --accent-fg:           var(--color-text-on-lime);
+  --pos:                 var(--color-positive);
+  --neg:                 var(--color-negative);
+  --info:                var(--color-info);
+  --warn:                var(--color-warning);
+  --link:                var(--color-text-secondary);
   --radius:              var(--radius-md);
-  --shadow:              var(--shadow-sm);
-  --font:                var(--font-sans);
-  --mono:                var(--font-mono);
+  --shadow:              var(--shadow-none);   /* cards now hairline only */
+  --font:                var(--font-family-body);
+  --mono:                var(--font-family-mono);
+  --font-sans:           var(--font-family-body);
+  --font-mono:           var(--font-family-mono);
 }
 
+/* ============================================================
+   Dark mode — surface inversion only, lime CTA unchanged.
+   Toggled via data-theme="dark" on <html>.
+   ============================================================ */
 :root[data-theme="dark"] {
-  --surface-page:        #0A0A09;
-  --surface-card:        #1A1A18;
-  --surface-card-elev:   #232220;
-  --surface-sunken:      #161614;
-  --surface-overlay:     #232220F2;
-  --border-subtle:       #2C2A26;
-  --border-default:      #38362F;
-  --border-strong:       #4A4740;
-  --text-primary:        #F5F5F0;
-  --text-secondary:      #A0A09B;
-  --text-tertiary:       #6E6D67;
-  --text-disabled:       #4E4D47;
-  --text-inverse:        #0A0A09;
-  --accent-500:          #DAFB60;   /* yellow pops on dark too — unchanged */
-  --accent-600:          #B7DC34;
-  --accent-700:          #94B324;
-  --positive-500:        #5B9658;
-  --negative-500:        #F09558;
-  --warning-500:         #F2B570;
-  --info-500:            #B3BEE8;
-  --neutral-500:         #8E8B82;
-  /* Chart palette: chart-1 must invert for dark mode so the workhorse stays visible */
-  --chart-1:             #F5F0E1;     /* "ink" inverts to paper on dark surface */
-  /* chart-2..6 stay the same — they already read on dark backgrounds */
+  --color-surface-base:    #0D0D0D;
+  --color-surface-sunken:  #060606;
+  --color-surface-raised:  #131313;
+  --color-surface-muted:   #1A1A19;
+  --color-surface-inverse: #FFFFFF;
+
+  --color-border-hairline: #1F1F1D;
+  --color-border-subtle:   #161614;
+  --color-border-strong:   #2A2A28;
+  --color-border-focus:    #FFFFFF;
+
+  --color-text-primary:     #F4F4F2;
+  --color-text-secondary:   #B0B5BC;
+  --color-text-tertiary:    #8A8F98;
+  --color-text-quaternary:  #5C6168;
+  --color-text-inverse:     #0D0D0D;
+
+  --shadow-focus-ring: 0 0 0 2px #0D0D0D, 0 0 0 4px #FFFFFF;
+
+  /* Chart workhorse colour inverts so it stays visible on dark surfaces */
+  --chart-1: #F4F4F2;
 }
+
+/* ============================================================
+   GLOBAL BASE
+   ============================================================ */
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
-  font-family: var(--font-sans);
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--text-primary);
-  background: var(--surface-page);
-  font-feature-settings: 'cv11', 'ss01', 'ss03';
+  font-family: var(--font-family-body);
+  background: var(--color-surface-base);
+  color: var(--color-text-primary);
+  font-feature-settings: var(--font-feature-body);
+  letter-spacing: var(--letter-spacing-base);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+}
+
+/* Tabular numerals wherever a number lives */
+.tnum,
+.num,
+td.amt,
+.kpi-value,
+.stat-value,
+[data-numeric] {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feature-numeric);
+}
+
+/* Universal focus-visible ring (2px white gap + 4px dark outer ring) */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus-ring);
+  border-radius: var(--radius-md);
+}
+
+/* Respect reduced-motion preference globally */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* ============================================================
