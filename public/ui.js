@@ -3096,7 +3096,7 @@ function renderProjectMonthlyTable(res) {
 function renderCashflow(r) {
   const m = r.monthly;
   const horizonStart = 0, horizonEnd = m.dates.length;
-  const rows = [
+  const rowsDef = [
     ["Sales", "sales"],
     ["Land cost", "land_cost"],
     ["Construction", "build_cost"],
@@ -3111,22 +3111,35 @@ function renderCashflow(r) {
     ["Equity balance", "equity_balance"],
     ["Net cash", "net_cash"],
   ];
-  let html = `<div class="section-title">Portfolio cash flow · 49 months · all USD</div>
-  <div class="panel"><div class="scroll-x"><table class="tbl"><thead><tr><th>USD</th>`;
-  for (let i = horizonStart; i < horizonEnd; i++) html += `<th>${fmt.ymShort(m.dates[i])}</th>`;
-  html += `<th>Total</th></tr></thead><tbody>`;
-  for (const [label, key] of rows) {
-    html += `<tr><td>${label}</td>`;
+  let tableHtml = `<div class="scroll-x"><table class="tbl"><thead><tr><th>USD</th>`;
+  for (let i = horizonStart; i < horizonEnd; i++) tableHtml += `<th>${fmt.ymShort(m.dates[i])}</th>`;
+  tableHtml += `<th>Total</th></tr></thead><tbody>`;
+  for (const [label, key] of rowsDef) {
+    tableHtml += `<tr><td>${label}</td>`;
     let total = 0;
     for (let i = horizonStart; i < horizonEnd; i++) {
       const v = m[key][i];
       total += v;
-      html += `<td class="num ${v < 0 ? "neg" : v > 0 ? "" : "muted"}">${v === 0 ? "—" : fmt.usdSigned(v)}</td>`;
+      tableHtml += `<td class="num ${v < 0 ? "neg" : v > 0 ? "" : "muted"}">${v === 0 ? "—" : fmt.usdSigned(v)}</td>`;
     }
-    html += `<td class="num"><strong>${fmt.usdSigned(total)}</strong></td></tr>`;
+    tableHtml += `<td class="num"><strong>${fmt.usdSigned(total)}</strong></td></tr>`;
   }
-  html += `</tbody></table></div></div>`;
-  return html;
+  tableHtml += `</tbody></table></div>`;
+
+  // v14.27 — Single-section page, no rail needed. The bold section
+  // heading + subtitle gives it the same chrome as the bigger pages.
+  return pageShell({
+    railItems: [],
+    kpiTiles: [
+      { label: "Total sales",     value: fmt.usdM(r.kpis.total_sales) },
+      { label: "Total dev cost",  value: fmt.usdM(r.kpis.total_dev_cost) },
+      { label: "Profit",          value: fmt.usdM(r.kpis.total_profit_before_tax), cls: r.kpis.total_profit_before_tax >= 0 ? "pos" : "neg" },
+      { label: "Months in model", value: `${m.dates.length}` },
+    ],
+    sections: [
+      { id: "cf-monthly", title: "Portfolio cash flow", subtitle: `${m.dates.length} months across the model horizon. All values in USD.`, html: tableHtml },
+    ],
+  });
 }
 
 // ---------- Pipeline view ----------
@@ -3137,8 +3150,7 @@ function renderPipeline(r) {
   const N = state.globals.horizon_months;
   const projects = state.projects;
 
-  let html = `<div class="section-title">Development pipeline · ${start0} to ${r.timeline[N-1]}</div>
-    <div class="panel"><div class="gantt">
+  let ganttHtml = `<div class="gantt">
       <div class="gantt-label" style="background:var(--surface);font-weight:600;">Project</div>
       <div class="gantt-track" style="background:var(--surface);">
         <div style="position:absolute;left:0;right:0;top:6px;display:flex;justify-content:space-between;font-size:10px;color:var(--fg-3);">
@@ -3152,15 +3164,27 @@ function renderPipeline(r) {
     const rightPct = saleIdx >= 0 ? (saleIdx / N) * 100 : 100;
     const excluded = state.scenario.excluded_project_ids.includes(p.id);
     const cls = excluded ? "pipeline" : p.status;
-    html += `<div class="gantt-label">${p.name} ${stageBadge(p, excluded)}</div>
+    ganttHtml += `<div class="gantt-label">${p.name} ${stageBadge(p, excluded)}</div>
              <div class="gantt-track">
                <div class="gantt-bar ${cls}" style="left:${leftPct.toFixed(1)}%;width:${(rightPct - leftPct).toFixed(1)}%;">
                  ${fmt.ymShort(p.start_date)} → ${fmt.ymShort(addMonthsHelper(p.start_date, p.program_months))}
                </div>
              </div>`;
   }
-  html += `</div></div>`;
-  return html;
+  ganttHtml += `</div>`;
+
+  return pageShell({
+    railItems: [],
+    kpiTiles: [
+      { label: "Projects", value: `${projects.length}` },
+      { label: "Horizon",  value: `${N} months` },
+      { label: "From",     value: fmt.ymShort(start0) },
+      { label: "To",       value: fmt.ymShort(r.timeline[N-1]) },
+    ],
+    sections: [
+      { id: "pi-gantt", title: "Development pipeline", subtitle: `Project timelines from purchase through sale. ${start0} → ${r.timeline[N-1]}.`, html: ganttHtml },
+    ],
+  });
 }
 
 function addMonthsHelper(s, n) {
@@ -3426,79 +3450,70 @@ function renderScenario(r) {
         <button class="btn secondary" id="scn-reset">Reset to base</button>
       </div>
     </div>
-    <div class="panel-row">
-      <div class="panel">
-        <h3>Active scenario</h3>
-        <div class="panel-subtitle">Edit any driver and Apply to update KPIs. Classify and lock once you're confident this is the deal you're underwriting against.</div>
-        <div class="form-grid">
-          <div class="form-row full"><label>Scenario name</label><input class="input" id="scn-name" type="text" value="${escapeHtml(s.name)}"></div>
-          <div class="form-row">
-            <label>Classification</label>
-            <select class="input" id="scn-class">
-              ${SCENARIO_CLASSES.map(c => `<option value="${c.id}" ${cls.id === c.id ? "selected" : ""}>${c.label}</option>`).join("")}
-            </select>
-            <div class="hint">${cls.description}</div>
+    ${pageShell({
+      railLabel: "SCENARIOS",
+      railItems: [
+        { id: "sc-active",     label: "Active scenario" },
+        { id: "sc-exclusions", label: "Project exclusions" },
+        { id: "sc-effect",     label: "Effect on KPIs" },
+        { id: "sc-variance",   label: "Variance drivers" },
+        ...(state.scenarios.length > 0 ? [
+          { id: "sc-saved",    label: "Saved scenarios" },
+          { id: "sc-annual",   label: "Annual by scenario" },
+          { id: "sc-equity",   label: "Equity overlay" },
+          { id: "sc-cashflow", label: "Cash flow overlay" },
+        ] : []),
+      ],
+      kpiTiles: [
+        { label: "Active",      value: escapeHtml(s.name) },
+        { label: "Class",       value: cls.label },
+        { label: "Saved",       value: `${state.scenarios.length}` },
+        { label: "Excluded",    value: `${state.scenario.excluded_project_ids.length}` },
+      ],
+      sections: [
+        { id: "sc-active", title: "Active scenario", subtitle: "Edit any driver and Apply to update KPIs. Classify and lock once you're confident this is the deal you're underwriting against.", html: `
+          <div class="form-grid">
+            <div class="form-row full"><label>Scenario name</label><input class="input" id="scn-name" type="text" value="${escapeHtml(s.name)}"></div>
+            <div class="form-row">
+              <label>Classification</label>
+              <select class="input" id="scn-class">
+                ${SCENARIO_CLASSES.map(c => `<option value="${c.id}" ${cls.id === c.id ? "selected" : ""}>${c.label}</option>`).join("")}
+              </select>
+              <div class="hint">${cls.description}</div>
+            </div>
+            <div class="form-row"><label>Locked as decision</label>
+              <label class="toggle" style="padding-top:4px;"><input type="checkbox" id="scn-locked" ${s.locked ? "checked" : ""}> ${s.locked ? "This is the locked decision scenario" : "Lock to mark as the canonical decision"}</label>
+            </div>
+            <div class="form-row"><label>Interest rate Δ (bps)</label><input class="input" id="scn-interest-bps" type="number" step="25" value="${s.interest_rate_delta_bps}"></div>
+            <div class="form-row"><label>Build cost ×</label><input class="input" id="scn-build-mult" type="number" step="0.05" value="${s.build_cost_multiplier}"></div>
+            <div class="form-row"><label>Sale price ×</label><input class="input" id="scn-sale-mult" type="number" step="0.05" value="${s.sale_price_multiplier}"></div>
+            <div class="form-row"><label>Margin override</label><input class="input" id="scn-margin" type="number" step="0.01" value="${s.margin_override ?? ""}" placeholder="leave blank for per-project / global"></div>
+            <div class="form-row"><label>Timing shift (months)</label><input class="input" id="scn-timing" type="number" step="1" value="${s.timing_shift_months}"></div>
           </div>
-          <div class="form-row"><label>Locked as decision</label>
-            <label class="toggle" style="padding-top:4px;"><input type="checkbox" id="scn-locked" ${s.locked ? "checked" : ""}> ${s.locked ? "This is the locked decision scenario" : "Lock to mark as the canonical decision"}</label>
+          <div class="row mt-16 gap-sm wrap">
+            <button class="btn" id="scn-apply">Apply</button>
+            <button class="btn secondary" data-preset="stress">Stress preset</button>
+            <button class="btn secondary" data-preset="optimistic">Optimistic preset</button>
           </div>
-          <div class="form-row"><label>Interest rate Δ (bps)</label><input class="input" id="scn-interest-bps" type="number" step="25" value="${s.interest_rate_delta_bps}"></div>
-          <div class="form-row"><label>Build cost ×</label><input class="input" id="scn-build-mult" type="number" step="0.05" value="${s.build_cost_multiplier}"></div>
-          <div class="form-row"><label>Sale price ×</label><input class="input" id="scn-sale-mult" type="number" step="0.05" value="${s.sale_price_multiplier}"></div>
-          <div class="form-row"><label>Margin override</label><input class="input" id="scn-margin" type="number" step="0.01" value="${s.margin_override ?? ""}" placeholder="leave blank for per-project / global"></div>
-          <div class="form-row"><label>Timing shift (months)</label><input class="input" id="scn-timing" type="number" step="1" value="${s.timing_shift_months}"></div>
-        </div>
-        <div class="row mt-16 gap-sm wrap">
-          <button class="btn" id="scn-apply">Apply</button>
-          <button class="btn secondary" data-preset="stress">Stress preset</button>
-          <button class="btn secondary" data-preset="optimistic">Optimistic preset</button>
-        </div>
-      </div>
-      <div class="panel">
-        <h3>Project exclusions</h3>
-        <div class="panel-subtitle">Toggle off any project to exclude it from portfolio totals</div>
-        ${state.projects.map(p => {
-          const ex = state.scenario.excluded_project_ids.includes(p.id);
-          return `<div class="row between" style="padding:6px 0;border-bottom:1px solid var(--border);">
-            <div><strong>${p.name}</strong> <span class="muted" style="font-size:11px;">${fmt.ymShort(p.start_date)}</span></div>
-            <label class="toggle"><input type="checkbox" data-exclude-id="${p.id}" ${ex ? "" : "checked"}> ${ex ? "Excluded" : "Active"}</label>
-          </div>`;
-        }).join("")}
-      </div>
-    </div>
-
-    <div class="panel mb-24">
-      <h3>Effect of current scenario on KPIs</h3>
-      <div class="panel-subtitle">Comparison vs base case (all-default scenario)</div>
-      ${renderScenarioComparison()}
-    </div>
-
-    ${renderVarianceDrivers(s)}
-
-    ${state.scenarios.length > 0 ? `
-    <div class="panel mb-24">
-      <h3>Saved scenarios — side-by-side KPIs</h3>
-      <div class="panel-subtitle">${state.scenarios.length} saved · Click a cell to load that scenario, × to delete</div>
-      ${renderSavedScenarios()}
-    </div>
-
-    <div class="panel mb-24">
-      <h3>Annual P&L by scenario</h3>
-      <div class="panel-subtitle">Profit before tax per FY for each saved scenario.</div>
-      ${renderScenarioAnnualComparison()}
-    </div>
-
-    <div class="panel mb-24">
-      <h3>Scenario overlay — cumulative equity balance over time</h3>
-      <div class="panel-subtitle">Compare the equity trajectory across all saved scenarios + base + current.</div>
-      <div class="chart-frame tall"><canvas id="chart-scenario-overlay"></canvas></div>
-    </div>
-
-    <div class="panel mb-24">
-      <h3>Scenario overlay — monthly net cash flow</h3>
-      <div class="panel-subtitle">Compare cash flow profiles across scenarios.</div>
-      <div class="chart-frame tall"><canvas id="chart-scenario-cashflow"></canvas></div>
-    </div>` : ""}
+        `},
+        { id: "sc-exclusions", title: "Project exclusions", subtitle: "Toggle off any project to exclude it from portfolio totals in this scenario.", html: state.projects.map(p => {
+            const ex = state.scenario.excluded_project_ids.includes(p.id);
+            return `<div class="row between" style="padding:8px 0;border-bottom:1px solid var(--border-subtle);">
+              <div><strong>${p.name}</strong> <span class="muted" style="font-size:11px;">${fmt.ymShort(p.start_date)}</span></div>
+              <label class="toggle"><input type="checkbox" data-exclude-id="${p.id}" ${ex ? "" : "checked"}> ${ex ? "Excluded" : "Active"}</label>
+            </div>`;
+          }).join("")
+        },
+        { id: "sc-effect",   title: "Effect on KPIs",      subtitle: "Comparison vs base case (all-default scenario).", html: renderScenarioComparison() },
+        { id: "sc-variance", title: "Variance drivers",    subtitle: "Which knobs are driving the delta from base.", html: renderVarianceDrivers(s) },
+        ...(state.scenarios.length > 0 ? [
+          { id: "sc-saved",    title: "Saved scenarios",          subtitle: `${state.scenarios.length} saved · Click a cell to load, × to delete.`, html: renderSavedScenarios() },
+          { id: "sc-annual",   title: "Annual P&L by scenario",   subtitle: "Profit before tax per FY for each saved scenario.", html: renderScenarioAnnualComparison() },
+          { id: "sc-equity",   title: "Equity overlay",           subtitle: "Compare the equity trajectory across saved scenarios + base + current.", html: `<div class="chart-frame tall"><canvas id="chart-scenario-overlay"></canvas></div>` },
+          { id: "sc-cashflow", title: "Cash flow overlay",        subtitle: "Compare cash flow profiles across scenarios.",                              html: `<div class="chart-frame tall"><canvas id="chart-scenario-cashflow"></canvas></div>` },
+        ] : []),
+      ],
+    })}
   `;
 }
 
@@ -3781,26 +3796,28 @@ function renderSensitivity(r) {
     hmHtml = renderHeatmapPlaceholder();
   }
 
-  return `
-    <div class="section-title">Sensitivity · single-factor swings vs current scenario</div>
-    <div class="panel mb-24">
-      <h3>Tornado — profit impact ranked by driver</h3>
-      <div class="panel-subtitle">Δ profit at ±5–10% / ±200bps swings on each driver. Red = downside, green = upside.</div>
-      <div class="chart-frame tall"><canvas id="chart-tornado"></canvas></div>
-    </div>
-    <div class="panel mb-24">
-      <h3>Two-way heatmap — Profit at varying interest rate × build cost</h3>
-      <div class="panel-subtitle">Total profit before tax (USD). Rows = interest rate delta. Columns = build cost multiplier. Outlined cell = current scenario.</div>
-      ${hmHtml}
-    </div>
-    <div class="panel">
-      <h3>Detailed swings (table)</h3>
-      <table class="tbl">
-        <thead><tr><th>Stress</th><th>Profit</th><th>Δ profit</th><th>Peak equity</th><th>Δ equity</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>
-  `;
+  return pageShell({
+    railLabel: "SENSITIVITY",
+    railItems: [
+      { id: "se-tornado", label: "Tornado" },
+      { id: "se-heatmap", label: "Two-way heatmap" },
+      { id: "se-table",   label: "Detailed swings" },
+    ],
+    kpiTiles: [
+      { label: "Base profit", value: fmt.usdM(baseProfit), cls: baseProfit >= 0 ? "pos" : "neg" },
+      { label: "Worst downside", value: fmt.usdM(Math.min(...tornadoData.map(d => d.low))), cls: "neg" },
+      { label: "Best upside",    value: fmt.usdM(Math.max(...tornadoData.map(d => d.high))), cls: "pos" },
+      { label: "Drivers tested", value: `${factors.length}` },
+    ],
+    sections: [
+      { id: "se-tornado", title: "Tornado — profit impact ranked by driver", subtitle: "Δ profit at ±5–10% / ±200bps swings on each driver. Red = downside, green = upside.", html: `<div class="chart-frame tall"><canvas id="chart-tornado"></canvas></div>` },
+      { id: "se-heatmap", title: "Two-way heatmap", subtitle: "Total profit before tax (USD). Rows = interest rate delta. Columns = build cost multiplier. Outlined cell = current scenario.", html: hmHtml },
+      { id: "se-table",   title: "Detailed swings", subtitle: "Each single-factor shock with new profit, Δ vs base, peak equity, and Δ equity.", html: `<table class="tbl">
+          <thead><tr><th>Stress</th><th>Profit</th><th>Δ profit</th><th>Peak equity</th><th>Δ equity</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>` },
+    ],
+  });
 }
 
 function renderHeatmapPlaceholder() {
@@ -3929,59 +3946,59 @@ function renderRisk(r) {
     </table></div>
   ` : `<div class="note">Configure distributions above and click <strong>Run simulation</strong>. Each trial samples one value from each distribution, runs the full portfolio model, and the results are aggregated into a percentile distribution.</div>`;
 
-  return `
-    <div class="section-title">Risk — Monte Carlo stress test</div>
+  const distHtml = `${distRows}
+    <div class="row gap-sm mt-16">
+      <input class="input" id="mc-trials" type="number" step="100" min="100" max="10000" value="${trials}" style="max-width:120px;" placeholder="trials">
+      <button class="btn" id="run-mc">Run simulation</button>
+      <button class="btn secondary" id="reset-mc-dist">Reset distributions</button>
+      ${mc ? `<span class="muted" style="font-size:11px;align-self:center;">Last run: ${mc.trials} trials</span>` : ""}
+    </div>`;
 
-    <div class="panel-row">
-      <div class="panel">
-        <h3>Driver distributions (triangular)</h3>
-        <div class="panel-subtitle">Each driver samples from a triangular distribution [min, mode, max]. Mode is the most likely value.</div>
-        ${distRows}
-        <div class="row gap-sm mt-16">
-          <input class="input" id="mc-trials" type="number" step="100" min="100" max="10000" value="${trials}" style="max-width:120px;" placeholder="trials">
-          <button class="btn" id="run-mc">Run simulation</button>
-          <button class="btn secondary" id="reset-mc-dist">Reset distributions</button>
-          ${mc ? `<span class="muted" style="font-size:11px;align-self:center;">Last run: ${mc.trials} trials</span>` : ""}
-        </div>
-      </div>
-      <div class="panel">
-        <h3>Quick interpretation</h3>
-        <div class="panel-subtitle">What this means for management decisions.</div>
-        ${mc ? (() => {
-          const profit = mc.summary.profit_pre_tax;
-          const equity = mc.summary.peak_equity;
-          return `
-            <ul style="margin:0;padding-left:16px;font-size:12px;">
-              <li>P10 (downside) profit: <strong>${fmt.usdM(profit.p10)}</strong> — 90% chance you do better.</li>
-              <li>P50 (median) profit: <strong>${fmt.usdM(profit.p50)}</strong> — most likely outcome.</li>
-              <li>P90 (upside) profit: <strong>${fmt.usdM(profit.p90)}</strong> — 10% chance you do better.</li>
-              <li>Range of profit outcomes: ${fmt.usdM(profit.max - profit.min)} (P90 − P10 = ${fmt.usdM(profit.p90 - profit.p10)}).</li>
-              <li>Peak equity stays in <strong>${fmt.usdM(equity.p10)} – ${fmt.usdM(equity.p90)}</strong> in 80% of scenarios.</li>
-              <li>Probability of loss: <strong>${fmt.pct(profit.prob_loss, 1)}</strong>.</li>
-            </ul>
-          `;
-        })() : `<div class="muted" style="font-size:12px;">Run a simulation to see the interpretation.</div>`}
-      </div>
-    </div>
+  const interpHtml = mc ? (() => {
+    const profit = mc.summary.profit_pre_tax;
+    const equity = mc.summary.peak_equity;
+    return `<ul style="margin:0;padding-left:16px;font-size:13px;line-height:1.6;">
+      <li>P10 (downside) profit: <strong>${fmt.usdM(profit.p10)}</strong> — 90% chance you do better.</li>
+      <li>P50 (median) profit: <strong>${fmt.usdM(profit.p50)}</strong> — most likely outcome.</li>
+      <li>P90 (upside) profit: <strong>${fmt.usdM(profit.p90)}</strong> — 10% chance you do better.</li>
+      <li>Range of profit outcomes: ${fmt.usdM(profit.max - profit.min)} (P90 − P10 = ${fmt.usdM(profit.p90 - profit.p10)}).</li>
+      <li>Peak equity stays in <strong>${fmt.usdM(equity.p10)} – ${fmt.usdM(equity.p90)}</strong> in 80% of scenarios.</li>
+      <li>Probability of loss: <strong>${fmt.pct(profit.prob_loss, 1)}</strong>.</li>
+    </ul>`;
+  })() : `<div class="muted" style="font-size:12px;">Run a simulation to see the interpretation.</div>`;
 
-    ${mc ? `
-    <div class="panel mb-24">
-      <h3>Outcome percentiles</h3>
-      <div class="panel-subtitle">${mc.trials.toLocaleString()} simulations × ${state.projects.length} projects × ${state.globals.horizon_months} months.</div>
-      ${summaryTable}
-    </div>
-
-    <div class="panel-row">
-      <div class="panel">
-        <h3>Profit distribution (histogram)</h3>
-        <div class="chart-frame"><canvas id="chart-mc-profit"></canvas></div>
-      </div>
-      <div class="panel">
-        <h3>Peak equity distribution</h3>
-        <div class="chart-frame"><canvas id="chart-mc-equity"></canvas></div>
-      </div>
-    </div>` : ""}
-  `;
+  return pageShell({
+    railLabel: "STRESS TEST",
+    railItems: [
+      { id: "st-distributions", label: "Distributions" },
+      { id: "st-interpretation", label: "Interpretation" },
+      ...(mc ? [
+        { id: "st-percentiles", label: "Outcome percentiles" },
+        { id: "st-profit",      label: "Profit distribution" },
+        { id: "st-equity",      label: "Peak equity distribution" },
+      ] : []),
+    ],
+    kpiTiles: mc ? [
+      { label: "Trials",        value: mc.trials.toLocaleString() },
+      { label: "Median profit", value: fmt.usdM(mc.summary.profit_pre_tax.p50), cls: mc.summary.profit_pre_tax.p50 >= 0 ? "pos" : "neg" },
+      { label: "P10 profit",    value: fmt.usdM(mc.summary.profit_pre_tax.p10), cls: mc.summary.profit_pre_tax.p10 >= 0 ? "pos" : "neg" },
+      { label: "P(loss)",       value: fmt.pct(mc.summary.profit_pre_tax.prob_loss, 1), cls: mc.summary.profit_pre_tax.prob_loss > 0.1 ? "neg" : "pos" },
+    ] : [
+      { label: "Trials configured", value: `${trials}` },
+      { label: "Drivers",           value: `${Object.keys(distributions).length}` },
+      { label: "Projects in sim",   value: `${state.projects.length}` },
+      { label: "Horizon",           value: `${state.globals.horizon_months} months` },
+    ],
+    sections: [
+      { id: "st-distributions",  title: "Driver distributions",  subtitle: "Each driver samples from a triangular distribution [min, mode, max]. Mode is the most likely value.", html: distHtml },
+      { id: "st-interpretation", title: "Quick interpretation", subtitle: "What this means for management decisions.", html: interpHtml },
+      ...(mc ? [
+        { id: "st-percentiles", title: "Outcome percentiles", subtitle: `${mc.trials.toLocaleString()} simulations × ${state.projects.length} projects × ${state.globals.horizon_months} months.`, html: summaryTable },
+        { id: "st-profit",      title: "Profit distribution", subtitle: "Histogram of profit outcomes across all trials.", html: `<div class="chart-frame"><canvas id="chart-mc-profit"></canvas></div>` },
+        { id: "st-equity",      title: "Peak equity distribution", subtitle: "Histogram of peak equity required across all trials.", html: `<div class="chart-frame"><canvas id="chart-mc-equity"></canvas></div>` },
+      ] : []),
+    ],
+  });
 }
 
 function renderMcCharts(isDark) {
