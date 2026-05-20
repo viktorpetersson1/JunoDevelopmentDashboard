@@ -3844,6 +3844,11 @@ function renderUsers() {
 
 const assistantState = { messages: [], busy: false, quota: null, mode: "query" };
 
+// v14.23 — Thinking-indicator timer. Lives at module scope so the elapsed
+// counter survives partial re-renders during the in-flight LLM request.
+let _thinkingTimer = null;
+let _thinkingStartedAt = null;
+
 async function refreshAssistantQuota() {
   try { assistantState.quota = await fetchMyLlmQuota(); } catch { /* ignore */ }
 }
@@ -3883,6 +3888,21 @@ function renderAssistantPanel() {
     if (m.role === "error") return `<div class="msg"><div class="bubble error-bubble">${escapeHtml(m.content)}</div></div>`;
     return `<div class="msg"><div class="bubble assistant-bubble">${escapeHtml(m.content).replace(/\n/g, "<br>")}${m.suggestion_id ? `<div class="muted mt-16" style="font-size:11px;">Suggestion #${m.suggestion_id} routed to admin for review.</div>` : ""}</div></div>`;
   }).join("");
+
+  // v14.23 — Live "thinking" indicator while a query is in flight.
+  // Pulsing Juno sparkle + animated dots + elapsed seconds, in the
+  // conversation flow itself so the user sees that something IS happening
+  // (not just a disabled button). Inspired by Claude's pulsing brand mark.
+  const thinkingHtml = assistantState.busy ? `
+    <div class="msg msg-thinking">
+      <div class="bubble thinking-bubble">
+        <span class="thinking-icon">${JUNO_AI_ICON}</span>
+        <span class="thinking-text">Juno is thinking</span>
+        <span class="thinking-dots"><span></span><span></span><span></span></span>
+        <span class="thinking-time" id="thinking-time">0s</span>
+      </div>
+    </div>` : "";
+
   const quota = assistantState.quota;
   // v12.5 — quota is unlimited; only show today's usage (count + spend) as a soft indicator
   const quotaText = (quota && quota.query_count > 0)
@@ -3891,7 +3911,7 @@ function renderAssistantPanel() {
   panel.innerHTML = `
     <div class="assistant-header">
       <div class="assistant-title">
-        <span class="juno-ai-icon-wrap">${JUNO_AI_ICON}</span>
+        <span class="juno-ai-icon-wrap${assistantState.busy ? " thinking" : ""}">${JUNO_AI_ICON}</span>
         <strong>Ask Juno</strong>
         <span class="muted" style="font-size:11px;margin-left:6px;">${quotaText}</span>
       </div>
@@ -3901,7 +3921,7 @@ function renderAssistantPanel() {
       <button class="btn small ${assistantState.mode === "query" ? "" : "secondary"}" data-mode="query">Question</button>
       <button class="btn small ${assistantState.mode === "suggest" ? "" : "secondary"}" data-mode="suggest">Suggest a change</button>
     </div>
-    <div class="assistant-body">${messagesHtml || renderAssistantWelcome()}</div>
+    <div class="assistant-body">${messagesHtml || renderAssistantWelcome()}${thinkingHtml}</div>
     <form id="assistant-form" class="assistant-input">
       <textarea id="assistant-input" rows="2" placeholder="${assistantState.mode === "suggest" ? "Describe the change you'd like to suggest…" : "Ask a question about projects, scenarios, or financials…"}" ${assistantState.busy ? "disabled" : ""}></textarea>
       <button type="submit" class="btn" ${assistantState.busy ? "disabled" : ""}>${assistantState.busy ? "Thinking…" : "Send"}</button>
@@ -3909,6 +3929,31 @@ function renderAssistantPanel() {
     <div class="assistant-footer muted">Powered by Anthropic Claude · ${quota ? `~${(quota.cost_usd * 1).toFixed(4)} USD spent today` : ""}</div>
   `;
   panel.style.display = "flex";
+
+  // Manage the elapsed-time counter on the thinking bubble.
+  // Module-level _thinkingTimer + _thinkingStartedAt persist across renders
+  // so we don't reset the counter to 0 if renderAssistantPanel() fires
+  // mid-thinking (e.g. on a state update from elsewhere).
+  if (assistantState.busy) {
+    if (!_thinkingTimer) {
+      _thinkingStartedAt = Date.now();
+      const tick = () => {
+        const el = document.getElementById("thinking-time");
+        if (!el) return;
+        const sec = Math.floor((Date.now() - _thinkingStartedAt) / 1000);
+        el.textContent = `${sec}s`;
+      };
+      tick();
+      _thinkingTimer = setInterval(tick, 1000);
+    }
+    // Auto-scroll so the user sees the thinking bubble
+    const body = panel.querySelector(".assistant-body");
+    if (body) body.scrollTop = body.scrollHeight;
+  } else if (_thinkingTimer) {
+    clearInterval(_thinkingTimer);
+    _thinkingTimer = null;
+    _thinkingStartedAt = null;
+  }
 
   document.getElementById("assistant-close").onclick = () => {
     panel.style.display = "none";
