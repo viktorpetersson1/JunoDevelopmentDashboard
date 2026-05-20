@@ -1175,9 +1175,9 @@ function renderPortfolio(r) {
       railLabel: "PORTFOLIO",
       railItems: [
         { id: "po-projects",    label: "Projects" },
+        { id: "po-performance", label: "Performance" },
         { id: "po-financial",   label: "Financial" },
         { id: "po-pipeline",    label: "Pipeline + risk" },
-        { id: "po-performance", label: "Performance" },
         { id: "po-sales",       label: "Sales cycle" },
         { id: "po-pl",          label: "Annual P&L" },
         ...(alerts.length ? [{ id: "po-risks", label: "Risk thresholds" }] : []),
