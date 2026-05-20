@@ -207,7 +207,12 @@ export function render() {
   // the active element before, and re-focus the matching element after.
   const focusSnap = captureFocus();
 
-  root().innerHTML = topbar + main + footer + wizard;
+  root().classList.add("ja-page-shell");
+  root().innerHTML = topbar
+    + `<div class="ja-page-shell__content"><div class="ja-page-shell__content-inner">`
+    + main + footer
+    + `</div></div>`
+    + wizard;
   attachTopbarEvents();
   attachViewEvents(result);
   renderCharts(result);
@@ -482,30 +487,127 @@ function renderTopbar() {
       <button class="menu-item" role="menuitem" id="menu-sign-out" style="color:var(--negative-500);">Sign out</button>
     </div>`;
 
-  return `
-  <header class="topbar">
-    <div class="brand">Juno <span>Atlas</span></div>
-    <nav>
-      ${NAV_SECTIONS.map(sectionBtn).join("")}
-    </nav>
-    <div class="spacer"></div>
-    <div class="actions" style="position:relative;">
-      ${scenarioChip}
-      <button class="avatar-group" id="avatar-btn" aria-haspopup="menu" aria-expanded="${menuOpen}" title="${escapeHtml(userEmail)}">
-        <span class="avatar-circle">${initials}</span>
-        <span class="avatar-caret" aria-hidden="true">▾</span>
-      </button>
-      ${avatarMenu}
+  // v14.34 (Phase 1 design-system layout) — left sidebar + slim topbar.
+  // Sidebar carries primary nav. Topbar carries the scenario pill row
+  // + sync status + page-level actions (Export, New project).
+  // Settings drawer + assistant launcher + bottom-tab mobile nav are
+  // returned alongside but render as fixed-position overlays.
+  return renderSidebar({ fin, owner, editor, settingsItems, menuOpen, userDisplay, userEmail, roleLabel, initials })
+       + renderShellTopbar({ syncLabel, syncSeverity, fin })
+       + renderSettingsDrawer()
+       + `<button id="assistant-launcher" class="assistant-launcher" title="Ask Juno — your AI assistant">${JUNO_AI_ICON}<span>Ask Juno</span></button>`
+       + `<div id="assistant-panel" class="assistant-panel" style="display:none;"></div>`
+       + renderBottomTabNav();
+}
+
+// v14.34 — Left sidebar matching design-system/components/layout/Sidebar.tsx.
+// Sections: PORTFOLIO (Overview, Performance, Financial, Sales cycle, Risks)
+// and WORKSPACE (Projects, Forecast, Capital). Footer is the user identity
+// chip + chevron → opens the avatar menu (existing Settings drawer pattern).
+function renderSidebar({ fin, owner, editor, settingsItems, menuOpen, userDisplay, userEmail, roleLabel, initials }) {
+  const view = state.ui.view;
+  const activePortfolioSection = state.ui.pageRailActive?.portfolio || "po-projects";
+
+  // Helper to decide if a sidebar nav item is active. Each item has a
+  // `match(view, section)` predicate. The sidebar item with the most-
+  // specific match wins.
+  const items = [
+    // PORTFOLIO group
+    { group: "PORTFOLIO", id: "ov",     label: "Overview",    href: "portfolio",       match: (v) => v === "portfolio" && (activePortfolioSection === "po-projects" || !["po-performance","po-financial","po-sales"].includes(activePortfolioSection)), gate: null },
+    { group: "PORTFOLIO", id: "perf",   label: "Performance", href: "portfolio:performance", match: () => view === "portfolio" && activePortfolioSection === "po-performance", gate: "fin" },
+    { group: "PORTFOLIO", id: "fin",    label: "Financial",   href: "portfolio:financial",   match: () => view === "portfolio" && activePortfolioSection === "po-financial",   gate: "fin" },
+    { group: "PORTFOLIO", id: "sales",  label: "Sales cycle", href: "portfolio:sales",       match: () => view === "portfolio" && activePortfolioSection === "po-sales",       gate: null },
+    { group: "PORTFOLIO", id: "risks",  label: "Risks",       href: "risks_center",     match: (v) => v === "risks_center" || v === "risk" || v === "sensitivity", gate: "fin" },
+    // WORKSPACE group
+    { group: "WORKSPACE", id: "proj",   label: "Projects",    href: "projects",         match: (v) => v === "projects" || v === "project_detail" || v === "pipeline", gate: null },
+    { group: "WORKSPACE", id: "fore",   label: "Forecast",    href: "cashflow",         match: (v) => v === "cashflow" || v === "scenario", gate: "fin" },
+    { group: "WORKSPACE", id: "cap",    label: "Capital",     href: "capital_overview", match: (v) => v === "capital_overview" || v === "waterfall", gate: "fin" },
+  ].filter(i => {
+    if (i.gate === "fin" && !fin) return false;
+    return true;
+  });
+
+  // Group items in render order
+  const groups = ["PORTFOLIO", "WORKSPACE"];
+  const itemsByGroup = groups.map(g => ({ label: g, items: items.filter(i => i.group === g) }));
+
+  const itemBtn = (it) => {
+    const active = it.match(view, activePortfolioSection);
+    return `<button class="ja-sidebar__item${active ? " ja-sidebar__item--active" : ""}" data-sidebar-href="${it.href}"${active ? ` aria-current="page"` : ""}>
+      <span class="ja-sidebar__item-label">${escapeHtml(it.label)}</span>
+    </button>`;
+  };
+
+  return `<aside class="ja-page-shell__sidebar ja-sidebar" role="navigation" aria-label="Main navigation">
+    <div class="ja-sidebar__logo">
+      <span class="ja-sidebar__logo-mark">⊕</span>
+      <span>Juno Atlas</span>
     </div>
-  </header>
-  ${renderSubnav(currentSection, fin)}
-  ${renderSettingsDrawer()}
-  <button id="assistant-launcher" class="assistant-launcher" title="Ask Juno — your AI assistant">
-    ${JUNO_AI_ICON}<span>Ask Juno</span>
-  </button>
-  <div id="assistant-panel" class="assistant-panel" style="display:none;"></div>
-  ${renderBottomTabNav()}
-  `;
+    <nav class="ja-sidebar__nav" aria-label="Site navigation">
+      ${itemsByGroup.map(g => `
+        <div class="ja-sidebar__section">
+          <div class="ja-sidebar__section-label">${g.label}</div>
+          ${g.items.map(itemBtn).join("")}
+        </div>
+      `).join("")}
+    </nav>
+    <div style="position:relative;">
+      <button class="ja-sidebar__footer" id="avatar-btn" aria-haspopup="menu" aria-expanded="${menuOpen}" title="${escapeHtml(userEmail)}">
+        <span class="ja-sidebar__avatar">${initials}</span>
+        <span class="ja-sidebar__user-info">
+          <span class="ja-sidebar__user-name">${escapeHtml(userDisplay)}</span>
+          <span class="ja-sidebar__user-meta">${escapeHtml(roleLabel)}</span>
+        </span>
+        <span class="ja-sidebar__footer-chevron">▸</span>
+      </button>
+      <div class="avatar-menu${menuOpen ? " open" : ""}" id="avatar-menu" role="menu" aria-label="User menu" style="bottom:60px;top:auto;left:14px;right:auto;">
+        <div class="menu-user">
+          <div class="menu-user-email">${escapeHtml(userDisplay)}</div>
+          <div class="menu-user-role">${escapeHtml(roleLabel)} · ${escapeHtml(userEmail)}</div>
+        </div>
+        ${settingsItems.length ? `
+        <div class="menu-divider"></div>
+        <div class="menu-section-label">Settings</div>
+        ${settingsItems.map(i => `<button class="menu-item" role="menuitem" data-settings-tab="${i.tab}">${i.label}</button>`).join("")}
+        ` : ""}
+        <div class="menu-divider"></div>
+        <button class="menu-item" role="menuitem" id="menu-theme-toggle">${state.ui.theme === "light" ? "Switch to dark theme" : "Switch to light theme"}</button>
+        <div class="menu-divider"></div>
+        <button class="menu-item" role="menuitem" id="menu-sign-out" style="color:var(--negative-500);">Sign out</button>
+      </div>
+    </div>
+  </aside>`;
+}
+
+// v14.34 — Slim topbar across the top of the content area. Scenario pill row
+// on the left (only when financials are visible), sync status in the middle,
+// page actions (Export · New project) on the right.
+function renderShellTopbar({ syncLabel, syncSeverity, fin }) {
+  // Scenario pills built from saved scenarios + the special "Base" pseudo-scenario.
+  // Limit to the first 3 saved scenarios + base to keep the topbar compact.
+  const baseScn = { name: "Base", id: "__base__" };
+  const allScns = [baseScn, ...(state.scenarios || []).slice(0, 3)];
+  const activeName = state.scenario?.name || "Base";
+  const scenarioPills = fin ? `
+    <span class="ja-topbar__label">Scenario</span>
+    <div class="ja-topbar__scenario" role="tablist" aria-label="Active scenario">
+      ${allScns.map(s => {
+        const active = s.name === activeName;
+        return `<button class="ja-topbar__scenario-pill${active ? " ja-topbar__scenario-pill--active" : ""}" data-scenario-pill="${escapeHtml(s.name)}" role="tab" aria-selected="${active}">
+          <span class="ja-topbar__scenario-dot"></span>
+          <span>${escapeHtml(s.name)}</span>
+        </button>`;
+      }).join("")}
+    </div>
+    <span class="ja-topbar__sync">${escapeHtml(syncLabel)}</span>
+  ` : `<span class="ja-topbar__sync">${escapeHtml(syncLabel)}</span>`;
+
+  // Page-level actions live INSIDE each view's content (e.g. "+ New project"
+  // on Portfolio). The topbar just carries scenario + global controls.
+  return `<header class="ja-page-shell__topbar ja-topbar" role="banner">
+    <div class="ja-topbar__left">${scenarioPills}</div>
+    <div class="ja-topbar__right"></div>
+  </header>`;
 }
 
 // v14.21 — Half-pane Settings drawer. Opens from the right at ~50% width.
@@ -773,6 +875,44 @@ function attachTopbarEvents() {
       document.body.classList.remove("assistant-open");
     }
   });
+
+  // v14.34 — Sidebar nav: data-sidebar-href routes to views or portfolio sub-sections.
+  // Portfolio sub-items (portfolio:performance etc.) set pageRailActive so the
+  // right rail section is pre-selected when the portfolio view renders.
+  for (const btn of document.querySelectorAll("[data-sidebar-href]")) {
+    btn.addEventListener("click", () => {
+      const href = btn.dataset.sidebarHref;
+      if (!href) return;
+      if (href.startsWith("portfolio:")) {
+        const section = href.split(":")[1];
+        const sectionMap = { performance: "po-performance", financial: "po-financial", sales: "po-sales" };
+        if (!state.ui.pageRailActive) state.ui.pageRailActive = {};
+        state.ui.pageRailActive.portfolio = sectionMap[section] || section;
+        setView("portfolio");
+      } else if (href === "portfolio") {
+        if (!state.ui.pageRailActive) state.ui.pageRailActive = {};
+        state.ui.pageRailActive.portfolio = "po-projects";
+        setView("portfolio");
+      } else {
+        setView(href);
+      }
+    });
+  }
+
+  // v14.34 — Scenario pills in the slim topbar. Clicking "Base" resets to the
+  // baseline snapshot. Clicking a named scenario loads it by name.
+  for (const btn of document.querySelectorAll("[data-scenario-pill]")) {
+    btn.addEventListener("click", () => {
+      const name = btn.dataset.scenarioPill;
+      if (!name) return;
+      if (name === "Base") {
+        resetToBaseline();
+      } else {
+        const scn = (state.scenarios || []).find(s => s.name === name);
+        if (scn) loadScenario(scn.id);
+      }
+    });
+  }
 }
 
 // ---------- main view dispatcher ----------
