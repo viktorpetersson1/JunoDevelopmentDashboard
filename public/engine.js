@@ -154,7 +154,7 @@ export function calcProject(project, globals, scenario) {
   // Build cost: spread across [startIdx .. saleIdx-1] using the chosen curve.
   // build_cost_realization_pct < 1.0 mimics Excel's monthly grid under-allocation.
   const buildMonths = Math.max(1, program);
-  const buildCurve = globals.build_cost_curve ?? "linear";
+  const buildCurve = project.build_cost_curve || globals.build_cost_curve || "linear";
   const realization = globals.build_cost_realization_pct ?? 1.0;
   const buildWeights = spreadingWeights(buildMonths, buildCurve);
   for (let i = 0; i < buildMonths; i++) {

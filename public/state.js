@@ -545,6 +545,7 @@ export function addProject(seed = {}) {
     closing_costs_usd: seed.closing_costs_usd ?? 0,
     contingency_pct: seed.contingency_pct ?? null,  // v14.24 — per-project override of global contingency
     other_fees: Array.isArray(seed.other_fees) ? seed.other_fees : [],  // v14.24 — user-defined extra fees [{ description, amount_usd }]
+    build_cost_curve: seed.build_cost_curve || null,  // v14.37 — per-project override of global build cost spreading curve
   });
   state.ui.selected_project_id = id;
   state.ui.view = "project_detail";

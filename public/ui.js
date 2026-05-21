@@ -2361,10 +2361,36 @@ function renderProjectInputs(p, res) {
     inputRow({ label: "Land cost", unit: "USD", field: "land_cost_usd", value: p.land_cost_usd, kind: "project-required", projectId: p.id, type: "number" }),
   ]);
 
+  const buildCurveOptions = [
+    { value: "",             label: `Global default (${g.build_cost_curve ?? "linear"})` },
+    { value: "linear",       label: "Linear — even monthly draw" },
+    { value: "front_loaded", label: "Front-loaded — early-heavy" },
+    { value: "s_curve",      label: "S-curve — slow / fast / slow" },
+  ];
   const buildCosts = inputsSection("Build costs", "Hard construction. Blank fields use the global default.", [
     inputRow({ label: "Build cost", unit: "$/sqft", field: "build_cost_per_sqft", value: p.build_cost_per_sqft, kind: "project-override", projectId: p.id, type: "number", placeholder: `Default: $${g.default_build_cost_per_sqft}` }),
+    inputRow({ label: "Build cost curve", field: "build_cost_curve", value: p.build_cost_curve ?? "", kind: "project-override", projectId: p.id, type: "select", selectOptions: buildCurveOptions, helper: "How build cost is drawn over the construction window. Blank = portfolio default." }),
     inputRow({ label: "Soft costs (lump sum)", unit: "USD", field: "soft_costs_lump_sum", value: p.soft_costs_lump_sum ?? 0, kind: "project-required", projectId: p.id, type: "number", helper: "Permits, design, legal, etc. Used unless the soft-cost breakdown below has nonzero values." }),
   ]);
+
+  // Soft costs breakdown — 7 line items; engine uses itemised total when any key > 0,
+  // otherwise falls back to soft_costs_lump_sum. The data-soft event handler (line ~5429)
+  // saves each key into the nested p.soft_costs object.
+  const scKeys = ["build_tools", "sabbeth", "craft", "zero_design", "klas_bsv", "permits", "other"];
+  const scLabels = { build_tools: "Build tools", sabbeth: "Sabbeth", craft: "Craft", zero_design: "Zero Design", klas_bsv: "Klas BSV", permits: "Permits", other: "Other" };
+  const scValues = p.soft_costs || {};
+  const scTotal = scKeys.reduce((a, k) => a + (Number(scValues[k]) || 0), 0);
+  const scActive = scTotal > 0;
+  const scSub = scActive
+    ? `Itemised mode active — sum <strong>${fmt.usdM(scTotal)}</strong> overrides the lump sum above.`
+    : `All zero — engine uses the lump sum (${fmt.usdM(p.soft_costs_lump_sum ?? 0)}). Enter any value here to switch to itemised mode.`;
+  const softCostsBreakdown = inputsSection("Soft costs breakdown", scSub,
+    scKeys.map(k => `<div class="input-row">
+      <div class="input-row-label"><div class="label-text">${scLabels[k]}</div><div class="label-unit muted">USD</div></div>
+      <div class="input-row-control"><input class="input" type="number" step="1000" min="0" data-soft="${k}" value="${Number(scValues[k]) || 0}"></div>
+      <div class="input-row-meta"></div>
+    </div>`)
+  );
 
   // v14.28 — Kingshaus section removed. Build cost should now include
   // anything that used to be tracked separately (prefab panel, superstructure).
@@ -2511,6 +2537,7 @@ function renderProjectInputs(p, res) {
     { id: "sec-timing",    label: "Timing" },
     { id: "sec-land",      label: "Land" },
     { id: "sec-build",     label: "Build costs" },
+    { id: "sec-softcosts", label: "Soft costs" },
     { id: "sec-financing", label: "Financing" },
     { id: "sec-revenue",   label: "Revenue" },
     { id: "sec-globals",   label: "Global defaults" },
@@ -2593,13 +2620,215 @@ function renderProjectInputs(p, res) {
         ${sec("sec-program",   program)}
         ${sec("sec-timing",    timing)}
         ${sec("sec-land",      land)}
-        ${sec("sec-build",     buildCosts)}
+        ${sec("sec-build",      buildCosts)}
+        ${sec("sec-softcosts", softCostsBreakdown)}
         ${sec("sec-financing", financing)}
         ${sec("sec-revenue",   revenue)}
         ${globalsBlock}
       </div>
     </div>
   `;
+}
+
+// ─── Capital calls helpers (T060-T062) ────────────────────────────────────────
+
+// Pure HTML — builds the Capital calls section content.
+// Multiple <tbody> per call = valid HTML; used for collapsible owner rows.
+function renderCapitalCallsHtml(calls, ownership, projects) {
+  if (!calls || calls.length === 0) {
+    return `
+      <div class="cc-empty">No capital calls issued yet.<br>Issue a call when owner equity is needed to fund a draw.</div>
+      <div style="margin-top:16px;"><button class="btn" id="issue-capital-call-btn">Issue capital call</button></div>
+    `;
+  }
+
+  const rows = calls.map(c => {
+    const totalPaid = (c.payments || []).reduce((a, pay) => a + (Number(pay.paid_usd) || 0), 0);
+    const pct = c.total_amount_usd > 0 ? totalPaid / c.total_amount_usd : 0;
+    const proj = projects.find(p => p.id === c.project_id);
+    const ownerRows = (c.payments || []).map(pay => {
+      const owner = ownership.find(o => o.id === pay.owner_id);
+      const isPaid = (Number(pay.paid_usd) || 0) >= pay.expected_usd && pay.expected_usd > 0;
+      return `<tr class="cc-owner-row">
+        <td colspan="2">${escapeHtml(owner?.name || pay.owner_id)}</td>
+        <td class="num">${fmt.usdM(pay.expected_usd)}</td>
+        <td class="num ${isPaid ? "paid" : ""}">${pay.paid_usd > 0 ? fmt.usdM(pay.paid_usd) : "—"}</td>
+        <td>${pay.paid_date ? fmt.ymShort(pay.paid_date) : "—"}</td>
+        <td>${!isPaid
+          ? `<button class="btn small secondary" data-cc-mark-paid="${escapeHtml(c.id)}" data-cc-owner="${escapeHtml(pay.owner_id)}">Mark paid</button>`
+          : `<span class="muted" style="font-size:11px;">✓ Paid</span>`}
+        </td>
+      </tr>`;
+    }).join("");
+
+    return `
+      <tbody>
+        <tr data-cc-id="${escapeHtml(c.id)}">
+          <td>${fmt.ymShort(c.created_at?.slice(0,7) || "")}</td>
+          <td>${c.due_date ? fmt.ymShort(c.due_date) : "—"}</td>
+          <td class="num">${fmt.usdM(c.total_amount_usd)}</td>
+          <td>${escapeHtml(proj?.name || "Portfolio-wide")}</td>
+          <td><span class="cc-status ${escapeHtml(c.status || "issued")}">${escapeHtml(c.status || "issued")}</span></td>
+          <td>
+            <div class="cc-progress">
+              <div class="cc-progress-bar"><div class="cc-progress-fill" style="width:${Math.min(100,(pct*100)).toFixed(0)}%"></div></div>
+              <span>${(pct*100).toFixed(0)}%</span>
+            </div>
+          </td>
+          <td>
+            <button class="btn small ghost" data-cc-toggle="${escapeHtml(c.id)}" title="Show owner breakdown" aria-label="Toggle owners">▾</button>
+            <button class="btn small ghost" data-cc-delete="${escapeHtml(c.id)}" title="Delete call" aria-label="Delete call" style="color:var(--neg)">✕</button>
+          </td>
+        </tr>
+        ${c.reason ? `<tr><td colspan="7" style="font-size:11px;color:var(--fg-3);padding-top:0;padding-bottom:6px;">${escapeHtml(c.reason)}</td></tr>` : ""}
+      </tbody>
+      <tbody class="cc-owner-rows" id="cc-owners-${escapeHtml(c.id)}">
+        <tr class="cc-owner-subhead"><td colspan="6">Owner breakdown</td><td></td></tr>
+        ${ownerRows}
+      </tbody>
+    `;
+  }).join("");
+
+  return `
+    <div style="margin-bottom:14px;"><button class="btn" id="issue-capital-call-btn">Issue capital call</button></div>
+    <table class="tbl">
+      <thead><tr>
+        <th>Issued</th><th>Due</th><th>Amount</th><th>Project</th><th>Status</th><th>Funded</th><th></th>
+      </tr></thead>
+      ${rows}
+    </table>
+  `;
+}
+
+// Imperative overlay modal for creating a new capital call.
+// Mirrors the confirmDialog pattern — no state.ui flags needed.
+function openCapitalCallModal(ownership, projects) {
+  document.querySelector(".cc-form-overlay")?.remove();
+  const overlay = document.createElement("div");
+  overlay.className = "confirm-overlay cc-form-overlay";
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-modal", "true");
+  overlay.setAttribute("aria-label", "Issue capital call");
+
+  const today = new Date().toISOString().slice(0, 7);
+  const projectOptions = [
+    `<option value="">Portfolio-wide</option>`,
+    ...projects.map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`),
+  ].join("");
+
+  overlay.innerHTML = `
+    <div class="confirm-modal cc-form-modal">
+      <h3 class="cc-form-title">Issue capital call</h3>
+      <div class="cc-form-grid">
+        <div class="cc-form-field">
+          <label class="cc-form-label" for="cc-due-date">Due date</label>
+          <input class="input" type="month" id="cc-due-date" value="${today}">
+        </div>
+        <div class="cc-form-field">
+          <label class="cc-form-label" for="cc-amount">Total amount (USD)</label>
+          <input class="input" type="number" id="cc-amount" step="10000" min="0" placeholder="e.g. 500000" inputmode="decimal">
+        </div>
+        <div class="cc-form-field">
+          <label class="cc-form-label" for="cc-project">Project</label>
+          <select class="input" id="cc-project">${projectOptions}</select>
+        </div>
+        <div class="cc-form-field">
+          <label class="cc-form-label" for="cc-status">Status</label>
+          <select class="input" id="cc-status">
+            <option value="draft">Draft</option>
+            <option value="issued" selected>Issued</option>
+          </select>
+        </div>
+        <div class="cc-form-field full">
+          <label class="cc-form-label" for="cc-reason">Reason / notes</label>
+          <input class="input" type="text" id="cc-reason" placeholder="e.g. Construction draw — month 4">
+        </div>
+      </div>
+      <div class="cc-splits-preview">
+        <div class="cc-splits-title">Per-owner splits (pro-rata)</div>
+        <div id="cc-splits-rows" style="color:var(--fg-3);font-style:italic;">Enter an amount above to see splits.</div>
+      </div>
+      <div class="cc-form-actions">
+        <button class="btn secondary" id="cc-cancel">Cancel</button>
+        <button class="btn" id="cc-submit">Issue call</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  // Live per-owner split preview
+  const updateSplits = () => {
+    const amt = Number(overlay.querySelector("#cc-amount").value) || 0;
+    const rowsEl = overlay.querySelector("#cc-splits-rows");
+    if (!amt) {
+      rowsEl.style.fontStyle = "italic";
+      rowsEl.style.color = "var(--fg-3)";
+      rowsEl.textContent = "Enter an amount above to see splits.";
+      return;
+    }
+    rowsEl.style.fontStyle = "";
+    rowsEl.style.color = "";
+    rowsEl.innerHTML = ownership.map(o => {
+      const share = o.equity_share_pct || 0;
+      const ownerAmt = Math.round(amt * share);
+      return `<div class="cc-splits-row">
+        <span>${escapeHtml(o.name)}</span>
+        <span>${fmt.pct(share, 1)} → <strong>${fmt.usdM(ownerAmt)}</strong></span>
+      </div>`;
+    }).join("");
+  };
+  overlay.querySelector("#cc-amount").addEventListener("input", updateSplits);
+
+  // Close helpers
+  const close = () => {
+    document.removeEventListener("keydown", onKey);
+    overlay.remove();
+  };
+  const onKey = (e) => { if (e.key === "Escape") close(); };
+  document.addEventListener("keydown", onKey);
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
+  overlay.querySelector("#cc-cancel").addEventListener("click", close);
+
+  // Submit
+  overlay.querySelector("#cc-submit").addEventListener("click", () => {
+    const dueDate  = overlay.querySelector("#cc-due-date").value;
+    const amount   = Number(overlay.querySelector("#cc-amount").value);
+    const projId   = overlay.querySelector("#cc-project").value;
+    const status   = overlay.querySelector("#cc-status").value;
+    const reason   = overlay.querySelector("#cc-reason").value.trim();
+
+    if (!amount || amount <= 0) {
+      overlay.querySelector("#cc-amount").focus();
+      showToast({ title: "Amount required", description: "Enter the total USD amount for this call.", variant: "warning" });
+      return;
+    }
+
+    const payments = ownership.map(o => ({
+      owner_id: o.id,
+      expected_usd: Math.round(amount * (o.equity_share_pct || 0)),
+      paid_usd: 0,
+      paid_date: null,
+    }));
+    const call = {
+      id: `cc${Date.now().toString(36)}`,
+      created_at: new Date().toISOString().slice(0, 7),
+      due_date: dueDate || null,
+      total_amount_usd: amount,
+      project_id: projId || null,
+      reason,
+      status,
+      payments,
+    };
+
+    const existing = Array.isArray(state.globals.capital_calls) ? state.globals.capital_calls : [];
+    updateGlobal("capital_calls", [...existing, call]);
+    close();
+    showToast({ title: "Capital call issued", description: `${fmt.usdM(amount)} call created with ${ownership.length} owner splits.`, variant: "positive" });
+  });
+
+  // Focus first meaningful input
+  setTimeout(() => overlay.querySelector("#cc-amount").focus({ preventScroll: true }), 50);
 }
 
 // v14.6 (Phase 2.3) — Top-level Capital screen
@@ -2658,6 +2887,12 @@ function renderCapitalOverview(r) {
     </tr>`;
   }).join("");
 
+  // Capital calls — actual recorded calls vs modelled equity demand
+  const capitalCalls = Array.isArray(state.globals.capital_calls) ? state.globals.capital_calls : [];
+  const callsTotal = capitalCalls.reduce((a, c) => a + (c.total_amount_usd || 0), 0);
+  const callsPaid  = capitalCalls.reduce((a, c) =>
+    a + (c.payments || []).reduce((b, p) => b + (Number(p.paid_usd) || 0), 0), 0);
+
   // High-level KPI strip
   return `
     ${renderViewTabStrip([
@@ -2679,6 +2914,7 @@ function renderCapitalOverview(r) {
       pageKey: "capital",
       railLabel: "CAPITAL",
       railItems: [
+        { id: "ca-calls",    label: "Capital calls" },
         { id: "ca-drawdown", label: "LOC drawdown" },
         { id: "ca-stack",    label: "Capital stack" },
         { id: "ca-flows",    label: "Sources & uses" },
@@ -2689,10 +2925,13 @@ function renderCapitalOverview(r) {
         { label: "LOC interest",        value: fmt.usdM(totalLocInterest) },
         { label: "Owner equity needed", value: fmt.usdM(trueEquityTotal), cls: trueEquityTotal > 0 ? "neg" : "pos" },
         { label: "Funding-gap months",  value: `${breachMonths}`,         cls: breachMonths > 0 ? "neg" : "pos" },
-        { label: "Senior debt peak",    value: fmt.usdM(peakDebt) },
-        { label: "Total equity called", value: fmt.usdM(totalEquityCalled) },
+        { label: "Calls issued",        value: fmt.usdM(callsTotal),      cls: capitalCalls.length === 0 ? "muted" : "" },
+        { label: "Calls received",      value: fmt.usdM(callsPaid),       cls: callsPaid < callsTotal ? "warn" : "pos" },
       ],
       sections: [
+        { id: "ca-calls", title: "Capital calls", subtitle: "Record actual equity calls to owners. Splits are calculated pro-rata from the cap table.", html:
+          renderCapitalCallsHtml(capitalCalls, ownership, state.projects)
+        },
         { id: "ca-drawdown", title: "KPC LOC drawdown", subtitle: "Outstanding balance vs facility cap over the model horizon.", html: `
           <div class="chart-frame"><canvas id="chart-loc-drawdown"></canvas></div>
         `},
@@ -5844,6 +6083,70 @@ function attachViewEvents(result) {
   for (const cb of document.querySelectorAll("[data-exclude-id]")) {
     cb.addEventListener("change", () => toggleProjectExclusion(cb.dataset.excludeId));
   }
+
+  // Capital calls — wire regardless of view; handlers guard internally
+  setupCapitalCallEvents();
+}
+
+// Capital call event wiring — called from attachViewEvents after every render.
+// All handlers are guarded so they're safe to call on non-capital views (no-ops).
+function setupCapitalCallEvents() {
+  const ownership = state.globals.investors || [];
+  const projects  = state.projects || [];
+
+  // Issue capital call button
+  document.getElementById("issue-capital-call-btn")?.addEventListener("click", () => {
+    openCapitalCallModal(ownership, projects);
+  });
+
+  // Toggle per-owner breakdown rows
+  for (const btn of document.querySelectorAll("[data-cc-toggle]")) {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.ccToggle;
+      const tbody = document.getElementById(`cc-owners-${id}`);
+      if (!tbody) return;
+      const isOpen = tbody.classList.toggle("open");
+      btn.textContent = isOpen ? "▴" : "▾";
+    });
+  }
+
+  // Mark an owner's payment as paid
+  for (const btn of document.querySelectorAll("[data-cc-mark-paid]")) {
+    btn.addEventListener("click", () => {
+      const callId  = btn.dataset.ccMarkPaid;
+      const ownerId = btn.dataset.ccOwner;
+      const calls   = structuredClone(Array.isArray(state.globals.capital_calls) ? state.globals.capital_calls : []);
+      const call    = calls.find(c => c.id === callId);
+      if (!call) return;
+      const pay = (call.payments || []).find(p => p.owner_id === ownerId);
+      if (!pay) return;
+      pay.paid_usd  = pay.expected_usd;
+      pay.paid_date = new Date().toISOString().slice(0, 7);
+      // Recompute call status
+      const allPaid = call.payments.every(p => (Number(p.paid_usd) || 0) >= p.expected_usd && p.expected_usd > 0);
+      const anyPaid = call.payments.some(p => (Number(p.paid_usd) || 0) > 0);
+      if (allPaid) call.status = "funded";
+      else if (anyPaid) call.status = "partial";
+      updateGlobal("capital_calls", calls);
+    });
+  }
+
+  // Delete a capital call
+  for (const btn of document.querySelectorAll("[data-cc-delete]")) {
+    btn.addEventListener("click", async () => {
+      const callId = btn.dataset.ccDelete;
+      const confirmed = await confirmAction({
+        title: "Delete this capital call?",
+        message: "This will permanently remove the call record. This cannot be undone.",
+        confirmLabel: "Delete",
+        cancelLabel:  "Keep it",
+        danger: true,
+      });
+      if (!confirmed) return;
+      const calls = (Array.isArray(state.globals.capital_calls) ? state.globals.capital_calls : []).filter(c => c.id !== callId);
+      updateGlobal("capital_calls", calls);
+    });
+  }
 }
 
 // ---------- charts ----------
@@ -6122,6 +6425,16 @@ function renderWizardCosts(d) {
         <label>Build cost ($/sqft)</label>
         ${nullableNumInput("build_cost_per_sqft", d.build_cost_per_sqft, `Default: $${g.default_build_cost_per_sqft}`)}
         <div class="hint">All-in hard construction $/sqft. Default: $${g.default_build_cost_per_sqft}.</div>
+      </div>
+      <div class="form-row">
+        <label>Build cost curve</label>
+        <select class="input" data-wiz="build_cost_curve">
+          <option value="" ${!d.build_cost_curve ? "selected" : ""}>Global default (${g.build_cost_curve ?? "linear"})</option>
+          <option value="linear"       ${d.build_cost_curve === "linear"       ? "selected" : ""}>Linear — even monthly draw</option>
+          <option value="front_loaded" ${d.build_cost_curve === "front_loaded" ? "selected" : ""}>Front-loaded — early-heavy</option>
+          <option value="s_curve"      ${d.build_cost_curve === "s_curve"      ? "selected" : ""}>S-curve — slow / fast / slow</option>
+        </select>
+        <div class="hint">How build spend is spread over the construction window. Blank = portfolio default.</div>
       </div>
     </div>
     <div class="note" style="margin-top:18px;">
