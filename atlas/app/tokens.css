@@ -1,0 +1,116 @@
+/* app/tokens.css
+   Generated from docs/handoff/DESIGN_BRIDGE.md §2 — do not edit values here without
+   updating DESIGN_BRIDGE.md first. Then re-paste this file.
+
+   Font deviation logged in SUPABASE_TRANSLATION.md: --font-sans is Geist, not Inter.
+   Geist matches the Ramp aesthetic (geometric, tabular nums, ss01) the design system
+   targets, and is the font shipped in P0_TICKETS.md T001 scaffold instructions. */
+
+:root {
+  /* Surfaces */
+  --color-surface-page:        #FFFFFF;
+  --color-surface-card:        #F3F2EE;
+  --color-surface-card-elev:   #FFFFFF;
+  --color-surface-sunken:      #EBEAE5;
+  --color-surface-overlay:     #FFFFFFF2;
+
+  /* Borders */
+  --color-border-subtle:       #E5E4DF;
+  --color-border-default:      #D6D4CD;
+  --color-border-strong:       #B8B5AA;
+
+  /* Text */
+  --color-text-primary:        #0A0A0A;
+  --color-text-secondary:      #6B6B68;
+  --color-text-tertiary:       #9B9A93;
+  --color-text-disabled:       #BFBDB5;
+  --color-text-inverse:        #FFFFFF;
+
+  /* Accent — lime-citron yellow. Text on accent is ALWAYS black. */
+  --color-accent-50:           #F4FDD8;
+  --color-accent-100:          #E6FB9C;
+  --color-accent-500:          #DAFB60;
+  --color-accent-600:          #B7DC34;
+  --color-accent-700:          #94B324;
+
+  /* Semantic */
+  --color-positive-500:        #4A8047;
+  --color-positive-50:         #E8F0E7;
+  --color-negative-500:        #E58940;
+  --color-negative-50:         #FCEFE3;
+  --color-warning-500:         #F0A858;
+  --color-warning-50:          #FDF1E3;
+  --color-info-500:            #9CA8E5;
+  --color-info-50:             #ECEFFA;
+  --color-neutral-500:         #6B6B68;
+
+  /* Chart palette — use only these 6, never raw hex in chart code */
+  --color-chart-1:             #0A0A0A;
+  --color-chart-2:             #9CA8E5;
+  --color-chart-3:             #4A8047;
+  --color-chart-4:             #E58940;
+  --color-chart-5:             #C97FA9;
+  --color-chart-6:             #8C7C6E;
+
+  /* Radii */
+  --radius-sm:                 6px;
+  --radius-md:                 8px;
+  --radius-lg:                 16px;
+  --radius-xl:                 20px;
+  --radius-full:               9999px;
+
+  /* Elevation */
+  --shadow-sm:                 0 1px 2px rgba(10, 10, 10, 0.04);
+  --shadow-md:                 0 2px 8px rgba(10, 10, 10, 0.05);
+  --shadow-lg:                 0 8px 24px rgba(10, 10, 10, 0.07);
+
+  /* Spacing (4px base) */
+  --space-1:  4px;   --space-2:  8px;   --space-3:  12px;  --space-4:  16px;
+  --space-5:  20px;  --space-6:  24px;  --space-8:  32px;  --space-10: 40px;
+  --space-12: 48px;  --space-16: 64px;
+
+  /* Typography — Geist replaces Inter per scaffold; see deviation note above */
+  --font-sans: var(--font-geist-sans, 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif);
+  --font-mono: var(--font-geist-mono, 'JetBrains Mono', ui-monospace, monospace);
+}
+
+/* Dark tokens are declared but NOT activated by default.
+   CLAUDE.md §9.10: "Dark mode is not in scope for year 1."
+   They are kept here so future P-phase work can flip on a per-page basis
+   without re-deriving the palette. */
+[data-theme='dark'] {
+  --color-surface-page:        #0A0A09;
+  --color-surface-card:        #1A1A18;
+  --color-surface-card-elev:   #232220;
+  --color-surface-sunken:      #161614;
+  --color-border-subtle:       #2C2A26;
+  --color-border-default:      #38362F;
+  --color-border-strong:       #4A4740;
+  --color-text-primary:        #F5F5F0;
+  --color-text-secondary:      #A0A09B;
+  --color-text-tertiary:       #6E6D67;
+  --color-text-disabled:       #4E4D47;
+  --color-accent-500:          #DAFB60;
+  --color-positive-500:        #5B9658;
+  --color-negative-500:        #F09558;
+  --color-warning-500:         #F2B570;
+  --color-info-500:            #B3BEE8;
+  --color-chart-1:             #F5F5F0;
+}
+
+/* Base */
+body {
+  font-family: var(--font-sans);
+  font-feature-settings: 'cv11', 'ss01', 'ss03';
+  background: var(--color-surface-page);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+.tabular-nums,
+td,
+th,
+.metric-value {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
