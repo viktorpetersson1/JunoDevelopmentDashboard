@@ -1,116 +1,250 @@
-/* app/tokens.css
-   Generated from docs/handoff/DESIGN_BRIDGE.md §2 — do not edit values here without
-   updating DESIGN_BRIDGE.md first. Then re-paste this file.
+/* ==========================================================================
+   Juno Atlas — Design Tokens (CSS Custom Properties)
+   --------------------------------------------------------------------------
+   Sourced from design-system/tokens/tokens.css — this is the canonical token
+   set the 12 primitives (ja-* classes) and the 29 mockup PNGs were rendered
+   against. The bundle's docs/handoff/DESIGN_BRIDGE.md is a useful annotation
+   but NOT authoritative for token names/values (see SUPABASE_TRANSLATION.md
+   §5 for the divergence log).
 
-   Font deviation logged in SUPABASE_TRANSLATION.md: --font-sans is Geist, not Inter.
-   Geist matches the Ramp aesthetic (geometric, tabular nums, ss01) the design system
-   targets, and is the font shipped in P0_TICKETS.md T001 scaffold instructions. */
+   Updates: edit this file, then re-paste from design-system/tokens/tokens.css
+   if the design system itself changes.
+   ========================================================================== */
 
 :root {
+  /* ---------- COLOR ---------- */
+
   /* Surfaces */
-  --color-surface-page:        #FFFFFF;
-  --color-surface-card:        #F3F2EE;
-  --color-surface-card-elev:   #FFFFFF;
-  --color-surface-sunken:      #EBEAE5;
-  --color-surface-overlay:     #FFFFFFF2;
+  --color-surface-base:    #FFFFFF;
+  --color-surface-sunken:  #FAFAF8;
+  --color-surface-raised:  #FFFFFF;
+  --color-surface-muted:   #F4F4F2;
+  --color-surface-inverse: #0D0D0D;
 
   /* Borders */
-  --color-border-subtle:       #E5E4DF;
-  --color-border-default:      #D6D4CD;
-  --color-border-strong:       #B8B5AA;
+  --color-border-hairline: #EFEFEC;
+  --color-border-subtle:   #F4F4F2;
+  --color-border-strong:   #E5E7EB;
+  --color-border-focus:    #0D0D0D;
 
   /* Text */
-  --color-text-primary:        #0A0A0A;
-  --color-text-secondary:      #6B6B68;
-  --color-text-tertiary:       #9B9A93;
-  --color-text-disabled:       #BFBDB5;
-  --color-text-inverse:        #FFFFFF;
+  --color-text-primary:     #111111;
+  --color-text-secondary:   #6B7280;
+  --color-text-tertiary:    #8A8F98;
+  --color-text-quaternary:  #B0B5BC;
+  --color-text-inverse:     #FFFFFF;
+  --color-text-on-lime:     #0D0D0D;
 
-  /* Accent — lime-citron yellow. Text on accent is ALWAYS black. */
-  --color-accent-50:           #F4FDD8;
-  --color-accent-100:          #E6FB9C;
-  --color-accent-500:          #DAFB60;
-  --color-accent-600:          #B7DC34;
-  --color-accent-700:          #94B324;
+  /* Accent — CTA only */
+  --color-accent-lime:         #DDEC65;
+  --color-accent-lime-hover:   #D1E057;
+  --color-accent-lime-pressed: #C5D44C;
+  --color-accent-blue:         #4F6FFF;
+  --color-accent-blue-soft:    rgba(79, 111, 255, 0.08);
 
   /* Semantic */
-  --color-positive-500:        #4A8047;
-  --color-positive-50:         #E8F0E7;
-  --color-negative-500:        #E58940;
-  --color-negative-50:         #FCEFE3;
-  --color-warning-500:         #F0A858;
-  --color-warning-50:          #FDF1E3;
-  --color-info-500:            #9CA8E5;
-  --color-info-50:             #ECEFFA;
-  --color-neutral-500:         #6B6B68;
+  --color-positive:       #15803D;
+  --color-positive-soft:  #ECFDF5;
+  --color-warning:        #A16207;
+  --color-warning-soft:   #FEFCE8;
+  --color-negative:       #B91C1C;
+  --color-negative-soft:  #FEF2F2;
+  --color-info:           #1E40AF;
+  --color-info-soft:      #EFF6FF;
 
-  /* Chart palette — use only these 6, never raw hex in chart code */
-  --color-chart-1:             #0A0A0A;
-  --color-chart-2:             #9CA8E5;
-  --color-chart-3:             #4A8047;
-  --color-chart-4:             #E58940;
-  --color-chart-5:             #C97FA9;
-  --color-chart-6:             #8C7C6E;
+  /* ---------- TYPOGRAPHY ---------- */
 
-  /* Radii */
-  --radius-sm:                 6px;
-  --radius-md:                 8px;
-  --radius-lg:                 16px;
-  --radius-xl:                 20px;
-  --radius-full:               9999px;
+  --font-family-body: var(--font-geist-sans, 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif);
+  --font-family-mono: var(--font-geist-mono, 'Geist Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace);
 
-  /* Elevation */
-  --shadow-sm:                 0 1px 2px rgba(10, 10, 10, 0.04);
-  --shadow-md:                 0 2px 8px rgba(10, 10, 10, 0.05);
-  --shadow-lg:                 0 8px 24px rgba(10, 10, 10, 0.07);
+  --font-weight-light:    300;
+  --font-weight-regular:  400;
+  --font-weight-book:     450;
+  --font-weight-medium:   500;
+  --font-weight-semibold: 600;
+  --font-weight-bold:     700;
 
-  /* Spacing (4px base) */
-  --space-1:  4px;   --space-2:  8px;   --space-3:  12px;  --space-4:  16px;
-  --space-5:  20px;  --space-6:  24px;  --space-8:  32px;  --space-10: 40px;
-  --space-12: 48px;  --space-16: 64px;
+  --font-size-micro: 11px;
+  --font-size-xs:    12px;
+  --font-size-sm:    13px;
+  --font-size-base:  14px;
+  --font-size-md:    15px;
+  --font-size-lg:    17px;
+  --font-size-xl:    20px;
+  --font-size-2xl:   24px;
+  --font-size-3xl:   28px;
+  --font-size-kpi:   30px;
 
-  /* Typography — Geist replaces Inter per scaffold; see deviation note above */
-  --font-sans: var(--font-geist-sans, 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif);
-  --font-mono: var(--font-geist-mono, 'JetBrains Mono', ui-monospace, monospace);
+  --letter-spacing-tight:      -0.040em;
+  --letter-spacing-semi-tight: -0.035em;
+  --letter-spacing-snug:       -0.025em;
+  --letter-spacing-base:       -0.011em;
+  --letter-spacing-none:        0;
+  --letter-spacing-wide:        0.010em;
+
+  --line-height-tight: 1.15;
+  --line-height-snug:  1.30;
+  --line-height-base:  1.50;
+  --line-height-loose: 1.60;
+
+  --font-feature-body:    'ss01', 'cv11', 'cv02';
+  --font-feature-numeric: 'tnum' 1;
+
+  /* ---------- SPACE — 4px base unit ---------- */
+
+  --space-0:  0;
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-7:  28px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-14: 56px;
+  --space-16: 64px;
+  --space-20: 80px;
+
+  /* ---------- LAYOUT ---------- */
+
+  --layout-sidebar-width:        232px;
+  --layout-content-max-width:    1360px;
+  --layout-content-padding-x:    48px;
+  --layout-content-padding-top:  32px;
+  --layout-content-padding-bot:  80px;
+  --layout-topbar-height:        56px;
+  --layout-row-gap:              24px;
+  --layout-card-gap:             24px;
+
+  /* ---------- RADII ---------- */
+
+  --radius-none: 0;
+  --radius-xs:   4px;
+  --radius-sm:   6px;
+  --radius-md:   8px;
+  --radius-lg:   10px;
+  --radius-xl:   14px;
+  --radius-2xl:  16px;
+  --radius-full: 999px;
+
+  /* ---------- SHADOWS — minimal; hairlines preferred ---------- */
+
+  --shadow-none:  none;
+  --shadow-sm:    0 1px 2px  rgba(17, 17, 17, 0.04);
+  --shadow-md:    0 2px 8px  rgba(17, 17, 17, 0.06);
+  --shadow-lg:    0 8px 24px rgba(17, 17, 17, 0.08);
+  --shadow-modal: 0 12px 48px rgba(17, 17, 17, 0.18);
+  --shadow-focus-ring: 0 0 0 2px #FFFFFF, 0 0 0 4px #0D0D0D;
+
+  /* ---------- MOTION ---------- */
+
+  --duration-instant:    60ms;
+  --duration-fast:       120ms;
+  --duration-base:       180ms;
+  --duration-slow:       240ms;
+  --duration-deliberate: 320ms;
+
+  --easing-standard: cubic-bezier(0.4,  0, 0.2,  1);
+  --easing-out:      cubic-bezier(0.16, 1, 0.3,  1);
+  --easing-in:       cubic-bezier(0.7,  0, 0.84, 0);
+  --easing-in-out:   cubic-bezier(0.65, 0, 0.35, 1);
+  --easing-spring:   cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ---------- Z-INDEX ---------- */
+
+  --z-base:     0;
+  --z-sticky:   10;
+  --z-dropdown: 100;
+  --z-topbar:   200;
+  --z-drawer:   800;
+  --z-modal:    1000;
+  --z-toast:    1100;
+  --z-tooltip:  1200;
+
+  /* ---------- CHART ---------- */
+
+  --chart-stroke-width: 2;
+  --chart-stroke-color: var(--color-accent-blue);
+  --chart-fill-opacity: 0.08;
+  --chart-grid-color:   var(--color-border-strong);
+  --chart-axis-font-size: 11px;
+  --chart-axis-color:   var(--color-text-tertiary);
 }
 
-/* Dark tokens are declared but NOT activated by default.
-   CLAUDE.md §9.10: "Dark mode is not in scope for year 1."
-   They are kept here so future P-phase work can flip on a per-page basis
-   without re-deriving the palette. */
-[data-theme='dark'] {
-  --color-surface-page:        #0A0A09;
-  --color-surface-card:        #1A1A18;
-  --color-surface-card-elev:   #232220;
-  --color-surface-sunken:      #161614;
-  --color-border-subtle:       #2C2A26;
-  --color-border-default:      #38362F;
-  --color-border-strong:       #4A4740;
-  --color-text-primary:        #F5F5F0;
-  --color-text-secondary:      #A0A09B;
-  --color-text-tertiary:       #6E6D67;
-  --color-text-disabled:       #4E4D47;
-  --color-accent-500:          #DAFB60;
-  --color-positive-500:        #5B9658;
-  --color-negative-500:        #F09558;
-  --color-warning-500:         #F2B570;
-  --color-info-500:            #B3BEE8;
-  --color-chart-1:             #F5F5F0;
-}
+/* ==========================================================================
+   GLOBAL BASE — design-system tokens.css §"GLOBAL BASE"
+   ========================================================================== */
 
-/* Base */
+* { box-sizing: border-box; }
+
+html,
 body {
-  font-family: var(--font-sans);
-  font-feature-settings: 'cv11', 'ss01', 'ss03';
-  background: var(--color-surface-page);
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-family-body);
+  background: var(--color-surface-base);
   color: var(--color-text-primary);
+  font-feature-settings: var(--font-feature-body);
+  letter-spacing: var(--letter-spacing-base);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
 }
 
-.tabular-nums,
-td,
-th,
-.metric-value {
+/* Tabular nums wherever a number lives */
+.tnum,
+.num,
+td.amt,
+.kpi-value,
+.stat-value,
+[data-numeric] {
   font-variant-numeric: tabular-nums;
-  font-feature-settings: 'tnum';
+  font-feature-settings: var(--font-feature-numeric);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Focus visible — universal */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus-ring);
+  border-radius: var(--radius-md);
+}
+
+/* ==========================================================================
+   DARK MODE — declared, NOT active per CLAUDE.md §9.10
+   ========================================================================== */
+
+.dark {
+  --color-surface-base:    #0D0D0D;
+  --color-surface-sunken:  #060606;
+  --color-surface-raised:  #131313;
+  --color-surface-muted:   #1A1A19;
+  --color-surface-inverse: #FFFFFF;
+
+  --color-border-hairline: #1F1F1D;
+  --color-border-subtle:   #161614;
+  --color-border-strong:   #2A2A28;
+  --color-border-focus:    #FFFFFF;
+
+  --color-text-primary:     #F4F4F2;
+  --color-text-secondary:   #B0B5BC;
+  --color-text-tertiary:    #8A8F98;
+  --color-text-quaternary:  #5C6168;
+  --color-text-inverse:     #0D0D0D;
+
+  --shadow-focus-ring: 0 0 0 2px #0D0D0D, 0 0 0 4px #FFFFFF;
 }

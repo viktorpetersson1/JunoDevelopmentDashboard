@@ -3,10 +3,8 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 // Source-level invariants for app/tokens.css.
-// jsdom can't fully resolve CSS-var cascades against an app build, so we
-// assert the source values directly. Visual-regression coverage of computed
-// styles lives in Playwright (T013+).
-
+// Tokens are sourced from design-system/tokens/tokens.css (the canonical set
+// that the 12 primitives + 29 mockups target). See SUPABASE_TRANSLATION.md §5.
 const tokensCss = readFileSync(resolve(__dirname, '../../app/tokens.css'), 'utf8');
 
 function tokenValue(name: string): string | null {
@@ -15,54 +13,87 @@ function tokenValue(name: string): string | null {
   return m && m[1] ? m[1].trim() : null;
 }
 
-describe('tokens.css', () => {
+describe('tokens.css (design-system canonical)', () => {
   it('declares the locked surface palette', () => {
-    expect(tokenValue('--color-surface-page')).toBe('#FFFFFF');
-    expect(tokenValue('--color-surface-card')).toBe('#F3F2EE');
-    expect(tokenValue('--color-surface-card-elev')).toBe('#FFFFFF');
-    expect(tokenValue('--color-surface-sunken')).toBe('#EBEAE5');
+    expect(tokenValue('--color-surface-base')).toBe('#FFFFFF');
+    expect(tokenValue('--color-surface-sunken')).toBe('#FAFAF8');
+    expect(tokenValue('--color-surface-raised')).toBe('#FFFFFF');
+    expect(tokenValue('--color-surface-muted')).toBe('#F4F4F2');
   });
 
-  it('declares the locked text palette (near-black ink)', () => {
-    expect(tokenValue('--color-text-primary')).toBe('#0A0A0A');
-    expect(tokenValue('--color-text-secondary')).toBe('#6B6B68');
+  it('declares the locked text palette (4 tiers + inverse + on-lime)', () => {
+    expect(tokenValue('--color-text-primary')).toBe('#111111');
+    expect(tokenValue('--color-text-secondary')).toBe('#6B7280');
+    expect(tokenValue('--color-text-tertiary')).toBe('#8A8F98');
+    expect(tokenValue('--color-text-quaternary')).toBe('#B0B5BC');
     expect(tokenValue('--color-text-inverse')).toBe('#FFFFFF');
+    expect(tokenValue('--color-text-on-lime')).toBe('#0D0D0D');
   });
 
-  it('declares the lime-citron accent at the spec value', () => {
-    // Per DESIGN_BRIDGE.md §1: "Accent: Vivid lime-citron yellow #DAFB60"
-    expect(tokenValue('--color-accent-500')).toBe('#DAFB60');
-    expect(tokenValue('--color-accent-600')).toBe('#B7DC34');
+  it('declares the lime CTA palette at the design-system value (#DDEC65)', () => {
+    expect(tokenValue('--color-accent-lime')).toBe('#DDEC65');
+    expect(tokenValue('--color-accent-lime-hover')).toBe('#D1E057');
+    expect(tokenValue('--color-accent-lime-pressed')).toBe('#C5D44C');
   });
 
-  it('declares the 6-colour chart palette (no raw hex in chart code)', () => {
-    expect(tokenValue('--color-chart-1')).toBe('#0A0A0A');
-    expect(tokenValue('--color-chart-2')).toBe('#9CA8E5');
-    expect(tokenValue('--color-chart-3')).toBe('#4A8047');
-    expect(tokenValue('--color-chart-4')).toBe('#E58940');
-    expect(tokenValue('--color-chart-5')).toBe('#C97FA9');
-    expect(tokenValue('--color-chart-6')).toBe('#8C7C6E');
+  it('declares the borders incl. hairline (used heavily by primitives)', () => {
+    expect(tokenValue('--color-border-hairline')).toBe('#EFEFEC');
+    expect(tokenValue('--color-border-strong')).toBe('#E5E7EB');
+    expect(tokenValue('--color-border-focus')).toBe('#0D0D0D');
   });
 
-  it('declares the spacing scale (4px base)', () => {
+  it('declares the semantic palette (positive/warning/negative/info + soft)', () => {
+    expect(tokenValue('--color-positive')).toBe('#15803D');
+    expect(tokenValue('--color-positive-soft')).toBe('#ECFDF5');
+    expect(tokenValue('--color-warning')).toBe('#A16207');
+    expect(tokenValue('--color-negative')).toBe('#B91C1C');
+    expect(tokenValue('--color-info')).toBe('#1E40AF');
+  });
+
+  it('declares typography scale incl. KPI 30px and book weight 450', () => {
+    expect(tokenValue('--font-size-micro')).toBe('11px');
+    expect(tokenValue('--font-size-base')).toBe('14px');
+    expect(tokenValue('--font-size-kpi')).toBe('30px');
+    expect(tokenValue('--font-weight-book')).toBe('450');
+    expect(tokenValue('--font-weight-medium')).toBe('500');
+  });
+
+  it('declares the 4px-base spacing scale (0..20)', () => {
+    expect(tokenValue('--space-0')).toBe('0');
     expect(tokenValue('--space-1')).toBe('4px');
-    expect(tokenValue('--space-2')).toBe('8px');
     expect(tokenValue('--space-4')).toBe('16px');
-    expect(tokenValue('--space-16')).toBe('64px');
+    expect(tokenValue('--space-20')).toBe('80px');
   });
 
-  it('declares the radii scale', () => {
-    expect(tokenValue('--radius-sm')).toBe('6px');
+  it('declares the radii scale (xs through 2xl + full pill)', () => {
+    expect(tokenValue('--radius-xs')).toBe('4px');
     expect(tokenValue('--radius-md')).toBe('8px');
-    expect(tokenValue('--radius-lg')).toBe('16px');
-    expect(tokenValue('--radius-full')).toBe('9999px');
+    expect(tokenValue('--radius-2xl')).toBe('16px');
+    expect(tokenValue('--radius-full')).toBe('999px');
   });
 
-  it('declares dark tokens but they are NOT active in :root (light only in P0)', () => {
-    // CLAUDE.md §9.10: dark mode not in scope year 1.
-    // The dark block exists for future use; assert it's keyed off [data-theme="dark"].
-    expect(tokensCss).toContain("[data-theme='dark']");
-    // And :root surface-page is still white.
-    expect(tokenValue('--color-surface-page')).toBe('#FFFFFF');
+  it('declares motion tokens (5 durations + 5 easings)', () => {
+    expect(tokenValue('--duration-instant')).toBe('60ms');
+    expect(tokenValue('--duration-fast')).toBe('120ms');
+    expect(tokenValue('--duration-base')).toBe('180ms');
+    expect(tokenValue('--easing-standard')).toBe('cubic-bezier(0.4,  0, 0.2,  1)');
+  });
+
+  it('declares the focus ring shadow primitives depend on', () => {
+    const ring = tokenValue('--shadow-focus-ring');
+    expect(ring).toContain('0 0 0 2px #FFFFFF');
+    expect(ring).toContain('0 0 0 4px #0D0D0D');
+  });
+
+  it('declares layout tokens (sidebar 232, content max 1360, topbar 56)', () => {
+    expect(tokenValue('--layout-sidebar-width')).toBe('232px');
+    expect(tokenValue('--layout-content-max-width')).toBe('1360px');
+    expect(tokenValue('--layout-topbar-height')).toBe('56px');
+  });
+
+  it('declares dark mode keyed off .dark, NOT active in :root', () => {
+    expect(tokensCss).toContain('.dark {');
+    // :root surface-base is still white
+    expect(tokenValue('--color-surface-base')).toBe('#FFFFFF');
   });
 });

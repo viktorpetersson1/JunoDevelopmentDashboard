@@ -144,7 +144,30 @@ Atlas must not regress fields against either of these two sources. The Excel fil
 
 ---
 
-## 5. Open items this file does NOT cover
+## 5. Token source — design-system canonical, NOT DESIGN_BRIDGE.md
+
+When porting primitives in T004 we discovered the bundle has two token sources that disagree:
+
+| | DESIGN_BRIDGE.md §2 | `design-system/tokens/tokens.css` (canonical) |
+|---|---|---|
+| Accent / lime hex | `#DAFB60` | `#DDEC65` |
+| Surface white | `--color-surface-page` | `--color-surface-base` |
+| Text scale | 5 levels | 6 levels (incl. `--color-text-quaternary`) |
+| Border `--border-hairline` | absent | `#EFEFEC` (heavily used in primitives.css) |
+| Typography scale | partial | full (micro 11 / xs 12 / sm 13 / base 14 / md 15 / lg 17 / xl 20 / 2xl 24 / 3xl 28 / kpi 30) |
+| Font weight `--font-weight-book` (450) | absent | present (used in primitive labels) |
+| Motion tokens | none | 5 durations + 5 easings |
+| Focus ring | none | `--shadow-focus-ring` |
+| Layout tokens | none | sidebar 232 / topbar 56 / content max 1360 |
+| Z-index scale | none | base / sticky / dropdown / topbar / drawer / modal / toast / tooltip |
+
+**Resolution:** `design-system/tokens/tokens.css` is canonical. It's what the 12 primitives (`ja-*` classes) and the 29 mockup PNGs were rendered against. DESIGN_BRIDGE.md stays as a useful reference annotation but is **not authoritative for token names or values**.
+
+T003 was re-done after T004 surfaced this conflict — `atlas/app/tokens.css` now mirrors `design-system/tokens/tokens.css`; `atlas/tailwind.config.ts` is rewired to the canonical names; tests in `atlas/lib/__tests__/tokens.test.ts` assert the canonical values.
+
+---
+
+## 6. Open items this file does NOT cover
 
 - D-008 (owner emails): user has said "any email account, will create later"
 - D-007 (pricing data v1): manual + CSV for year 1 (P1 W1.7 scope)
