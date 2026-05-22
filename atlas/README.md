@@ -33,9 +33,13 @@ Open http://localhost:3000.
 | `pnpm test` | Vitest unit tests |
 | `pnpm test:e2e` | Playwright E2E |
 | `pnpm format` | Prettier write |
-| `pnpm db:generate` | Drizzle migration generate |
-| `pnpm db:push` | Drizzle migration apply |
-| `pnpm db:studio` | Drizzle visual studio |
+| `pnpm db:generate` | Drizzle migration generate (writes to `migrations/`) |
+| `pnpm db:push` | Drizzle migration apply (local convenience; **production migrations go via the Supabase MCP `apply_migration` tool**) |
+| `pnpm db:studio` | Drizzle visual studio (needs `DATABASE_URL` in `.env.local`) |
+
+## Migrations
+
+Hand-crafted bootstrap migration at `migrations/0000_atlas_init.sql` creates the `atlas` schema + W1 tables + RLS + seed. See `migrations/README.md` for the policy: drizzle-kit generates subsequent migrations, the Supabase MCP applies them. No DB password lives in this repo or in CI.
 
 ## Layout
 
