@@ -6,6 +6,12 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "8765", "--directory", "E:\\Development\\JunoDevelopmentDashboard\\public"],
       "port": 8765
+    },
+    {
+      "name": "atlas-dev",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--dir", "C:\\Dev\\juno-financial-dashboard\\atlas", "dev"],
+      "port": 3000
     }
   ]
 }

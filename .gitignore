@@ -21,3 +21,16 @@ Thumbs.db
 
 # Render local
 .render/
+
+# Atlas (Next.js subfolder) — its own .gitignore handles fine-grained ignores
+atlas/node_modules/
+atlas/.next/
+atlas/out/
+atlas/coverage/
+atlas/playwright-report/
+atlas/test-results/
+atlas/.env
+atlas/.env.local
+atlas/.env.*.local
+atlas/next-env.d.ts
+atlas/*.tsbuildinfo

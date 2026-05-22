@@ -1,0 +1,5 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* T003 will replace this with the token CSS vars from docs/handoff/DESIGN_BRIDGE.md §2 */
