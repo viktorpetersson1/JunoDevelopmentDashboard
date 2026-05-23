@@ -1,0 +1,381 @@
+/* ==========================================================================
+   Juno Atlas — Data Components Shared Styles
+   --------------------------------------------------------------------------
+   Imported by every component in /components/data/.
+   All class names use the `ja-` prefix.
+   References tokens via CSS custom properties from tokens.css.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Base resets & utilities for data layer
+   -------------------------------------------------------------------------- */
+
+.ja-data-numeric,
+.ja-data-numeric * {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feature-numeric, 'tnum' 1);
+}
+
+/* --------------------------------------------------------------------------
+   KPI Tile
+   -------------------------------------------------------------------------- */
+
+.ja-kpi-tile {
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  background: var(--color-surface-raised, #ffffff);
+  border: 1px solid var(--color-border-hairline, #efefec);
+  border-radius: var(--radius-sm, 6px);
+  min-width: 0;
+  /* Stretch to fill grid cell */
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.ja-kpi-tile__label {
+  font-size: var(--font-size-micro, 11px);
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--color-text-secondary, #6b7280);
+  letter-spacing: 0.04em;
+  line-height: var(--line-height-tight, 1.15);
+  text-transform: uppercase;
+  margin: 0 0 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ja-kpi-tile__value {
+  font-size: var(--font-size-kpi, 30px);
+  font-weight: var(--font-weight-medium, 500);
+  letter-spacing: var(--letter-spacing-tight, -0.04em);
+  line-height: var(--line-height-tight, 1.15);
+  color: var(--color-text-primary, #111111);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feature-numeric, 'tnum' 1);
+  margin: 0;
+  white-space: nowrap;
+}
+
+.ja-kpi-tile__meta {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-height: 20px;
+}
+
+.ja-kpi-tile__hint {
+  font-size: var(--font-size-xs, 12px);
+  color: var(--color-text-tertiary, #8a8f98);
+  font-weight: var(--font-weight-book, 450);
+  margin: 0;
+  line-height: var(--line-height-snug, 1.3);
+}
+
+.ja-kpi-tile__sparkline {
+  margin-top: 14px;
+  flex-shrink: 0;
+}
+
+/* KPI delta inline tag */
+.ja-kpi-tile__delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: var(--radius-xs, 4px);
+  font-size: var(--font-size-xs, 12px);
+  font-weight: var(--font-weight-medium, 500);
+  line-height: 1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feature-numeric, 'tnum' 1);
+}
+
+.ja-kpi-tile__delta--up {
+  background: var(--color-positive-soft, #ecfdf5);
+  color: var(--color-positive, #15803d);
+}
+
+.ja-kpi-tile__delta--down {
+  background: var(--color-negative-soft, #fef2f2);
+  color: var(--color-negative, #b91c1c);
+}
+
+.ja-kpi-tile__delta--flat {
+  background: var(--color-surface-muted, #f4f4f2);
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.ja-kpi-tile__delta-arrow {
+  display: inline-block;
+  font-style: normal;
+  line-height: 1;
+  font-size: 10px;
+}
+
+/* --------------------------------------------------------------------------
+   KPI Strip
+   -------------------------------------------------------------------------- */
+
+.ja-kpi-strip {
+  display: grid;
+  gap: 16px;
+  /* columns set via inline style / CSS var */
+  grid-template-columns: repeat(var(--ja-kpi-strip-cols, 4), 1fr);
+}
+
+@media (max-width: 720px) {
+  .ja-kpi-strip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .ja-kpi-strip {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Table
+   -------------------------------------------------------------------------- */
+
+.ja-table-wrap {
+  width: 100%;
+  background: var(--color-surface-raised, #ffffff);
+  border: 1px solid var(--color-border-hairline, #efefec);
+  border-radius: var(--radius-sm, 6px);
+  overflow: hidden;
+}
+
+.ja-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+
+.ja-table__head {
+  background: var(--color-surface-sunken, #fafaf8);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky, 10);
+}
+
+.ja-table__th {
+  padding: 0 var(--space-4, 16px);
+  height: 36px;
+  font-size: var(--font-size-micro, 11px);
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--color-text-tertiary, #8a8f98);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--color-border-hairline, #efefec);
+  user-select: none;
+}
+
+.ja-table__th--right {
+  text-align: right;
+}
+
+.ja-table__body {}
+
+/* Row is rendered by TableRow component */
+
+.ja-table__empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--color-text-tertiary, #8a8f98);
+  font-size: var(--font-size-sm, 13px);
+}
+
+/* Compact density */
+.ja-table--compact .ja-table__th {
+  height: 32px;
+}
+
+/* --------------------------------------------------------------------------
+   Table Row (shared by both Table and standalone TableRow)
+   -------------------------------------------------------------------------- */
+
+.ja-table__row {
+  border-bottom: 1px solid var(--color-border-subtle, #f4f4f2);
+  transition: background-color var(--duration-fast, 120ms) var(--easing-standard, ease);
+}
+
+.ja-table__row:last-child {
+  border-bottom: none;
+}
+
+.ja-table__row--interactive {
+  cursor: pointer;
+}
+
+.ja-table__row--interactive:hover {
+  background: var(--color-surface-sunken, #fafaf8);
+}
+
+.ja-table__row--selected {
+  background: var(--color-surface-muted, #f4f4f2);
+}
+
+.ja-table__td {
+  padding: 0 var(--space-4, 16px);
+  height: 44px;
+  font-size: var(--font-size-sm, 13px);
+  font-weight: var(--font-weight-book, 450);
+  color: var(--color-text-primary, #111111);
+  vertical-align: middle;
+}
+
+.ja-table__td--right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feature-numeric, 'tnum' 1);
+}
+
+/* Compact density rows */
+.ja-table--compact .ja-table__td {
+  height: 36px;
+}
+
+/* --------------------------------------------------------------------------
+   Progress Bar
+   -------------------------------------------------------------------------- */
+
+.ja-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.ja-progress__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ja-progress__label {
+  font-size: var(--font-size-sm, 13px);
+  color: var(--color-text-secondary, #6b7280);
+  font-weight: var(--font-weight-medium, 500);
+  line-height: 1;
+}
+
+.ja-progress__value-text {
+  font-size: var(--font-size-xs, 12px);
+  color: var(--color-text-secondary, #6b7280);
+  font-weight: var(--font-weight-medium, 500);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feature-numeric, 'tnum' 1);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.ja-progress__track {
+  width: 100%;
+  background: #f4f4f2;
+  border-radius: 2px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.ja-progress__track--sm {
+  height: 4px;
+}
+
+.ja-progress__track--md {
+  height: 6px;
+}
+
+.ja-progress__fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width var(--duration-slow, 240ms) var(--easing-out, ease);
+}
+
+.ja-progress__fill--default  { background: #0d0d0d; }
+.ja-progress__fill--positive { background: #15803d; }
+.ja-progress__fill--warning  { background: #a16207; }
+.ja-progress__fill--negative { background: #b91c1c; }
+
+/* --------------------------------------------------------------------------
+   Sparkline
+   -------------------------------------------------------------------------- */
+
+.ja-sparkline {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.ja-sparkline__svg {
+  display: block;
+  overflow: visible;
+}
+
+/* Stroke colors handled inline in the SVG element */
+
+/* --------------------------------------------------------------------------
+   Tag
+   -------------------------------------------------------------------------- */
+
+.ja-tag {
+  display: inline-flex;
+  align-items: center;
+  background: var(--color-surface-muted, #f4f4f2);
+  color: var(--color-text-secondary, #6b7280);
+  border-radius: var(--radius-xs, 4px);
+  font-weight: var(--font-weight-medium, 500);
+  white-space: nowrap;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.ja-tag--sm {
+  font-size: 11px;
+  padding: 3px 6px;
+}
+
+.ja-tag--md {
+  font-size: var(--font-size-micro, 11px);
+  padding: 4px 8px;
+}
+
+/* --------------------------------------------------------------------------
+   Status
+   -------------------------------------------------------------------------- */
+
+.ja-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ja-status__dot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full, 999px);
+}
+
+.ja-status__dot--positive { background: var(--color-positive, #15803d); }
+.ja-status__dot--warning  { background: var(--color-warning,  #a16207); }
+.ja-status__dot--negative { background: var(--color-negative, #b91c1c); }
+.ja-status__dot--neutral  { background: var(--color-text-quaternary, #b0b5bc); }
+.ja-status__dot--info     { background: var(--color-info, #1e40af); }
+
+.ja-status__label {
+  font-size: 13px;
+  font-weight: var(--font-weight-book, 450);
+  color: var(--color-text-primary, #111111);
+  line-height: 1;
+}
