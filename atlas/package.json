@@ -16,7 +16,8 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,md,json,css}\"",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "snapshot": "node scripts/snapshot-vanilla-engine.mjs"
   },
   "engines": {
     "node": ">=20.0.0",

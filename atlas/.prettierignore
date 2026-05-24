@@ -1,0 +1,13 @@
+# Machine-generated golden fixtures — must stay byte-identical to the
+# output of `pnpm snapshot` (which uses JSON.stringify, not Prettier).
+tests/fixtures/vanilla-snapshots/*.json
+
+# Lock file
+pnpm-lock.yaml
+
+# Build artifacts
+.next/
+node_modules/
+coverage/
+playwright-report/
+test-results/
