@@ -11,6 +11,7 @@ Per SUPABASE_TRANSLATION.md §2: Excel was decommissioned 2026-05-10. Vanilla `p
 ## What changed
 
 ### New files
+
 - `atlas/scripts/snapshot-vanilla-engine.mjs` — imports `public/engine.js` + `public/data.js`, normalises each baseline project (mirrors `state.js::applyStateBlob`), runs `calcProject()` + `aggregatePortfolio()`, dumps JSON.
 - `atlas/tests/fixtures/vanilla-snapshots/project-p2.json` … `project-p11.json` — 10 per-project fixtures (~17 KB each, full 49-month series).
 - `atlas/tests/fixtures/vanilla-snapshots/portfolio.json` — 185 KB portfolio aggregate.
@@ -18,17 +19,18 @@ Per SUPABASE_TRANSLATION.md §2: Excel was decommissioned 2026-05-10. Vanilla `p
 - `atlas/.prettierignore` — excludes generated fixtures (Prettier would rewrite them; we keep the script's `JSON.stringify(_, null, 2)` output canonical).
 
 ### Modified
+
 - `atlas/package.json` — adds `pnpm snapshot` script.
 
 ## Normalisation applied (mirrors vanilla `state.js`)
 
 The vanilla engine reads legacy field names; new BASELINE_PROJECTS use the modern names. The snapshot script applies these derivations before passing to `calcProject`:
 
-| Modern (data.js) | Legacy (engine reads) | Derivation |
-|---|---|---|
-| `villa_sqft_ag` + `villa_sqft_bg` | `villa_sqft` | sum |
-| `purchase_date` | `start_date` | mirror |
-| `sourcing_months` + `permitting_preconstruction_months` + `construction_months` + `sales_months` | `program_months` | sum (fallback 13) |
+| Modern (data.js)                                                                                 | Legacy (engine reads) | Derivation        |
+| ------------------------------------------------------------------------------------------------ | --------------------- | ----------------- |
+| `villa_sqft_ag` + `villa_sqft_bg`                                                                | `villa_sqft`          | sum               |
+| `purchase_date`                                                                                  | `start_date`          | mirror            |
+| `sourcing_months` + `permitting_preconstruction_months` + `construction_months` + `sales_months` | `program_months`      | sum (fallback 13) |
 
 Note: `data.js` itself mutates `BASELINE_PROJECTS` at import to populate `sale_price_override_usd` from `_excel_sale_price` (a one-time backfill of Excel-benchmarked prices) — that mutation is already in effect when the snapshot script imports.
 
