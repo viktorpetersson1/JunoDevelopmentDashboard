@@ -94,7 +94,7 @@ const FOCUSABLE = [
 
 function getFocusable(container: HTMLElement): HTMLElement[] {
   return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
-    (el) => !el.closest('[hidden]') && !el.closest('[aria-hidden="true"]'),
+    (el) => !el.closest('[hidden]') && !el.closest('[aria-hidden="true"]')
   );
 }
 
@@ -115,7 +115,7 @@ export const Modal = forwardRef<HTMLDivElement, ModalProps>(
       dismissOnBackdrop = true,
       className,
     },
-    ref,
+    ref
   ) => {
     const titleId = useId();
     const descId = useId();
@@ -158,7 +158,9 @@ export const Modal = forwardRef<HTMLDivElement, ModalProps>(
       if (mounted) {
         const prev = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
-        return () => { document.body.style.overflow = prev; };
+        return () => {
+          document.body.style.overflow = prev;
+        };
       }
     }, [mounted]);
 
@@ -173,7 +175,10 @@ export const Modal = forwardRef<HTMLDivElement, ModalProps>(
 
         if (e.key === 'Tab' && dialogRef.current) {
           const focusable = getFocusable(dialogRef.current);
-          if (focusable.length === 0) { e.preventDefault(); return; }
+          if (focusable.length === 0) {
+            e.preventDefault();
+            return;
+          }
           // Length-guarded above; non-null assertion satisfies noUncheckedIndexedAccess
           const first = focusable[0]!;
           const last = focusable[focusable.length - 1]!;
@@ -190,7 +195,7 @@ export const Modal = forwardRef<HTMLDivElement, ModalProps>(
           }
         }
       },
-      [onClose],
+      [onClose]
     );
 
     const handleBackdropClick = useCallback(
@@ -199,7 +204,7 @@ export const Modal = forwardRef<HTMLDivElement, ModalProps>(
           onClose();
         }
       },
-      [dismissOnBackdrop, onClose],
+      [dismissOnBackdrop, onClose]
     );
 
     if (!mounted) return null;
@@ -225,21 +230,13 @@ export const Modal = forwardRef<HTMLDivElement, ModalProps>(
           aria-modal="true"
           aria-labelledby={title ? titleId : undefined}
           aria-describedby={description ? descId : undefined}
-          className={[
-            'ja-modal',
-            `ja-modal--${size}`,
-            className,
-          ]
-            .filter(Boolean)
-            .join(' ')}
+          className={['ja-modal', `ja-modal--${size}`, className].filter(Boolean).join(' ')}
           data-exiting={exiting ? '' : undefined}
           tabIndex={-1}
         >
           {/* Header */}
           <div
-            className={
-              hasHeader ? 'ja-modal__header' : 'ja-modal__header ja-modal__header--empty'
-            }
+            className={hasHeader ? 'ja-modal__header' : 'ja-modal__header ja-modal__header--empty'}
           >
             {hasHeader && (
               <div className="ja-modal__title-group">
@@ -275,7 +272,7 @@ export const Modal = forwardRef<HTMLDivElement, ModalProps>(
     );
 
     return createPortal(modal, document.body);
-  },
+  }
 );
 
 Modal.displayName = 'Modal';

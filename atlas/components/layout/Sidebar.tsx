@@ -101,17 +101,12 @@ const ChevronIcon = () => (
  */
 export const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar(
   { sections, user, activeHref, logo, className },
-  ref,
+  ref
 ) {
   const rootClass = ['ja-sidebar', className].filter(Boolean).join(' ');
 
   return (
-    <aside
-      ref={ref}
-      className={rootClass}
-      role="navigation"
-      aria-label="Main navigation"
-    >
+    <aside ref={ref} className={rootClass} role="navigation" aria-label="Main navigation">
       {/* ── Logo slot ───────────────────────────────────── */}
       {logo && (
         <div className="ja-sidebar__logo" aria-hidden="false">
@@ -133,10 +128,7 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar(
             {/* Nav items */}
             {section.items.map((item) => {
               const isActive = item.href === activeHref;
-              const itemClass = [
-                'ja-sidebar__item',
-                isActive ? 'ja-sidebar__item--active' : '',
-              ]
+              const itemClass = ['ja-sidebar__item', isActive ? 'ja-sidebar__item--active' : '']
                 .filter(Boolean)
                 .join(' ');
 

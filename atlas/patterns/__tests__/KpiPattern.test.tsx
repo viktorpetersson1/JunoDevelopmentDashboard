@@ -33,11 +33,7 @@ describe('KpiPattern', () => {
 
   it('renders rail slot when provided', () => {
     render(
-      <KpiPattern
-        kpis={KPIS}
-        chart={<div />}
-        rail={<aside data-testid="rail">RAIL</aside>}
-      />
+      <KpiPattern kpis={KPIS} chart={<div />} rail={<aside data-testid="rail">RAIL</aside>} />
     );
     expect(screen.getByTestId('rail')).toHaveTextContent('RAIL');
   });

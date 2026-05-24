@@ -51,13 +51,7 @@ export const Avatar = forwardRef<HTMLSpanElement, AvatarProps>(
     const showImage = Boolean(src) && !imgError;
     const initials = getInitials(name);
 
-    const classes = [
-      'ja-avatar',
-      `ja-avatar--${size}`,
-      className,
-    ]
-      .filter(Boolean)
-      .join(' ');
+    const classes = ['ja-avatar', `ja-avatar--${size}`, className].filter(Boolean).join(' ');
 
     const inlineStyle: React.CSSProperties = {
       ...(color && !showImage ? { backgroundColor: color } : {}),
@@ -79,12 +73,7 @@ export const Avatar = forwardRef<HTMLSpanElement, AvatarProps>(
           // external profile pics). next/image's loader contract requires
           // configured domains/loaders; native <img> is appropriate here.
           // eslint-disable-next-line @next/next/no-img-element
-          <img
-            className="ja-avatar__img"
-            src={src}
-            alt={name}
-            onError={() => setImgError(true)}
-          />
+          <img className="ja-avatar__img" src={src} alt={name} onError={() => setImgError(true)} />
         )}
         {!showImage && (
           <span className="ja-avatar__initials" aria-hidden="true">
@@ -93,7 +82,7 @@ export const Avatar = forwardRef<HTMLSpanElement, AvatarProps>(
         )}
       </span>
     );
-  },
+  }
 );
 
 Avatar.displayName = 'Avatar';

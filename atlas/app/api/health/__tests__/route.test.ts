@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { GET } from '../route';
 
 async function readJson(res: Response) {
-  return JSON.parse(await res.text()) as { data?: { status: string; commit: string; time: string } };
+  return JSON.parse(await res.text()) as {
+    data?: { status: string; commit: string; time: string };
+  };
 }
 
 describe('GET /api/health', () => {

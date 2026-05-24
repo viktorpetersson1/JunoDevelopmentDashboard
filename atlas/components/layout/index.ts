@@ -24,18 +24,9 @@ export { Card } from './Card';
 
 // ── Prop Types ───────────────────────────────────────────────────────────────
 
-export type {
-  SidebarProps,
-  SidebarSection,
-  SidebarNavItem,
-  SidebarUser,
-} from './Sidebar';
+export type { SidebarProps, SidebarSection, SidebarNavItem, SidebarUser } from './Sidebar';
 
-export type {
-  TopbarProps,
-  TopbarSearchProps,
-  ScenarioVariant,
-} from './Topbar';
+export type { TopbarProps, TopbarSearchProps, ScenarioVariant } from './Topbar';
 
 export type { PageShellProps } from './PageShell';
 

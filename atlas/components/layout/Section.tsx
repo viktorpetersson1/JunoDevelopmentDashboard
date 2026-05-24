@@ -73,32 +73,16 @@ export interface SectionProps {
  * ```
  */
 export const Section = forwardRef<HTMLElement, SectionProps>(function Section(
-  {
-    title,
-    subtitle,
-    actions,
-    children,
-    bordered = true,
-    headingLevel = 'h2',
-    className,
-    id,
-  },
-  ref,
+  { title, subtitle, actions, children, bordered = true, headingLevel = 'h2', className, id },
+  ref
 ) {
   const hasChildren = children !== undefined && children !== null;
 
-  const rootClass = [
-    'ja-section',
-    bordered ? 'ja-section--bordered' : '',
-    className,
-  ]
+  const rootClass = ['ja-section', bordered ? 'ja-section--bordered' : '', className]
     .filter(Boolean)
     .join(' ');
 
-  const headerClass = [
-    'ja-section__header',
-    !hasChildren ? 'ja-section__header--no-children' : '',
-  ]
+  const headerClass = ['ja-section__header', !hasChildren ? 'ja-section__header--no-children' : '']
     .filter(Boolean)
     .join(' ');
 
@@ -115,28 +99,19 @@ export const Section = forwardRef<HTMLElement, SectionProps>(function Section(
       {/* ── Header ─────────────────────────────── */}
       <div className={headerClass}>
         <div className="ja-section__title-group">
-          <Heading
-            id={id ? `${id}-title` : undefined}
-            className="ja-section__title"
-          >
+          <Heading id={id ? `${id}-title` : undefined} className="ja-section__title">
             {title}
           </Heading>
 
-          {subtitle && (
-            <p className="ja-section__subtitle">{subtitle}</p>
-          )}
+          {subtitle && <p className="ja-section__subtitle">{subtitle}</p>}
         </div>
 
         {/* Actions slot */}
-        {actions && (
-          <div className="ja-section__actions">{actions}</div>
-        )}
+        {actions && <div className="ja-section__actions">{actions}</div>}
       </div>
 
       {/* ── Body ───────────────────────────────── */}
-      {hasChildren && (
-        <div className="ja-section__body">{children}</div>
-      )}
+      {hasChildren && <div className="ja-section__body">{children}</div>}
     </section>
   );
 });

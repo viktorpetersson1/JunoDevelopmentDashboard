@@ -62,6 +62,32 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
 
+  # Stub: integration tests require a live Supabase test branch (no CI access
+  # yet). Will be wired in T076 when production / preview DBs land.
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Integration tests (deferred to T076)
+        run: |
+          echo "Integration tests will run against a CI-accessible Supabase"
+          echo "branch once T076 (production deploy) provisions one."
+          echo "Tracking ticket: T076."
+          exit 0
+
+  # Stub: golden-master tests compare TS calc engine outputs to the vanilla
+  # JS engine snapshots. Land in T032' / T033' / T034' once seed data exists.
+  golden:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Golden-master tests (deferred to T034')
+        run: |
+          echo "Golden-master tests compare lib/calc/* outputs against the"
+          echo "vanilla JS engine snapshots. Land in T032'-T034' (calc port)."
+          echo "Tracking ticket: T032'-T034'."
+          exit 0
+
   build:
     runs-on: ubuntu-latest
     steps:

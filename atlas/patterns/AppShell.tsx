@@ -31,7 +31,14 @@
  */
 
 import React, { ReactNode } from 'react';
-import { Sidebar, SidebarSection, SidebarUser, Topbar, PageShell, TopbarSearchProps } from '../components/layout';
+import {
+  Sidebar,
+  SidebarSection,
+  SidebarUser,
+  Topbar,
+  PageShell,
+  TopbarSearchProps,
+} from '../components/layout';
 import type { ScenarioVariant } from '../components/layout';
 import './patterns.css';
 
@@ -88,7 +95,10 @@ const SuggestionsIcon = () => (
 
 const AskJunoIcon = () => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-    <path d="M17.5 12.5c0 1.1-.9 2-2 2H5l-2.5 3V5c0-1.1.9-2 2-2h13c1.1 0 2 .9 2 2v7.5z" strokeLinejoin="round" />
+    <path
+      d="M17.5 12.5c0 1.1-.9 2-2 2H5l-2.5 3V5c0-1.1.9-2 2-2h13c1.1 0 2 .9 2 2v7.5z"
+      strokeLinejoin="round"
+    />
   </svg>
 );
 
@@ -104,7 +114,10 @@ const UsersIcon = () => (
 const SettingsIcon = () => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
     <circle cx="10" cy="10" r="2.5" />
-    <path d="M10 2.5v1.2M10 16.3v1.2M2.5 10h1.2M16.3 10h1.2M4.7 4.7l.85.85M14.45 14.45l.85.85M4.7 15.3l.85-.85M14.45 5.55l.85-.85" strokeLinecap="round" />
+    <path
+      d="M10 2.5v1.2M10 16.3v1.2M2.5 10h1.2M16.3 10h1.2M4.7 4.7l.85.85M14.45 14.45l.85.85M4.7 15.3l.85-.85M14.45 5.55l.85-.85"
+      strokeLinecap="round"
+    />
   </svg>
 );
 
@@ -143,25 +156,25 @@ export const DEFAULT_SIDEBAR_SECTIONS: SidebarSection[] = [
   {
     label: 'PORTFOLIO',
     items: [
-      { href: '/',            label: 'Overview',    icon: <OverviewIcon /> },
-      { href: '/forecast',    label: 'Forecast',    icon: <ForecastIcon /> },
-      { href: '/capital',     label: 'Capital',     icon: <CapitalIcon /> },
-      { href: '/risks',       label: 'Risks',       icon: <RisksIcon /> },
+      { href: '/', label: 'Overview', icon: <OverviewIcon /> },
+      { href: '/forecast', label: 'Forecast', icon: <ForecastIcon /> },
+      { href: '/capital', label: 'Capital', icon: <CapitalIcon /> },
+      { href: '/risks', label: 'Risks', icon: <RisksIcon /> },
     ],
   },
   {
     label: 'WORKSPACE',
     items: [
-      { href: '/projects',    label: 'Projects',    icon: <ProjectsIcon /> },
+      { href: '/projects', label: 'Projects', icon: <ProjectsIcon /> },
       { href: '/suggestions', label: 'Suggestions', icon: <SuggestionsIcon /> },
-      { href: '/ask-juno',    label: 'Ask Juno',    icon: <AskJunoIcon /> },
+      { href: '/ask-juno', label: 'Ask Juno', icon: <AskJunoIcon /> },
     ],
   },
   {
     label: 'ACCOUNT',
     items: [
-      { href: '/users',       label: 'Users',       icon: <UsersIcon /> },
-      { href: '/settings',    label: 'Settings',    icon: <SettingsIcon /> },
+      { href: '/users', label: 'Users', icon: <UsersIcon /> },
+      { href: '/settings', label: 'Settings', icon: <SettingsIcon /> },
     ],
   },
 ];
@@ -217,12 +230,7 @@ export function AppShell({
   const rootClass = ['ja-app-shell', className].filter(Boolean).join(' ');
 
   const sidebar = (
-    <Sidebar
-      sections={sidebarSections}
-      user={user}
-      activeHref={activeHref}
-      logo={<JunoLogo />}
-    />
+    <Sidebar sections={sidebarSections} user={user} activeHref={activeHref} logo={<JunoLogo />} />
   );
 
   const topbar = (

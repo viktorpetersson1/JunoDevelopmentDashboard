@@ -28,12 +28,7 @@ describe('Input', () => {
 
   it('renders prefix + suffix affixes', () => {
     render(
-      <Input
-        label="Budget"
-        prefix={<span>$</span>}
-        suffix={<span>USD</span>}
-        type="number"
-      />
+      <Input label="Budget" prefix={<span>$</span>} suffix={<span>USD</span>} type="number" />
     );
     expect(screen.getByText('$')).toBeInTheDocument();
     expect(screen.getByText('USD')).toBeInTheDocument();

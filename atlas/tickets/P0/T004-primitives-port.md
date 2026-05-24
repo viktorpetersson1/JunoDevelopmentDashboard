@@ -5,7 +5,9 @@
 ## What changed
 
 ### New files in `atlas/components/ui/`
+
 12 React TSX primitives (copied verbatim from design-system source, then adjusted for strict TypeScript + a11y):
+
 - `Avatar.tsx` (4 sizes; initials fallback; img with error → initials)
 - `Breadcrumb.tsx` (link list with chevron separators; `aria-current="page"` on last)
 - `Button.tsx` (primary/secondary/ghost/danger variants; sm/md/lg sizes; loading state)
@@ -20,6 +22,7 @@
 - `Switch.tsx` (toggle with `role="switch"`)
 
 Plus:
+
 - `primitives.css` — 1100 lines of `ja-*` class styles, copied verbatim. References tokens from `app/tokens.css` (T003-revisit).
 - `index.ts` — barrel export of all 12 components + their types.
 - `__tests__/*.test.tsx` — 12 test files, **61 tests total** (≥3 per component per bundle requirement).

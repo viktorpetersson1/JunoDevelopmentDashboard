@@ -58,34 +58,35 @@ export interface PageShellProps {
  * </PageShell>
  * ```
  */
-export const PageShell = forwardRef<HTMLDivElement, PageShellProps>(
-  function PageShell({ sidebar, topbar, children, className }, ref) {
-    const rootClass = ['ja-page-shell', className].filter(Boolean).join(' ');
+export const PageShell = forwardRef<HTMLDivElement, PageShellProps>(function PageShell(
+  { sidebar, topbar, children, className },
+  ref
+) {
+  const rootClass = ['ja-page-shell', className].filter(Boolean).join(' ');
 
-    return (
-      <div ref={ref} className={rootClass}>
-        {/* ── Sidebar column (spans full height via fixed CSS) ─── */}
-        <div className="ja-page-shell__sidebar" aria-hidden="false">
-          {sidebar}
-        </div>
-
-        {/* ── Topbar (top of right column, sticky) ─────────────── */}
-        <div className="ja-page-shell__topbar">{topbar}</div>
-
-        {/* ── Main scrollable content ──────────────────────────── */}
-        <main
-          className="ja-page-shell__content"
-          role="main"
-          aria-label="Page content"
-          id="main-content"
-        >
-          {/* Inner wrapper applies max-width + padding */}
-          <div className="ja-page-shell__content-inner">{children}</div>
-        </main>
+  return (
+    <div ref={ref} className={rootClass}>
+      {/* ── Sidebar column (spans full height via fixed CSS) ─── */}
+      <div className="ja-page-shell__sidebar" aria-hidden="false">
+        {sidebar}
       </div>
-    );
-  },
-);
+
+      {/* ── Topbar (top of right column, sticky) ─────────────── */}
+      <div className="ja-page-shell__topbar">{topbar}</div>
+
+      {/* ── Main scrollable content ──────────────────────────── */}
+      <main
+        className="ja-page-shell__content"
+        role="main"
+        aria-label="Page content"
+        id="main-content"
+      >
+        {/* Inner wrapper applies max-width + padding */}
+        <div className="ja-page-shell__content-inner">{children}</div>
+      </main>
+    </div>
+  );
+});
 
 PageShell.displayName = 'PageShell';
 

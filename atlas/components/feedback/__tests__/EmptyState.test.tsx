@@ -11,21 +11,14 @@ describe('EmptyState', () => {
   });
 
   it('renders icon slot when provided', () => {
-    const { container } = render(
-      <EmptyState title="x" icon={<svg data-testid="ico" />} />
-    );
+    const { container } = render(<EmptyState title="x" icon={<svg data-testid="ico" />} />);
     expect(screen.getByTestId('ico')).toBeInTheDocument();
     expect(container.querySelector('.ja-empty-state__icon')).toBeInTheDocument();
   });
 
   it('renders + fires CTA action when provided', () => {
     const handle = vi.fn();
-    render(
-      <EmptyState
-        title="No projects"
-        action={{ label: 'New project', onClick: handle }}
-      />
-    );
+    render(<EmptyState title="No projects" action={{ label: 'New project', onClick: handle }} />);
     fireEvent.click(screen.getByRole('button', { name: 'New project' }));
     expect(handle).toHaveBeenCalledTimes(1);
   });

@@ -114,16 +114,10 @@ export function TabbedPage({
           <h1 id="ja-tabbed-page-title" className="ja-tabbed-page__title">
             {title}
           </h1>
-          {subtitle && (
-            <p className="ja-tabbed-page__subtitle">{subtitle}</p>
-          )}
+          {subtitle && <p className="ja-tabbed-page__subtitle">{subtitle}</p>}
         </div>
 
-        {actions && (
-          <div className="ja-tabbed-page__actions">
-            {actions}
-          </div>
-        )}
+        {actions && <div className="ja-tabbed-page__actions">{actions}</div>}
       </div>
 
       {/* ── Tab strip ───────────────────────────────── */}
@@ -143,9 +137,7 @@ export function TabbedPage({
       </TabStrip>
 
       {/* ── Active tab content ──────────────────────── */}
-      <div className="ja-tabbed-page__content">
-        {children}
-      </div>
+      <div className="ja-tabbed-page__content">{children}</div>
     </div>
   );
 }

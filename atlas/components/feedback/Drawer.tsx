@@ -78,7 +78,7 @@ const FOCUSABLE = [
 
 function getFocusable(container: HTMLElement): HTMLElement[] {
   return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
-    (el) => !el.closest('[hidden]') && !el.closest('[aria-hidden="true"]'),
+    (el) => !el.closest('[hidden]') && !el.closest('[aria-hidden="true"]')
   );
 }
 
@@ -88,17 +88,8 @@ function getFocusable(container: HTMLElement): HTMLElement[] {
 
 export const Drawer = forwardRef<HTMLDivElement, DrawerProps>(
   (
-    {
-      open,
-      onClose,
-      title,
-      width = 480,
-      children,
-      footer,
-      withBackdrop = true,
-      className,
-    },
-    ref,
+    { open, onClose, title, width = 480, children, footer, withBackdrop = true, className },
+    ref
   ) => {
     const titleId = useId();
     const panelRef = useRef<HTMLDivElement | null>(null);
@@ -137,7 +128,9 @@ export const Drawer = forwardRef<HTMLDivElement, DrawerProps>(
       if (mounted) {
         const prev = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
-        return () => { document.body.style.overflow = prev; };
+        return () => {
+          document.body.style.overflow = prev;
+        };
       }
     }, [mounted]);
 
@@ -151,7 +144,10 @@ export const Drawer = forwardRef<HTMLDivElement, DrawerProps>(
 
         if (e.key === 'Tab' && panelRef.current) {
           const focusable = getFocusable(panelRef.current);
-          if (focusable.length === 0) { e.preventDefault(); return; }
+          if (focusable.length === 0) {
+            e.preventDefault();
+            return;
+          }
           // Length-guarded above; non-null assertion satisfies noUncheckedIndexedAccess
           const first = focusable[0]!;
           const last = focusable[focusable.length - 1]!;
@@ -168,7 +164,7 @@ export const Drawer = forwardRef<HTMLDivElement, DrawerProps>(
           }
         }
       },
-      [onClose],
+      [onClose]
     );
 
     const handleBackdropClick = useCallback(() => {
@@ -232,7 +228,7 @@ export const Drawer = forwardRef<HTMLDivElement, DrawerProps>(
     );
 
     return createPortal(drawer, document.body);
-  },
+  }
 );
 
 Drawer.displayName = 'Drawer';

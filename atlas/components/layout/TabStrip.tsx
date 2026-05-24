@@ -54,22 +54,18 @@ export interface TabStripProps {
  * </TabStrip>
  * ```
  */
-export const TabStrip = forwardRef<HTMLDivElement, TabStripProps>(
-  function TabStrip({ children, className, 'aria-label': ariaLabel }, ref) {
-    const rootClass = ['ja-tab-strip', className].filter(Boolean).join(' ');
+export const TabStrip = forwardRef<HTMLDivElement, TabStripProps>(function TabStrip(
+  { children, className, 'aria-label': ariaLabel },
+  ref
+) {
+  const rootClass = ['ja-tab-strip', className].filter(Boolean).join(' ');
 
-    return (
-      <div
-        ref={ref}
-        className={rootClass}
-        role="tablist"
-        aria-label={ariaLabel}
-      >
-        {children}
-      </div>
-    );
-  },
-);
+  return (
+    <div ref={ref} className={rootClass} role="tablist" aria-label={ariaLabel}>
+      {children}
+    </div>
+  );
+});
 
 TabStrip.displayName = 'TabStrip';
 

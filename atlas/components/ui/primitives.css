@@ -142,7 +142,7 @@
 
 /* Disabled */
 .ja-button:disabled,
-.ja-button[aria-disabled="true"] {
+.ja-button[aria-disabled='true'] {
   opacity: 0.38;
   cursor: not-allowed;
   pointer-events: none;
@@ -243,7 +243,7 @@
 }
 
 .ja-icon-button--ghost:hover:not(:disabled) {
-  background: #F4F4F2;
+  background: #f4f4f2;
   color: var(--color-text-primary);
 }
 
@@ -490,7 +490,7 @@
   line-height: 1;
 }
 
-.ja-input[type="number"] {
+.ja-input[type='number'] {
   font-variant-numeric: tabular-nums;
   font-feature-settings: var(--font-feature-numeric);
 }
@@ -738,7 +738,7 @@
 }
 
 .ja-checkbox__input:checked + .ja-checkbox__box,
-.ja-checkbox__input[data-indeterminate="true"] + .ja-checkbox__box {
+.ja-checkbox__input[data-indeterminate='true'] + .ja-checkbox__box {
   background: var(--color-text-primary);
   border-color: var(--color-text-primary);
 }
@@ -757,7 +757,7 @@
   display: block;
 }
 
-.ja-checkbox__input[data-indeterminate="true"] + .ja-checkbox__box .ja-checkbox__indeterminate {
+.ja-checkbox__input[data-indeterminate='true'] + .ja-checkbox__box .ja-checkbox__indeterminate {
   display: block;
 }
 
@@ -1088,8 +1088,12 @@
    ========================================================================== */
 
 @keyframes ja-spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

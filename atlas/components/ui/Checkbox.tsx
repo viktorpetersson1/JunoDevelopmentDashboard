@@ -84,7 +84,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
       className = '',
       ...rest
     },
-    forwardedRef,
+    forwardedRef
   ) => {
     const generatedId = useId();
     const id = idProp ?? generatedId;
@@ -144,12 +144,10 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
           </span>
         </span>
 
-        {label && (
-          <span className="ja-checkbox__label">{label}</span>
-        )}
+        {label && <span className="ja-checkbox__label">{label}</span>}
       </label>
     );
-  },
+  }
 );
 
 Checkbox.displayName = 'Checkbox';

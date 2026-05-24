@@ -62,14 +62,8 @@ export const ProgressBar = forwardRef<HTMLDivElement, ProgressBarProps>(
     const pct = Math.min(100, Math.max(0, (value / max) * 100));
 
     const wrapClass = ['ja-progress', className].filter(Boolean).join(' ');
-    const trackClass = [
-      'ja-progress__track',
-      `ja-progress__track--${size}`,
-    ].join(' ');
-    const fillClass = [
-      'ja-progress__fill',
-      `ja-progress__fill--${variant}`,
-    ].join(' ');
+    const trackClass = ['ja-progress__track', `ja-progress__track--${size}`].join(' ');
+    const fillClass = ['ja-progress__fill', `ja-progress__fill--${variant}`].join(' ');
 
     const hasHeader = label || showValue;
 
@@ -86,22 +80,13 @@ export const ProgressBar = forwardRef<HTMLDivElement, ProgressBarProps>(
       >
         {hasHeader && (
           <div className="ja-progress__header">
-            {label && (
-              <span className="ja-progress__label">{label}</span>
-            )}
-            {showValue && (
-              <span className="ja-progress__value-text">
-                {Math.round(pct)}%
-              </span>
-            )}
+            {label && <span className="ja-progress__label">{label}</span>}
+            {showValue && <span className="ja-progress__value-text">{Math.round(pct)}%</span>}
           </div>
         )}
 
         <div className={trackClass}>
-          <div
-            className={fillClass}
-            style={{ width: `${pct}%` }}
-          />
+          <div className={fillClass} style={{ width: `${pct}%` }} />
         </div>
       </div>
     );

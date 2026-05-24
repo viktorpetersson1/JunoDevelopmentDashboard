@@ -27,8 +27,12 @@
 }
 
 @keyframes ja-backdrop-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .ja-modal-backdrop[data-exiting] {
@@ -36,8 +40,12 @@
 }
 
 @keyframes ja-backdrop-out {
-  from { opacity: 1; }
-  to   { opacity: 0; }
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
 }
 
 .ja-modal {
@@ -84,10 +92,18 @@
 }
 
 /* Sizes */
-.ja-modal--sm { max-width: 400px; }
-.ja-modal--md { max-width: 560px; }
-.ja-modal--lg { max-width: 720px; }
-.ja-modal--xl { max-width: 920px; }
+.ja-modal--sm {
+  max-width: 400px;
+}
+.ja-modal--md {
+  max-width: 560px;
+}
+.ja-modal--lg {
+  max-width: 720px;
+}
+.ja-modal--xl {
+  max-width: 920px;
+}
 
 .ja-modal__header {
   display: flex;
@@ -137,8 +153,9 @@
   font-size: 18px;
   line-height: 1;
   padding: 0;
-  transition: background var(--duration-fast) var(--easing-standard),
-              color var(--duration-fast) var(--easing-standard);
+  transition:
+    background var(--duration-fast) var(--easing-standard),
+    color var(--duration-fast) var(--easing-standard);
 }
 
 .ja-modal__close:hover {
@@ -223,8 +240,12 @@
 }
 
 @keyframes ja-drawer-in {
-  from { transform: translateX(100%); }
-  to   { transform: translateX(0); }
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
 }
 
 .ja-drawer[data-exiting] {
@@ -232,8 +253,12 @@
 }
 
 @keyframes ja-drawer-out {
-  from { transform: translateX(0); }
-  to   { transform: translateX(100%); }
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
 }
 
 .ja-drawer__header {
@@ -274,8 +299,9 @@
   font-size: 18px;
   line-height: 1;
   padding: 0;
-  transition: background var(--duration-fast) var(--easing-standard),
-              color var(--duration-fast) var(--easing-standard);
+  transition:
+    background var(--duration-fast) var(--easing-standard),
+    color var(--duration-fast) var(--easing-standard);
 }
 
 .ja-drawer__close:hover {
@@ -397,10 +423,18 @@
   border-radius: var(--radius-md) 0 0 var(--radius-md);
 }
 
-.ja-toast--default::before  { background: var(--color-border-strong); }
-.ja-toast--positive::before { background: var(--color-positive); }
-.ja-toast--warning::before  { background: var(--color-warning); }
-.ja-toast--negative::before { background: var(--color-negative); }
+.ja-toast--default::before {
+  background: var(--color-border-strong);
+}
+.ja-toast--positive::before {
+  background: var(--color-positive);
+}
+.ja-toast--warning::before {
+  background: var(--color-warning);
+}
+.ja-toast--negative::before {
+  background: var(--color-negative);
+}
 
 .ja-toast__content {
   flex: 1;
@@ -461,8 +495,9 @@
   line-height: 1;
   padding: 0;
   margin-top: 1px;
-  transition: background var(--duration-fast) var(--easing-standard),
-              color var(--duration-fast) var(--easing-standard);
+  transition:
+    background var(--duration-fast) var(--easing-standard),
+    color var(--duration-fast) var(--easing-standard);
 }
 
 .ja-toast__dismiss:hover {
@@ -534,8 +569,9 @@
   border: 1px solid var(--color-border-hairline);
   cursor: pointer;
   letter-spacing: var(--letter-spacing-snug);
-  transition: background var(--duration-fast) var(--easing-standard),
-              border-color var(--duration-fast) var(--easing-standard);
+  transition:
+    background var(--duration-fast) var(--easing-standard),
+    border-color var(--duration-fast) var(--easing-standard);
 }
 
 .ja-empty-state__action:hover {
@@ -553,8 +589,12 @@
    ========================================================================== */
 
 @keyframes ja-shimmer {
-  0%   { background-position: -600px 0; }
-  100% { background-position:  600px 0; }
+  0% {
+    background-position: -600px 0;
+  }
+  100% {
+    background-position: 600px 0;
+  }
 }
 
 .ja-skeleton {
@@ -562,7 +602,7 @@
   background: linear-gradient(
     90deg,
     var(--color-surface-muted) 25%,
-    #EBEBEA 50%,
+    #ebebea 50%,
     var(--color-surface-muted) 75%
   );
   background-size: 1200px 100%;
@@ -610,7 +650,7 @@
   background: linear-gradient(
     90deg,
     var(--color-surface-muted) 25%,
-    #EBEBEA 50%,
+    #ebebea 50%,
     var(--color-surface-muted) 75%
   );
   background-size: 1200px 100%;
@@ -625,7 +665,7 @@
   background: linear-gradient(
     90deg,
     var(--color-surface-muted) 25%,
-    #EBEBEA 50%,
+    #ebebea 50%,
     var(--color-surface-muted) 75%
   );
   background-size: 1200px 100%;

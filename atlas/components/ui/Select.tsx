@@ -18,11 +18,7 @@
  * />
  */
 
-import React, {
-  forwardRef,
-  useId,
-  type SelectHTMLAttributes,
-} from 'react';
+import React, { forwardRef, useId, type SelectHTMLAttributes } from 'react';
 import './primitives.css';
 
 export interface SelectOption {
@@ -30,8 +26,7 @@ export interface SelectOption {
   label: string;
 }
 
-export interface SelectProps
-  extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'onChange'> {
+export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'onChange'> {
   /** Field label rendered above the select */
   label?: string;
   /** Array of option items */
@@ -48,12 +43,7 @@ export interface SelectProps
 
 /** Chevron icon — inline SVG, inherits colour */
 const ChevronDown = () => (
-  <svg
-    viewBox="0 0 14 14"
-    fill="none"
-    stroke="currentColor"
-    aria-hidden="true"
-  >
+  <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" aria-hidden="true">
     <path d="M3 5l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
@@ -71,15 +61,12 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
       className = '',
       ...rest
     },
-    ref,
+    ref
   ) => {
     const generatedId = useId();
     const id = idProp ?? generatedId;
 
-    const innerClasses = [
-      'ja-select-inner',
-      disabled ? 'ja-select-inner--disabled' : '',
-    ]
+    const innerClasses = ['ja-select-inner', disabled ? 'ja-select-inner--disabled' : '']
       .filter(Boolean)
       .join(' ');
 
@@ -120,7 +107,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
         </div>
       </div>
     );
-  },
+  }
 );
 
 Select.displayName = 'Select';

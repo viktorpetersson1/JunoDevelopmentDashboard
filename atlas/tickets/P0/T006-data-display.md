@@ -3,6 +3,7 @@
 **Goal:** Port the 8 data-display components into `atlas/components/data/`.
 
 ## Components
+
 - `KPITile.tsx` — label + value + optional delta + hint + sparkline slot
 - `KPIStrip.tsx` — responsive grid of KPI tiles (3-6 cols, clamped)
 - `ProgressBar.tsx` — semantic variants (default/positive/warning/negative); sm/md sizes
@@ -22,15 +23,18 @@ Plus `data.css` (9 KB) + `index.ts` barrel.
 4. **Table.tsx** — added `cellNode` guard so jsdom doesn't try to render `unknown` directly: nulls render as null, objects render as ReactNode, primitives go through `String()`
 
 ## Tests
+
 24 tests across 8 files (3 per simple component, 4 for Sparkline/Table/TableRow with edge cases).
 
 ## Verified
+
 - `pnpm lint` → 0
 - `pnpm typecheck` → 0
 - `pnpm test` → 30/30 files, 109/109 tests
 - `pnpm build` → `/` first-load 87.2 kB unchanged
 
 ## Done-when
+
 - [x] All 8 components ported
 - [x] `data.css` co-located + imported per component
 - [x] `index.ts` barrel exports

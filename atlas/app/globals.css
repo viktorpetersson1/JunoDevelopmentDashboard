@@ -8,24 +8,24 @@
 /* shadcn token remapping — only used if shadcn primitives get added later.
    Per CLAUDE.md §4: only what shipped in the design system. No new shadcn. */
 :root {
-  --background:             var(--color-surface-base);
-  --foreground:             var(--color-text-primary);
-  --card:                   var(--color-surface-raised);
-  --card-foreground:        var(--color-text-primary);
-  --popover:                var(--color-surface-raised);
-  --popover-foreground:     var(--color-text-primary);
-  --primary:                var(--color-text-primary);
-  --primary-foreground:     var(--color-text-inverse);
-  --secondary:              var(--color-surface-muted);
-  --secondary-foreground:   var(--color-text-primary);
-  --muted:                  var(--color-surface-sunken);
-  --muted-foreground:       var(--color-text-secondary);
-  --accent:                 var(--color-accent-lime);
-  --accent-foreground:      var(--color-text-on-lime);
-  --destructive:            var(--color-negative);
+  --background: var(--color-surface-base);
+  --foreground: var(--color-text-primary);
+  --card: var(--color-surface-raised);
+  --card-foreground: var(--color-text-primary);
+  --popover: var(--color-surface-raised);
+  --popover-foreground: var(--color-text-primary);
+  --primary: var(--color-text-primary);
+  --primary-foreground: var(--color-text-inverse);
+  --secondary: var(--color-surface-muted);
+  --secondary-foreground: var(--color-text-primary);
+  --muted: var(--color-surface-sunken);
+  --muted-foreground: var(--color-text-secondary);
+  --accent: var(--color-accent-lime);
+  --accent-foreground: var(--color-text-on-lime);
+  --destructive: var(--color-negative);
   --destructive-foreground: var(--color-text-inverse);
-  --border:                 var(--color-border-hairline);
-  --input:                  var(--color-border-hairline);
-  --ring:                   var(--color-border-focus);
-  --radius:                 var(--radius-md);
+  --border: var(--color-border-hairline);
+  --input: var(--color-border-hairline);
+  --ring: var(--color-border-focus);
+  --radius: var(--radius-md);
 }

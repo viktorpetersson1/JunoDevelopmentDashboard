@@ -56,7 +56,7 @@ export interface SparklineProps {
 // Reference CSS vars from tokens.css per CLAUDE.md §9.3 — no hex literals in TS.
 // SVG stroke + fill attributes accept var() values in modern browsers.
 const STROKE_COLORS: Record<NonNullable<SparklineProps['variant']>, string> = {
-  default:  'var(--color-accent-blue)',
+  default: 'var(--color-accent-blue)',
   positive: 'var(--color-positive)',
   negative: 'var(--color-negative)',
 };
@@ -70,11 +70,7 @@ const V_PAD = STROKE_WIDTH;
 // ---------------------------------------------------------------------------
 
 /** Normalise data into SVG coordinate pairs */
-function buildPoints(
-  data: number[],
-  width: number,
-  height: number
-): string {
+function buildPoints(data: number[], width: number, height: number): string {
   if (data.length < 2) return '';
 
   const min = Math.min(...data);
@@ -100,15 +96,7 @@ function buildPoints(
 
 export const Sparkline = forwardRef<SVGSVGElement, SparklineProps>(
   (
-    {
-      data,
-      width = 80,
-      height = 24,
-      variant = 'default',
-      fill = false,
-      className,
-      ...rest
-    },
+    { data, width = 80, height = 24, variant = 'default', fill = false, className, ...rest },
     ref
   ) => {
     // Stable unique id for the gradient definition
@@ -116,10 +104,7 @@ export const Sparkline = forwardRef<SVGSVGElement, SparklineProps>(
     const gradientId = `ja-spark-grad-${uid.replace(/:/g, '')}`;
     const color = STROKE_COLORS[variant];
 
-    const points = useMemo(
-      () => buildPoints(data, width, height),
-      [data, width, height]
-    );
+    const points = useMemo(() => buildPoints(data, width, height), [data, width, height]);
 
     // Not enough data to draw a line
     if (!points) return null;
@@ -155,12 +140,7 @@ export const Sparkline = forwardRef<SVGSVGElement, SparklineProps>(
         )}
 
         {/* Gradient fill area */}
-        {fill && fillPoints && (
-          <polygon
-            points={fillPoints}
-            fill={`url(#${gradientId})`}
-          />
-        )}
+        {fill && fillPoints && <polygon points={fillPoints} fill={`url(#${gradientId})`} />}
 
         {/* Line */}
         <polyline

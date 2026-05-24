@@ -34,16 +34,10 @@
  * />
  */
 
-import React, {
-  forwardRef,
-  useId,
-  type InputHTMLAttributes,
-  type ReactNode,
-} from 'react';
+import React, { forwardRef, useId, type InputHTMLAttributes, type ReactNode } from 'react';
 import './primitives.css';
 
-export interface InputProps
-  extends Omit<InputHTMLAttributes<HTMLInputElement>, 'prefix'> {
+export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'prefix'> {
   /** Field label rendered above the input */
   label?: string;
   /** Helper or error text rendered below */
@@ -80,7 +74,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       type = 'text',
       ...rest
     },
-    ref,
+    ref
   ) => {
     const generatedId = useId();
     const id = idProp ?? generatedId;
@@ -142,10 +136,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         {hint && (
           <span
             id={hintId}
-            className={[
-              'ja-field__hint',
-              invalid ? 'ja-field__hint--error' : '',
-            ]
+            className={['ja-field__hint', invalid ? 'ja-field__hint--error' : '']
               .filter(Boolean)
               .join(' ')}
             role={invalid ? 'alert' : undefined}
@@ -155,7 +146,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         )}
       </div>
     );
-  },
+  }
 );
 
 Input.displayName = 'Input';

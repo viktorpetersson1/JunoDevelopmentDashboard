@@ -152,7 +152,7 @@
 .ja-form-page__body {
   display: grid;
   grid-template-columns: 1.55fr 1fr;
-  grid-template-areas: "form rail";
+  grid-template-areas: 'form rail';
   gap: var(--space-6);
   align-items: start;
 }
@@ -161,8 +161,8 @@
   .ja-form-page__body {
     grid-template-columns: 1fr;
     grid-template-areas:
-      "form"
-      "rail";
+      'form'
+      'rail';
   }
 }
 

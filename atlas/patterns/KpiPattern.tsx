@@ -120,11 +120,7 @@ export function KpiPattern({
           {/* Card header — only rendered when title or actions are present */}
           {(chartTitle || chartActions) && (
             <div className="ja-kpi-pattern__chart-header">
-              {chartTitle && (
-                <h2 className="ja-kpi-pattern__chart-title">
-                  {chartTitle}
-                </h2>
-              )}
+              {chartTitle && <h2 className="ja-kpi-pattern__chart-title">{chartTitle}</h2>}
               {chartActions && (
                 <div className="ja-kpi-pattern__chart-actions" aria-label="Chart actions">
                   {chartActions}

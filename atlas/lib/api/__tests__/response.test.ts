@@ -34,10 +34,13 @@ describe('response envelopes', () => {
     ['notFound', notFound(), 404, 'NOT_FOUND', 'Not found'],
     ['conflict', conflict('clash'), 409, 'CONFLICT', 'clash'],
     ['serverError', serverError(), 500, 'INTERNAL_ERROR', 'Unexpected server error'],
-  ] as const)('%s returns { error } with correct status + code', async (_n, res, status, code, msg) => {
-    expect(res.status).toBe(status);
-    const body = (await readJson(res)) as { error: { code: string; message: string } };
-    expect(body.error.code).toBe(code);
-    expect(body.error.message).toBe(msg);
-  });
+  ] as const)(
+    '%s returns { error } with correct status + code',
+    async (_n, res, status, code, msg) => {
+      expect(res.status).toBe(status);
+      const body = (await readJson(res)) as { error: { code: string; message: string } };
+      expect(body.error.code).toBe(code);
+      expect(body.error.message).toBe(msg);
+    }
+  );
 });

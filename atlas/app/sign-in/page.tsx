@@ -22,9 +22,7 @@ export default function SignInPage({
         <div className="rounded-xl bg-surface-base p-8 shadow-sm">
           <div className="mb-8 text-center">
             <h1 className="text-2xl font-semibold text-text-primary">Juno Atlas</h1>
-            <p className="mt-2 text-sm text-text-secondary">
-              Sign in to continue.
-            </p>
+            <p className="mt-2 text-sm text-text-secondary">Sign in to continue.</p>
           </div>
 
           <SignInForm redirectTo={redirectTo} initialError={errorParam} />

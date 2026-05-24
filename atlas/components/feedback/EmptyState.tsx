@@ -68,22 +68,16 @@ export const EmptyState = forwardRef<HTMLDivElement, EmptyStateProps>(
 
         <h3 className="ja-empty-state__title">{title}</h3>
 
-        {description && (
-          <p className="ja-empty-state__description">{description}</p>
-        )}
+        {description && <p className="ja-empty-state__description">{description}</p>}
 
         {action && (
-          <button
-            type="button"
-            className="ja-empty-state__action"
-            onClick={action.onClick}
-          >
+          <button type="button" className="ja-empty-state__action" onClick={action.onClick}>
             {action.label}
           </button>
         )}
       </div>
     );
-  },
+  }
 );
 
 EmptyState.displayName = 'EmptyState';

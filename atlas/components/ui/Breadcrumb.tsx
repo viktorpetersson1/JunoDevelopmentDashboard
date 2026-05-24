@@ -50,17 +50,11 @@ const ChevronRight = () => (
   </svg>
 );
 
-export const Breadcrumb: React.FC<BreadcrumbProps> = ({
-  items,
-  className = '',
-}) => {
+export const Breadcrumb: React.FC<BreadcrumbProps> = ({ items, className = '' }) => {
   if (!items.length) return null;
 
   return (
-    <nav
-      aria-label="Breadcrumb"
-      className={className || undefined}
-    >
+    <nav aria-label="Breadcrumb" className={className || undefined}>
       <ol className="ja-breadcrumb">
         {items.map((item, index) => {
           const isLast = index === items.length - 1;
@@ -68,10 +62,7 @@ export const Breadcrumb: React.FC<BreadcrumbProps> = ({
           return (
             <li key={`${item.label}-${index}`} className="ja-breadcrumb__item">
               {isLast ? (
-                <span
-                  className="ja-breadcrumb__current"
-                  aria-current="page"
-                >
+                <span className="ja-breadcrumb__current" aria-current="page">
                   {item.label}
                 </span>
               ) : (

@@ -44,16 +44,8 @@ export interface ScenarioChipProps
 
 export const ScenarioChip = forwardRef<HTMLButtonElement, ScenarioChipProps>(
   (
-    {
-      label,
-      scenario = 'base',
-      active = false,
-      onClick,
-      className = '',
-      disabled,
-      ...rest
-    },
-    ref,
+    { label, scenario = 'base', active = false, onClick, className = '', disabled, ...rest },
+    ref
   ) => {
     const classes = [
       'ja-scenario-chip',
@@ -78,7 +70,7 @@ export const ScenarioChip = forwardRef<HTMLButtonElement, ScenarioChipProps>(
         <span>{label}</span>
       </button>
     );
-  },
+  }
 );
 
 ScenarioChip.displayName = 'ScenarioChip';

@@ -47,7 +47,8 @@
   max-width: var(--layout-content-max-width);
   width: 100%;
   margin: 0 auto;
-  padding: var(--layout-content-padding-top) var(--layout-content-padding-x) var(--layout-content-padding-bot);
+  padding: var(--layout-content-padding-top) var(--layout-content-padding-x)
+    var(--layout-content-padding-bot);
   min-width: 0;
   box-sizing: border-box;
 }

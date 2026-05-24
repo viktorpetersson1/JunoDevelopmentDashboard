@@ -84,15 +84,11 @@ export type CardProps<E extends ElementType = 'div'> = PolymorphicComponentProp<
  */
 export const Card = forwardRef(function Card<E extends ElementType = 'div'>(
   { as, padding = 24, interactive = false, children, className, style, ...rest }: CardProps<E>,
-  ref: React.Ref<Element>,
+  ref: React.Ref<Element>
 ) {
   const Component = (as ?? 'div') as ElementType;
 
-  const rootClass = [
-    'ja-card',
-    interactive ? 'ja-card--interactive' : '',
-    className,
-  ]
+  const rootClass = ['ja-card', interactive ? 'ja-card--interactive' : '', className]
     .filter(Boolean)
     .join(' ');
 
@@ -103,17 +99,12 @@ export const Card = forwardRef(function Card<E extends ElementType = 'div'>(
   } as React.CSSProperties;
 
   return (
-    <Component
-      ref={ref}
-      className={rootClass}
-      style={cardStyle}
-      {...rest}
-    >
+    <Component ref={ref} className={rootClass} style={cardStyle} {...rest}>
       {children}
     </Component>
   );
 }) as <E extends ElementType = 'div'>(
-  props: CardProps<E> & { ref?: React.Ref<Element> },
+  props: CardProps<E> & { ref?: React.Ref<Element> }
 ) => React.ReactElement | null;
 
 // Assign displayName for React DevTools — workaround for forwardRef + generics.

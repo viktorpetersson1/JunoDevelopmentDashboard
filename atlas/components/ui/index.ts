@@ -7,7 +7,12 @@ export { Breadcrumb, type BreadcrumbProps, type BreadcrumbItem } from './Breadcr
 export { Button, type ButtonProps, type ButtonVariant, type ButtonSize } from './Button';
 export { Checkbox, type CheckboxProps } from './Checkbox';
 export { FilterChip, type FilterChipProps } from './FilterChip';
-export { IconButton, type IconButtonProps, type IconButtonVariant, type IconButtonSize } from './IconButton';
+export {
+  IconButton,
+  type IconButtonProps,
+  type IconButtonVariant,
+  type IconButtonSize,
+} from './IconButton';
 export { Input, type InputProps } from './Input';
 export { Pill, type PillProps, type PillVariant } from './Pill';
 export { Radio, type RadioProps } from './Radio';

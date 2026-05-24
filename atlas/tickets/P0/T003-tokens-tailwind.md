@@ -5,11 +5,13 @@
 ## What changed
 
 ### New files
+
 - `atlas/app/tokens.css` — full token palette from DESIGN_BRIDGE.md §2 (surfaces, borders, text, accent, semantic, chart, radii, shadows, spacing, typography). Dark tokens included but NOT active in `:root`.
 - `atlas/lib/chart-theme.ts` — Recharts theme + 6-colour series palette + `areaGradient` helper. All references via CSS vars.
 - `atlas/lib/__tests__/tokens.test.ts` — 7 source-level invariants asserting locked palette values, accent, chart palette, spacing, radii, and dark-mode keying.
 
 ### Modified
+
 - `atlas/app/globals.css` — imports `tokens.css`, adds shadcn token remapping (DESIGN_BRIDGE.md §4) and 9 typography utility classes (`.text-display`, `.text-h1`-`.text-h3`, `.text-body`, `.text-sm-juno`, `.text-xs-juno`, `.text-eyebrow`, `.metric-value`).
 - `atlas/tailwind.config.ts` — rewritten per DESIGN_BRIDGE.md §3 to consume CSS vars for `colors`, `borderRadius`, `boxShadow`, `spacing` (suffixed `-juno` to avoid clobbering Tailwind's default scale), `fontFamily`, `maxWidth.shell`. `darkMode` keyed off `[data-theme="dark"]` but kept inactive.
 - `atlas/app/page.tsx` — smoke surface (3 KPI tiles + accent CTA) exercising `text-eyebrow`, `metric-value`, `bg-surface-card`, `shadow-sm`, `rounded-lg`, `bg-accent-500`, `text-text-secondary`. Will be replaced by Surface 01 in T046.

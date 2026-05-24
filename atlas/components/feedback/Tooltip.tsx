@@ -20,14 +20,7 @@
  * ```
  */
 
-import React, {
-  forwardRef,
-  useCallback,
-  useId,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react';
+import React, { forwardRef, useCallback, useId, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import './feedback.css';
 
@@ -55,18 +48,14 @@ export interface TooltipProps {
 // ---------------------------------------------------------------------------
 
 const OFFSET = 8; // px gap between trigger and bubble
-const ARROW = 5;  // arrow half-height (matches CSS border: 5px)
+const ARROW = 5; // arrow half-height (matches CSS border: 5px)
 
 interface Position {
   top: number;
   left: number;
 }
 
-function calculatePosition(
-  trigger: DOMRect,
-  tooltip: DOMRect,
-  side: TooltipSide,
-): Position {
+function calculatePosition(trigger: DOMRect, tooltip: DOMRect, side: TooltipSide): Position {
   switch (side) {
     case 'top':
       return {
@@ -161,15 +150,21 @@ export const Tooltip = forwardRef<HTMLElement, TooltipProps>(
             },
             onMouseEnter: (e: React.MouseEvent<HTMLElement>) => {
               show();
-              (children as React.ReactElement<React.HTMLAttributes<HTMLElement>>).props.onMouseEnter?.(e);
+              (
+                children as React.ReactElement<React.HTMLAttributes<HTMLElement>>
+              ).props.onMouseEnter?.(e);
             },
             onMouseLeave: (e: React.MouseEvent<HTMLElement>) => {
               hide();
-              (children as React.ReactElement<React.HTMLAttributes<HTMLElement>>).props.onMouseLeave?.(e);
+              (
+                children as React.ReactElement<React.HTMLAttributes<HTMLElement>>
+              ).props.onMouseLeave?.(e);
             },
             onFocus: (e: React.FocusEvent<HTMLElement>) => {
               show();
-              (children as React.ReactElement<React.HTMLAttributes<HTMLElement>>).props.onFocus?.(e);
+              (children as React.ReactElement<React.HTMLAttributes<HTMLElement>>).props.onFocus?.(
+                e
+              );
             },
             onBlur: (e: React.FocusEvent<HTMLElement>) => {
               hide();
@@ -189,13 +184,7 @@ export const Tooltip = forwardRef<HTMLElement, TooltipProps>(
               id={tooltipId}
               ref={tooltipRef}
               role="tooltip"
-              className={[
-                'ja-tooltip',
-                `ja-tooltip--${side}`,
-                className,
-              ]
-                .filter(Boolean)
-                .join(' ')}
+              className={['ja-tooltip', `ja-tooltip--${side}`, className].filter(Boolean).join(' ')}
               style={{
                 top: position.top,
                 left: position.left,
@@ -203,11 +192,11 @@ export const Tooltip = forwardRef<HTMLElement, TooltipProps>(
             >
               {content}
             </div>,
-            document.body,
+            document.body
           )}
       </>
     );
-  },
+  }
 );
 
 Tooltip.displayName = 'Tooltip';

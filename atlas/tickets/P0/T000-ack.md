@@ -5,6 +5,7 @@
 ## ACK
 
 I have read:
+
 - `docs/handoff/CLAUDE.md` (codebase contract)
 - `docs/handoff/SUPABASE_TRANSLATION.md` (stack overrides)
 - `docs/handoff/P0_TICKETS.md` (work plan)

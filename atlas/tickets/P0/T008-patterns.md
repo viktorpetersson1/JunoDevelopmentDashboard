@@ -3,6 +3,7 @@
 **Goal:** Port the 6 design-system patterns into `atlas/patterns/` so consumer pages compose primitives + layout + data + feedback without re-wiring boilerplate.
 
 ## Patterns
+
 - `AppShell.tsx` — top-level wrapper: Sidebar + Topbar + PageShell with default Juno nav (3 sections, 9 items) + JunoLogo + default user; full override props
 - `ListPage.tsx` — list/table page: title + primary action + filter chips + search + Table or EmptyState
 - `FormPage.tsx` — settings/form page: title + breadcrumbs + two-col (sections | rail) + footer (Cancel + Save) with `dirty` indicator
@@ -26,15 +27,18 @@ While `ListPage` was being wired, we discovered the design-system source uses `<
 Added `iconLeft`/`iconRight` props to `Input.tsx` that render with the existing `.ja-input-affix--icon` class. This matches design intent without changing the visual contract for existing `prefix`/`suffix` users. Logged here rather than re-opening T004.
 
 ## Tests
+
 20 tests across 6 files (3-4 per pattern). Validate composition correctness — that the right child components render with the right roles, slots populate, callbacks fire.
 
 ## Verified
+
 - `pnpm lint` → 0
 - `pnpm typecheck` → 0
 - `pnpm test` → 42/42 files, 150/150 tests
 - `pnpm build` → `/` first-load 87.2 kB unchanged (patterns tree-shaken)
 
 ## Done-when
+
 - [x] All 6 patterns ported
 - [x] Pattern → component import paths corrected for atlas layout
 - [x] `patterns.css` co-located + imported per pattern

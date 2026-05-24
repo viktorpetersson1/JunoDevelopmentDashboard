@@ -41,13 +41,7 @@ export interface TagProps {
 
 export const Tag = forwardRef<HTMLSpanElement, TagProps>(
   ({ children, size = 'md', className, ...rest }, ref) => {
-    const tagClass = [
-      'ja-tag',
-      `ja-tag--${size}`,
-      className,
-    ]
-      .filter(Boolean)
-      .join(' ');
+    const tagClass = ['ja-tag', `ja-tag--${size}`, className].filter(Boolean).join(' ');
 
     return (
       <span ref={ref} className={tagClass} {...rest}>

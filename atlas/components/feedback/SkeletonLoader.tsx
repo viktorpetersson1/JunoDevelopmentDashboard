@@ -148,13 +148,7 @@ export const SkeletonLoader = forwardRef<HTMLDivElement, SkeletonLoaderProps>(
     if (count <= 1) {
       // Single — no wrapper div needed
       return (
-        <div
-          ref={ref}
-          className={className}
-          role="status"
-          aria-label="Loading…"
-          aria-busy="true"
-        >
+        <div ref={ref} className={className} role="status" aria-label="Loading…" aria-busy="true">
           <SingleSkeleton variant={variant} width={width} height={height} />
         </div>
       );
@@ -170,16 +164,11 @@ export const SkeletonLoader = forwardRef<HTMLDivElement, SkeletonLoaderProps>(
         aria-busy="true"
       >
         {Array.from({ length: count }, (_, i) => (
-          <SingleSkeleton
-            key={i}
-            variant={variant}
-            width={width}
-            height={height}
-          />
+          <SingleSkeleton key={i} variant={variant} width={width} height={height} />
         ))}
       </div>
     );
-  },
+  }
 );
 
 SkeletonLoader.displayName = 'SkeletonLoader';

@@ -25,8 +25,7 @@
 import React, { forwardRef, useId, type InputHTMLAttributes } from 'react';
 import './primitives.css';
 
-export interface SwitchProps
-  extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'size'> {
+export interface SwitchProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'size'> {
   /** Whether the toggle is on */
   checked?: boolean;
   /** Called when the toggle changes */
@@ -39,34 +38,18 @@ export interface SwitchProps
 
 export const Switch = forwardRef<HTMLInputElement, SwitchProps>(
   (
-    {
-      checked = false,
-      onChange,
-      disabled = false,
-      label,
-      id: idProp,
-      className = '',
-      ...rest
-    },
-    ref,
+    { checked = false, onChange, disabled = false, label, id: idProp, className = '', ...rest },
+    ref
   ) => {
     const generatedId = useId();
     const id = idProp ?? generatedId;
 
-    const wrapClasses = [
-      'ja-switch-wrap',
-      disabled ? 'ja-switch-wrap--disabled' : '',
-      className,
-    ]
+    const wrapClasses = ['ja-switch-wrap', disabled ? 'ja-switch-wrap--disabled' : '', className]
       .filter(Boolean)
       .join(' ');
 
     return (
-      <label
-        className={wrapClasses}
-        htmlFor={id}
-        aria-label={label ? undefined : 'Toggle'}
-      >
+      <label className={wrapClasses} htmlFor={id} aria-label={label ? undefined : 'Toggle'}>
         {/* T004 fix: removed aria-hidden from .ja-switch wrapper — it was
             hiding the role=switch input from screen readers. Track + thumb
             are visual-only and aria-hidden individually. */}
@@ -87,12 +70,10 @@ export const Switch = forwardRef<HTMLInputElement, SwitchProps>(
           <span className="ja-switch__thumb" aria-hidden="true" />
         </span>
 
-        {label && (
-          <span className="ja-switch__label">{label}</span>
-        )}
+        {label && <span className="ja-switch__label">{label}</span>}
       </label>
     );
-  },
+  }
 );
 
 Switch.displayName = 'Switch';

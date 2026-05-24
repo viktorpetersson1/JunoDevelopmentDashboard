@@ -87,7 +87,7 @@ const SearchIcon = () => (
  */
 export const Topbar = forwardRef<HTMLElement, TopbarProps>(function Topbar(
   { title, scenario, onScenarioChange, actions, search, className },
-  ref,
+  ref
 ) {
   const rootClass = ['ja-topbar', className].filter(Boolean).join(' ');
 
@@ -103,11 +103,7 @@ export const Topbar = forwardRef<HTMLElement, TopbarProps>(function Topbar(
         )}
 
         {/* Scenario segmented control */}
-        <div
-          className="ja-topbar__scenario"
-          role="group"
-          aria-label="Scenario selector"
-        >
+        <div className="ja-topbar__scenario" role="group" aria-label="Scenario selector">
           {SCENARIOS.map(({ value, label }) => {
             const isActive = value === scenario;
             const pillClass = [
@@ -127,12 +123,7 @@ export const Topbar = forwardRef<HTMLElement, TopbarProps>(function Topbar(
                 onClick={() => onScenarioChange(value)}
               >
                 {/* Active dot indicator */}
-                {isActive && (
-                  <span
-                    className="ja-topbar__scenario-dot"
-                    aria-hidden="true"
-                  />
-                )}
+                {isActive && <span className="ja-topbar__scenario-dot" aria-hidden="true" />}
                 {label}
               </button>
             );

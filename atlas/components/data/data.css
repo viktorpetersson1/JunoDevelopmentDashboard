@@ -184,7 +184,8 @@
   text-align: right;
 }
 
-.ja-table__body {}
+.ja-table__body {
+}
 
 /* Row is rendered by TableRow component */
 
@@ -302,10 +303,18 @@
   transition: width var(--duration-slow, 240ms) var(--easing-out, ease);
 }
 
-.ja-progress__fill--default  { background: #0d0d0d; }
-.ja-progress__fill--positive { background: #15803d; }
-.ja-progress__fill--warning  { background: #a16207; }
-.ja-progress__fill--negative { background: #b91c1c; }
+.ja-progress__fill--default {
+  background: #0d0d0d;
+}
+.ja-progress__fill--positive {
+  background: #15803d;
+}
+.ja-progress__fill--warning {
+  background: #a16207;
+}
+.ja-progress__fill--negative {
+  background: #b91c1c;
+}
 
 /* --------------------------------------------------------------------------
    Sparkline
@@ -367,11 +376,21 @@
   border-radius: var(--radius-full, 999px);
 }
 
-.ja-status__dot--positive { background: var(--color-positive, #15803d); }
-.ja-status__dot--warning  { background: var(--color-warning,  #a16207); }
-.ja-status__dot--negative { background: var(--color-negative, #b91c1c); }
-.ja-status__dot--neutral  { background: var(--color-text-quaternary, #b0b5bc); }
-.ja-status__dot--info     { background: var(--color-info, #1e40af); }
+.ja-status__dot--positive {
+  background: var(--color-positive, #15803d);
+}
+.ja-status__dot--warning {
+  background: var(--color-warning, #a16207);
+}
+.ja-status__dot--negative {
+  background: var(--color-negative, #b91c1c);
+}
+.ja-status__dot--neutral {
+  background: var(--color-text-quaternary, #b0b5bc);
+}
+.ja-status__dot--info {
+  background: var(--color-info, #1e40af);
+}
 
 .ja-status__label {
   font-size: 13px;

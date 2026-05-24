@@ -3,6 +3,7 @@
 **Goal:** Port the 6 feedback-layer components into `atlas/components/feedback/`.
 
 ## Components
+
 - `Modal.tsx` — centered dialog via portal; backdrop dismiss; Esc-to-close; focus trap; exit animation; 4 size variants
 - `Drawer.tsx` — right-side panel via portal; sticky header + footer; focus trap; backdrop click dismiss
 - `Toast.tsx` — `ToastProvider` + `useToast()` hook + standalone `<Toast>`; 4 variants; auto-dismiss; max-3 visible stack
@@ -20,15 +21,18 @@ Plus `feedback.css` (18 KB) and `index.ts` barrel.
 4. **Tooltip.tsx** — typed the `cloneElement` injected-prop bag through `TriggerProps = HTMLAttributes<HTMLElement> & { ref? }` so `ref` is allowed alongside event handlers.
 
 ## Tests
+
 21 tests across 6 files (3-5 per component). Uses `vi.useFakeTimers()` to drive Tooltip's delay logic; `renderHook` for `useToast`.
 
 ## Verified
+
 - `pnpm lint` → 0
 - `pnpm typecheck` → 0
 - `pnpm test` → 36/36 files, 130/130 tests
 - `pnpm build` → `/` first-load 87.2 kB unchanged (feedback tree-shaken)
 
 ## Done-when
+
 - [x] All 6 components ported
 - [x] `feedback.css` co-located + imported per component
 - [x] `index.ts` barrel exports (incl. `ToastProvider`, `useToast`)

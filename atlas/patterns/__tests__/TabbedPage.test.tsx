@@ -28,13 +28,7 @@ describe('TabbedPage', () => {
   });
 
   it('renders count badge + actions slot', () => {
-    render(
-      <TabbedPage
-        title="x"
-        tabs={TABS}
-        actions={<button>Edit</button>}
-      />
-    );
+    render(<TabbedPage title="x" tabs={TABS} actions={<button>Edit</button>} />);
     expect(screen.getByLabelText('4 items')).toHaveTextContent('4');
     expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
   });

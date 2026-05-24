@@ -37,13 +37,7 @@ export const Pill: React.FC<PillProps> = ({
   className = '',
   ...rest
 }) => {
-  const classes = [
-    'ja-pill',
-    `ja-pill--${variant}`,
-    className,
-  ]
-    .filter(Boolean)
-    .join(' ');
+  const classes = ['ja-pill', `ja-pill--${variant}`, className].filter(Boolean).join(' ');
 
   return (
     <span className={classes} {...rest}>

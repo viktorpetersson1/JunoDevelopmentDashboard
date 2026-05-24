@@ -52,7 +52,7 @@ export interface KPITileProps {
 // ---------------------------------------------------------------------------
 
 const ARROW: Record<KPITileDelta['direction'], string> = {
-  up:   '↑',
+  up: '↑',
   down: '↓',
   flat: '→',
 };
@@ -91,9 +91,7 @@ export const KPITile = forwardRef<HTMLDivElement, KPITileProps>(
                 {delta.value}
               </span>
             )}
-            {hint && (
-              <span className="ja-kpi-tile__hint">{hint}</span>
-            )}
+            {hint && <span className="ja-kpi-tile__hint">{hint}</span>}
           </div>
         )}
 

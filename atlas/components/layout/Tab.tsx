@@ -56,17 +56,11 @@ export interface TabProps {
  * </Tab>
  * ```
  */
-export const Tab = forwardRef<
-  HTMLAnchorElement & HTMLButtonElement,
-  TabProps
->(function Tab({ href, active = false, children, count, className, onClick }, ref) {
-  const rootClass = [
-    'ja-tab',
-    active ? 'ja-tab--active' : '',
-    className,
-  ]
-    .filter(Boolean)
-    .join(' ');
+export const Tab = forwardRef<HTMLAnchorElement & HTMLButtonElement, TabProps>(function Tab(
+  { href, active = false, children, count, className, onClick },
+  ref
+) {
+  const rootClass = ['ja-tab', active ? 'ja-tab--active' : '', className].filter(Boolean).join(' ');
 
   const content = (
     <>

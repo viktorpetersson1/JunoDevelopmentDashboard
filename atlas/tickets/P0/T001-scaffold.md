@@ -5,6 +5,7 @@
 ## What changed
 
 ### New files in `atlas/`
+
 - `package.json` — Next.js 14.2.18, React 18.3.1, TypeScript 5.6, Tailwind 3.4, Supabase SSR 0.5.2, Drizzle 0.36, Vitest 2.1, Playwright 1.49, Geist 1.3
 - `tsconfig.json` — `strict: true`, `noUncheckedIndexedAccess: true`, `moduleResolution: bundler`
 - `next.config.mjs` — minimal; `reactStrictMode: true`
@@ -26,6 +27,7 @@
 - `.github/workflows/ci.yml` — lint + typecheck + unit + build, paths-filtered to `atlas/**`
 
 ### Modified
+
 - Root `.gitignore` updated to ignore `atlas/node_modules`, `atlas/.next`, `atlas/.env*`
 
 ## Deviations from bundle (logged)

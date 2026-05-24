@@ -19,9 +19,7 @@ describe('Avatar', () => {
   it('renders image when src provided', () => {
     // Both the outer span (role=img + aria-label) and the inner <img> with
     // alt match getByRole — use the container to disambiguate to the root.
-    const { container } = render(
-      <Avatar name="Alice Chen" src="/avatars/alice.jpg" size="lg" />
-    );
+    const { container } = render(<Avatar name="Alice Chen" src="/avatars/alice.jpg" size="lg" />);
     const av = container.querySelector('.ja-avatar') as HTMLElement;
     expect(av.className).toContain('ja-avatar--lg');
     const img = av.querySelector('img');

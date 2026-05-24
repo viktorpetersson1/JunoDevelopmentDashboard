@@ -26,8 +26,7 @@
 import React, { forwardRef, useId, type InputHTMLAttributes } from 'react';
 import './primitives.css';
 
-export interface RadioProps
-  extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'size'> {
+export interface RadioProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'size'> {
   /** Whether this option is selected */
   checked?: boolean;
   /** Called on selection */
@@ -40,25 +39,13 @@ export interface RadioProps
 
 export const Radio = forwardRef<HTMLInputElement, RadioProps>(
   (
-    {
-      checked = false,
-      onChange,
-      disabled = false,
-      label,
-      id: idProp,
-      className = '',
-      ...rest
-    },
-    ref,
+    { checked = false, onChange, disabled = false, label, id: idProp, className = '', ...rest },
+    ref
   ) => {
     const generatedId = useId();
     const id = idProp ?? generatedId;
 
-    const wrapClasses = [
-      'ja-radio-wrap',
-      disabled ? 'ja-radio-wrap--disabled' : '',
-      className,
-    ]
+    const wrapClasses = ['ja-radio-wrap', disabled ? 'ja-radio-wrap--disabled' : '', className]
       .filter(Boolean)
       .join(' ');
 
@@ -81,12 +68,10 @@ export const Radio = forwardRef<HTMLInputElement, RadioProps>(
           </span>
         </span>
 
-        {label && (
-          <span className="ja-radio__label">{label}</span>
-        )}
+        {label && <span className="ja-radio__label">{label}</span>}
       </label>
     );
-  },
+  }
 );
 
 Radio.displayName = 'Radio';

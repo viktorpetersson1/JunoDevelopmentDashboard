@@ -12,11 +12,11 @@ import { log } from '@/lib/utils/log';
 import { UnauthorizedError, ForbiddenError } from '@/lib/auth/requireAuth';
 import { forbidden, serverError, unauthorized } from './response';
 
-type Handler<TArgs extends unknown[]> = (
-  ...args: TArgs
-) => Promise<Response> | Response;
+type Handler<TArgs extends unknown[]> = (...args: TArgs) => Promise<Response> | Response;
 
-export function withErrorBoundary<TArgs extends unknown[]>(handler: Handler<TArgs>): Handler<TArgs> {
+export function withErrorBoundary<TArgs extends unknown[]>(
+  handler: Handler<TArgs>
+): Handler<TArgs> {
   return async (...args: TArgs) => {
     try {
       return await handler(...args);

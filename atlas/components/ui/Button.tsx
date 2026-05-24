@@ -36,9 +36,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children?: ReactNode;
 }
 
-const Spinner = () => (
-  <span className="ja-button__spinner" aria-hidden="true" />
-);
+const Spinner = () => <span className="ja-button__spinner" aria-hidden="true" />;
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   (
@@ -56,7 +54,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       type = 'button',
       ...rest
     },
-    ref,
+    ref
   ) => {
     const classes = [
       'ja-button',
@@ -88,9 +86,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             {iconLeft}
           </span>
         )}
-        {children && (
-          <span className="ja-button__content">{children}</span>
-        )}
+        {children && <span className="ja-button__content">{children}</span>}
         {!loading && iconRight && (
           <span className="ja-button__icon" aria-hidden="true">
             {iconRight}
@@ -98,7 +94,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         )}
       </button>
     );
-  },
+  }
 );
 
 Button.displayName = 'Button';

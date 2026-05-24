@@ -110,14 +110,10 @@ export function TwoColPattern({
       aria-label={ariaLabel}
     >
       {/* Main column — 1.55fr */}
-      <div className="ja-two-col__main">
-        {main}
-      </div>
+      <div className="ja-two-col__main">{main}</div>
 
       {/* Rail column — 1fr */}
-      <aside className="ja-two-col__rail">
-        {rail}
-      </aside>
+      <aside className="ja-two-col__rail">{rail}</aside>
     </div>
   );
 }

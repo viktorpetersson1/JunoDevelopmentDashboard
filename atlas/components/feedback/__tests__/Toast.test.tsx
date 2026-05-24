@@ -8,9 +8,7 @@ afterEach(() => {
 
 describe('Toast (standalone)', () => {
   it('renders title + description + applies variant class', () => {
-    render(
-      <Toast id="t1" title="Saved" description="Your changes" variant="positive" />
-    );
+    render(<Toast id="t1" title="Saved" description="Your changes" variant="positive" />);
     const toast = screen.getByRole('status');
     expect(toast.className).toContain('ja-toast--positive');
     expect(screen.getByText('Saved')).toBeInTheDocument();
@@ -21,12 +19,7 @@ describe('Toast (standalone)', () => {
     const action = vi.fn();
     const dismiss = vi.fn();
     render(
-      <Toast
-        id="t2"
-        title="X"
-        action={{ label: 'Undo', onClick: action }}
-        onDismiss={dismiss}
-      />
+      <Toast id="t2" title="X" action={{ label: 'Undo', onClick: action }} onDismiss={dismiss} />
     );
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
     expect(action).toHaveBeenCalled();

@@ -47,7 +47,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
       type = 'button',
       ...rest
     },
-    ref,
+    ref
   ) => {
     const classes = [
       'ja-icon-button',
@@ -70,7 +70,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
         {children}
       </button>
     );
-  },
+  }
 );
 
 IconButton.displayName = 'IconButton';

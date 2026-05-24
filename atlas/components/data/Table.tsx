@@ -98,11 +98,7 @@ function TableInner<TRow = Record<string, unknown>>(
   }: TableProps<TRow>,
   ref: React.ForwardedRef<HTMLDivElement>
 ) {
-  const wrapClass = [
-    'ja-table-wrap',
-    density === 'compact' ? 'ja-table--compact' : '',
-    className,
-  ]
+  const wrapClass = ['ja-table-wrap', density === 'compact' ? 'ja-table--compact' : '', className]
     .filter(Boolean)
     .join(' ');
 
@@ -117,10 +113,7 @@ function TableInner<TRow = Record<string, unknown>>(
                 key={col.key}
                 scope="col"
                 role="columnheader"
-                className={[
-                  'ja-table__th',
-                  col.align === 'right' ? 'ja-table__th--right' : '',
-                ]
+                className={['ja-table__th', col.align === 'right' ? 'ja-table__th--right' : '']
                   .filter(Boolean)
                   .join(' ')}
                 style={{ width: resolveWidth(col.width) }}
@@ -135,11 +128,7 @@ function TableInner<TRow = Record<string, unknown>>(
         <tbody className="ja-table__body" role="rowgroup">
           {rows.length === 0 ? (
             <tr role="row">
-              <td
-                className="ja-table__empty"
-                colSpan={columns.length}
-                role="cell"
-              >
+              <td className="ja-table__empty" colSpan={columns.length} role="cell">
                 {empty ?? 'No data'}
               </td>
             </tr>
@@ -152,10 +141,7 @@ function TableInner<TRow = Record<string, unknown>>(
               >
                 {columns.map((col) => {
                   const isNumeric = col.align === 'right';
-                  const cellClass = [
-                    'ja-table__td',
-                    isNumeric ? 'ja-table__td--right' : '',
-                  ]
+                  const cellClass = ['ja-table__td', isNumeric ? 'ja-table__td--right' : '']
                     .filter(Boolean)
                     .join(' ');
 

@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  hasRole,
-  requireRole,
-  requireSuperAdmin,
-  requireEditor,
-} from '../requireRole';
+import { hasRole, requireRole, requireSuperAdmin, requireEditor } from '../requireRole';
 import { ForbiddenError } from '../requireAuth';
 import type { UserProfile } from '../profile';
 

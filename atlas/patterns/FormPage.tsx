@@ -117,9 +117,7 @@ export function FormPage({
       {/* ── Page header ─────────────────────────────── */}
       <div className="ja-form-page__header">
         <div className="ja-form-page__title-group">
-          {breadcrumbs && breadcrumbs.length > 0 && (
-            <Breadcrumb items={breadcrumbs} />
-          )}
+          {breadcrumbs && breadcrumbs.length > 0 && <Breadcrumb items={breadcrumbs} />}
           <h1 id="ja-form-page-title" className="ja-form-page__title">
             {title}
           </h1>
@@ -157,9 +155,7 @@ export function FormPage({
               bordered
               headingLevel="h2"
             >
-              <div className="ja-form-page__fields">
-                {section.fields}
-              </div>
+              <div className="ja-form-page__fields">{section.fields}</div>
             </Section>
           ))}
         </div>
@@ -175,11 +171,7 @@ export function FormPage({
       {/* ── Footer bar ─────────────────────────────── */}
       <footer className="ja-form-page__footer">
         {dirty && (
-          <span
-            className="ja-form-page__dirty-dot"
-            aria-label="Unsaved changes"
-            role="img"
-          />
+          <span className="ja-form-page__dirty-dot" aria-label="Unsaved changes" role="img" />
         )}
         {onCancel && (
           <Button variant="secondary" size="md" onClick={onCancel}>
@@ -187,11 +179,7 @@ export function FormPage({
           </Button>
         )}
         {onSave && (
-          <Button
-            variant="primary"
-            size="md"
-            onClick={onSave}
-          >
+          <Button variant="primary" size="md" onClick={onSave}>
             {saveLabel}
           </Button>
         )}

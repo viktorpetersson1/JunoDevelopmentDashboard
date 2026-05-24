@@ -137,7 +137,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
       return id;
     },
-    [dismiss],
+    [dismiss]
   );
 
   // Cleanup on unmount
@@ -170,7 +170,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             />
           ))}
         </div>,
-        document.body,
+        document.body
       )}
     </ToastContext.Provider>
   );
@@ -193,17 +193,12 @@ function ToastCard({ item, isExiting, onDismiss }: ToastCardProps) {
     <div
       role="status"
       aria-live="polite"
-      className={[
-        'ja-toast',
-        `ja-toast--${variant}`,
-      ].join(' ')}
+      className={['ja-toast', `ja-toast--${variant}`].join(' ')}
       data-exiting={isExiting ? '' : undefined}
     >
       <div className="ja-toast__content">
         <p className="ja-toast__title">{title}</p>
-        {description && (
-          <p className="ja-toast__description">{description}</p>
-        )}
+        {description && <p className="ja-toast__description">{description}</p>}
         {action && (
           <button
             type="button"
@@ -240,9 +235,7 @@ export interface ToastProps extends ToastItem {
 }
 
 export function Toast({ isExiting = false, onDismiss, ...item }: ToastProps) {
-  return (
-    <ToastCard item={item} isExiting={isExiting} onDismiss={onDismiss ?? (() => {})} />
-  );
+  return <ToastCard item={item} isExiting={isExiting} onDismiss={onDismiss ?? (() => {})} />;
 }
 
 // ---------------------------------------------------------------------------

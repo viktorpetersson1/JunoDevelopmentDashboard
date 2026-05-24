@@ -44,10 +44,10 @@ export interface StatusProps {
 
 const STATE_ARIA: Record<StatusState, string> = {
   positive: 'Positive',
-  warning:  'Warning',
+  warning: 'Warning',
   negative: 'Negative',
-  neutral:  'Neutral',
-  info:     'Info',
+  neutral: 'Neutral',
+  info: 'Info',
 };
 
 // ---------------------------------------------------------------------------
@@ -59,16 +59,8 @@ export const Status = forwardRef<HTMLSpanElement, StatusProps>(
     const wrapClass = ['ja-status', className].filter(Boolean).join(' ');
 
     return (
-      <span
-        ref={ref}
-        className={wrapClass}
-        aria-label={`${STATE_ARIA[state]}: ${label}`}
-        {...rest}
-      >
-        <span
-          className={`ja-status__dot ja-status__dot--${state}`}
-          aria-hidden="true"
-        />
+      <span ref={ref} className={wrapClass} aria-label={`${STATE_ARIA[state]}: ${label}`} {...rest}>
+        <span className={`ja-status__dot ja-status__dot--${state}`} aria-hidden="true" />
         <span className="ja-status__label">{label}</span>
       </span>
     );

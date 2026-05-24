@@ -159,9 +159,7 @@ export function ListPage<TRow = Record<string, unknown>>({
           <h1 id="ja-list-page-title" className="ja-list-page__title">
             {title}
           </h1>
-          {subtitle && (
-            <p className="ja-list-page__subtitle">{subtitle}</p>
-          )}
+          {subtitle && <p className="ja-list-page__subtitle">{subtitle}</p>}
         </div>
 
         {primaryAction && (
@@ -182,11 +180,7 @@ export function ListPage<TRow = Record<string, unknown>>({
       {(filters || onSearchChange !== undefined || resultCount !== undefined) && (
         <div className="ja-list-page__toolbar" role="toolbar" aria-label="Filter and search">
           {/* Filter chips */}
-          {filters && (
-            <div className="ja-list-page__filters">
-              {filters}
-            </div>
-          )}
+          {filters && <div className="ja-list-page__filters">{filters}</div>}
 
           {/* Search input */}
           {onSearchChange !== undefined && (
@@ -224,12 +218,7 @@ export function ListPage<TRow = Record<string, unknown>>({
           />
         </div>
       ) : (
-        <Table
-          columns={columns}
-          rows={rows}
-          getRowKey={getRowKey}
-          onRowClick={onRowClick}
-        />
+        <Table columns={columns} rows={rows} getRowKey={getRowKey} onRowClick={onRowClick} />
       )}
     </div>
   );

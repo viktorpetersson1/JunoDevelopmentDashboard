@@ -5,6 +5,7 @@
 ## What changed
 
 ### New files in `atlas/`
+
 - `drizzle.config.ts` — `schemaFilter: ['atlas']` so drizzle-kit only emits DDL for our schema; `dialect: 'postgresql'`; reads `DATABASE_URL` from env (lazy).
 - `lib/db/client.ts` — Lazy Drizzle client. Reads `DATABASE_URL` at first call, not at import. Uses `postgres` driver with `prepare: false` for Supabase pooler compat.
 - `lib/db/schema/atlas-schema.ts` — `pgSchema('atlas')` shared by every Atlas table.
@@ -19,6 +20,7 @@
 - `scripts/db-reset.ts` — Intentionally disabled (vanilla data lives in same project; no safe destructive script in P0).
 
 ### Modified
+
 - `docs/handoff/SUPABASE_TRANSLATION.md` §3 — Replaced the per-table `atlas_*` prefix scheme with a dedicated `atlas` Postgres schema. Documented coexistence rules.
 
 ## Deviations from bundle (logged)

@@ -29,8 +29,7 @@
 import React, { forwardRef, type ButtonHTMLAttributes } from 'react';
 import './primitives.css';
 
-export interface FilterChipProps
-  extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onClick'> {
+export interface FilterChipProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onClick'> {
   /** Display text of the chip */
   label: string;
   /** Optional numeric badge (e.g., count of active filters) */
@@ -57,24 +56,8 @@ const XIcon = () => (
 );
 
 export const FilterChip = forwardRef<HTMLButtonElement, FilterChipProps>(
-  (
-    {
-      label,
-      value,
-      active = false,
-      onClick,
-      onClear,
-      className = '',
-      disabled,
-      ...rest
-    },
-    ref,
-  ) => {
-    const classes = [
-      'ja-filter-chip',
-      active ? 'ja-filter-chip--active' : '',
-      className,
-    ]
+  ({ label, value, active = false, onClick, onClear, className = '', disabled, ...rest }, ref) => {
+    const classes = ['ja-filter-chip', active ? 'ja-filter-chip--active' : '', className]
       .filter(Boolean)
       .join(' ');
 
@@ -116,7 +99,7 @@ export const FilterChip = forwardRef<HTMLButtonElement, FilterChipProps>(
         )}
       </button>
     );
-  },
+  }
 );
 
 FilterChip.displayName = 'FilterChip';
