@@ -50,10 +50,14 @@ export interface InputProps
   hint?: string;
   /** Marks the field invalid — red border, error-coloured hint */
   invalid?: boolean;
-  /** Text or icon rendered inside the left edge of the input */
+  /** Text/short label inside the LEFT edge (renders with bg + border-right) */
   prefix?: ReactNode;
-  /** Text or icon rendered inside the right edge of the input */
+  /** Text/short label inside the RIGHT edge (renders with bg + border-left) */
   suffix?: ReactNode;
+  /** Icon inside the LEFT edge, transparent affix (no bg, no border) — for search etc. */
+  iconLeft?: ReactNode;
+  /** Icon inside the RIGHT edge, transparent affix */
+  iconRight?: ReactNode;
   /** Controlled value */
   value?: string | number;
   /** Change handler */
@@ -68,6 +72,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       invalid = false,
       prefix,
       suffix,
+      iconLeft,
+      iconRight,
       disabled = false,
       id: idProp,
       className = '',
@@ -103,6 +109,12 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             </span>
           )}
 
+          {iconLeft && (
+            <span className="ja-input-affix ja-input-affix--icon" aria-hidden="true">
+              {iconLeft}
+            </span>
+          )}
+
           <input
             ref={ref}
             id={id}
@@ -113,6 +125,12 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             aria-describedby={hint ? hintId : undefined}
             {...rest}
           />
+
+          {iconRight && (
+            <span className="ja-input-affix ja-input-affix--icon" aria-hidden="true">
+              {iconRight}
+            </span>
+          )}
 
           {suffix && (
             <span className="ja-input-affix ja-input-affix--suffix" aria-hidden="true">
