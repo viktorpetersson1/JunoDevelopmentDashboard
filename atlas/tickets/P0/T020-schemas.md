@@ -4,17 +4,17 @@
 
 ## Tables added (10 new)
 
-| Table | Purpose | Versioned? | Trigger |
-|---|---|---|---|
-| `atlas.owners` | 7 Juno owners, identity (key, display_name, is_sponsor, tax_rate_bps) | No | — |
-| `atlas.cap_table` | Per-owner share_bps with effective_from/to | History | Deferred: sum(is_current) = 10000 |
-| `atlas.projects` | Core project entity, all calc-engine fields | **Versioned** (project_key + version + is_current) | — |
-| `atlas.capital_calls` | Call lifecycle (draft → issued → partial → funded) | No | — |
-| `atlas.capital_call_owner_shares` | Per-owner contractual share of a call | No | Deferred: sum = call.total |
-| `atlas.capital_call_payments` | Actual wires per share | No | — |
-| `atlas.approval_snapshots` | Immutable underwriting freeze | No, immutable | UPDATE blocked on locked rows; DELETE blocked entirely |
-| `atlas.pricing_runs` | Hedonic-model output | No | confidence band CHECK (low ≤ high) |
-| `atlas.pricing_run_comparables` | Comp data per run | No | — |
+| Table                             | Purpose                                                               | Versioned?                                         | Trigger                                                |
+| --------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------ |
+| `atlas.owners`                    | 7 Juno owners, identity (key, display_name, is_sponsor, tax_rate_bps) | No                                                 | —                                                      |
+| `atlas.cap_table`                 | Per-owner share_bps with effective_from/to                            | History                                            | Deferred: sum(is_current) = 10000                      |
+| `atlas.projects`                  | Core project entity, all calc-engine fields                           | **Versioned** (project_key + version + is_current) | —                                                      |
+| `atlas.capital_calls`             | Call lifecycle (draft → issued → partial → funded)                    | No                                                 | —                                                      |
+| `atlas.capital_call_owner_shares` | Per-owner contractual share of a call                                 | No                                                 | Deferred: sum = call.total                             |
+| `atlas.capital_call_payments`     | Actual wires per share                                                | No                                                 | —                                                      |
+| `atlas.approval_snapshots`        | Immutable underwriting freeze                                         | No, immutable                                      | UPDATE blocked on locked rows; DELETE blocked entirely |
+| `atlas.pricing_runs`              | Hedonic-model output                                                  | No                                                 | confidence band CHECK (low ≤ high)                     |
+| `atlas.pricing_run_comparables`   | Comp data per run                                                     | No                                                 | —                                                      |
 
 ## Money + percentage convention (CLAUDE.md §7 + §10.6)
 
@@ -40,6 +40,7 @@ Every table is RLS-enabled. Authenticated users get SELECT on projects, owners, 
 - Projects/calls/snapshots/runs are empty in P0; seed data lands in T034' (golden fixtures generator) and via the New Project Wizard once T065 ships
 
 ## Files
+
 - `atlas/lib/db/schema/{owners,cap-table,projects,capital-calls,approval-snapshots,pricing-runs}.ts` — 6 new TS schemas
 - `atlas/lib/db/schema/index.ts` — barrel updated
 - `atlas/lib/db/__tests__/schema.test.ts` — 5 new invariant tests (total 14)
