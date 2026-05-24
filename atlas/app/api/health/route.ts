@@ -1,10 +1,18 @@
-// Placeholder for T011. Returns 200 so Playwright webServer can detect the dev server.
-// Final shape per API_CONTRACTS.md §1.1: { status: 'ok', commit, time }.
+/**
+ * GET /api/health
+ *
+ * Liveness probe. Unauthenticated. Should return < 50ms p95.
+ * Shape per API_CONTRACTS.md §1.1 + CLAUDE.md §11.2:
+ *   { data: { status: 'ok', commit, time } }
+ */
+import { ok } from '@/lib/api/response';
+
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export function GET() {
-  return Response.json({
-    status: 'ok',
+  return ok({
+    status: 'ok' as const,
     commit: process.env.RENDER_GIT_COMMIT ?? 'dev',
     time: new Date().toISOString(),
   });
