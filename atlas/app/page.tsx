@@ -1,50 +1,132 @@
-// T003 smoke surface — exercises canonical tokens (design-system source).
-// Will be replaced by Surface 01 (Index dashboard, C1) in T046.
-// Uses raw token-mapped Tailwind classes until primitives ship in T004.
-export default function HomePage() {
+/**
+ * Surface 01 — Index dashboard (per docs/handoff/COMPONENT_BUILD_ORDER.md C1).
+ *
+ * Server Component: requires auth (T009), fetches all current projects via
+ * the repo (T040), runs `runProject()` on each (T031), aggregates portfolio-
+ * level KPIs, and renders them in the canonical KpiPattern wrapped in
+ * AppShell.
+ *
+ * Pixel target: design-system/mockup-screenshots/01_index.png ≤ 5%.
+ * (Visual baseline lands in T051; this is the structural pass.)
+ */
+
+import { DashboardShell } from './_components/dashboard-shell';
+import { KpiPattern } from '@/patterns/KpiPattern';
+import { findManyProjects } from '@/lib/repos/project';
+import { runProject } from '@/lib/calc/project/runProject';
+import { BASELINE_GLOBALS, BASELINE_SCENARIO } from '@/lib/calc/baselines';
+import { formatMoney } from '@/lib/utils/money';
+import { requireAuth } from '@/lib/auth/requireAuth';
+import type { KPITileProps } from '@/components/data/KPITile';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+export default async function HomePage() {
+  const { profile, user } = await requireAuth();
+  const { projects } = await findManyProjects({ limit: 100 });
+
+  // Compute portfolio KPIs by running the calc engine over each project.
+  // T042 will replace this naïve aggregation with the proper aggregatePortfolio
+  // port (handles include_sold + cross-project capital pressure).
+  const results = projects.map((p) =>
+    runProject(p, BASELINE_GLOBALS, BASELINE_SCENARIO)
+  );
+
+  const activeCount = projects.filter((p) => p.stage !== 'archived' && p.stage !== 'sold').length;
+  const totalSales = results.reduce((s, r) => s + r.kpis.total_sales, 0);
+  const totalProfit = results.reduce((s, r) => s + r.kpis.gross_profit, 0);
+  const peakEquity = results.length ? Math.max(...results.map((r) => r.kpis.peak_equity)) : 0;
+  const peakDebt = results.length ? Math.max(...results.map((r) => r.kpis.peak_debt)) : 0;
+  const portfolioMargin = totalSales > 0 ? totalProfit / totalSales : 0;
+
+  const kpis: KPITileProps[] = [
+    {
+      label: 'Active projects',
+      value: String(activeCount),
+      hint: `${projects.length} total in pipeline`,
+    },
+    {
+      label: 'Pipeline revenue',
+      value: formatMoney(totalSales * 100, { compact: true, precision: 2 }),
+      hint: '2026-2030',
+    },
+    {
+      label: 'Pipeline profit',
+      value: formatMoney(totalProfit * 100, { compact: true, precision: 2 }),
+      hint: `${(portfolioMargin * 100).toFixed(1)}% margin`,
+    },
+    {
+      label: 'Peak equity',
+      value: formatMoney(peakEquity * 100, { compact: true, precision: 2 }),
+      hint: 'across pipeline',
+    },
+    {
+      label: 'Peak debt',
+      value: formatMoney(peakDebt * 100, { compact: true, precision: 2 }),
+      hint: 'across pipeline',
+    },
+  ];
+
+  const dashboardUser = {
+    name: profile.displayName ?? profile.email ?? user.email ?? 'Juno',
+    email: profile.email ?? user.email ?? '',
+  };
+
   return (
-    <main className="mx-auto max-w-shell px-12 pb-16 pt-8">
-      <header className="mb-8">
-        <p className="text-micro font-medium uppercase tracking-wide text-text-tertiary">
-          P0 scaffold
-        </p>
-        <h1 className="mt-2 text-3xl font-semibold text-text-primary">Juno Atlas</h1>
-        <p className="mt-3 text-base text-text-secondary">
-          Tokens wired. Components ship in T004 onwards.
-        </p>
-      </header>
-
-      {/* KPI smoke row — bg-surface-muted, rounded-xl */}
-      <section className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <div className="rounded-xl bg-surface-muted p-5">
-          <p className="text-micro font-medium uppercase tracking-wide text-text-tertiary">
-            Peak equity
-          </p>
-          <p className="mt-2 text-kpi font-semibold tabular-nums text-text-primary">$7.6M</p>
-          <p className="mt-2 text-xs text-text-tertiary">vs $6.0M LOC</p>
-        </div>
-        <div className="rounded-xl bg-surface-muted p-5">
-          <p className="text-micro font-medium uppercase tracking-wide text-text-tertiary">
-            Projects active
-          </p>
-          <p className="mt-2 text-kpi font-semibold tabular-nums text-text-primary">10</p>
-          <p className="mt-2 text-xs text-text-tertiary">across 2 markets</p>
-        </div>
-        <div className="rounded-xl bg-surface-muted p-5">
-          <p className="text-micro font-medium uppercase tracking-wide text-text-tertiary">
-            Gross margin
-          </p>
-          <p className="mt-2 text-kpi font-semibold tabular-nums text-text-primary">23.4%</p>
-          <p className="mt-2 text-xs text-text-tertiary">target 25%</p>
-        </div>
-      </section>
-
-      {/* Lime CTA — used sparingly (≤5% of pixels) */}
-      <div className="mt-8">
-        <button className="h-8 rounded-md bg-accent-lime px-3 text-sm font-medium text-text-on-lime transition-colors duration-fast ease-standard hover:bg-accent-lime-hover">
-          New project
-        </button>
-      </div>
-    </main>
+    <DashboardShell activeHref="/" user={dashboardUser}>
+      <KpiPattern
+        kpis={kpis}
+        chartTitle="Cash flow — 5-year projection"
+        chart={
+          <div className="ja-empty-state" aria-label="Cash flow chart placeholder">
+            <p className="ja-empty-state__title">Cash flow chart</p>
+            <p className="ja-empty-state__description">
+              Recharts wiring lands in T046.1 — KPIs above already reflect the live calc engine.
+            </p>
+          </div>
+        }
+        rail={
+          <section style={{ padding: '20px' }}>
+            <h2
+              style={{
+                fontSize: 11,
+                fontWeight: 500,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                color: 'var(--color-text-tertiary)',
+                marginBottom: 12,
+              }}
+            >
+              Recent projects
+            </h2>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              {projects.slice(0, 8).map((p) => (
+                <li
+                  key={p.id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    padding: '8px 0',
+                    borderBottom: '1px solid var(--color-border-hairline)',
+                    fontSize: 13,
+                  }}
+                >
+                  <a
+                    href={`/projects/${p.id}`}
+                    style={{ color: 'var(--color-text-primary)', textDecoration: 'none' }}
+                  >
+                    {p.name}
+                  </a>
+                  <span style={{ color: 'var(--color-text-tertiary)', fontSize: 11 }}>
+                    {p.stage}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        }
+      />
+    </DashboardShell>
   );
 }

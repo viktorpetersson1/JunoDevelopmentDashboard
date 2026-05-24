@@ -1,0 +1,95 @@
+/**
+ * Constants snapshot of BASELINE_GLOBALS + BASELINE_SCENARIO from
+ * `public/data.js`. Hand-mirrored (not imported) to avoid an atlas → public
+ * source dependency.
+ *
+ * **Sync requirement:** if vanilla `public/data.js::BASELINE_GLOBALS` or
+ * `::BASELINE_SCENARIO` change, update this file and re-run
+ * `pnpm snapshot` to regenerate the golden fixtures.
+ *
+ * Golden tests (tests/golden/project.golden.test.ts) implicitly catch drift
+ * by failing if the engine inputs differ from what vanilla produced.
+ *
+ * For multi-scenario UI later, atlas.scenarios + atlas.globals tables will
+ * be added and these constants demoted to defaults.
+ */
+
+import type { Globals, Scenario } from './project/types';
+
+/** Mirrors public/data.js::BASELINE_GLOBALS (subset the engine reads). */
+export const BASELINE_GLOBALS: Globals = {
+  interest_rate_apr: 0.095,
+  ltc_pct: 0.75,
+  ltc_land_pct: 0.48,
+  contingency_pct: 0.05,
+  default_build_cost_per_sqft: 470,
+  default_kingshaus_cost_per_sqft: 0,
+  use_kingshaus_breakdown: false,
+  target_margin: 0.25,
+  default_program_months: 13,
+  model_start: '2026-01',
+  horizon_months: 49,
+  capitalize_interest: false,
+  financing_fees_per_project_usd: 350_000,
+  build_cost_curve: 'linear',
+  build_cost_realization_pct: 1.0,
+  fiscal_year_mode: 'juno13',
+  markets: [
+    {
+      id: 'hamptons',
+      name: 'Hamptons',
+      sale_price_multiplier: 1.0,
+      build_cost_multiplier: 1.0,
+      demand_outlook: 'stable',
+    },
+    {
+      id: 'east_hampton',
+      name: 'East Hampton',
+      sale_price_multiplier: 1.05,
+      build_cost_multiplier: 1.02,
+      demand_outlook: 'strong',
+    },
+    {
+      id: 'south_hampton',
+      name: 'Southampton',
+      sale_price_multiplier: 1.1,
+      build_cost_multiplier: 1.05,
+      demand_outlook: 'strong',
+    },
+    {
+      id: 'sag_harbor',
+      name: 'Sag Harbor',
+      sale_price_multiplier: 0.95,
+      build_cost_multiplier: 0.98,
+      demand_outlook: 'stable',
+    },
+    {
+      id: 'montauk',
+      name: 'Montauk',
+      sale_price_multiplier: 0.9,
+      build_cost_multiplier: 0.96,
+      demand_outlook: 'soft',
+    },
+    {
+      id: 'default',
+      name: 'Unspecified',
+      sale_price_multiplier: 1.0,
+      build_cost_multiplier: 1.0,
+      demand_outlook: 'stable',
+    },
+  ],
+  include_sold_projects: false,
+};
+
+/** Mirrors public/data.js::BASELINE_SCENARIO. */
+export const BASELINE_SCENARIO: Scenario = {
+  name: 'Base case',
+  class: 'base',
+  locked: true,
+  interest_rate_delta_bps: 0,
+  build_cost_multiplier: 1.0,
+  sale_price_multiplier: 1.0,
+  margin_override: null,
+  timing_shift_months: 0,
+  excluded_project_ids: [],
+};
