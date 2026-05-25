@@ -27,44 +27,59 @@ export async function updateSession(request: NextRequest) {
   if (!url || !key) {
     // No Supabase config — let the request through; routes will fail fast
     // with a clear error if they try to use the DB. This is the dev-without
-    // -env mode that lets `pnpm dev` boot without crashing.
+    // -env mode that lets `pnpm dev` boot without crashing. Also surfaces
+    // the gap as a header so curl/Playwright can verify the deploy is wired
+    // before chasing other red herrings.
+    response.headers.set('x-atlas-supabase-config', 'missing');
     return response;
   }
 
-  const supabase = createServerClient(url, key, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
+  try {
+    const supabase = createServerClient(url, key, {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options);
+          });
+        },
       },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          response.cookies.set(name, value, options);
-        });
-      },
-    },
-  });
+    });
 
-  // IMPORTANT: refresh tokens on every request so server-side reads see a
-  // fresh session. getUser() validates the JWT against Supabase Auth.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    // IMPORTANT: refresh tokens on every request so server-side reads see a
+    // fresh session. getUser() validates the JWT against Supabase Auth.
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  // Protected route guard
-  if (!user && !isPublicPath(request.nextUrl.pathname)) {
-    const signInUrl = request.nextUrl.clone();
-    signInUrl.pathname = '/sign-in';
-    signInUrl.searchParams.set('redirectTo', request.nextUrl.pathname);
-    return NextResponse.redirect(signInUrl);
+    // Protected route guard
+    if (!user && !isPublicPath(request.nextUrl.pathname)) {
+      const signInUrl = request.nextUrl.clone();
+      signInUrl.pathname = '/sign-in';
+      signInUrl.searchParams.set('redirectTo', request.nextUrl.pathname);
+      return NextResponse.redirect(signInUrl);
+    }
+
+    // Signed-in user hitting /sign-in → bounce to home
+    if (user && request.nextUrl.pathname === '/sign-in') {
+      const home = request.nextUrl.clone();
+      home.pathname = '/';
+      home.search = '';
+      return NextResponse.redirect(home);
+    }
+
+    return response;
+  } catch (err) {
+    // Cloudflare edge runtime sometimes throws inside createServerClient or
+    // auth.getUser() if the Supabase URL is malformed, the network call to
+    // Supabase Auth fails, or a Node API isn't available under nodejs_compat.
+    // Without a catch the entire app 500s — log + fall through so static
+    // shells still render and /api/health stays reachable for diagnostics.
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[atlas middleware] updateSession failed:', msg);
+    response.headers.set('x-atlas-middleware-error', msg.slice(0, 200));
+    return response;
   }
-
-  // Signed-in user hitting /sign-in → bounce to home
-  if (user && request.nextUrl.pathname === '/sign-in') {
-    const home = request.nextUrl.clone();
-    home.pathname = '/';
-    home.search = '';
-    return NextResponse.redirect(home);
-  }
-
-  return response;
 }
