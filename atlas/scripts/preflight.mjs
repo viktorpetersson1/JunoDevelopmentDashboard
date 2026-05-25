@@ -127,47 +127,65 @@ function checkSupabaseUrlFormat() {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Check 3: anon + service role keys are JWT-shaped
+// Check 3: Supabase keys are in one of the two valid formats
 //
-// Why: Supabase keys are JWTs (three base64url segments separated by `.`).
-// If someone pastes the publishable handle (sb_publishable_...) instead of
-// the JWT, @supabase/ssr fails with a confusing error. Detect early.
+// Supabase supports two formats simultaneously:
+//   - Legacy JWT — three base64url segments (`eyJ...`)
+//   - New publishable / secret handles — `sb_publishable_*` (anon-equivalent),
+//     `sb_secret_*` (service-role-equivalent)
+//
+// New projects in the Supabase Dashboard default to the new handle format.
+// Both work with @supabase/ssr. Reject anything that's neither.
 // ────────────────────────────────────────────────────────────────────────────
 
-function checkKeyShape(name) {
+function classifyKey(v) {
+  if (v.startsWith('sb_publishable_')) return { ok: true, format: 'sb_publishable handle' };
+  if (v.startsWith('sb_secret_')) return { ok: true, format: 'sb_secret handle' };
+  const parts = v.split('.');
+  if (parts.length !== 3) {
+    return { ok: false, reason: `not a JWT (got ${parts.length} dot-separated segments) and not an sb_* handle` };
+  }
+  if (parts.some((p) => p.length < 4)) {
+    return { ok: false, reason: 'one or more JWT segments are too short' };
+  }
+  try {
+    const header = JSON.parse(
+      Buffer.from(parts[0].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')
+    );
+    if (!header.alg) return { ok: false, reason: 'JWT header missing "alg"' };
+    return { ok: true, format: `JWT alg=${header.alg}` };
+  } catch (err) {
+    return { ok: false, reason: `JWT header decode failed: ${err.message}` };
+  }
+}
+
+function checkKeyShape(name, expectedRole) {
   const v = process.env[name];
   if (!v) {
     fail(name, 'not set');
     return;
   }
-  const parts = v.split('.');
-  if (parts.length !== 3) {
-    fail(name, `expected 3 dot-separated segments (JWT), got ${parts.length}`);
+  const r = classifyKey(v);
+  if (!r.ok) {
+    fail(name, r.reason);
     return;
   }
-  if (parts.some((p) => p.length < 4)) {
-    fail(name, 'one or more JWT segments are too short to be valid');
+  // Soft check: warn if anon-role var has a secret handle or vice versa.
+  if (expectedRole === 'anon' && v.startsWith('sb_secret_')) {
+    warn(name, 'looks like a service-role secret handle, not an anon publishable key');
     return;
   }
-  // Header should base64-decode to JSON containing { alg, typ }
-  try {
-    const header = JSON.parse(
-      Buffer.from(parts[0].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')
-    );
-    if (!header.alg) {
-      fail(name, 'JWT header missing "alg"');
-      return;
-    }
-    pass(name, `alg=${header.alg}`);
-  } catch (err) {
-    fail(name, `JWT header decode failed: ${err.message}`);
+  if (expectedRole === 'service_role' && v.startsWith('sb_publishable_')) {
+    warn(name, 'looks like an anon publishable handle, not a service-role secret');
+    return;
   }
+  pass(name, r.format);
 }
 
 function checkSupabaseKeys() {
-  section('3. Supabase keys are JWT-shaped');
-  checkKeyShape('NEXT_PUBLIC_SUPABASE_ANON_KEY');
-  checkKeyShape('SUPABASE_SERVICE_ROLE_KEY');
+  section('3. Supabase keys are in a valid format (JWT or sb_* handle)');
+  checkKeyShape('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'anon');
+  checkKeyShape('SUPABASE_SERVICE_ROLE_KEY', 'service_role');
 }
 
 // ────────────────────────────────────────────────────────────────────────────

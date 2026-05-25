@@ -36,10 +36,11 @@ jobs:
       - run: pnpm run preflight
         env:
           # Placeholder values just to pass shape checks; real values
-          # only live in the CF dashboard.
+          # only live in the CF dashboard. Uses the new sb_* handle
+          # format (both formats are accepted by the script).
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiJ9.eyJ0ZXN0Ijp0cnVlfQ.placeholder_signature_a
-          SUPABASE_SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiJ9.eyJ0ZXN0Ijp0cnVlfQ.placeholder_signature_b
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_placeholder_for_ci
+          SUPABASE_SERVICE_ROLE_KEY: sb_secret_placeholder_for_ci
           AUDIT_HASH_SALT: ci-placeholder-salt-32-chars-min
 
   lint:
