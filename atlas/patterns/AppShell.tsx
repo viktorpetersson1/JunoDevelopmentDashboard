@@ -94,6 +94,15 @@ const SuggestionsIcon = () => (
   </svg>
 );
 
+/** Pipeline kanban icon — 3 stacked-card columns. */
+const PipelineIcon = () => (
+  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+    <rect x="2.5" y="3.5" width="4" height="13" rx="1" />
+    <rect x="8" y="3.5" width="4" height="9" rx="1" />
+    <rect x="13.5" y="3.5" width="4" height="6" rx="1" />
+  </svg>
+);
+
 /**
  * Ask Juno is the AI surface — it gets the brand mark itself, not a generic
  * chat-bubble glyph. Same stroke weight as the other nav icons (1.5 / 20
@@ -104,6 +113,16 @@ const AskJunoIcon = () => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
     <circle cx="10" cy="10" r="7.75" />
     <line x1="10" y1="2.25" x2="10" y2="17.75" strokeLinecap="round" />
+  </svg>
+);
+
+const NotificationsIcon = () => (
+  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+    <path
+      d="M10 2.5a5 5 0 0 0-5 5v3l-1.5 2h13L15 10.5v-3a5 5 0 0 0-5-5z"
+      strokeLinejoin="round"
+    />
+    <path d="M8.5 15.5a1.5 1.5 0 0 0 3 0" strokeLinecap="round" />
   </svg>
 );
 
@@ -160,6 +179,7 @@ export const DEFAULT_SIDEBAR_SECTIONS: SidebarSection[] = [
     label: 'WORKSPACE',
     items: [
       { href: '/projects', label: 'Projects', icon: <ProjectsIcon /> },
+      { href: '/pipeline', label: 'Pipeline', icon: <PipelineIcon /> },
       { href: '/suggestions', label: 'Suggestions', icon: <SuggestionsIcon /> },
       { href: '/ask-juno', label: 'Ask Juno', icon: <AskJunoIcon /> },
     ],
@@ -167,7 +187,8 @@ export const DEFAULT_SIDEBAR_SECTIONS: SidebarSection[] = [
   {
     label: 'ACCOUNT',
     items: [
-      { href: '/users', label: 'Users', icon: <UsersIcon /> },
+      { href: '/notifications', label: 'Notifications', icon: <NotificationsIcon /> },
+      // "Owners" lives inside /settings as a tab — no separate top-level entry.
       { href: '/settings', label: 'Settings', icon: <SettingsIcon /> },
     ],
   },

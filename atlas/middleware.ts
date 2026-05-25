@@ -10,10 +10,20 @@
  *
  * See docs/handoff/SUPABASE_TRANSLATION.md §2.
  */
-import type { NextRequest } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { updateSession } from './lib/supabase/middleware';
 
 export async function middleware(request: NextRequest) {
+  // T073: dev-only routes (/dev/*) return 404 in production builds. Belt-
+  // and-suspenders with the page-level guard so prod traffic never hits
+  // the demo content. (Can't use /_dev because Next.js treats underscore-
+  // prefixed folders as private and excludes them from routing entirely.)
+  if (
+    process.env.NODE_ENV === 'production' &&
+    request.nextUrl.pathname.startsWith('/dev')
+  ) {
+    return new NextResponse('Not Found', { status: 404 });
+  }
   return updateSession(request);
 }
 
