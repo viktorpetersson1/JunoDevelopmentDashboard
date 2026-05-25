@@ -66,6 +66,36 @@ changes don't apply to already-built functions:
 - **Deployments tab → click the failed deploy → Retry deployment**, or
 - push an empty commit: `git commit --allow-empty -m "redeploy" && git push`
 
+### 3b. Expose the `atlas` schema in Supabase
+
+By default Supabase's PostgREST only serves the `public` and
+`graphql_public` schemas. Atlas reads from `atlas.*` tables, so the
+schema must be added to the exposed list — otherwise every
+authenticated page returns 500 with `PGRST106 "Invalid schema: atlas"`.
+
+**Two ways to fix:**
+
+- **SQL (already applied to mbehvcfiakjznzqkymse via migration
+  `expose_atlas_schema_to_postgrest`):**
+  ```sql
+  ALTER ROLE authenticator SET pgrst.db_schemas TO 'public, atlas, graphql_public';
+  NOTIFY pgrst, 'reload schema';
+  ```
+- **Dashboard:** Project Settings → API → "Exposed schemas" → add
+  `atlas` → Save. PostgREST restarts automatically.
+
+**Symptom if you skip this:** sign-in works (Supabase Auth uses
+`/auth/v1/*`, not REST), but every authenticated page crashes after
+sign-in with a Next.js production error page and a Digest hash.
+Middleware survives because it only calls auth; pages crash because
+they query atlas.* via REST.
+
+**How to verify it's set:** with the anon key, hit
+`https://<project>.supabase.co/rest/v1/projects?select=id&limit=1`
+with header `Accept-Profile: atlas`. Expected: 200 with `[]` (RLS
+returns no rows for anon) or 401 (no anon SELECT grant). Anything
+mentioning PGRST106 means schema isn't exposed.
+
 ### 4. Custom domain (optional, deferred)
 
 When ready, **Settings → Custom domains** → add `atlas.juno.dev` or
