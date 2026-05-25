@@ -12,6 +12,15 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
+  // T051: visual diff defaults. Anti-alias / sub-pixel font rendering varies
+  // by host, so allow 5% pixel drift (matches CLAUDE.md §8.3 visual budget).
+  // Generated baselines are checked into tests/e2e/__snapshots__/.
+  expect: {
+    toHaveScreenshot: {
+      maxDiffPixelRatio: 0.05,
+      animations: 'disabled',
+    },
+  },
   projects: [
     {
       name: 'chromium',
