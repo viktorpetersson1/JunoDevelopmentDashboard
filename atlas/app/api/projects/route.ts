@@ -17,6 +17,7 @@ import type { NextRequest } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+export const runtime = 'edge';
 
 export const GET = withErrorBoundary(async (req: NextRequest) => {
   await requireAuth();

@@ -23,6 +23,7 @@ import { fetchCapTable, fetchAllProfiles } from '@/lib/repos/settings';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+export const runtime = 'edge';
 
 const TABS = ['profile', 'cap-table', 'owners'] as const;
 type SettingsTab = (typeof TABS)[number];

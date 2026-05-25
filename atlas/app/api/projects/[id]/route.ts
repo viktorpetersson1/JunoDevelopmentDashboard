@@ -15,6 +15,7 @@ import { findCurrentProjectByKey } from '@/lib/repos/project';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+export const runtime = 'edge';
 
 interface RouteContext {
   params: { id: string };

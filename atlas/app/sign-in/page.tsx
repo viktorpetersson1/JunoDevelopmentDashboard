@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { JunoMark } from '@/components/brand';
 import { SignInForm } from './sign-in-form';
 
+export const runtime = 'edge';
+
 export const metadata: Metadata = {
   title: 'Sign in — Juno Atlas',
   description: 'Sign in to Juno Atlas.',

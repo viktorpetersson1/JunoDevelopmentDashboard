@@ -20,6 +20,7 @@ import { requireAuth } from '@/lib/auth/requireAuth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+export const runtime = 'edge';
 
 /** Canonical 6-stage pipeline. Order matters (left-to-right workflow). */
 const STAGES: { key: string; label: string; description: string }[] = [

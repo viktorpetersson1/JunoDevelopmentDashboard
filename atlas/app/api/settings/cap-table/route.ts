@@ -20,6 +20,7 @@ import { requireAuth } from '@/lib/auth/requireAuth';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'edge';
 
 const PayloadSchema = z.object({
   shares: z

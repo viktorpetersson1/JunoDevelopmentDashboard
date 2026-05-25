@@ -17,6 +17,7 @@ import { requireAuth } from '@/lib/auth/requireAuth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+export const runtime = 'edge';
 
 function parseFlags(raw: string | undefined): string[] {
   if (!raw) return [];

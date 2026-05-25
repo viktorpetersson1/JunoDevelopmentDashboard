@@ -22,6 +22,7 @@ import type { KPITileProps } from '@/components/data/KPITile';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+export const runtime = 'edge';
 
 export default async function HomePage() {
   const { profile, user } = await requireAuth();

@@ -18,6 +18,7 @@ import {
 } from '@/lib/repos/notifications';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'edge';
 
 const PayloadSchema = z.object({
   ids: z.array(z.string().uuid()).optional(),

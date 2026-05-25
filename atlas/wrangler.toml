@@ -1,0 +1,27 @@
+# Cloudflare Pages config for Juno Atlas.
+#
+# This file is read by `wrangler pages dev` + the Cloudflare Pages build
+# pipeline when deploying via GitHub integration.
+#
+# Production env vars (SUPABASE_*, AUDIT_HASH_SALT) are NOT defined here —
+# set them in the Cloudflare dashboard → Pages project → Settings →
+# Environment variables, so secrets never enter the repo.
+
+name = "juno-atlas"
+pages_build_output_dir = ".vercel/output/static"
+compatibility_date = "2025-05-01"
+
+# nodejs_compat: required so the next-on-pages adapter's Node.js shims
+# (Buffer, util, crypto, async_hooks) work at the edge. Without this flag,
+# any route that touches a Node API at runtime returns 500.
+#
+# nodejs_compat_v2: newer compat tier; turn on once Cloudflare announces
+# it as stable for next-on-pages. Currently the @cloudflare/next-on-pages
+# docs recommend the v1 flag.
+compatibility_flags = ["nodejs_compat"]
+
+# ────────────────────────────────────────────────────────────────────────
+# Local preview command: `pnpm run pages:dev`
+# (Builds with next-on-pages then serves via wrangler — closer to prod
+# than `next dev`, useful for catching edge-runtime regressions.)
+# ────────────────────────────────────────────────────────────────────────
