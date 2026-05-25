@@ -50,8 +50,21 @@ In **Settings → Functions → Compatibility flags**:
 - Production: `nodejs_compat`
 - Preview: `nodejs_compat`
 
-Or — if Cloudflare picks up `wrangler.toml` from the repo on first build,
-it sets these automatically. Verify after first deploy.
+**⚠ This step is mandatory — `wrangler.toml` does NOT propagate the
+flag to Pages Functions.** The `compatibility_flags` line in
+`wrangler.toml` only applies to the newer "Workers + Static Assets"
+runtime, but `@cloudflare/next-on-pages` deploys to the older "Pages
+Functions" runtime. Without the dashboard flag, **every route returns
+500** because the Node shims (Buffer, util, async_hooks) Supabase's
+SSR client needs aren't available.
+
+How to tell if you missed this: hit `/api/health` (zero-dependency
+route). Should return JSON. If it 500s, the flag isn't applied yet.
+
+After saving the flag, you must **re-trigger a deployment** — flag
+changes don't apply to already-built functions:
+- **Deployments tab → click the failed deploy → Retry deployment**, or
+- push an empty commit: `git commit --allow-empty -m "redeploy" && git push`
 
 ### 4. Custom domain (optional, deferred)
 
