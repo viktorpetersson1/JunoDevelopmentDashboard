@@ -34,7 +34,7 @@ export default async function CashflowPage() {
   };
 
   return (
-    <DashboardShell activeHref="/forecast" user={dashboardUser}>
+    <DashboardShell activeHref="/cashflow" user={dashboardUser}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
         <header>
           <h1

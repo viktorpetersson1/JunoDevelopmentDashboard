@@ -157,7 +157,7 @@ export const DEFAULT_SIDEBAR_SECTIONS: SidebarSection[] = [
     label: 'PORTFOLIO',
     items: [
       { href: '/', label: 'Overview', icon: <OverviewIcon /> },
-      { href: '/forecast', label: 'Forecast', icon: <ForecastIcon /> },
+      { href: '/cashflow', label: 'Forecast', icon: <ForecastIcon /> },
       { href: '/capital', label: 'Capital', icon: <CapitalIcon /> },
       { href: '/risks', label: 'Risks', icon: <RisksIcon /> },
     ],
