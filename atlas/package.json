@@ -18,7 +18,9 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "snapshot": "node scripts/snapshot-vanilla-engine.mjs",
-    "pages:build": "npx @cloudflare/next-on-pages",
+    "preflight": "node scripts/preflight.mjs",
+    "preflight:remote": "node scripts/preflight.mjs --remote",
+    "pages:build": "pnpm run preflight:remote && npx @cloudflare/next-on-pages",
     "pages:dev": "wrangler pages dev",
     "pages:deploy": "pnpm run pages:build && wrangler pages deploy"
   },

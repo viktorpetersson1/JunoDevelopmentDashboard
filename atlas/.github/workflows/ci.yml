@@ -16,6 +16,32 @@ defaults:
     working-directory: atlas
 
 jobs:
+  # Cheapest gate — runs in <10s on cold cache. Catches missing
+  # runtime='edge' exports, malformed env vars (against the placeholder
+  # values), JWT-shaped key validation. Fails fast before lint/build
+  # waste runner time.
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: atlas/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run preflight
+        env:
+          # Placeholder values just to pass shape checks; real values
+          # only live in the CF dashboard.
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiJ9.eyJ0ZXN0Ijp0cnVlfQ.placeholder_signature_a
+          SUPABASE_SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiJ9.eyJ0ZXN0Ijp0cnVlfQ.placeholder_signature_b
+          AUDIT_HASH_SALT: ci-placeholder-salt-32-chars-min
+
   lint:
     runs-on: ubuntu-latest
     steps:

@@ -116,6 +116,37 @@ pnpm run pages:build
 pnpm run pages:dev
 ```
 
+### Preflight checks (run before every build)
+
+`pnpm run pages:build` automatically runs `scripts/preflight.mjs --remote`
+first, which catches the deploy footguns we've actually hit:
+
+1. **Required env vars present** — NEXT_PUBLIC_SUPABASE_URL,
+   NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY,
+   AUDIT_HASH_SALT
+2. **NEXT_PUBLIC_SUPABASE_URL parses as a URL** — catches missing
+   `https://`, surrounding quotes, trailing whitespace (the bug that
+   500'd every route on the first CF deploy)
+3. **JWT-shaped keys** — catches pasting publishable handle
+   (sb_publishable_...) instead of the JWT
+4. **Every server route exports `runtime = 'edge'`** — catches a
+   missed file before `next-on-pages` fails post-build, saving ~3 min
+   of wasted compile time
+5. **Supabase REST exposes the `atlas` schema** — catches the
+   PGRST106 "Invalid schema" bug that 500'd every authenticated page
+6. **Cloudflare Pages has `nodejs_compat`** (opt-in, requires
+   CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID env vars) — catches
+   the flag-not-set bug that 500'd every dynamic route
+
+Local-only checks (1-4) also run on every CI push via the `preflight`
+GitHub Actions job — fail-fast before lint/test/build runs.
+
+To run manually:
+```bash
+pnpm run preflight          # local checks only (no network)
+pnpm run preflight:remote   # + Supabase + CF API checks (needs env)
+```
+
 ### ⚠ Windows note — `pages:build` does NOT work natively on Windows
 
 `@cloudflare/next-on-pages` invokes the Vercel CLI internally, which has
