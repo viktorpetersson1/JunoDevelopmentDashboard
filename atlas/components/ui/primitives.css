@@ -154,13 +154,11 @@
 }
 
 .ja-button__spinner {
-  width: 12px;
-  height: 12px;
-  border: 1.5px solid currentColor;
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: ja-spin 0.6s linear infinite;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  /* Animation + visuals live on the JunoMark child component. */
 }
 
 .ja-button--loading .ja-button__content {
@@ -1096,10 +1094,4 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .ja-button__spinner {
-    animation: none;
-    border: 1.5px solid currentColor;
-    opacity: 0.5;
-  }
-}
+/* Reduced-motion handling lives on .juno-mark (see brand/brand.css). */

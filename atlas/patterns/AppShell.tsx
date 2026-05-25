@@ -40,6 +40,7 @@ import {
   TopbarSearchProps,
 } from '../components/layout';
 import type { ScenarioVariant } from '../components/layout';
+import { JunoMark } from '../components/brand';
 import './patterns.css';
 
 // ─── Default nav icons ────────────────────────────────────────────────────────
@@ -93,12 +94,16 @@ const SuggestionsIcon = () => (
   </svg>
 );
 
+/**
+ * Ask Juno is the AI surface — it gets the brand mark itself, not a generic
+ * chat-bubble glyph. Same stroke weight as the other nav icons (1.5 / 20
+ * units = 7.5% vs the mark's native 5.5% on viewBox 100; we override here
+ * via `strokeWidth` to stay visually consistent with the icon set).
+ */
 const AskJunoIcon = () => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-    <path
-      d="M17.5 12.5c0 1.1-.9 2-2 2H5l-2.5 3V5c0-1.1.9-2 2-2h13c1.1 0 2 .9 2 2v7.5z"
-      strokeLinejoin="round"
-    />
+    <circle cx="10" cy="10" r="7.75" />
+    <line x1="10" y1="2.25" x2="10" y2="17.75" strokeLinecap="round" />
   </svg>
 );
 
@@ -124,19 +129,8 @@ const SettingsIcon = () => (
 // ─── Juno Logo ────────────────────────────────────────────────────────────────
 
 const JunoLogo = () => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-    <svg
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 3v18M3 12h18" />
-    </svg>
+  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+    <JunoMark size={22} ariaLabel="Juno" />
     <span
       style={{
         fontSize: 15,

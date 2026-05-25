@@ -13,6 +13,7 @@
  */
 
 import React, { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { JunoMark } from '../brand';
 import './primitives.css';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
@@ -36,7 +37,16 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children?: ReactNode;
 }
 
-const Spinner = () => <span className="ja-button__spinner" aria-hidden="true" />;
+/**
+ * Button loading indicator. Uses the animated Juno mark so every async
+ * action across the platform speaks the brand. Size scales with button
+ * size; sm/md = 14px, lg = 16px.
+ */
+const Spinner = ({ size }: { size: ButtonSize }) => (
+  <span className="ja-button__spinner" aria-hidden="true">
+    <JunoMark size={size === 'lg' ? 16 : 14} animated />
+  </span>
+);
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   (
@@ -80,7 +90,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         onClick={!isDisabled ? onClick : undefined}
         {...rest}
       >
-        {loading && <Spinner />}
+        {loading && <Spinner size={size} />}
         {!loading && iconLeft && (
           <span className="ja-button__icon" aria-hidden="true">
             {iconLeft}

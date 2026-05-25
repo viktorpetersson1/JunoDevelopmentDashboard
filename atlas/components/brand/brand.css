@@ -1,0 +1,88 @@
+/* ────────────────────────────────────────────────────────────────────────────
+ * Juno brand mark + thinking animation.
+ *
+ * The static mark inherits `color` for stroke and is layout-neutral.
+ *
+ * Thinking animation: the vertical chord pivots around the circle's
+ * center, sweeping a full revolution every 2.6s. Calm tempo — not a
+ * fidget spinner, not a frenetic loader. Reads as "considering."
+ *
+ * The chord is anchored at `50% 50%` so rotation is around the disc's
+ * center, not the top-left of the SVG.
+ *
+ * `prefers-reduced-motion: reduce` falls back to a slow opacity pulse
+ * so we never strobe a vestibular-sensitive user.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+.juno-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.juno-mark > svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.juno-mark__chord {
+  transform-origin: 50% 50%;
+  transform-box: fill-box;
+}
+
+.juno-mark--animated .juno-mark__chord {
+  animation: juno-chord-sweep 2.6s cubic-bezier(0.65, 0.05, 0.36, 1) infinite;
+}
+
+@keyframes juno-chord-sweep {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Subtle breathing of the outer circle while thinking — reinforces the
+ * "alive" feel without competing with the chord sweep. */
+.juno-mark--animated > svg > circle {
+  animation: juno-circle-breath 2.6s ease-in-out infinite;
+  transform-origin: 50% 50%;
+  transform-box: fill-box;
+}
+
+@keyframes juno-circle-breath {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.72;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .juno-mark--animated .juno-mark__chord,
+  .juno-mark--animated > svg > circle {
+    animation: juno-mark-pulse 2.4s ease-in-out infinite;
+  }
+}
+
+@keyframes juno-mark-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* Container layout helper. Inline-flex by default so the widget sits
+ * inside copy without forcing a new block. */
+.juno-thinking {
+  color: var(--color-text-primary);
+  position: relative;
+}
