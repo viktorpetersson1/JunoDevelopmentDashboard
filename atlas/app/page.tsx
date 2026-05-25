@@ -12,8 +12,9 @@
 
 import { DashboardShell } from './_components/dashboard-shell';
 import { KpiPattern } from '@/patterns/KpiPattern';
+import { PortfolioCashFlowChart } from './_components/portfolio-cash-flow-chart';
 import { findManyProjects } from '@/lib/repos/project';
-import { runProject } from '@/lib/calc/project/runProject';
+import { aggregatePortfolio } from '@/lib/calc/portfolio/aggregate';
 import { BASELINE_GLOBALS, BASELINE_SCENARIO } from '@/lib/calc/baselines';
 import { formatMoney } from '@/lib/utils/money';
 import { requireAuth } from '@/lib/auth/requireAuth';
@@ -26,45 +27,42 @@ export default async function HomePage() {
   const { profile, user } = await requireAuth();
   const { projects } = await findManyProjects({ limit: 100 });
 
-  // Compute portfolio KPIs by running the calc engine over each project.
-  // T042 will replace this naïve aggregation with the proper aggregatePortfolio
-  // port (handles include_sold + cross-project capital pressure).
-  const results = projects.map((p) =>
-    runProject(p, BASELINE_GLOBALS, BASELINE_SCENARIO)
-  );
-
-  const activeCount = projects.filter((p) => p.stage !== 'archived' && p.stage !== 'sold').length;
-  const totalSales = results.reduce((s, r) => s + r.kpis.total_sales, 0);
-  const totalProfit = results.reduce((s, r) => s + r.kpis.gross_profit, 0);
-  const peakEquity = results.length ? Math.max(...results.map((r) => r.kpis.peak_equity)) : 0;
-  const peakDebt = results.length ? Math.max(...results.map((r) => r.kpis.peak_debt)) : 0;
-  const portfolioMargin = totalSales > 0 ? totalProfit / totalSales : 0;
+  // T042 portfolio aggregator: real cross-project capital pressure, Excel-
+  // style equity calls, KPC LOC pool, annual P&L. Replaces the prior naïve
+  // per-project reduce. Golden-verified ≤ 0.5% / $1 vs vanilla.
+  const portfolio = aggregatePortfolio(projects, BASELINE_GLOBALS, BASELINE_SCENARIO);
+  const k = portfolio.kpis;
 
   const kpis: KPITileProps[] = [
     {
       label: 'Active projects',
-      value: String(activeCount),
+      value: String(k.active_project_count),
       hint: `${projects.length} total in pipeline`,
     },
     {
       label: 'Pipeline revenue',
-      value: formatMoney(totalSales * 100, { compact: true, precision: 2 }),
+      value: formatMoney(k.total_sales * 100, { compact: true, precision: 2 }),
       hint: '2026-2030',
     },
     {
-      label: 'Pipeline profit',
-      value: formatMoney(totalProfit * 100, { compact: true, precision: 2 }),
-      hint: `${(portfolioMargin * 100).toFixed(1)}% margin`,
+      label: 'Profit after tax',
+      value: formatMoney(k.total_profit_after_tax * 100, { compact: true, precision: 2 }),
+      hint: `${(k.portfolio_yield_on_cost * 100).toFixed(1)}% yield on cost`,
     },
     {
       label: 'Peak equity',
-      value: formatMoney(peakEquity * 100, { compact: true, precision: 2 }),
-      hint: 'across pipeline',
+      value: formatMoney(k.peak_equity_required * 100, { compact: true, precision: 2 }),
+      hint: k.peak_equity_month ?? 'across pipeline',
     },
     {
       label: 'Peak debt',
-      value: formatMoney(peakDebt * 100, { compact: true, precision: 2 }),
-      hint: 'across pipeline',
+      value: formatMoney(k.max_debt_outstanding * 100, { compact: true, precision: 2 }),
+      hint: k.max_debt_month ?? 'across pipeline',
+    },
+    {
+      label: 'IRR',
+      value: k.irr_annual != null ? `${(k.irr_annual * 100).toFixed(1)}%` : '—',
+      hint: 'portfolio, annualized',
     },
   ];
 
@@ -77,15 +75,8 @@ export default async function HomePage() {
     <DashboardShell activeHref="/" user={dashboardUser}>
       <KpiPattern
         kpis={kpis}
-        chartTitle="Cash flow — 5-year projection"
-        chart={
-          <div className="ja-empty-state" aria-label="Cash flow chart placeholder">
-            <p className="ja-empty-state__title">Cash flow chart</p>
-            <p className="ja-empty-state__description">
-              Recharts wiring lands in T046.1 — KPIs above already reflect the live calc engine.
-            </p>
-          </div>
-        }
+        chartTitle="Cash flow — portfolio aggregated"
+        chart={<PortfolioCashFlowChart monthly={portfolio.monthly} />}
         rail={
           <section style={{ padding: '20px' }}>
             <h2
