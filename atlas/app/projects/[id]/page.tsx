@@ -12,6 +12,12 @@ import { notFound } from 'next/navigation';
 import { ProjectDetailClient } from './_components/project-detail-client';
 import { SummaryTab } from './_components/summary-tab';
 import { TimelineTab } from './_components/timeline-tab';
+import { CapitalTab } from './_components/capital-tab';
+import { ActualsTab } from './_components/actuals-tab';
+import { SalesTab } from './_components/sales-tab';
+import { RisksTab } from './_components/risks-tab';
+import { ActivityTab } from './_components/activity-tab';
+import { InputsTab } from './_components/inputs-tab';
 import { findCurrentProjectByKey } from '@/lib/repos/project';
 import { runProject } from '@/lib/calc/project/runProject';
 import { BASELINE_GLOBALS, BASELINE_SCENARIO } from '@/lib/calc/baselines';
@@ -40,15 +46,37 @@ export default async function ProjectDetailPage({
 
   const tab = searchParams.tab ?? 'summary';
 
-  // T048 + T049 ship Summary + Timeline. The other 6 tabs render a
-  // "Coming in T0xx" placeholder until W4 wires them.
+  // All 8 tabs live. Inputs/Capital/Risks render the data the calc engine
+  // already produces; Actuals/Activity show empty-state shells pending
+  // T060 + T069 ingest paths.
   let tabContent: ReactNode;
-  if (tab === 'summary') {
-    tabContent = <SummaryTab result={result} />;
-  } else if (tab === 'timeline') {
-    tabContent = <TimelineTab project={project} result={result} />;
-  } else {
-    tabContent = <UnshippedTabPlaceholder tab={tab} />;
+  switch (tab) {
+    case 'summary':
+      tabContent = <SummaryTab result={result} />;
+      break;
+    case 'timeline':
+      tabContent = <TimelineTab project={project} result={result} />;
+      break;
+    case 'capital':
+      tabContent = <CapitalTab result={result} />;
+      break;
+    case 'actuals':
+      tabContent = <ActualsTab result={result} />;
+      break;
+    case 'sales':
+      tabContent = <SalesTab project={project} result={result} />;
+      break;
+    case 'risks':
+      tabContent = <RisksTab result={result} />;
+      break;
+    case 'activity':
+      tabContent = <ActivityTab project={project} />;
+      break;
+    case 'inputs':
+      tabContent = <InputsTab project={project} />;
+      break;
+    default:
+      tabContent = <UnknownTabPlaceholder tab={tab} />;
   }
 
   const marketLabel =
@@ -66,17 +94,7 @@ export default async function ProjectDetailPage({
   );
 }
 
-function UnshippedTabPlaceholder({ tab }: { tab: string }) {
-  const TICKET_MAP: Record<string, string> = {
-    timeline: 'T049',
-    capital: 'T062 (W4)',
-    actuals: 'T066 (W4)',
-    sales: 'T067 (W4)',
-    risks: 'T068 (W4)',
-    activity: 'T069 (W4)',
-    inputs: 'T065 follow-up (read-only Inputs ship with the New Project Wizard)',
-  };
-  const ticket = TICKET_MAP[tab] ?? 'next sprint';
+function UnknownTabPlaceholder({ tab }: { tab: string }) {
   return (
     <div
       style={{
@@ -89,11 +107,8 @@ function UnshippedTabPlaceholder({ tab }: { tab: string }) {
       }}
     >
       <p style={{ margin: 0, fontSize: 14 }}>
-        <strong style={{ color: 'var(--color-text-primary)' }}>
-          {tab[0]!.toUpperCase() + tab.slice(1)} tab
-        </strong>{' '}
-        lands in {ticket}. The calc engine already produces all the data; this
-        view is the next thing to wire.
+        Unknown tab <code>{tab}</code>. Try Summary, Inputs, Timeline,
+        Capital, Actuals, Sales, Risks, or Activity.
       </p>
     </div>
   );

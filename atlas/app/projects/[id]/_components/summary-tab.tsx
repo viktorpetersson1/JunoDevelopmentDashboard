@@ -11,6 +11,7 @@ import { KPIStrip } from '@/components/data/KPIStrip';
 import { KPITile } from '@/components/data/KPITile';
 import { formatMoney } from '@/lib/utils/money';
 import type { ProjectResult } from '@/lib/calc/project/types';
+import { CashFlowChart } from './cash-flow-chart';
 
 export function SummaryTab({ result }: { result: ProjectResult }) {
   const k = result.kpis;
@@ -44,6 +45,8 @@ export function SummaryTab({ result }: { result: ProjectResult }) {
         />
         <KPITile label="MOIC" value={`${k.moic.toFixed(2)}×`} hint="equity multiple" />
       </KPIStrip>
+
+      <CashFlowChart monthly={result.monthly} />
 
       <div
         style={{
