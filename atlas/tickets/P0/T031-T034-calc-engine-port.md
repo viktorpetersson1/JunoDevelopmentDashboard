@@ -5,6 +5,7 @@
 ## What changed
 
 ### New files
+
 - `atlas/lib/calc/project/types.ts` — `ProjectInput`, `Globals`, `Scenario`, `MonthlySeries`, `ProjectKpis`, `ProjectResult`. Matches vanilla shape exactly so fixture JSON deserialises directly.
 - `atlas/lib/calc/project/spreading.ts` — `spreadingWeights(n, curve)`. Faithful port of vanilla `engine.js::spreadingWeights`.
 - `atlas/lib/calc/project/irr.ts` — `equityCashFlowSeries`, `monthlyIRR` (bisection), `annualizedIRR`. Faithful ports of vanilla equivalents.
@@ -25,14 +26,14 @@
 
 The current `runProject.ts` is one ~200-line function. The bundle wants this split into 6 internal modules. Plan:
 
-| Bundle ticket | Extract from `runProject.ts` |
-|---|---|
-| T025 revenueSchedule | sale price derivation + `sales[saleIdx]` placement |
-| T026 landCosts       | `land_cost[startIdx]` |
-| T027 constructionCosts | build spread loop (`buildWeights` × `realization`) |
-| T028 softCosts       | `soft_cost[startIdx]` + breakdown-vs-lump-sum logic |
-| T029 financing       | forward-pass debt/equity loop + sale-month repay |
-| T030 pnl             | KPIs aggregation |
+| Bundle ticket          | Extract from `runProject.ts`                        |
+| ---------------------- | --------------------------------------------------- |
+| T025 revenueSchedule   | sale price derivation + `sales[saleIdx]` placement  |
+| T026 landCosts         | `land_cost[startIdx]`                               |
+| T027 constructionCosts | build spread loop (`buildWeights` × `realization`)  |
+| T028 softCosts         | `soft_cost[startIdx]` + breakdown-vs-lump-sum logic |
+| T029 financing         | forward-pass debt/equity loop + sale-month repay    |
+| T030 pnl               | KPIs aggregation                                    |
 
 Each refactor leaves the golden tests passing (no output change). Then T031 becomes a thin orchestrator that calls all 6 in order.
 

@@ -8,6 +8,8 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./tests/setup.ts'],
+    // Playwright specs run via `pnpm test:e2e`; exclude from vitest sweep.
+    exclude: ['node_modules', '.next', 'tests/e2e/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],

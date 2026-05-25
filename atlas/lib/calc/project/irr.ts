@@ -22,6 +22,26 @@ export function equityCashFlowSeries(
   return cf;
 }
 
+/**
+ * Excel-style equity cash flow: cumulative calls (as negative CF) per month,
+ * plus the final cash balance distributed at horizon end. Matches the
+ * vanilla `equityCashFlowFromCalls` used in `aggregatePortfolio` IRR calc.
+ */
+export function equityCashFlowFromCalls(monthly: {
+  equity_called: number[];
+  closing_cash: number[];
+}): number[] {
+  const N = monthly.equity_called.length;
+  const cf = new Array<number>(N);
+  for (let i = 0; i < N; i++) {
+    cf[i] = -(monthly.equity_called[i] ?? 0);
+  }
+  if (N > 0) {
+    cf[N - 1] = (cf[N - 1] ?? 0) + Math.max(0, monthly.closing_cash[N - 1] ?? 0);
+  }
+  return cf;
+}
+
 export interface IRROptions {
   maxIter?: number;
   tol?: number;
