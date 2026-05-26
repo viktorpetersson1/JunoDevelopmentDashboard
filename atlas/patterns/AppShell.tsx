@@ -103,6 +103,14 @@ const PipelineIcon = () => (
   </svg>
 );
 
+/** Pricing icon — tag with $ glyph. */
+const PricingIcon = () => (
+  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+    <path d="M11 2.5h6.5v6.5L9 17.5l-6.5-6.5L11 2.5z" strokeLinejoin="round" />
+    <circle cx="14" cy="6" r="1.25" />
+  </svg>
+);
+
 /**
  * Ask Juno is the AI surface — it gets the brand mark itself, not a generic
  * chat-bubble glyph. Same stroke weight as the other nav icons (1.5 / 20
@@ -180,6 +188,7 @@ export const DEFAULT_SIDEBAR_SECTIONS: SidebarSection[] = [
     items: [
       { href: '/projects', label: 'Projects', icon: <ProjectsIcon /> },
       { href: '/pipeline', label: 'Pipeline', icon: <PipelineIcon /> },
+      { href: '/pricing', label: 'Pricing', icon: <PricingIcon /> },
       { href: '/suggestions', label: 'Suggestions', icon: <SuggestionsIcon /> },
       { href: '/ask-juno', label: 'Ask Juno', icon: <AskJunoIcon /> },
     ],
