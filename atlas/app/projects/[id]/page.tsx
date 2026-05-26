@@ -18,6 +18,7 @@ import { SalesTab } from './_components/sales-tab';
 import { RisksTab } from './_components/risks-tab';
 import { ActivityTab } from './_components/activity-tab';
 import { InputsTab } from './_components/inputs-tab';
+import { PricingTab } from './_components/pricing-tab';
 import { SnapshotBanner } from './_components/snapshot-banner';
 import { findCurrentProjectByKey, findCurrentProjectUuidByKey } from '@/lib/repos/project';
 import { findCapitalCallsByProject } from '@/lib/repos/capital-call';
@@ -29,11 +30,18 @@ import {
 import { findAuditForProject } from '@/lib/repos/audit-log';
 import { listActualsByCategory } from '@/lib/services/actuals';
 import { fetchAllProfiles, fetchCapTable } from '@/lib/repos/settings';
+import {
+  findRunBundle,
+  listRunsByProject,
+  type PricingRunBundleView,
+} from '@/lib/repos/pricing-framework';
+import { findMarketByKey } from '@/lib/repos/markets';
 import { runProject } from '@/lib/calc/project/runProject';
 import { BASELINE_GLOBALS, BASELINE_SCENARIO } from '@/lib/calc/baselines';
 import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
 import { hasRole } from '@/lib/auth/requireRole';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import type { ProjectPlotType } from '@/lib/db/schema/projects';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -160,6 +168,59 @@ export default async function ProjectDetailPage({
     case 'inputs':
       tabContent = <InputsTab project={project} />;
       break;
+    case 'pricing': {
+      const pricingProjectUuid = await findCurrentProjectUuidByKey(params.id);
+      // Pull plot_types + applied_pricing_run_id straight from the row
+      // (calc-engine ProjectInput shape doesn't carry these — they're
+      // framework-specific extensions).
+      const supabase = createSupabaseServerClient();
+      let projectPlotTypes: ProjectPlotType[] | null = null;
+      let appliedRunId: string | null = null;
+      if (pricingProjectUuid) {
+        const { data: projRow } = await supabase
+          .schema('atlas')
+          .from('projects')
+          .select('plot_types, applied_pricing_run_id')
+          .eq('id', pricingProjectUuid)
+          .maybeSingle();
+        if (projRow) {
+          const row = projRow as {
+            plot_types: ProjectPlotType[] | null;
+            applied_pricing_run_id: string | null;
+          };
+          projectPlotTypes = row.plot_types;
+          appliedRunId = row.applied_pricing_run_id;
+        }
+      }
+
+      const allRuns = pricingProjectUuid
+        ? await listRunsByProject(pricingProjectUuid, { includeArchived: false })
+        : [];
+
+      const draftRun = allRuns.find((r) => r.status === 'draft') ?? null;
+      let draftBundle: PricingRunBundleView | null = null;
+      if (draftRun) draftBundle = await findRunBundle(draftRun.id);
+
+      let appliedBundle: PricingRunBundleView | null = null;
+      if (appliedRunId) appliedBundle = await findRunBundle(appliedRunId);
+
+      const market = await findMarketByKey('east_end_li');
+      const subCuts = (market?.subCuts ?? []).map((s) => ({ key: s.key, label: s.label }));
+
+      tabContent = (
+        <PricingTab
+          projectKey={params.id}
+          projectPlotTypes={projectPlotTypes}
+          appliedRunId={appliedRunId}
+          runs={allRuns}
+          draftBundle={draftBundle}
+          appliedBundle={appliedBundle}
+          subCuts={subCuts}
+          isEditor={hasRole(profile, ['super_admin', 'editor'])}
+        />
+      );
+      break;
+    }
     default:
       tabContent = <UnknownTabPlaceholder tab={tab} />;
   }

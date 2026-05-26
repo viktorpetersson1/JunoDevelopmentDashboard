@@ -24,6 +24,7 @@ export type ProjectTab =
   | 'actuals'
   | 'sales'
   | 'risks'
+  | 'pricing'
   | 'activity';
 
 const TABS: { id: ProjectTab; label: string }[] = [
@@ -34,6 +35,7 @@ const TABS: { id: ProjectTab; label: string }[] = [
   { id: 'actuals', label: 'Actuals' },
   { id: 'sales', label: 'Sales' },
   { id: 'risks', label: 'Risks' },
+  { id: 'pricing', label: 'Pricing' },
   { id: 'activity', label: 'Activity' },
 ];
 
