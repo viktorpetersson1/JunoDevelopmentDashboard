@@ -2,30 +2,30 @@ import { describe, expect, it } from 'vitest';
 import { hashWithSalt } from '../hash';
 
 describe('hashWithSalt', () => {
-  it('produces a stable hash for the same input', () => {
-    const a = hashWithSalt('192.168.1.1');
-    const b = hashWithSalt('192.168.1.1');
+  it('produces a stable hash for the same input', async () => {
+    const a = await hashWithSalt('192.168.1.1');
+    const b = await hashWithSalt('192.168.1.1');
     expect(a).toBe(b);
   });
 
-  it('produces different hashes for different inputs', () => {
-    const a = hashWithSalt('1.2.3.4');
-    const b = hashWithSalt('1.2.3.5');
+  it('produces different hashes for different inputs', async () => {
+    const a = await hashWithSalt('1.2.3.4');
+    const b = await hashWithSalt('1.2.3.5');
     expect(a).not.toBe(b);
   });
 
-  it('output is 32 hex chars (128 bits)', () => {
-    const out = hashWithSalt('test');
+  it('output is 32 hex chars (128 bits)', async () => {
+    const out = await hashWithSalt('test');
     expect(out).toMatch(/^[a-f0-9]{32}$/);
   });
 
-  it('changes when AUDIT_HASH_SALT changes', () => {
+  it('changes when AUDIT_HASH_SALT changes', async () => {
     const original = process.env.AUDIT_HASH_SALT;
     try {
       process.env.AUDIT_HASH_SALT = 'salt-A';
-      const a = hashWithSalt('ip');
+      const a = await hashWithSalt('ip');
       process.env.AUDIT_HASH_SALT = 'salt-B';
-      const b = hashWithSalt('ip');
+      const b = await hashWithSalt('ip');
       expect(a).not.toBe(b);
     } finally {
       if (original !== undefined) {

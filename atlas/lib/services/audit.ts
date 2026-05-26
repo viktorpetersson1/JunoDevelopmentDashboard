@@ -77,7 +77,7 @@ export async function recordMutation(input: AuditMutationInput): Promise<string 
         status_code: input.statusCode,
         before_json: input.before === undefined ? null : redactPII(input.before),
         after_json: input.after === undefined ? null : redactPII(input.after),
-        ip_hash: input.ip ? hashWithSalt(input.ip) : null,
+        ip_hash: input.ip ? await hashWithSalt(input.ip) : null,
         user_agent: input.userAgent ?? null,
       })
       .select('id')

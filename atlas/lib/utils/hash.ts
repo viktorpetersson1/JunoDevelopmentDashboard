@@ -2,13 +2,24 @@
  * One-way hashing utility used by the audit log to fingerprint IPs without
  * storing the raw address (CLAUDE.md §18 — PII concerns).
  *
- * Uses SHA-256 over a server-side salt + the input, so the hash is stable
- * across requests but cannot be reversed to the IP without the salt.
+ * Uses SHA-256 via the Web Crypto API (crypto.subtle) so the same code
+ * runs in Node, the Cloudflare Workers edge runtime, and the browser.
+ * Web Crypto is async — callers must await.
+ *
+ * The hash is salted with AUDIT_HASH_SALT (or a stable dev fallback) so
+ * the value is reproducible across requests but can't be reversed to the
+ * original input without the salt.
  */
-import { createHash } from 'node:crypto';
 
 /** Hash a string with the server-side AUDIT_HASH_SALT (or a stable fallback in dev). */
-export function hashWithSalt(input: string): string {
+export async function hashWithSalt(input: string): Promise<string> {
   const salt = process.env.AUDIT_HASH_SALT ?? 'atlas-dev-salt';
-  return createHash('sha256').update(`${salt}::${input}`).digest('hex').slice(0, 32);
+  const bytes = new TextEncoder().encode(`${salt}::${input}`);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  // Convert ArrayBuffer → 32-char hex prefix (matches the prior node:crypto
+  // implementation's output shape, so DB rows stay comparable).
+  const hex = Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+  return hex.slice(0, 32);
 }
