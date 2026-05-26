@@ -2,38 +2,31 @@ import { describe, expect, it } from 'vitest';
 import { GET } from '../route';
 
 async function readJson(res: Response) {
-  return JSON.parse(await res.text()) as {
-    data?: { status: string; commit: string; time: string };
-  };
+  return JSON.parse(await res.text()) as { status?: string; commit?: string; time?: string };
 }
 
-describe('GET /api/health', () => {
-  it('returns 200 with { data: { status, commit, time } } envelope', async () => {
+/**
+ * T084.2 — public /api/health now returns ONLY {status: 'ok'}.
+ * commit + time moved to /api/health/detailed behind super_admin auth
+ * so unauthenticated callers can't fingerprint the deploy.
+ */
+describe('GET /api/health (public)', () => {
+  it('returns 200 with bare { status: "ok" }', async () => {
     const res = GET();
     expect(res.status).toBe(200);
     const body = await readJson(res);
-    expect(body.data?.status).toBe('ok');
-    expect(typeof body.data?.commit).toBe('string');
-    // ISO timestamp
-    expect(body.data?.time).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+    expect(body.status).toBe('ok');
   });
 
-  it('uses RENDER_GIT_COMMIT when set; falls back to "dev"', async () => {
-    const original = process.env.RENDER_GIT_COMMIT;
-    try {
-      process.env.RENDER_GIT_COMMIT = 'abc1234';
-      const r1 = GET();
-      expect((await readJson(r1)).data?.commit).toBe('abc1234');
+  it('does NOT leak commit or time to unauthenticated callers', async () => {
+    const res = GET();
+    const body = await readJson(res);
+    expect(body.commit).toBeUndefined();
+    expect(body.time).toBeUndefined();
+  });
 
-      delete process.env.RENDER_GIT_COMMIT;
-      const r2 = GET();
-      expect((await readJson(r2)).data?.commit).toBe('dev');
-    } finally {
-      if (original !== undefined) {
-        process.env.RENDER_GIT_COMMIT = original;
-      } else {
-        delete process.env.RENDER_GIT_COMMIT;
-      }
-    }
+  it('sets Cache-Control: no-store so probes always hit the function', async () => {
+    const res = GET();
+    expect(res.headers.get('cache-control')).toMatch(/no-store/i);
   });
 });

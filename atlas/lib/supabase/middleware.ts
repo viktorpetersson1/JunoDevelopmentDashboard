@@ -90,6 +90,26 @@ export async function updateSession(request: NextRequest) {
 
     // Protected route guard
     if (!user && !isPublicPath(request.nextUrl.pathname)) {
+      // T084.1 — API consumers (curl, mobile apps, partner integrations,
+      // automation scripts) get a proper 401 JSON envelope. Page navigations
+      // keep the friendlier 307-to-sign-in.
+      const isApi = request.nextUrl.pathname.startsWith('/api/');
+      const wantsJson = request.headers.get('accept')?.includes('application/json');
+      if (isApi || wantsJson) {
+        const body = JSON.stringify({
+          error: { code: 'AUTH_REQUIRED', message: 'Unauthorized' },
+        });
+        const jsonResponse = new NextResponse(body, {
+          status: 401,
+          headers: {
+            'Content-Type': 'application/json',
+            'WWW-Authenticate': 'Bearer realm="atlas"',
+            'Cache-Control': 'no-store, must-revalidate',
+          },
+        });
+        return jsonResponse;
+      }
+
       const signInUrl = request.nextUrl.clone();
       signInUrl.pathname = '/sign-in';
       // T081.3 — for root `/`, route the redirect to the canonical
