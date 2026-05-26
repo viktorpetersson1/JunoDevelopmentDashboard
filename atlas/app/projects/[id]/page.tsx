@@ -18,9 +18,11 @@ import { SalesTab } from './_components/sales-tab';
 import { RisksTab } from './_components/risks-tab';
 import { ActivityTab } from './_components/activity-tab';
 import { InputsTab } from './_components/inputs-tab';
+import { SnapshotBanner } from './_components/snapshot-banner';
 import { findCurrentProjectByKey, findCurrentProjectUuidByKey } from '@/lib/repos/project';
 import { findCapitalCallsByProject } from '@/lib/repos/capital-call';
-import { fetchCapTable } from '@/lib/repos/settings';
+import { findLatestSnapshot } from '@/lib/repos/approval-snapshot';
+import { fetchAllProfiles, fetchCapTable } from '@/lib/repos/settings';
 import { runProject } from '@/lib/calc/project/runProject';
 import { BASELINE_GLOBALS, BASELINE_SCENARIO } from '@/lib/calc/baselines';
 import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
@@ -109,13 +111,41 @@ export default async function ProjectDetailPage({
     project.market && project.market !== 'default' ? project.market.replaceAll('_', ' ') : null;
   const subtitle = [project.address, marketLabel, project.entity_spv].filter(Boolean).join(' · ');
 
+  // Snapshot banner data (loaded for every tab so the gate is always
+  // visible). Approver-name lookup uses the existing settings repo so we
+  // don't add a new query path.
+  const projectUuid = await findCurrentProjectUuidByKey(params.id);
+  const latestSnapshot = projectUuid ? await findLatestSnapshot(projectUuid) : null;
+  const approverNames: Record<string, string> = {};
+  if (latestSnapshot) {
+    const ids = new Set<string>(latestSnapshot.approvedBy);
+    if (latestSnapshot.createdBy) ids.add(latestSnapshot.createdBy);
+    if (latestSnapshot.lockedBy) ids.add(latestSnapshot.lockedBy);
+    if (ids.size > 0) {
+      const profiles = await fetchAllProfiles();
+      for (const p of profiles) {
+        if (ids.has(p.id)) approverNames[p.id] = p.displayName ?? p.email ?? p.id.slice(0, 8);
+      }
+    }
+  }
+
   return (
     <ProjectDetailClient
       user={dashboardUser}
       projectName={project.name}
       projectSubtitle={subtitle}
     >
-      {tabContent}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <SnapshotBanner
+          projectKey={params.id}
+          latest={latestSnapshot}
+          currentUserId={user.id}
+          isEditor={hasRole(profile, ['super_admin', 'editor'])}
+          isSuperAdmin={hasRole(profile, ['super_admin'])}
+          approverNames={approverNames}
+        />
+        {tabContent}
+      </div>
     </ProjectDetailClient>
   );
 }
