@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { JunoMark } from '@/components/brand';
 import { SignInForm } from './sign-in-form';
+import { sanitizeRedirect } from '@/lib/auth/safe-redirect';
 
 export const runtime = 'edge';
 
@@ -16,9 +17,11 @@ export default function SignInPage({
 }: {
   searchParams: { redirectTo?: string; error?: string };
 }) {
-  // T081.3 — default to the canonical post-login surface, not `/` (which
-  // would loop through the root redirect helper for no useful reason).
-  const redirectTo = searchParams.redirectTo ?? '/dashboard';
+  // T081.3 — default to the canonical post-login surface, not `/`.
+  // T085.1 — sanitize against the open-redirect allowlist server-side so
+  // a `?redirectTo=https://evil.com` URL never makes it into the RSC
+  // payload or the client form's router.push() target.
+  const redirectTo = sanitizeRedirect(searchParams.redirectTo);
   const errorParam = searchParams.error;
 
   return (
