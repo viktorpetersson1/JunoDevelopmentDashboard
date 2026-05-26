@@ -15,11 +15,40 @@ import { NextResponse, type NextRequest } from 'next/server';
  *
  * T081.1 — /sign-up is the branded invite-only page (was a silent 307 to
  *          /sign-in before; now reachable directly).
+ * T086.1 — /robots.txt is also matched out via the middleware matcher,
+ *          but listed here as belt-and-braces in case the matcher misses.
  */
-const PUBLIC_ROUTES = ['/sign-in', '/sign-up', '/api/health'];
+const PUBLIC_ROUTES = ['/sign-in', '/sign-up', '/api/health', '/robots.txt'];
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_ROUTES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
+/** T086.3 — paths that the middleware actively guards. Anything NOT in
+ *  this list and NOT in PUBLIC_ROUTES falls through to Next.js's
+ *  not-found handler (proper 404 instead of a 307-to-sign-in dead-end).
+ *
+ *  Root `/` is treated as protected because it's a thin redirect to the
+ *  canonical post-login surface and needs the auth gate to fire.
+ */
+const PROTECTED_PREFIXES = [
+  '/',
+  '/dashboard',
+  '/projects',
+  '/pipeline',
+  '/cashflow',
+  '/notifications',
+  '/settings',
+  '/pricing',
+  '/api',
+  '/dev', // dev-only routes; production-blocked in atlas/middleware.ts
+];
+
+function isProtectedPath(pathname: string): boolean {
+  if (pathname === '/') return true;
+  return PROTECTED_PREFIXES.some(
+    (p) => p !== '/' && (pathname === p || pathname.startsWith(`${p}/`))
+  );
 }
 
 /** T081.3 + T085 — canonical post-login surface. `/` is a thin redirect
@@ -87,6 +116,14 @@ export async function updateSession(request: NextRequest) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
+
+    // T086.3 — unknown unauthenticated routes (e.g. `/pipelinex`) fall
+    // through to Next.js's not-found handler instead of bouncing to
+    // /sign-in. Cleaner UX (real 404) + cleaner threat model (no oracle
+    // for path-existence via the redirect target).
+    if (!user && !isPublicPath(request.nextUrl.pathname) && !isProtectedPath(request.nextUrl.pathname)) {
+      return response;
+    }
 
     // Protected route guard
     if (!user && !isPublicPath(request.nextUrl.pathname)) {
