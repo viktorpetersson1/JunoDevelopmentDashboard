@@ -11,12 +11,21 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-/** Public routes that don't require authentication. */
-const PUBLIC_ROUTES = ['/sign-in', '/api/health'];
+/** Public routes that don't require authentication.
+ *
+ * T081.1 — /sign-up is the branded invite-only page (was a silent 307 to
+ *          /sign-in before; now reachable directly).
+ */
+const PUBLIC_ROUTES = ['/sign-in', '/sign-up', '/api/health'];
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_ROUTES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
+
+/** T081.3 + T085 — canonical post-login surface. `/` is a thin redirect
+ *  to /dashboard (see app/page.tsx), so unauthenticated `/` should bounce
+ *  the user toward /dashboard, not back to `/` (which would loop). */
+const CANONICAL_POST_LOGIN = '/dashboard';
 
 /**
  * Apply cache-control headers that match public/_headers.
@@ -83,16 +92,24 @@ export async function updateSession(request: NextRequest) {
     if (!user && !isPublicPath(request.nextUrl.pathname)) {
       const signInUrl = request.nextUrl.clone();
       signInUrl.pathname = '/sign-in';
-      signInUrl.searchParams.set('redirectTo', request.nextUrl.pathname);
+      // T081.3 — for root `/`, route the redirect to the canonical
+      // surface so the post-login bounce lands somewhere stable. For any
+      // other path, preserve it so the user resumes where they intended.
+      const target =
+        request.nextUrl.pathname === '/' ? CANONICAL_POST_LOGIN : request.nextUrl.pathname;
+      signInUrl.searchParams.set('redirectTo', target);
       const redirect = NextResponse.redirect(signInUrl);
       applyCacheHeaders(request, redirect);
       return redirect;
     }
 
-    // Signed-in user hitting /sign-in → bounce to home
-    if (user && request.nextUrl.pathname === '/sign-in') {
+    // Signed-in user hitting /sign-in or /sign-up → bounce to canonical home.
+    if (
+      user &&
+      (request.nextUrl.pathname === '/sign-in' || request.nextUrl.pathname === '/sign-up')
+    ) {
       const home = request.nextUrl.clone();
-      home.pathname = '/';
+      home.pathname = CANONICAL_POST_LOGIN;
       home.search = '';
       const redirect = NextResponse.redirect(home);
       applyCacheHeaders(request, redirect);

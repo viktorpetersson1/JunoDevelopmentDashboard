@@ -96,6 +96,16 @@ export function SignInForm({
     }
   }
 
+  /**
+   * T081.2 — email-enumeration fix.
+   *
+   * Always show the same success message regardless of whether
+   * `resetPasswordForEmail` succeeded or failed (Supabase returns no
+   * error for unknown emails today, but a future API change or an
+   * upstream rate-limiter response would otherwise leak account
+   * existence). UI feedback is invariant; the request still goes
+   * through so wall-clock timing stays similar across paths.
+   */
   async function handleResetRequest(e: FormEvent) {
     e.preventDefault();
     setFormError(null);
@@ -108,16 +118,16 @@ export function SignInForm({
     }
     setFieldErrors({});
 
-    if (submitting) return;
+    if (submitting || resetSent) return;
     setSubmitting(true);
     try {
-      const supabase = createSupabaseBrowserClient();
-      // T081.2 will normalise this further; for now we still surface server errors.
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim());
-      if (resetError) {
-        setFormError(resetError.message);
-        return;
+      try {
+        const supabase = createSupabaseBrowserClient();
+        await supabase.auth.resetPasswordForEmail(email.trim());
+      } catch {
+        // Swallow — UI feedback is normalised regardless.
       }
+      // Always set sent so the form locks and user sees the same copy.
       setResetSent(true);
     } finally {
       setSubmitting(false);
@@ -169,7 +179,7 @@ export function SignInForm({
         )}
         {resetSent && (
           <p className="text-sm-juno text-positive" role="status">
-            Reset link sent. Check your email.
+            If an account exists for that email, we&apos;ve sent a reset link.
           </p>
         )}
 

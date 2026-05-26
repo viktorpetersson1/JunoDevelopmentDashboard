@@ -111,7 +111,8 @@ describe('SignInForm — reset-password mode', () => {
     expect(screen.getByLabelText('Password')).toBeInTheDocument();
   });
 
-  it('calls resetPasswordForEmail + shows confirmation', async () => {
+  it('calls resetPasswordForEmail + shows email-enumeration-safe confirmation', async () => {
+    // T081.2: UI feedback is the same whether the email exists or not.
     resetPasswordForEmail.mockResolvedValue({ error: null });
     render(<SignInForm redirectTo="/" />);
     fireEvent.click(screen.getByRole('button', { name: 'Forgot password?' }));
@@ -125,6 +126,25 @@ describe('SignInForm — reset-password mode', () => {
     await waitFor(() => {
       expect(resetPasswordForEmail).toHaveBeenCalledWith('a@b.c');
     });
-    expect(screen.getByRole('status')).toHaveTextContent('Reset link sent');
+    // New invariant-feedback copy — must NOT confirm or deny account existence.
+    expect(screen.getByRole('status')).toHaveTextContent(/if an account exists/i);
+  });
+
+  it('T081.2: shows the SAME confirmation copy when Supabase rejects (no enumeration)', async () => {
+    resetPasswordForEmail.mockRejectedValue(new Error('rate limited'));
+    render(<SignInForm redirectTo="/" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Forgot password?' }));
+
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'unknown@nowhere.test' } });
+    const form = screen.getByLabelText('Email').closest('form')!;
+    await act(async () => {
+      fireEvent.submit(form);
+    });
+
+    // Same status message as the success path; no `alert` surfacing the error.
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent(/if an account exists/i);
+    });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });

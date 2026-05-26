@@ -15,8 +15,9 @@ describe('AppShell', () => {
   });
 
   it('renders default sidebar sections (Portfolio + Workspace + Account)', () => {
+    // T081.3 — Overview href moved from `/` → `/dashboard`; activeHref tracks.
     render(
-      <AppShell activeHref="/" scenario="base" onScenarioChange={() => {}}>
+      <AppShell activeHref="/dashboard" scenario="base" onScenarioChange={() => {}}>
         x
       </AppShell>
     );
@@ -27,6 +28,7 @@ describe('AppShell', () => {
     // Active link
     const overview = screen.getByRole('link', { name: 'Overview' });
     expect(overview).toHaveAttribute('aria-current', 'page');
+    expect(overview).toHaveAttribute('href', '/dashboard');
   });
 
   it('user prop overrides DEFAULT_USER; topbar actions slot renders', () => {

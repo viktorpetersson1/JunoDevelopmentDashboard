@@ -16,7 +16,9 @@ export default function SignInPage({
 }: {
   searchParams: { redirectTo?: string; error?: string };
 }) {
-  const redirectTo = searchParams.redirectTo ?? '/';
+  // T081.3 — default to the canonical post-login surface, not `/` (which
+  // would loop through the root redirect helper for no useful reason).
+  const redirectTo = searchParams.redirectTo ?? '/dashboard';
   const errorParam = searchParams.error;
 
   return (

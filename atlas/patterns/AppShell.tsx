@@ -177,7 +177,8 @@ export const DEFAULT_SIDEBAR_SECTIONS: SidebarSection[] = [
   {
     label: 'PORTFOLIO',
     items: [
-      { href: '/', label: 'Overview', icon: <OverviewIcon /> },
+      // T081.3 — Overview moved from `/` to `/dashboard` (canonical surface).
+      { href: '/dashboard', label: 'Overview', icon: <OverviewIcon /> },
       { href: '/cashflow', label: 'Forecast', icon: <ForecastIcon /> },
       { href: '/capital', label: 'Capital', icon: <CapitalIcon /> },
       { href: '/risks', label: 'Risks', icon: <RisksIcon /> },
