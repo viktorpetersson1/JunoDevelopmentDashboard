@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans';
+import { Providers } from './providers';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -37,7 +38,9 @@ function getSupabaseOrigin(): string | null {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const supabaseOrigin = getSupabaseOrigin();
   return (
-    <html lang="en" className={GeistSans.className}>
+    // T083.1: suppressHydrationWarning lets next-themes inject the class=""
+    // attribute on <html> before React hydrates without firing a mismatch warning.
+    <html lang="en" className={GeistSans.className} suppressHydrationWarning>
       <head>
         {supabaseOrigin && (
           <>
@@ -46,7 +49,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </>
         )}
       </head>
-      <body>{children}</body>
+      <body>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }

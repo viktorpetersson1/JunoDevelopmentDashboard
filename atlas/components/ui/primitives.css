@@ -262,7 +262,9 @@
 }
 
 .ja-icon-button--ghost:hover:not(:disabled) {
-  background: #f4f4f2;
+  /* T083.2: was hardcoded #f4f4f2 — broke in dark mode. Token resolves
+     to #f4f4f2 in :root and #1a1a19 in .dark. */
+  background: var(--color-surface-muted);
   color: var(--color-text-primary);
 }
 
