@@ -21,7 +21,11 @@ import { InputsTab } from './_components/inputs-tab';
 import { SnapshotBanner } from './_components/snapshot-banner';
 import { findCurrentProjectByKey, findCurrentProjectUuidByKey } from '@/lib/repos/project';
 import { findCapitalCallsByProject } from '@/lib/repos/capital-call';
-import { findLatestSnapshot, findSnapshotsByProject } from '@/lib/repos/approval-snapshot';
+import {
+  findLatestLockedSnapshot,
+  findLatestSnapshot,
+  findSnapshotsByProject,
+} from '@/lib/repos/approval-snapshot';
 import { findAuditForProject } from '@/lib/repos/audit-log';
 import { listActualsByCategory } from '@/lib/services/actuals';
 import { fetchAllProfiles, fetchCapTable } from '@/lib/repos/settings';
@@ -110,9 +114,14 @@ export default async function ProjectDetailPage({
     case 'sales':
       tabContent = <SalesTab project={project} result={result} />;
       break;
-    case 'risks':
-      tabContent = <RisksTab result={result} />;
+    case 'risks': {
+      const risksProjectUuid = await findCurrentProjectUuidByKey(params.id);
+      const latestLocked = risksProjectUuid
+        ? await findLatestLockedSnapshot(risksProjectUuid)
+        : null;
+      tabContent = <RisksTab result={result} latestLockedSnapshot={latestLocked} />;
       break;
+    }
     case 'activity': {
       const projectUuidForAudit = await findCurrentProjectUuidByKey(params.id);
       const projectCalls = projectUuidForAudit

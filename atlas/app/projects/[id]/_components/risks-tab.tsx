@@ -6,12 +6,17 @@
  * Globals.risk_* fields being added to the typed Globals contract (deferred
  * to follow-up — they live in BASELINE_GLOBALS today but aren't on the
  * interface).
+ *
+ * T068 adds an approval-snapshot-freshness row so a project running on a
+ * stale or missing locked snapshot surfaces as a governance risk, not
+ * just a financial one.
  */
 
 import { KPIStrip } from '@/components/data/KPIStrip';
 import { KPITile } from '@/components/data/KPITile';
 import { formatMoney } from '@/lib/utils/money';
 import type { ProjectResult } from '@/lib/calc/project/types';
+import type { ApprovalSnapshotView } from '@/lib/repos/approval-snapshot';
 
 // Thresholds mirror public/data.js::BASELINE_GLOBALS risk_* keys (snapshot
 // 2026-05-10). Hard-coded until Globals interface adds them — see header.
@@ -56,7 +61,43 @@ const STATUS_LABEL: Record<Status, string> = {
   breach: 'Breach',
 };
 
-export function RisksTab({ result }: { result: ProjectResult }) {
+const SNAPSHOT_FRESH_DAYS = 30;
+const SNAPSHOT_WARN_DAYS = 60;
+
+function snapshotAgeRow(latestLocked: ApprovalSnapshotView | null): RiskRow {
+  if (!latestLocked || !latestLocked.lockedAt) {
+    return {
+      label: 'Approval snapshot',
+      status: 'breach',
+      actual: 'None',
+      threshold: `≤ ${SNAPSHOT_FRESH_DAYS}d old`,
+      note: 'No locked snapshot — gate for permitting → construction',
+    };
+  }
+  const ageMs = Date.now() - new Date(latestLocked.lockedAt).getTime();
+  const ageDays = Math.max(0, Math.floor(ageMs / 86_400_000));
+  const status: Status =
+    ageDays <= SNAPSHOT_FRESH_DAYS ? 'ok' : ageDays <= SNAPSHOT_WARN_DAYS ? 'warn' : 'breach';
+  const approvers = latestLocked.approvedBy.length;
+  const fullyApproved = approvers >= 2;
+  return {
+    label: 'Approval snapshot',
+    status,
+    actual: `${ageDays}d old · ${latestLocked.snapshotVersion}`,
+    threshold: `≤ ${SNAPSHOT_FRESH_DAYS}d`,
+    note: fullyApproved
+      ? `${approvers} approvers · last locked ${latestLocked.lockedAt.slice(0, 10)}`
+      : 'Locked but awaiting second approver',
+  };
+}
+
+export function RisksTab({
+  result,
+  latestLockedSnapshot = null,
+}: {
+  result: ProjectResult;
+  latestLockedSnapshot?: ApprovalSnapshotView | null;
+}) {
   const k = result.kpis;
   const irrAnnual = k.irr_annual ?? 0;
 
@@ -99,6 +140,7 @@ export function RisksTab({ result }: { result: ProjectResult }) {
       threshold: `≥ ${(THRESHOLDS.margin_min * 100).toFixed(0)}%`,
       note: 'Profit / total sale value',
     },
+    snapshotAgeRow(latestLockedSnapshot),
   ];
 
   const breachCount = rows.filter((r) => r.status === 'breach').length;
