@@ -22,7 +22,8 @@
   --color-surface-inverse: #0d0d0d;
 
   /* Borders */
-  --color-border-hairline: #efefec;
+  /* T080.7: hairline bumped from #efefec → #c8c8c5 for >=3:1 vs #ffffff card. */
+  --color-border-hairline: #c8c8c5;
   --color-border-subtle: #f4f4f2;
   --color-border-strong: #e5e7eb;
   --color-border-focus: #0d0d0d;
@@ -30,7 +31,8 @@
   /* Text */
   --color-text-primary: #111111;
   --color-text-secondary: #6b7280;
-  --color-text-tertiary: #8a8f98;
+  /* T080.7: tertiary bumped from #8a8f98 → #767b84 for 4.5:1 vs #ffffff. */
+  --color-text-tertiary: #767b84;
   --color-text-quaternary: #b0b5bc;
   --color-text-inverse: #ffffff;
   --color-text-on-lime: #0d0d0d;

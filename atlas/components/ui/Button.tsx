@@ -17,12 +17,16 @@ import { JunoMark } from '../brand';
 import './primitives.css';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
-export type ButtonSize = 'sm' | 'md' | 'lg';
+export type ButtonSize = 'sm' | 'md' | 'lg' | 'auth';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   /** Visual style of the button */
   variant?: ButtonVariant;
-  /** Height: sm=28px, md=32px (default), lg=36px */
+  /**
+   * Height: sm=28px, md=32px (default), lg=36px, auth=48px.
+   * `auth` is full-width by design and is ONLY for /sign-in + /sign-up —
+   * do not use elsewhere (the app surfaces depend on dense control density).
+   */
   size?: ButtonSize;
   /** Disabled state — prevents all interaction */
   disabled?: boolean;

@@ -13,9 +13,14 @@
  * fail loud. Numbers were measured on the slowest fixture (Project 11)
  * locally and on a CI-like CPU (GitHub Actions ubuntu-latest, 2 vCPU).
  *
- * Budgets (deliberately loose — 10x typical observed):
- *   - runProject              : <5 ms p99 over 200 iterations
+ * Budgets (deliberately loose — 50x+ typical observed):
+ *   - runProject              : <15 ms p99 over 200 iterations
  *   - aggregatePortfolio (10) : <50 ms p99 over 50 iterations
+ *
+ * Why 15ms not 5ms: when the full vitest suite runs (~67 files), CPU
+ * contention can briefly push p99 above 5ms even though typical is
+ * ~0.25ms. 15ms keeps the catastrophic-regression signal (a real bug
+ * would put it in the hundreds of ms) without flaking on shared runners.
  *
  * If these fail, profile with `--reporter=verbose` and inspect the
  * timings table this test prints. If the engine actually got faster
@@ -81,7 +86,7 @@ function measure(label: string, iterations: number, fn: () => unknown): { p50: n
 describe('calc engine perf budgets', () => {
   const fixtures = fixtureFiles().map(loadFixture);
 
-  it('runProject stays under 5ms p99 on the heaviest fixture', () => {
+  it('runProject stays under 15ms p99 on the heaviest fixture', () => {
     // Pick the fixture with the longest horizon (proxy for "most work").
     const heaviest = fixtures.reduce(
       (a, b) => (b.outputs.monthly.dates.length > a.outputs.monthly.dates.length ? b : a),
@@ -90,7 +95,10 @@ describe('calc engine perf budgets', () => {
     const r = measure(`runProject (${heaviest.meta.project_id})`, 200, () =>
       runProject(heaviest.inputs.project, heaviest.inputs.globals, heaviest.inputs.scenario)
     );
-    expect(r.p99, 'runProject p99 latency').toBeLessThan(5);
+    // Typical: ~0.25ms p99 in isolation. Loose budget absorbs CPU contention
+    // when the full suite (67 files) runs in parallel. A real regression
+    // would push this into the hundreds of ms.
+    expect(r.p99, 'runProject p99 latency').toBeLessThan(15);
   });
 
   it('aggregatePortfolio over 10 baselines stays under 50ms p99', () => {

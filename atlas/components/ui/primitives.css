@@ -78,6 +78,18 @@
   font-size: var(--font-size-sm);
 }
 
+/* T080.1 — auth size: tall, full-width, generous radius. Only used by the
+   /sign-in + /sign-up shells. Do NOT promote to the app's default `--md`
+   density (32px) — every other surface depends on the dense control feel. */
+.ja-button--auth {
+  height: 48px;
+  padding: 0 16px;
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  border-radius: 8px;
+  width: 100%;
+}
+
 /* Variants */
 .ja-button--primary {
   background: var(--color-accent-lime);
@@ -146,6 +158,15 @@
   opacity: 0.38;
   cursor: not-allowed;
   pointer-events: none;
+}
+
+/* T080.5 — subtle physical-press feel (matches Ramp / Linear). Skips
+   disabled state so reduced-motion users who hit a disabled button don't
+   see jitter. Animation duration honors prefers-reduced-motion via the
+   global override in tokens.css. */
+.ja-button:not(:disabled):active {
+  transform: scale(0.98);
+  transition: transform 80ms ease, background-color 120ms ease;
 }
 
 /* Loading */
@@ -439,6 +460,16 @@
   color: var(--color-negative);
 }
 
+/* T080.2 — dedicated error label for form fields (visually equivalent to
+   hint--error; gets its own class so consumers can wire id + aria-describedby
+   cleanly without re-purposing the hint slot). */
+.ja-field__error {
+  margin-top: 6px;
+  font-size: var(--font-size-xs);
+  color: var(--color-negative);
+  line-height: 1.4;
+}
+
 .ja-input-wrap {
   display: flex;
   align-items: center;
@@ -470,6 +501,24 @@
   opacity: 0.5;
   cursor: not-allowed;
   background: var(--color-surface-muted);
+}
+
+/* T080.1 — auth-size input wrap: 44px touch target (WCAG 2.5.5) + 16px
+   font-size on the inner input to defeat iOS Safari's auto-zoom on focus
+   (anything <16px triggers it). Only used by /sign-in + /sign-up. */
+.ja-input-wrap--auth {
+  height: 44px;
+  border-radius: 8px;
+}
+
+.ja-input-wrap--auth .ja-input {
+  font-size: 16px;
+  padding: 0 14px;
+}
+
+.ja-field__label--auth {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
 }
 
 .ja-input {

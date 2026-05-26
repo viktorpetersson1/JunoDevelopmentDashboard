@@ -35,7 +35,8 @@ describe('tokens.css (design-system canonical)', () => {
   it('declares the locked text palette (4 tiers + inverse + on-lime)', () => {
     expect(norm(tokenValue('--color-text-primary'))).toBe('#111111');
     expect(norm(tokenValue('--color-text-secondary'))).toBe('#6b7280');
-    expect(norm(tokenValue('--color-text-tertiary'))).toBe('#8a8f98');
+    // T080.7: bumped from #8a8f98 → #767b84 for WCAG 4.5:1 contrast on #ffffff.
+    expect(norm(tokenValue('--color-text-tertiary'))).toBe('#767b84');
     expect(norm(tokenValue('--color-text-quaternary'))).toBe('#b0b5bc');
     expect(norm(tokenValue('--color-text-inverse'))).toBe('#ffffff');
     expect(norm(tokenValue('--color-text-on-lime'))).toBe('#0d0d0d');
@@ -48,7 +49,8 @@ describe('tokens.css (design-system canonical)', () => {
   });
 
   it('declares the borders incl. hairline (used heavily by primitives)', () => {
-    expect(norm(tokenValue('--color-border-hairline'))).toBe('#efefec');
+    // T080.7: hairline bumped from #efefec → #c8c8c5 for ≥3:1 on #ffffff.
+    expect(norm(tokenValue('--color-border-hairline'))).toBe('#c8c8c5');
     expect(norm(tokenValue('--color-border-strong'))).toBe('#e5e7eb');
     expect(norm(tokenValue('--color-border-focus'))).toBe('#0d0d0d');
   });
