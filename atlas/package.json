@@ -20,6 +20,7 @@
     "snapshot": "node scripts/snapshot-vanilla-engine.mjs",
     "preflight": "node scripts/preflight.mjs",
     "preflight:remote": "node scripts/preflight.mjs --remote",
+    "verify:v3": "bash scripts/verify-v3.sh",
     "pages:build": "pnpm run preflight:remote && npx @cloudflare/next-on-pages",
     "pages:dev": "wrangler pages dev",
     "pages:deploy": "pnpm run pages:build && wrangler pages deploy"
