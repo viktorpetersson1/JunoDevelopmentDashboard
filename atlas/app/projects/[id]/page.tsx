@@ -36,6 +36,7 @@ import {
   type PricingRunBundleView,
 } from '@/lib/repos/pricing-framework';
 import { findMarketByKey } from '@/lib/repos/markets';
+import { enrichWithAppliedPricingRun } from '@/lib/services/project-with-pricing';
 import { runProject } from '@/lib/calc/project/runProject';
 import { BASELINE_GLOBALS, BASELINE_SCENARIO } from '@/lib/calc/baselines';
 import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
@@ -58,7 +59,12 @@ export default async function ProjectDetailPage({
   const project = await findCurrentProjectByKey(params.id);
   if (!project) notFound();
 
-  const result = runProject(project, BASELINE_GLOBALS, BASELINE_SCENARIO);
+  // D-016: if this project has an applied pricing run, enrich the input
+  // with plot_exits so the calc engine sees the framework numbers. Pure
+  // no-op for projects without an applied run (10 baselines unchanged).
+  const projectUuidForPricing = await findCurrentProjectUuidByKey(params.id);
+  const enrichedProject = await enrichWithAppliedPricingRun(project, projectUuidForPricing);
+  const result = runProject(enrichedProject, BASELINE_GLOBALS, BASELINE_SCENARIO);
 
   const dashboardUser = {
     name: profile.displayName ?? profile.email ?? user.email ?? 'Juno',

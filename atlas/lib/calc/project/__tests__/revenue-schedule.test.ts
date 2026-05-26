@@ -125,4 +125,66 @@ describe('applyRevenueSchedule', () => {
     applyRevenueSchedule(out, proj({ sale_price_override_usd: 5_000_000 }), eff, 13, standardCosts);
     expect(out.sales.every((v) => v === 0)).toBe(true);
   });
+
+  // ── D-016 Exit Pricing Framework v1 — multi-plot path ────────────────────
+
+  it('D-016: plot_exits sum wins over sale_price_override_usd and cost-plus', () => {
+    const out = blankSeries(36);
+    const r = applyRevenueSchedule(
+      out,
+      proj({
+        // Both overrides set — plot_exits should still win.
+        sale_price_override_usd: 99_999_999,
+        sale_price_per_sqft_override: 9999,
+        plot_exits: [
+          { plot_type_key: 'sound_front', plot_type_label: 'Sound-front villa', count: 1, sqft_per_unit_ag: 4200, base_psf: 1900 },
+          { plot_type_key: 'inland', plot_type_label: 'Inland villa', count: 2, sqft_per_unit_ag: 3000, base_psf: 1100 },
+        ],
+      }),
+      eff,
+      12,
+      standardCosts
+    );
+    // 1 × 4200 × 1900 = 7,980,000  +  2 × 3000 × 1100 = 6,600,000  ⇒  14,580,000
+    expect(r.salePrice).toBeCloseTo(14_580_000, 4);
+    // Blended psf = total / total plot sqft = 14,580,000 / (4200 + 6000) = 14,580,000 / 10,200 ≈ 1,429.41
+    expect(r.salePerSqft).toBeCloseTo(14_580_000 / 10_200, 4);
+    expect(out.sales[12]).toBeCloseTo(14_580_000, 4);
+  });
+
+  it('D-016: scenario sale_price_multiplier scales the plot_exits total', () => {
+    const out = blankSeries(36);
+    const r = applyRevenueSchedule(
+      out,
+      proj({
+        plot_exits: [
+          { plot_type_key: 'a', plot_type_label: 'A', count: 1, sqft_per_unit_ag: 4000, base_psf: 1500 },
+        ],
+      }),
+      { ...eff, sale_price_multiplier: 0.9 },
+      12,
+      standardCosts
+    );
+    expect(r.salePrice).toBeCloseTo(4000 * 1500 * 0.9, 4);
+  });
+
+  it('D-016: empty plot_exits[] falls through to existing chain (back-compat)', () => {
+    const out = blankSeries(36);
+    const r = applyRevenueSchedule(
+      out,
+      proj({ plot_exits: [], sale_price_override_usd: 5_000_000 }),
+      eff,
+      12,
+      standardCosts
+    );
+    expect(r.salePrice).toBe(5_000_000); // override wins, plot_exits ignored
+  });
+
+  it('D-016: null plot_exits keeps the single-villa golden behavior intact', () => {
+    const out = blankSeries(36);
+    const r = applyRevenueSchedule(out, proj({ plot_exits: null }), eff, 12, standardCosts);
+    // Cost-plus path: 1020 × 1.25 = 1275 / sqft → 5,100,000.
+    expect(r.salePerSqft).toBeCloseTo(1275, 6);
+    expect(r.salePrice).toBeCloseTo(5_100_000, 4);
+  });
 });

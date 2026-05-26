@@ -80,6 +80,18 @@ export interface ProjectInput {
   sale_price_per_sqft_override?: number | null;
   target_margin?: number | null;
 
+  // ── Exit Pricing Framework v1 (D-016) ──────────────────────────────────
+  /**
+   * Per-plot-type exit prices. When present and non-empty, OVERRIDES the
+   * sale-price priority chain — total revenue = sum over plots of
+   * (count × sqft_per_unit_ag × base_psf). Sourced from an applied
+   * pricing run via lib/services/project-with-pricing.ts.
+   *
+   * NULL/empty = single-villa path (back-compat for the 10 baseline
+   * projects, which all have plot_exits unset).
+   */
+  plot_exits?: PlotExit[] | null;
+
   // Sales lifecycle
   listing_date?: string | null;
   under_contract_date?: string | null;
@@ -93,6 +105,23 @@ export interface ProjectInput {
   // Excel benchmark (legacy reference; not used by engine)
   _excel_sale_price?: number;
   _excel_total_cost_per_sqft?: number;
+}
+
+/**
+ * One plot type's contribution to total exit revenue. Filled by the
+ * applied-pricing-run enricher; consumed by revenue-schedule.ts.
+ */
+export interface PlotExit {
+  plot_type_key: string;
+  plot_type_label: string;
+  count: number;
+  sqft_per_unit_ag: number;
+  base_psf: number;
+  /** Optional bands captured for UI display only — engine reads base_psf. */
+  low_psf?: number | null;
+  high_psf?: number | null;
+  /** Provenance back to the run that produced this. */
+  source_run_id?: string;
 }
 
 /** Per-market modifier from BASELINE_GLOBALS.markets[]. */

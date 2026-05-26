@@ -1,8 +1,11 @@
 /**
  * T025 — Revenue schedule module.
  *
- * Derives the sale price using the standard priority:
+ * Derives the sale price using the priority chain:
  *
+ *   0. `plot_exits[]`  (D-016 Exit Pricing Framework v1) — wins if present
+ *      and non-empty. Total revenue = Σ count × sqft_per_unit_ag × base_psf,
+ *      scaled by scenario sale_price_multiplier.
  *   1. `sale_price_override_usd` × scenario multiplier wins outright
  *   2. `sale_price_per_sqft_override` × scenario multiplier × sqft
  *   3. cost-plus-margin: (total cost / sqft) × (1 + target_margin) ×
@@ -15,6 +18,11 @@
  *
  * Mutates `out.sales[saleIdx]`. Returns the derived prices so PNL can
  * report sale_price_per_sqft + total_cost_per_sqft without re-deriving.
+ *
+ * Back-compat invariant: when `plot_exits` is null/undefined/empty, the
+ * code path is identical to pre-D-016 behavior (verified by the project +
+ * portfolio golden tests, which must continue to byte-match the vanilla
+ * engine output for the 10 baseline projects).
  */
 
 import type { Effective } from './effectiveProject';
@@ -57,7 +65,21 @@ export function applyRevenueSchedule(
   let salePerSqft: number;
   let salePrice: number;
 
-  if (project.sale_price_override_usd != null && project.sale_price_override_usd > 0) {
+  if (project.plot_exits && project.plot_exits.length > 0) {
+    // D-016 path — sum per-plot revenue. Scenario multiplier still applies
+    // so what-if scenarios continue to flex the framework numbers.
+    let totalRevenue = 0;
+    let totalPlotSqft = 0;
+    for (const plot of project.plot_exits) {
+      const plotSqft = (plot.count ?? 0) * (plot.sqft_per_unit_ag ?? 0);
+      totalRevenue += plotSqft * (plot.base_psf ?? 0);
+      totalPlotSqft += plotSqft;
+    }
+    salePrice = totalRevenue * eff.sale_price_multiplier;
+    // Blended per-sqft = total / sum of plot sqfts (NOT villa_sqft, which
+    // may be 0 or stale for multi-plot projects).
+    salePerSqft = totalPlotSqft > 0 ? salePrice / totalPlotSqft : 0;
+  } else if (project.sale_price_override_usd != null && project.sale_price_override_usd > 0) {
     salePrice = project.sale_price_override_usd * eff.sale_price_multiplier;
     salePerSqft = project.villa_sqft > 0 ? salePrice / project.villa_sqft : 0;
   } else if (
