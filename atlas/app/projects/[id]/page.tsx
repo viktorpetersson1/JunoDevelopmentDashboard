@@ -18,10 +18,14 @@ import { SalesTab } from './_components/sales-tab';
 import { RisksTab } from './_components/risks-tab';
 import { ActivityTab } from './_components/activity-tab';
 import { InputsTab } from './_components/inputs-tab';
-import { findCurrentProjectByKey } from '@/lib/repos/project';
+import { findCurrentProjectByKey, findCurrentProjectUuidByKey } from '@/lib/repos/project';
+import { findCapitalCallsByProject } from '@/lib/repos/capital-call';
+import { fetchCapTable } from '@/lib/repos/settings';
 import { runProject } from '@/lib/calc/project/runProject';
 import { BASELINE_GLOBALS, BASELINE_SCENARIO } from '@/lib/calc/baselines';
 import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
+import { hasRole } from '@/lib/auth/requireRole';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -58,9 +62,30 @@ export default async function ProjectDetailPage({
     case 'timeline':
       tabContent = <TimelineTab project={project} result={result} />;
       break;
-    case 'capital':
-      tabContent = <CapitalTab result={result} />;
+    case 'capital': {
+      // Capital tab needs real capital-call data — fetch DB uuid for the
+      // project (capital_calls reference by uuid, not project_key) +
+      // owner-scoped calls + cap table for the create-call modal.
+      const projectUuid = await findCurrentProjectUuidByKey(params.id);
+      const isAdmin = hasRole(profile, ['super_admin', 'editor']);
+      const ownerId = isAdmin
+        ? undefined
+        : await resolveOwnerIdForUser(profile.email);
+      const calls = projectUuid
+        ? await findCapitalCallsByProject(projectUuid, { ownerId })
+        : [];
+      const capTable = isAdmin ? await fetchCapTable() : [];
+      tabContent = (
+        <CapitalTab
+          result={result}
+          projectUuid={projectUuid}
+          calls={calls}
+          capTable={capTable}
+          isAdmin={isAdmin}
+        />
+      );
       break;
+    }
     case 'actuals':
       tabContent = <ActualsTab result={result} />;
       break;
@@ -93,6 +118,23 @@ export default async function ProjectDetailPage({
       {tabContent}
     </ProjectDetailClient>
   );
+}
+
+/** Email-match lookup so viewer/viewer_basic see only their own commitments. */
+async function resolveOwnerIdForUser(
+  email: string | null | undefined
+): Promise<string | undefined> {
+  if (!email) return undefined;
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .schema('atlas')
+    .from('owners')
+    .select('id')
+    .eq('email', email)
+    .eq('is_archived', false)
+    .maybeSingle();
+  if (error || !data) return undefined;
+  return (data as { id: string }).id;
 }
 
 function UnknownTabPlaceholder({ tab }: { tab: string }) {

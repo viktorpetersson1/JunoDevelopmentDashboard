@@ -152,6 +152,28 @@ export async function findCurrentProjectByKey(projectKey: string): Promise<Proje
 }
 
 /**
+ * Resolve a project_key (slug, e.g. "p2") to the row's UUID. Returns null
+ * when not found. Capital calls / approval snapshots / pricing runs all
+ * reference projects by uuid, but pages route by project_key — this is
+ * the boundary translator.
+ */
+export async function findCurrentProjectUuidByKey(
+  projectKey: string
+): Promise<string | null> {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .schema('atlas')
+    .from('projects')
+    .select('id')
+    .eq('project_key', projectKey)
+    .eq('is_current', true)
+    .eq('is_archived', false)
+    .maybeSingle();
+  if (error) throw new Error(`findCurrentProjectUuidByKey: ${error.message}`);
+  return ((data as { id: string } | null)?.id) ?? null;
+}
+
+/**
  * Fetch a specific row by its uuid id (historical version lookup; used for
  * snapshot audit drilldown in W1.5).
  */

@@ -1,16 +1,22 @@
 /**
- * Project Detail — Capital tab. Server-renderable.
+ * Project Detail — Capital tab.
  *
- * Surfaces the financing schedule the calc engine already produces:
- *   - Peak debt / peak equity KPIs
- *   - Monthly equity & debt schedule (drawn, returned, balance)
- *   - Skips months where every column is zero (typical for early dev)
+ * Two sections:
+ *   1. Capital calls (real data from atlas.capital_calls + shares + payments)
+ *      - Admins can create / cancel via the action bar.
+ *      - Owner role sees only their own commitments (D-011 tier 2 — enforced
+ *        server-side by findCapitalCallsByProject({ ownerId })).
+ *   2. Financing schedule (calc-engine-derived monthly debt/equity rows —
+ *      kept from the original view so the page still works pre-first-call).
  */
 
 import { KPIStrip } from '@/components/data/KPIStrip';
 import { KPITile } from '@/components/data/KPITile';
 import { formatMoney } from '@/lib/utils/money';
+import { CapitalCallsSection } from './capital-calls-section';
 import type { ProjectResult } from '@/lib/calc/project/types';
+import type { CapitalCallView } from '@/lib/repos/capital-call';
+import type { CapTableEntryView } from '@/lib/repos/settings';
 
 interface FlowRow {
   date: string;
@@ -49,9 +55,31 @@ function buildRows(result: ProjectResult): FlowRow[] {
   return rows;
 }
 
-export function CapitalTab({ result }: { result: ProjectResult }) {
+export function CapitalTab({
+  result,
+  projectUuid,
+  calls,
+  capTable,
+  isAdmin,
+}: {
+  result: ProjectResult;
+  projectUuid: string | null;
+  calls: CapitalCallView[];
+  capTable: CapTableEntryView[];
+  isAdmin: boolean;
+}) {
   const rows = buildRows(result);
   const k = result.kpis;
+
+  // Roll-up of called-vs-funded across all calls (admin-only meaningful;
+  // owners see only their own).
+  const totalCalledCents = calls.reduce((s, c) => s + c.totalAmountCents, 0);
+  const totalFundedCents = calls.reduce(
+    (s, c) => s + c.shares.reduce((sh, share) => sh + share.paidCents, 0),
+    0
+  );
+  const fundedPct = totalCalledCents > 0 ? totalFundedCents / totalCalledCents : 0;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <KPIStrip columns={4}>
@@ -66,16 +94,23 @@ export function CapitalTab({ result }: { result: ProjectResult }) {
           hint="LOC + true equity"
         />
         <KPITile
-          label="Interest cost"
-          value={formatMoney(k.total_interest * 100, { compact: true, precision: 2 })}
-          hint="program total"
+          label="Called to date"
+          value={formatMoney(totalCalledCents, { compact: true, precision: 2 })}
+          hint={`${calls.length} ${calls.length === 1 ? 'call' : 'calls'}`}
         />
         <KPITile
-          label="MOIC"
-          value={`${k.moic.toFixed(2)}×`}
-          hint="equity multiple"
+          label="Funded"
+          value={formatMoney(totalFundedCents, { compact: true, precision: 2 })}
+          hint={`${(fundedPct * 100).toFixed(0)}% of called`}
         />
       </KPIStrip>
+
+      <CapitalCallsSection
+        projectUuid={projectUuid}
+        calls={calls}
+        capTable={capTable}
+        isAdmin={isAdmin}
+      />
 
       <FinancingScheduleCard rows={rows} />
     </div>
@@ -98,12 +133,23 @@ function FinancingScheduleCard({ rows }: { rows: FlowRow[] }) {
           fontSize: 16,
           fontWeight: 600,
           margin: 0,
-          marginBottom: 16,
+          marginBottom: 4,
           color: 'var(--color-text-primary)',
         }}
       >
         Financing schedule
       </h2>
+      <p
+        style={{
+          margin: 0,
+          marginBottom: 16,
+          fontSize: 12,
+          color: 'var(--color-text-tertiary)',
+        }}
+      >
+        Calc-engine monthly debt + equity flow. Independent of recorded
+        capital calls above.
+      </p>
       <table className="ja-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr>
