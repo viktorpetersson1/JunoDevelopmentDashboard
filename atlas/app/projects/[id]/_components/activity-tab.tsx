@@ -1,13 +1,22 @@
 /**
- * Project Detail — Activity tab. Server-renderable.
+ * Project Detail — Activity tab.
  *
- * Audit log + activity feed (capital calls, approvals, edits) ships in T069
- * once the audit_log table is populated. For now this surfaces the
- * provenance signals we already have: project version + system-of-record
- * date + Excel baseline snapshot.
+ * Two sections:
+ *
+ *   1. Audit feed (NEW in T069) — every mutation that touched this
+ *      project: project edits, capital calls, snapshot lifecycle. Joined
+ *      against user_profiles for display names.
+ *
+ *   2. Lifecycle events — date-driven milestones from project metadata
+ *      (purchase / listing / under contract / closing). Preserved from
+ *      the original placeholder so the timeline is populated even when
+ *      no audit rows exist yet.
+ *
+ * Both Server-renderable.
  */
 
 import type { ProjectInput } from '@/lib/calc/project/types';
+import type { AuditEntryView } from '@/lib/repos/audit-log';
 
 interface ActivityRow {
   when: string;
@@ -16,10 +25,235 @@ interface ActivityRow {
   detail?: string;
 }
 
-export function ActivityTab({ project }: { project: ProjectInput }) {
-  // Seeded events. Real entries flow from audit_log once T069 ships.
-  const events: ActivityRow[] = [];
+const CATEGORY_LABEL: Record<string, string> = {
+  project: 'Project',
+  capital_call: 'Capital call',
+  snapshot: 'Snapshot',
+  service: 'Service',
+  api: 'API',
+};
 
+const CATEGORY_COLOR: Record<string, string> = {
+  project: 'var(--color-accent-base, #131313)',
+  capital_call: 'var(--color-status-warning, #d97706)',
+  snapshot: 'var(--color-status-info, #2563eb)',
+  service: 'var(--color-text-tertiary)',
+  api: 'var(--color-text-tertiary)',
+};
+
+export function ActivityTab({
+  project,
+  auditEntries,
+  userDisplayNames,
+}: {
+  project: ProjectInput;
+  auditEntries: AuditEntryView[];
+  userDisplayNames: Record<string, string>;
+}) {
+  const lifecycleEvents = buildLifecycleEvents(project);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <AuditSection entries={auditEntries} userDisplayNames={userDisplayNames} />
+      <LifecycleSection events={lifecycleEvents} />
+    </div>
+  );
+}
+
+// ─── Audit section ──────────────────────────────────────────────────────────
+
+function AuditSection({
+  entries,
+  userDisplayNames,
+}: {
+  entries: AuditEntryView[];
+  userDisplayNames: Record<string, string>;
+}) {
+  return (
+    <section
+      style={{
+        background: 'var(--color-surface-raised)',
+        border: '1px solid var(--color-border-hairline)',
+        borderRadius: 14,
+        padding: 24,
+      }}
+    >
+      <header
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'baseline',
+          marginBottom: 16,
+        }}
+      >
+        <div>
+          <h2
+            style={{
+              fontSize: 16,
+              fontWeight: 600,
+              margin: 0,
+              color: 'var(--color-text-primary)',
+            }}
+          >
+            Activity feed
+          </h2>
+          <p
+            style={{
+              margin: '2px 0 0 0',
+              fontSize: 12,
+              color: 'var(--color-text-tertiary)',
+            }}
+          >
+            Every mutation touching this project. From <code>atlas.audit_log</code>.
+          </p>
+        </div>
+        <span
+          style={{
+            fontSize: 11,
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            color: 'var(--color-text-tertiary)',
+          }}
+        >
+          {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
+        </span>
+      </header>
+
+      {entries.length > 0 ? (
+        <ol style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+          {entries.map((e, i) => (
+            <AuditEntry
+              key={e.id}
+              entry={e}
+              userName={
+                e.userId ? userDisplayNames[e.userId] ?? e.userId.slice(0, 8) : 'system'
+              }
+              isLast={i === entries.length - 1}
+            />
+          ))}
+        </ol>
+      ) : (
+        <p
+          style={{
+            margin: 0,
+            padding: '24px 0',
+            textAlign: 'center',
+            color: 'var(--color-text-tertiary)',
+            fontSize: 13,
+          }}
+        >
+          No activity recorded yet. Mutations on this project — capital
+          calls, snapshots, edits — appear here.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function AuditEntry({
+  entry,
+  userName,
+  isLast,
+}: {
+  entry: AuditEntryView;
+  userName: string;
+  isLast: boolean;
+}) {
+  const categoryColor = CATEGORY_COLOR[entry.category] ?? 'var(--color-text-tertiary)';
+  const categoryLabel = CATEGORY_LABEL[entry.category] ?? entry.category;
+  const isFail = entry.statusCode >= 400;
+
+  return (
+    <li
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '170px 90px 1fr auto',
+        gap: 16,
+        padding: '14px 0',
+        borderBottom: isLast ? 'none' : '1px solid var(--color-border-subtle)',
+        fontSize: 13,
+        alignItems: 'baseline',
+      }}
+    >
+      <span
+        style={{
+          color: 'var(--color-text-tertiary)',
+          fontVariantNumeric: 'tabular-nums',
+          fontSize: 12,
+        }}
+      >
+        {formatTimestamp(entry.createdAt)}
+      </span>
+      <span
+        style={{
+          color: categoryColor,
+          fontSize: 10,
+          fontWeight: 600,
+          textTransform: 'uppercase',
+          letterSpacing: '0.08em',
+        }}
+      >
+        {categoryLabel}
+      </span>
+      <div>
+        <div style={{ color: 'var(--color-text-primary)', display: 'flex', gap: 6, alignItems: 'baseline' }}>
+          <strong style={{ fontWeight: 600 }}>{userName}</strong>
+          <span style={{ color: 'var(--color-text-secondary)' }}>{entry.action}</span>
+          {entry.resourceId && (
+            <code style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+              {entry.resourceId.length > 12 ? `${entry.resourceId.slice(0, 8)}…` : entry.resourceId}
+            </code>
+          )}
+        </div>
+        {entry.meta && Object.keys(entry.meta).length > 0 && (
+          <div
+            style={{
+              color: 'var(--color-text-secondary)',
+              fontSize: 11,
+              marginTop: 2,
+            }}
+          >
+            {formatMetaSummary(entry.meta)}
+          </div>
+        )}
+      </div>
+      <span
+        style={{
+          fontSize: 11,
+          color: isFail ? 'var(--color-negative, #dc2626)' : 'var(--color-text-tertiary)',
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        {entry.method} {entry.statusCode}
+      </span>
+    </li>
+  );
+}
+
+function formatMetaSummary(meta: Record<string, unknown>): string {
+  const parts: string[] = [];
+  for (const [k, v] of Object.entries(meta)) {
+    if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
+      parts.push(`${k}=${v}`);
+    }
+    if (parts.length >= 5) break;
+  }
+  return parts.join(' · ');
+}
+
+function formatTimestamp(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  // YYYY-MM-DD HH:MM (UTC-ish via toISOString to stay deterministic)
+  const date = d.toISOString().slice(0, 10);
+  const time = d.toISOString().slice(11, 16);
+  return `${date} ${time}`;
+}
+
+// ─── Lifecycle section ──────────────────────────────────────────────────────
+
+function buildLifecycleEvents(project: ProjectInput): ActivityRow[] {
+  const events: ActivityRow[] = [];
   if (project.purchase_date) {
     events.push({
       when: project.purchase_date,
@@ -29,157 +263,122 @@ export function ActivityTab({ project }: { project: ProjectInput }) {
     });
   }
   if (project.listing_date) {
-    events.push({
-      when: project.listing_date,
-      who: 'system',
-      what: 'Listing date set',
-    });
+    events.push({ when: project.listing_date, who: 'system', what: 'Listing date set' });
   }
   if (project.under_contract_date) {
-    events.push({
-      when: project.under_contract_date,
-      who: 'system',
-      what: 'Under contract',
-    });
+    events.push({ when: project.under_contract_date, who: 'system', what: 'Under contract' });
   }
   if (project.closing_date) {
-    events.push({
-      when: project.closing_date,
-      who: 'system',
-      what: 'Closing date set',
-    });
+    events.push({ when: project.closing_date, who: 'system', what: 'Closing date set' });
   }
   events.sort((a, b) => a.when.localeCompare(b.when));
+  return events;
+}
 
+function LifecycleSection({ events }: { events: ActivityRow[] }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <section
+    <section
+      style={{
+        background: 'var(--color-surface-raised)',
+        border: '1px solid var(--color-border-hairline)',
+        borderRadius: 14,
+        padding: 24,
+      }}
+    >
+      <header
         style={{
-          background: 'var(--color-surface-raised)',
-          border: '1px solid var(--color-border-hairline)',
-          borderRadius: 14,
-          padding: 24,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'baseline',
+          marginBottom: 16,
         }}
       >
-        <header
+        <h2
           style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'baseline',
-            marginBottom: 16,
+            fontSize: 16,
+            fontWeight: 600,
+            margin: 0,
+            color: 'var(--color-text-primary)',
           }}
         >
-          <h2
-            style={{
-              fontSize: 16,
-              fontWeight: 600,
-              margin: 0,
-              color: 'var(--color-text-primary)',
-            }}
-          >
-            Lifecycle events
-          </h2>
-          <span
-            style={{
-              fontSize: 11,
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              color: 'var(--color-text-tertiary)',
-            }}
-          >
-            {events.length} {events.length === 1 ? 'event' : 'events'}
-          </span>
-        </header>
+          Lifecycle dates
+        </h2>
+        <span
+          style={{
+            fontSize: 11,
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            color: 'var(--color-text-tertiary)',
+          }}
+        >
+          {events.length} {events.length === 1 ? 'event' : 'events'}
+        </span>
+      </header>
 
-        {events.length > 0 ? (
-          <ol style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            {events.map((e, i) => (
-              <li
-                key={`${e.when}-${i}`}
+      {events.length > 0 ? (
+        <ol style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+          {events.map((e, i) => (
+            <li
+              key={`${e.when}-${i}`}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '120px 80px 1fr',
+                gap: 16,
+                padding: '12px 0',
+                borderBottom:
+                  i < events.length - 1 ? '1px solid var(--color-border-subtle)' : 'none',
+                fontSize: 13,
+                alignItems: 'baseline',
+              }}
+            >
+              <span
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: '120px 80px 1fr',
-                  gap: 16,
-                  padding: '12px 0',
-                  borderBottom:
-                    i < events.length - 1 ? '1px solid var(--color-border-subtle)' : 'none',
-                  fontSize: 13,
-                  alignItems: 'baseline',
+                  color: 'var(--color-text-tertiary)',
+                  fontVariantNumeric: 'tabular-nums',
                 }}
               >
-                <span
-                  style={{
-                    color: 'var(--color-text-tertiary)',
-                    fontVariantNumeric: 'tabular-nums',
-                  }}
-                >
-                  {e.when}
-                </span>
-                <span
-                  style={{
-                    color: 'var(--color-text-secondary)',
-                    fontSize: 11,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.08em',
-                  }}
-                >
-                  {e.who}
-                </span>
-                <div>
-                  <div style={{ color: 'var(--color-text-primary)' }}>{e.what}</div>
-                  {e.detail && (
-                    <div
-                      style={{
-                        color: 'var(--color-text-secondary)',
-                        fontSize: 12,
-                        marginTop: 2,
-                      }}
-                    >
-                      {e.detail}
-                    </div>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <p
-            style={{
-              margin: 0,
-              padding: '24px 0',
-              textAlign: 'center',
-              color: 'var(--color-text-tertiary)',
-              fontSize: 13,
-            }}
-          >
-            No lifecycle dates recorded yet.
-          </p>
-        )}
-      </section>
-
-      <section
-        style={{
-          background: 'var(--color-surface-raised)',
-          border: '1px solid var(--color-border-hairline)',
-          borderRadius: 14,
-          padding: '32px 24px',
-          textAlign: 'center',
-        }}
-      >
+                {e.when}
+              </span>
+              <span
+                style={{
+                  color: 'var(--color-text-secondary)',
+                  fontSize: 11,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                }}
+              >
+                {e.who}
+              </span>
+              <div>
+                <div style={{ color: 'var(--color-text-primary)' }}>{e.what}</div>
+                {e.detail && (
+                  <div
+                    style={{
+                      color: 'var(--color-text-secondary)',
+                      fontSize: 12,
+                      marginTop: 2,
+                    }}
+                  >
+                    {e.detail}
+                  </div>
+                )}
+              </div>
+            </li>
+          ))}
+        </ol>
+      ) : (
         <p
           style={{
             margin: 0,
-            color: 'var(--color-text-secondary)',
+            padding: '24px 0',
+            textAlign: 'center',
+            color: 'var(--color-text-tertiary)',
             fontSize: 13,
-            maxWidth: 480,
-            marginLeft: 'auto',
-            marginRight: 'auto',
           }}
         >
-          Full audit-log feed (edits, approvals, capital calls) wires up in
-          T069 once the <code>audit_log</code> table starts collecting rows.
+          No lifecycle dates recorded yet.
         </p>
-      </section>
-    </div>
+      )}
+    </section>
   );
 }

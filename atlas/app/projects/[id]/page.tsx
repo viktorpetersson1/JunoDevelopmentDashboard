@@ -21,7 +21,9 @@ import { InputsTab } from './_components/inputs-tab';
 import { SnapshotBanner } from './_components/snapshot-banner';
 import { findCurrentProjectByKey, findCurrentProjectUuidByKey } from '@/lib/repos/project';
 import { findCapitalCallsByProject } from '@/lib/repos/capital-call';
-import { findLatestSnapshot } from '@/lib/repos/approval-snapshot';
+import { findLatestSnapshot, findSnapshotsByProject } from '@/lib/repos/approval-snapshot';
+import { findAuditForProject } from '@/lib/repos/audit-log';
+import { listActualsByCategory } from '@/lib/services/actuals';
 import { fetchAllProfiles, fetchCapTable } from '@/lib/repos/settings';
 import { runProject } from '@/lib/calc/project/runProject';
 import { BASELINE_GLOBALS, BASELINE_SCENARIO } from '@/lib/calc/baselines';
@@ -88,18 +90,64 @@ export default async function ProjectDetailPage({
       );
       break;
     }
-    case 'actuals':
-      tabContent = <ActualsTab result={result} />;
+    case 'actuals': {
+      const actualsProjectUuid = await findCurrentProjectUuidByKey(params.id);
+      const { byCategory, totalCents } = actualsProjectUuid
+        ? await listActualsByCategory(actualsProjectUuid)
+        : { byCategory: [], totalCents: 0 };
+      tabContent = (
+        <ActualsTab
+          result={result}
+          projectUuid={actualsProjectUuid}
+          projectKey={params.id}
+          byCategory={byCategory}
+          totalCents={totalCents}
+          isEditor={hasRole(profile, ['super_admin', 'editor'])}
+        />
+      );
       break;
+    }
     case 'sales':
       tabContent = <SalesTab project={project} result={result} />;
       break;
     case 'risks':
       tabContent = <RisksTab result={result} />;
       break;
-    case 'activity':
-      tabContent = <ActivityTab project={project} />;
+    case 'activity': {
+      const projectUuidForAudit = await findCurrentProjectUuidByKey(params.id);
+      const projectCalls = projectUuidForAudit
+        ? await findCapitalCallsByProject(projectUuidForAudit, { includeArchived: true })
+        : [];
+      const projectSnaps = projectUuidForAudit
+        ? await findSnapshotsByProject(projectUuidForAudit, { includeArchived: true })
+        : [];
+      const auditEntries = await findAuditForProject({
+        projectKey: params.id,
+        capitalCallIds: projectCalls.map((c) => c.id),
+        snapshotIds: projectSnaps.map((s) => s.id),
+        limit: 100,
+      });
+      // User display-name lookup for the feed.
+      const userIds = new Set<string>();
+      for (const e of auditEntries) if (e.userId) userIds.add(e.userId);
+      const userDisplayNames: Record<string, string> = {};
+      if (userIds.size > 0) {
+        const profiles = await fetchAllProfiles();
+        for (const p of profiles) {
+          if (userIds.has(p.id)) {
+            userDisplayNames[p.id] = p.displayName ?? p.email ?? p.id.slice(0, 8);
+          }
+        }
+      }
+      tabContent = (
+        <ActivityTab
+          project={project}
+          auditEntries={auditEntries}
+          userDisplayNames={userDisplayNames}
+        />
+      );
       break;
+    }
     case 'inputs':
       tabContent = <InputsTab project={project} />;
       break;
