@@ -12,14 +12,14 @@ import { ProjectsListClient, type ProjectRowVM } from './_components/projects-li
 import { findManyProjects } from '@/lib/repos/project';
 import { runProject } from '@/lib/calc/project/runProject';
 import { BASELINE_GLOBALS, BASELINE_SCENARIO } from '@/lib/calc/baselines';
-import { requireAuth } from '@/lib/auth/requireAuth';
+import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const runtime = 'edge';
 
 export default async function ProjectsListPage() {
-  const { profile, user } = await requireAuth();
+  const { profile, user } = await requireAuthOrRedirect('/projects');
   const { projects } = await findManyProjects({ limit: 100 });
 
   const rows: ProjectRowVM[] = projects.map((p) => {

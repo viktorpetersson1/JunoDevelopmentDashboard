@@ -8,14 +8,14 @@
 import { DashboardShell } from '../_components/dashboard-shell';
 import { NotificationsList } from './_components/notifications-list';
 import { fetchNotifications } from '@/lib/repos/notifications';
-import { requireAuth } from '@/lib/auth/requireAuth';
+import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const runtime = 'edge';
 
 export default async function NotificationsPage() {
-  const { profile, user } = await requireAuth();
+  const { profile, user } = await requireAuthOrRedirect('/notifications');
   const notifications = await fetchNotifications();
   const unread = notifications.filter((n) => n.readAt === null).length;
 

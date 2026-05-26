@@ -16,7 +16,7 @@ import { PipelineBoard, type StageGroup } from './_components/pipeline-board';
 import { findManyProjects } from '@/lib/repos/project';
 import { runProject } from '@/lib/calc/project/runProject';
 import { BASELINE_GLOBALS, BASELINE_SCENARIO } from '@/lib/calc/baselines';
-import { requireAuth } from '@/lib/auth/requireAuth';
+import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -57,7 +57,7 @@ const STAGES: { key: string; label: string; description: string }[] = [
 ];
 
 export default async function PipelinePage() {
-  const { profile, user } = await requireAuth();
+  const { profile, user } = await requireAuthOrRedirect('/pipeline');
   // Include archived/sold so they show in the rightmost columns.
   const { projects } = await findManyProjects({ limit: 200 });
 

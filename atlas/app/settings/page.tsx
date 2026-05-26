@@ -18,7 +18,7 @@ import { SettingsClient } from './_components/settings-client';
 import { ProfileTab } from './_components/profile-tab';
 import { CapTableTab } from './_components/cap-table-tab';
 import { OwnersTab } from './_components/owners-tab';
-import { requireAuth } from '@/lib/auth/requireAuth';
+import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
 import { fetchCapTable, fetchAllProfiles } from '@/lib/repos/settings';
 
 export const dynamic = 'force-dynamic';
@@ -33,7 +33,7 @@ export default async function SettingsPage({
 }: {
   searchParams: { tab?: string };
 }) {
-  const { profile, user } = await requireAuth();
+  const { profile, user } = await requireAuthOrRedirect('/settings');
   const requested = (searchParams.tab ?? 'profile') as SettingsTab;
   const tab: SettingsTab = TABS.includes(requested) ? requested : 'profile';
 

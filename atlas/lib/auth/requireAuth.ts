@@ -73,3 +73,29 @@ export async function getAuth(): Promise<AuthContext | null> {
     return null;
   }
 }
+
+/**
+ * Server-Component-friendly auth gate: redirect to /sign-in?redirectTo=...
+ * instead of throwing UnauthorizedError (which bubbles to error.tsx and
+ * shows a generic "Something went wrong" page).
+ *
+ * Use this in page.tsx files; reserve `requireAuth` for API route handlers
+ * where the throw → 401 mapping is the right pattern.
+ *
+ * Middleware should always catch unauth before this fires, but on Cloudflare
+ * a stale or partially-refreshed cookie can occasionally slip past — the
+ * redirect here is the user-friendly fallback.
+ */
+export async function requireAuthOrRedirect(currentPath = '/'): Promise<AuthContext> {
+  const { redirect } = await import('next/navigation');
+  try {
+    return await requireAuth();
+  } catch {
+    const target = `/sign-in?redirectTo=${encodeURIComponent(currentPath)}`;
+    redirect(target);
+    // redirect() throws an internal NEXT_REDIRECT error, but TS doesn't
+    // know it's `never`-returning. Throw explicitly so this function's
+    // return type stays Promise<AuthContext>.
+    throw new Error('unreachable: redirect threw');
+  }
+}

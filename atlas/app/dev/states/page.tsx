@@ -18,7 +18,7 @@ import { DashboardShell } from '../../_components/dashboard-shell';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { JunoMark, JunoThinking } from '@/components/brand';
-import { requireAuth } from '@/lib/auth/requireAuth';
+import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -269,7 +269,7 @@ export default async function StatesGalleryPage() {
   // Hard gate: production never serves this route.
   if (process.env.NODE_ENV === 'production') notFound();
 
-  const { profile, user } = await requireAuth();
+  const { profile, user } = await requireAuthOrRedirect('/dev/states');
   const dashboardUser = {
     name: profile.displayName ?? profile.email ?? user.email ?? 'Juno',
     email: profile.email ?? user.email ?? '',

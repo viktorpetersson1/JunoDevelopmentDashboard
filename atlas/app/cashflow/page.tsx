@@ -17,14 +17,14 @@ import { findManyProjects } from '@/lib/repos/project';
 import { aggregatePortfolio } from '@/lib/calc/portfolio/aggregate';
 import { BASELINE_GLOBALS, BASELINE_SCENARIO } from '@/lib/calc/baselines';
 import { formatMoney } from '@/lib/utils/money';
-import { requireAuth } from '@/lib/auth/requireAuth';
+import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const runtime = 'edge';
 
 export default async function CashflowPage() {
-  const { profile, user } = await requireAuth();
+  const { profile, user } = await requireAuthOrRedirect('/cashflow');
   const { projects } = await findManyProjects({ limit: 100 });
   const portfolio = aggregatePortfolio(projects, BASELINE_GLOBALS, BASELINE_SCENARIO);
   const k = portfolio.kpis;

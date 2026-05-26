@@ -21,7 +21,7 @@ import { InputsTab } from './_components/inputs-tab';
 import { findCurrentProjectByKey } from '@/lib/repos/project';
 import { runProject } from '@/lib/calc/project/runProject';
 import { BASELINE_GLOBALS, BASELINE_SCENARIO } from '@/lib/calc/baselines';
-import { requireAuth } from '@/lib/auth/requireAuth';
+import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -34,7 +34,7 @@ export default async function ProjectDetailPage({
   params: { id: string };
   searchParams: { tab?: string };
 }) {
-  const { profile, user } = await requireAuth();
+  const { profile, user } = await requireAuthOrRedirect(`/projects/${params.id}`);
   const project = await findCurrentProjectByKey(params.id);
   if (!project) notFound();
 

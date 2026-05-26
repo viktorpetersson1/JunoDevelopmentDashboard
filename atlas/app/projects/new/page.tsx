@@ -11,7 +11,7 @@
 import { redirect } from 'next/navigation';
 import { DashboardShell } from '../../_components/dashboard-shell';
 import { NewProjectWizard } from './_components/new-project-wizard';
-import { requireAuth } from '@/lib/auth/requireAuth';
+import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
 import { hasRole } from '@/lib/auth/requireRole';
 
 export const dynamic = 'force-dynamic';
@@ -19,7 +19,7 @@ export const revalidate = 0;
 export const runtime = 'edge';
 
 export default async function NewProjectPage() {
-  const { profile, user } = await requireAuth();
+  const { profile, user } = await requireAuthOrRedirect('/projects/new');
 
   if (!hasRole(profile, ['super_admin', 'editor'])) {
     // Viewer / viewer_basic can't create projects. Send them home.
