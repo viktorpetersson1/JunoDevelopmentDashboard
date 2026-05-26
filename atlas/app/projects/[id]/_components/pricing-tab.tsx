@@ -54,6 +54,7 @@ export function PricingTab({
   runs,
   draftBundle,
   appliedBundle,
+  latestCommittedBundle,
   subCuts,
   isEditor,
 }: {
@@ -63,6 +64,8 @@ export function PricingTab({
   runs: PricingRunView[];
   draftBundle: PricingRunBundleView | null;
   appliedBundle: PricingRunBundleView | null;
+  /** Most-recent committed run (may be the applied one or newer). */
+  latestCommittedBundle: PricingRunBundleView | null;
   subCuts: SubCutOpt[];
   isEditor: boolean;
 }) {
@@ -120,8 +123,24 @@ export function PricingTab({
     });
   }
 
+  // Diff banner — show when there's a newer committed run than the applied one,
+  // or when there's a committed run but nothing's applied yet.
+  const newerCommittedAvailable =
+    latestCommittedBundle &&
+    latestCommittedBundle.run.id !== appliedRunId;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {newerCommittedAvailable && latestCommittedBundle && (
+        <DiffBanner
+          latestCommitted={latestCommittedBundle}
+          applied={appliedBundle}
+          isEditor={isEditor}
+          isPending={isPending}
+          onApply={() => handleApply(latestCommittedBundle.run.id)}
+        />
+      )}
+
       {appliedBundle && (
         <AppliedSummary
           bundle={appliedBundle}
@@ -826,6 +845,168 @@ function NarrativeField({
           fontFamily: 'inherit',
         }}
       />
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// DiffBanner — surfaces newer-committed-than-applied state
+// ────────────────────────────────────────────────────────────────────────────
+
+function DiffBanner({
+  latestCommitted,
+  applied,
+  isEditor,
+  isPending,
+  onApply,
+}: {
+  latestCommitted: PricingRunBundleView;
+  applied: PricingRunBundleView | null;
+  isEditor: boolean;
+  isPending: boolean;
+  onApply: () => void;
+}) {
+  // Build a per-plot diff if there's an applied bundle to compare against.
+  const appliedByKey = useMemo(() => {
+    const m = new Map<string, PricingRunPlotOutputView>();
+    if (applied) for (const p of applied.plotOutputs) m.set(p.plotTypeKey, p);
+    return m;
+  }, [applied]);
+
+  return (
+    <section
+      style={{
+        background: 'var(--color-surface-raised)',
+        border: '1px solid var(--color-border-hairline)',
+        borderLeft: '3px solid var(--color-warning, #d97706)',
+        borderRadius: 12,
+        padding: 14,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          justifyContent: 'space-between',
+          gap: 8,
+          flexWrap: 'wrap',
+        }}
+      >
+        <div>
+          <strong style={{ fontSize: 13, color: 'var(--color-text-primary)' }}>
+            {applied
+              ? `Newer committed run available — v${latestCommitted.run.version} (currently applied: v${applied.run.version})`
+              : `Pricing run v${latestCommitted.run.version} is committed but not yet applied`}
+          </strong>
+          <div
+            style={{
+              fontSize: 12,
+              color: 'var(--color-text-secondary)',
+              marginTop: 4,
+            }}
+          >
+            {applied
+              ? 'Review the per-plot deltas below; apply to refresh the financial model.'
+              : 'Apply to push these PSF numbers into the project cash flow.'}
+          </div>
+        </div>
+        {isEditor && (
+          <button
+            type="button"
+            onClick={onApply}
+            disabled={isPending}
+            style={{
+              padding: '6px 14px',
+              fontSize: 12,
+              fontWeight: 500,
+              color: '#fff',
+              background: 'var(--color-accent-base, #131313)',
+              border: 'none',
+              borderRadius: 6,
+              cursor: 'pointer',
+            }}
+          >
+            Apply v{latestCommitted.run.version}
+          </button>
+        )}
+      </div>
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+          gap: 8,
+        }}
+      >
+        {latestCommitted.plotOutputs.map((p) => {
+          const prior = appliedByKey.get(p.plotTypeKey);
+          return <PlotDiffChip key={p.id} latest={p} prior={prior ?? null} />;
+        })}
+      </div>
+    </section>
+  );
+}
+
+function PlotDiffChip({
+  latest,
+  prior,
+}: {
+  latest: PricingRunPlotOutputView;
+  prior: PricingRunPlotOutputView | null;
+}) {
+  const latestBase = latest.basePsf ?? 0;
+  const priorBase = prior?.basePsf ?? null;
+  const deltaPct =
+    priorBase && priorBase > 0 ? ((latestBase - priorBase) / priorBase) * 100 : null;
+  const deltaSign = deltaPct === null ? '' : deltaPct >= 0 ? '+' : '';
+  const deltaTone: 'positive' | 'negative' | 'neutral' =
+    deltaPct === null
+      ? 'neutral'
+      : deltaPct >= 0
+        ? 'positive'
+        : 'negative';
+  return (
+    <div
+      style={{
+        background: 'var(--color-surface-base)',
+        border: '1px solid var(--color-border-hairline)',
+        borderRadius: 8,
+        padding: 10,
+      }}
+    >
+      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+        {latest.plotTypeLabel}
+      </div>
+      <div
+        style={{
+          marginTop: 4,
+          fontSize: 13,
+          fontVariantNumeric: 'tabular-nums',
+          color: 'var(--color-text-primary)',
+        }}
+      >
+        {prior ? (
+          <>
+            <span style={{ color: 'var(--color-text-tertiary)' }}>${num(priorBase)}</span>
+            {' → '}
+            <strong>${num(latestBase)}</strong>
+            {deltaPct !== null && (
+              <>
+                {' '}
+                <Pill tone={deltaTone}>
+                  {deltaSign}
+                  {deltaPct.toFixed(1)}%
+                </Pill>
+              </>
+            )}
+          </>
+        ) : (
+          <strong>${num(latestBase)}/sf</strong>
+        )}
+      </div>
     </div>
   );
 }

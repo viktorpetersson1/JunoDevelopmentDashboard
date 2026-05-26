@@ -210,6 +210,21 @@ export default async function ProjectDetailPage({
       let appliedBundle: PricingRunBundleView | null = null;
       if (appliedRunId) appliedBundle = await findRunBundle(appliedRunId);
 
+      // D-016 commit 6: latest committed run for diff-banner. May be the
+      // applied one (banner hides), or newer (banner surfaces deltas vs
+      // applied). Sort matches listRunsByProject (newest first by created_at).
+      const latestCommittedRun = allRuns.find((r) => r.status === 'committed') ?? null;
+      let latestCommittedBundle: PricingRunBundleView | null = null;
+      if (latestCommittedRun) {
+        if (latestCommittedRun.id === appliedRunId && appliedBundle) {
+          // No diff to render, but pass the bundle anyway so the client has
+          // it for symmetry; the component itself decides to render or not.
+          latestCommittedBundle = appliedBundle;
+        } else {
+          latestCommittedBundle = await findRunBundle(latestCommittedRun.id);
+        }
+      }
+
       const market = await findMarketByKey('east_end_li');
       const subCuts = (market?.subCuts ?? []).map((s) => ({ key: s.key, label: s.label }));
 
@@ -221,6 +236,7 @@ export default async function ProjectDetailPage({
           runs={allRuns}
           draftBundle={draftBundle}
           appliedBundle={appliedBundle}
+          latestCommittedBundle={latestCommittedBundle}
           subCuts={subCuts}
           isEditor={hasRole(profile, ['super_admin', 'editor'])}
         />

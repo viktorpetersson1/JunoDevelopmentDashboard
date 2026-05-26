@@ -31,6 +31,11 @@
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { recordMutation } from '@/lib/services/audit';
+import {
+  broadcastNotification,
+  insertNotification,
+  listSuperAdminUserIds,
+} from '@/lib/repos/notifications';
 import { findMarketByKey, getSubCutOrThrow, type MarketView } from '@/lib/repos/markets';
 import {
   findClosedCompsInWindow,
@@ -463,6 +468,18 @@ export async function commitRun(
     plotCount: input.plots.length,
   });
 
+  // Notify super_admins so they can review + apply.
+  await emitPricingNotifications(
+    bundle.run.projectId,
+    {
+      kind: 'pricing_run',
+      title: `Pricing run v${bundle.run.version} committed — review and apply`,
+      body: `${input.plots.length} plot type${input.plots.length === 1 ? '' : 's'} committed by ${user.email ?? 'a teammate'}.`,
+      href: null,
+    },
+    user.id
+  );
+
   const out = await findRunBundle(input.runId);
   if (!out) throw new PricingRunValidationError('Commit succeeded but reload failed');
   return out;
@@ -489,6 +506,18 @@ export async function applyRun(runId: string, user: User): Promise<PricingRunBun
   await setProjectAppliedRun(run.projectId, runId);
 
   await emitAudit(user.id, 'pricing_run.apply', runId, { projectId: run.projectId });
+
+  // Notify super_admins that the financial model just shifted.
+  await emitPricingNotifications(
+    run.projectId,
+    {
+      kind: 'pricing_run',
+      title: `Pricing run v${run.version} applied to financial model`,
+      body: `Exit revenue on the project now reflects the new PSF. Applied by ${user.email ?? 'a teammate'}.`,
+      href: null,
+    },
+    user.id
+  );
 
   const bundle = await findRunBundle(runId);
   if (!bundle) throw new PricingRunValidationError('Apply succeeded but reload failed');
@@ -763,6 +792,57 @@ async function resolveOrgId(): Promise<string> {
   const id = (data as { id: string } | null)?.id ?? '00000000-0000-0000-0000-000000000000';
   cachedOrgId = id;
   return id;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Notification fan-out
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Best-effort notification fan-out. Sends:
+ *   - one to the triggering user (echo of action they just took)
+ *   - one to every super_admin EXCEPT the triggering user
+ *
+ * `href` is enriched with the project's permalink (we look up the
+ * project_key from the uuid so the deep-link works for both Mode 2
+ * auto-runs and Mode 3 manual runs).
+ */
+async function emitPricingNotifications(
+  projectUuid: string,
+  template: {
+    kind: 'pricing_run';
+    title: string;
+    body: string | null;
+    href: string | null;
+  },
+  triggeringUserId: string
+): Promise<void> {
+  // Look up project_key for the href.
+  let href = template.href;
+  try {
+    const supabase = createSupabaseServerClient();
+    const { data: projRow } = await supabase
+      .schema('atlas')
+      .from('projects')
+      .select('project_key')
+      .eq('id', projectUuid)
+      .maybeSingle();
+    if (projRow) {
+      const key = (projRow as { project_key: string }).project_key;
+      href = `/projects/${key}?tab=pricing`;
+    }
+  } catch {
+    // fall back to whatever href came in (likely null)
+  }
+  const tpl = { ...template, href };
+
+  // Echo to triggering user.
+  await insertNotification({ userId: triggeringUserId, ...tpl });
+
+  // Broadcast to other super_admins.
+  const adminIds = await listSuperAdminUserIds();
+  const others = adminIds.filter((id) => id !== triggeringUserId);
+  await broadcastNotification(others, tpl);
 }
 
 // ────────────────────────────────────────────────────────────────────────────
