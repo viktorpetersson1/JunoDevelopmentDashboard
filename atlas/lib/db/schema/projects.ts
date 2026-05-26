@@ -103,6 +103,34 @@ export const projects = atlas.table(
     /** 'linear' | 'front_loaded' | 's_curve'; null = use global. */
     buildCostCurve: text('build_cost_curve'),
 
+    // ── Exit Pricing Framework v1 (D-016) ────────────────────────────────
+    /**
+     * Multi-plot-type config for a project. NULL = single-villa back-compat
+     * (the 10 baseline projects all have NULL).
+     *
+     * Shape (opaque per §10.5):
+     *   [
+     *     {
+     *       key: 'sound_front_villa',
+     *       label: 'Sound-front villa',
+     *       count: 1,
+     *       sqft_per_unit_ag: 4200,
+     *       sale_price_per_sqft_override_cents?: number,
+     *       applied_pricing_run_id?: string
+     *     },
+     *     …
+     *   ]
+     */
+    plotTypes: jsonb('plot_types'),
+    /**
+     * Soft pointer to the pricing run currently driving exit PSF in the
+     * calc engine. NULL = no framework run applied (calc engine falls back
+     * to sale_price_override_cents / cost-plus-margin). FK is enforced
+     * by the DB migration; not declared here to avoid Drizzle circular
+     * import with pricingRuns.
+     */
+    appliedPricingRunId: uuid('applied_pricing_run_id'),
+
     // ── Audit ────────────────────────────────────────────────────────────
     /** auth.users.id; FK declared via raw SQL in migration. */
     createdBy: uuid('created_by'),
@@ -122,3 +150,20 @@ export const projects = atlas.table(
 
 export type Project = typeof projects.$inferSelect;
 export type NewProject = typeof projects.$inferInsert;
+
+/**
+ * Shape stored in `projects.plot_types`. Reconciles to
+ * `pricing_run_plot_outputs` rows when a pricing run is applied.
+ *
+ * Per-plot override PSF defeats the framework — used as an escape hatch
+ * for legacy projects with hand-set exits; engine reads
+ * sale_price_per_sqft_override_cents per plot, NOT the framework run.
+ */
+export interface ProjectPlotType {
+  key: string;
+  label: string;
+  count: number;
+  sqft_per_unit_ag: number;
+  sale_price_per_sqft_override_cents?: number | null;
+  applied_pricing_run_id?: string | null;
+}

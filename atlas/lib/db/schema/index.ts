@@ -9,4 +9,7 @@ export * from './cap-table';
 export * from './projects';
 export * from './capital-calls';
 export * from './approval-snapshots';
+// Exit Pricing Framework v1 — markets/comps live alongside pricing-runs.
+export * from './markets';
+export * from './comps';
 export * from './pricing-runs';

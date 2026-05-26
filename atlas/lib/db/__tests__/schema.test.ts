@@ -12,8 +12,11 @@ import {
   capitalCallOwnerShares,
   capitalCallPayments,
   approvalSnapshots,
+  markets,
+  comps,
   pricingRuns,
   pricingRunComparables,
+  pricingRunPlotOutputs,
 } from '../schema';
 
 // Schema invariants that don't need a live DB connection.
@@ -151,20 +154,85 @@ describe('atlas db schema', () => {
     expect(cols).toContain('archivedAt');
   });
 
-  // T023
-  it('atlas.pricing_runs + pricing_run_comparables provision pricing-engine reads', () => {
-    const runCols = Object.keys(pricingRuns);
-    expect(runCols).toContain('projectId');
-    expect(runCols).toContain('runDate');
-    expect(runCols).toContain('modelVersion');
-    expect(runCols).toContain('estimatedValueCents');
-    expect(runCols).toContain('confidenceLowCents');
-    expect(runCols).toContain('confidenceHighCents');
+  // D-016 — Exit Pricing Framework v1
+  it('atlas.markets has key + name + sub_cuts JSONB + threshold knobs', () => {
+    const cols = Object.keys(markets);
+    expect(cols).toContain('id');
+    expect(cols).toContain('key');
+    expect(cols).toContain('name');
+    expect(cols).toContain('defaultCompWindowMonths');
+    expect(cols).toContain('riderThresholdPct');
+    expect(cols).toContain('stretchThresholdPct');
+    expect(cols).toContain('subCuts');
+    expect(cols).toContain('referenceMarketIds');
+    expect(cols).toContain('isArchived');
+  });
 
-    const compCols = Object.keys(pricingRunComparables);
-    expect(compCols).toContain('pricingRunId');
-    expect(compCols).toContain('compAddress');
-    expect(compCols).toContain('compSalePriceCents');
-    expect(compCols).toContain('similarityBps');
+  it('atlas.comps is a global library with sub-cut + waterfront + status', () => {
+    const cols = Object.keys(comps);
+    expect(cols).toContain('id');
+    expect(cols).toContain('address');
+    expect(cols).toContain('subCutKey');
+    expect(cols).toContain('waterfrontType');
+    expect(cols).toContain('isNc');
+    expect(cols).toContain('status');
+    expect(cols).toContain('closingDate');
+    expect(cols).toContain('salePriceCents');
+    expect(cols).toContain('agSqft');
+    expect(cols).toContain('source');
+    expect(cols).toContain('isArchived');
+  });
+
+  it('atlas.pricing_runs is per-project, versioned, draft→committed→archived', () => {
+    const cols = Object.keys(pricingRuns);
+    expect(cols).toContain('projectId');
+    expect(cols).toContain('version');
+    expect(cols).toContain('mode');
+    expect(cols).toContain('triggerSource');
+    expect(cols).toContain('status');
+    expect(cols).toContain('compWindowStart');
+    expect(cols).toContain('compWindowEnd');
+    expect(cols).toContain('committedAt');
+    expect(cols).toContain('committedByUserId');
+    expect(cols).toContain('appliedAt');
+    expect(cols).toContain('appliedByUserId');
+  });
+
+  it('atlas.pricing_run_plot_outputs carries human L/B/H + engine classification', () => {
+    const cols = Object.keys(pricingRunPlotOutputs);
+    expect(cols).toContain('pricingRunId');
+    expect(cols).toContain('plotTypeKey');
+    expect(cols).toContain('subCutKey');
+    expect(cols).toContain('lowPsf');
+    expect(cols).toContain('basePsf');
+    expect(cols).toContain('highPsf');
+    expect(cols).toContain('lowAnchorCompSnapshotId');
+    expect(cols).toContain('baseAnchorCompSnapshotId');
+    expect(cols).toContain('highAnchorCompSnapshotId');
+    expect(cols).toContain('classification');
+    expect(cols).toContain('confidence');
+    expect(cols).toContain('dataGapFlag');
+    expect(cols).toContain('strongestInSubCutPsf');
+  });
+
+  it('atlas.pricing_run_comparables snapshots comp fields at commit time', () => {
+    const cols = Object.keys(pricingRunComparables);
+    expect(cols).toContain('pricingRunId');
+    expect(cols).toContain('compId');
+    expect(cols).toContain('snapshotAddress');
+    expect(cols).toContain('snapshotSubCutKey');
+    expect(cols).toContain('snapshotStatus');
+    expect(cols).toContain('snapshotSalePriceCents');
+    expect(cols).toContain('snapshotAgSqft');
+    expect(cols).toContain('snapshotPsf');
+    expect(cols).toContain('role');
+    expect(cols).toContain('usedForPlotTypeKeys');
+    expect(cols).toContain('isPrimaryInSubCut');
+  });
+
+  it('atlas.projects gains plot_types JSONB + applied_pricing_run_id (D-016)', () => {
+    const cols = Object.keys(projects);
+    expect(cols).toContain('plotTypes');
+    expect(cols).toContain('appliedPricingRunId');
   });
 });
