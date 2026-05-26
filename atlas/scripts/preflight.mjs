@@ -347,6 +347,32 @@ async function checkCloudflareCompat() {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// Check 7: Sentry DSN configured (soft check — warns only)
+//
+// Why: Atlas ships with @sentry/nextjs wired in, but the configs no-op
+// when SENTRY_DSN is unset. Local dev and any environment without a
+// Sentry project run fine without the DSN — this just nudges prod
+// deployments toward enabling error capture.
+// ────────────────────────────────────────────────────────────────────────────
+
+function checkSentryConfigured() {
+  section('7. Sentry DSN configured (warns only)');
+  const dsn = process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN;
+  if (!dsn) {
+    warn(
+      'SENTRY_DSN',
+      "not set — error capture is silent. Add SENTRY_DSN + NEXT_PUBLIC_SENTRY_DSN to enable."
+    );
+    return;
+  }
+  if (!dsn.startsWith('https://')) {
+    warn('SENTRY_DSN', 'should start with https:// (Sentry ingest URL)');
+    return;
+  }
+  pass('SENTRY_DSN', `${dsn.length} chars`);
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // Main
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -365,6 +391,7 @@ async function main() {
     section('5-6. Remote checks');
     console.log(c('dim', '  skipped (pass --remote to enable)'));
   }
+  checkSentryConfigured();
 
   console.log();
   if (failures.length > 0) {
