@@ -1,0 +1,48 @@
+# Cloudflare Pages headers config.
+# https://developers.cloudflare.com/pages/configuration/headers/
+#
+# WHY THIS FILE EXISTS
+# When CF Pages serves an HTML response without an explicit Cache-Control,
+# browsers fall back to heuristic caching — they assume the page is good
+# for hours or days based on Last-Modified. After a redeploy, users keep
+# seeing the OLD page until their cache expires. That's how we ended up
+# debugging a "page not found" that didn't exist on the server.
+#
+# Strategy:
+#   1. HTML pages + API routes — Cache-Control: no-store. Always fresh.
+#   2. Static JS/CSS bundles under /_next/static — immutable, cache forever.
+#      Next.js puts a content hash in every chunk filename, so a redeploy
+#      produces new filenames; the old ones go unused.
+#   3. Favicons / brand assets — short revalidate.
+#
+# Order matters: most specific patterns first, catch-all last.
+
+# Long-cache the hashed chunks. The filename itself changes on every
+# content change (content hash baked in), so we can mark them immutable.
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Cloudflare functions output bundle — also hashed.
+/__next-on-pages-dist__/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Favicon + brand assets — short revalidate so a brand-mark refresh
+# propagates within a day instead of a month.
+/icon.svg
+  Cache-Control: public, max-age=3600, must-revalidate
+
+# API routes — never cache. Each request must hit the function.
+/api/*
+  Cache-Control: no-store, must-revalidate
+
+# Auth-sensitive surfaces — never cache. Listed explicitly so an
+# overly-clever CDN tier above us can't decide otherwise.
+/sign-in
+  Cache-Control: no-store, must-revalidate
+
+# Catch-all for everything else (HTML pages). no-store stops the
+# browser, must-revalidate stops any intermediate proxy.
+/*
+  Cache-Control: no-store, must-revalidate
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin

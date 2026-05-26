@@ -22,7 +22,10 @@ export async function middleware(request: NextRequest) {
     process.env.NODE_ENV === 'production' &&
     request.nextUrl.pathname.startsWith('/dev')
   ) {
-    return new NextResponse('Not Found', { status: 404 });
+    return new NextResponse('Not Found', {
+      status: 404,
+      headers: { 'Cache-Control': 'no-store, must-revalidate' },
+    });
   }
   return updateSession(request);
 }

@@ -18,8 +18,33 @@ function isPublicPath(pathname: string): boolean {
   return PUBLIC_ROUTES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
+/**
+ * Apply cache-control headers that match public/_headers.
+ *
+ * Why both? public/_headers is the CDN-level guard; setting the same
+ * headers on the function response means even if the CDN tier is
+ * bypassed (preview URL, custom domain misconfigured, etc.), the
+ * browser still gets no-store on HTML. Belt + suspenders.
+ *
+ * Static asset paths (under /_next/static/*) are excluded — the
+ * matcher filter already skips them, but this is defensive in case
+ * a new path ever sneaks past.
+ */
+function applyCacheHeaders(request: NextRequest, response: NextResponse): void {
+  const path = request.nextUrl.pathname;
+  if (path.startsWith('/_next/static/') || path.startsWith('/__next-on-pages-dist__/')) {
+    // Immutable hashed chunks — keep CDN/browser caching aggressively.
+    response.headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+    return;
+  }
+  // Everything else (HTML pages, API routes, redirects) must always
+  // round-trip to the function so a redeploy is visible on next load.
+  response.headers.set('Cache-Control', 'no-store, must-revalidate');
+}
+
 export async function updateSession(request: NextRequest) {
   const response = NextResponse.next({ request });
+  applyCacheHeaders(request, response);
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -59,7 +84,9 @@ export async function updateSession(request: NextRequest) {
       const signInUrl = request.nextUrl.clone();
       signInUrl.pathname = '/sign-in';
       signInUrl.searchParams.set('redirectTo', request.nextUrl.pathname);
-      return NextResponse.redirect(signInUrl);
+      const redirect = NextResponse.redirect(signInUrl);
+      applyCacheHeaders(request, redirect);
+      return redirect;
     }
 
     // Signed-in user hitting /sign-in → bounce to home
@@ -67,7 +94,9 @@ export async function updateSession(request: NextRequest) {
       const home = request.nextUrl.clone();
       home.pathname = '/';
       home.search = '';
-      return NextResponse.redirect(home);
+      const redirect = NextResponse.redirect(home);
+      applyCacheHeaders(request, redirect);
+      return redirect;
     }
 
     return response;

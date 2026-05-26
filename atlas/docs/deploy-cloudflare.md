@@ -116,6 +116,32 @@ pnpm run pages:build
 pnpm run pages:dev
 ```
 
+### Browser cache strategy
+
+After a redeploy, browsers normally keep serving the OLD HTML from cache
+for hours (or days) because Cloudflare Pages doesn't add a Cache-Control
+header by default — browsers fall back to heuristic freshness.
+
+We mitigate this in two layers:
+
+**1. `atlas/public/_headers`** (CDN-level, runs first):
+- `/_next/static/*` and `/__next-on-pages-dist__/*` → `public, max-age=31536000, immutable` (Next chunks are content-hashed, safe to cache forever)
+- `/api/*`, `/sign-in`, `/*` (HTML) → `no-store, must-revalidate`
+- Adds `X-Content-Type-Options: nosniff` and `Referrer-Policy: strict-origin-when-cross-origin` as security headers
+
+**2. `lib/supabase/middleware.ts`** (function-level, runs second):
+- Sets the same Cache-Control on every Server Component / API response
+- Belt-and-suspenders in case the CDN tier is bypassed (preview URLs,
+  custom-domain misconfig, etc.)
+
+What this means in practice:
+- The first user who hits a fresh deploy ALWAYS gets the new HTML
+- Static JS/CSS chunks still cache aggressively (fast page loads)
+- Even if a future bad deploy ships, refreshing the tab will pull the
+  fix; users won't be stuck on a stale broken page for days
+- The "browser shows page not found after redeploy" bug we hit during
+  early CF rollout is now structurally impossible
+
 ### Preflight checks (run before every build)
 
 `pnpm run pages:build` automatically runs `scripts/preflight.mjs --remote`
