@@ -6,16 +6,20 @@
  * perturbed in both directions; results plotted as a horizontal
  * tornado chart sorted by magnitude.
  *
- * Calc: lib/calc/sensitivity/tornado — pure function, 9 aggregator
- * calls per page load. Heatmap from INVENTORY §20 deferred to V4.6b
- * (the lazy "Compute heatmap" button it specs needs client state
- * we don't want to bake into the first cut).
+ * Calc:
+ *   - lib/calc/sensitivity/tornado — OAT sweep, 9 aggregator calls
+ *   - lib/calc/sensitivity/heatmap — 6×6 cross-driver grid, 36 calls
+ *
+ * Total server-side compute on a ~6-project portfolio: well under
+ * 100ms. Both runs happen on every page load; no lazy-load buttons.
  */
 
 import { DashboardShell } from '../_components/dashboard-shell';
 import { TornadoChart } from './_components/tornado-chart';
+import { HeatmapGrid } from './_components/heatmap-grid';
 import { findManyProjects } from '@/lib/repos/project';
 import { runSensitivityTornado } from '@/lib/calc/sensitivity/tornado';
+import { runHeatmap } from '@/lib/calc/sensitivity/heatmap';
 import { BASELINE_SCENARIO } from '@/lib/calc/baselines';
 import { getActiveGlobals } from '@/lib/globals/active';
 import { formatMoney } from '@/lib/utils/money';
@@ -34,6 +38,8 @@ export default async function SensitivityPage() {
   // through so org-wide overrides change the reference profit + perturbation
   // magnitudes consistently.
   const report = runSensitivityTornado(projects, globalsCtx.globals, BASELINE_SCENARIO);
+  // V4.6b — heatmap (6×6 grid, 36 aggregator runs ≈ 30-60ms server-side).
+  const heatmap = runHeatmap(projects, globalsCtx.globals, BASELINE_SCENARIO);
 
   const dashboardUser = {
     name: profile.displayName ?? profile.email ?? user.email ?? 'Juno',
@@ -163,6 +169,7 @@ export default async function SensitivityPage() {
           </table>
         </section>
 
+        {/* V4.6b — two-driver heatmap */}
         <section
           style={{
             background: 'var(--color-surface-raised)',
@@ -171,14 +178,16 @@ export default async function SensitivityPage() {
             padding: 20,
           }}
         >
-          <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>
-            Heatmap (coming in V4.6b)
-          </h2>
-          <p style={{ margin: '6px 0 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
-            The two-driver heatmap (build cost × × sale price ×, profit per cell) ships in a follow-up
-            commit. The current OAT tornado already covers the headline question of which single driver
-            moves profit most.
-          </p>
+          <header style={{ marginBottom: 12 }}>
+            <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+              Two-driver heatmap
+            </h2>
+            <p style={{ margin: '2px 0 0 0', fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+              Build cost × × sale price × — each cell is portfolio profit (pre-tax) at that combination.
+              Base case (×1.0, ×1.0) outlined. Color: red worst → green best across the grid.
+            </p>
+          </header>
+          <HeatmapGrid report={heatmap} />
         </section>
       </div>
     </DashboardShell>
