@@ -48,6 +48,24 @@ interface AuditRow {
 const SELECT_COLUMNS = 'id, created_at, user_id, route, method, status_code, user_agent';
 
 /**
+ * V4.9 — Global audit log read. Newest first, hard cap on size for the
+ * /activity surface (super_admin only). No project / route filter — the
+ * caller decides what to render.
+ */
+export async function findRecentAudit(limit = 200): Promise<AuditEntryView[]> {
+  const supabase = createSupabaseServerClient();
+  const cap = Math.min(Math.max(1, limit), 1000);
+  const { data, error } = await supabase
+    .schema('atlas')
+    .from('audit_log')
+    .select(SELECT_COLUMNS)
+    .order('created_at', { ascending: false })
+    .limit(cap);
+  if (error) throw new Error(`findRecentAudit: ${error.message}`);
+  return ((data as unknown as AuditRow[]) ?? []).map(toView);
+}
+
+/**
  * Find audit entries relevant to one project. Combines direct project
  * routes + service-emitted entries for the project's capital calls +
  * approval snapshots.
