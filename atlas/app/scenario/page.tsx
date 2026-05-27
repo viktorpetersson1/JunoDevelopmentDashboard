@@ -25,8 +25,10 @@
  *     + every saved scenario. Shows shape, not just endpoints.
  *   ✓ Cash flow overlay chart — monthly net cash lines across scenarios.
  *
- * Deferred to V4.5d:
- *   - Annual P&L by scenario table (per-FY breakdown)
+ * V4.5d additions:
+ *   ✓ Annual P&L by scenario — FY rows × scenario columns, two metric
+ *     blocks (Sales + Profit before tax) so users can spot which FY a
+ *     scenario hits hardest.
  *
  * Server Component does the initial fetch + first aggregation; the
  * client component owns the form state + recompute-on-apply flow.
@@ -91,6 +93,16 @@ export default async function ScenarioPage() {
         cumEquityDrawn: r.monthly.cum_equity_drawn,
         netCash: r.monthly.net_cash,
       },
+      // V4.5d — per-FY breakdown so the annual P&L table can render
+      // base + scenario columns side-by-side. Only the 2 metrics the
+      // INVENTORY §19 panel calls out (sales + profit_before_tax) so
+      // we don't bloat the payload with the full ~12-field annual roll.
+      annual: Object.fromEntries(
+        Object.entries(r.annual).map(([fy, a]) => [
+          fy,
+          { sales: a.sales, profit_before_tax: a.profit_before_tax },
+        ])
+      ),
     };
   });
 
@@ -102,6 +114,14 @@ export default async function ScenarioPage() {
     cumEquityDrawn: baseResult.monthly.cum_equity_drawn,
     netCash: baseResult.monthly.net_cash,
   };
+
+  // V4.5d — base case per-FY breakdown for the annual P&L table.
+  const baseAnnual = Object.fromEntries(
+    Object.entries(baseResult.annual).map(([fy, a]) => [
+      fy,
+      { sales: a.sales, profit_before_tax: a.profit_before_tax },
+    ])
+  );
 
   const dashboardUser = {
     name: profile.displayName ?? profile.email ?? user.email ?? 'Juno',
@@ -128,6 +148,7 @@ export default async function ScenarioPage() {
         }}
         savedKpis={savedKpis}
         baseSeries={baseSeries}
+        baseAnnual={baseAnnual}
         canEdit={hasRole(profile, ['super_admin', 'editor'])}
       />
     </DashboardShell>

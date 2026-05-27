@@ -73,7 +73,8 @@ interface Props {
   baseExtendedKpis?: { irr_annual: number | null; payback_months: number | null };
   /** V4.5b — pre-computed KPIs per saved scenario for the comparison table.
    *  Server-side compute so the page renders without client aggregator work.
-   *  V4.5c — `series` field added for the overlay charts. */
+   *  V4.5c — `series` field added for the overlay charts.
+   *  V4.5d — `annual` field added for the annual P&L table. */
   savedKpis?: Array<{
     id: string;
     name: string;
@@ -81,9 +82,12 @@ interface Props {
     locked: boolean;
     kpis: KpiBag & { irr_annual: number | null; payback_months: number | null };
     series?: { cumEquityDrawn: number[]; netCash: number[] };
+    annual?: Record<string, { sales: number; profit_before_tax: number }>;
   }>;
   /** V4.5c — base case monthly series for the overlay charts. */
   baseSeries?: { dates: string[]; cumEquityDrawn: number[]; netCash: number[] };
+  /** V4.5d — base case per-FY breakdown for the annual P&L table. */
+  baseAnnual?: Record<string, { sales: number; profit_before_tax: number }>;
   canEdit: boolean;
 }
 
@@ -141,6 +145,7 @@ export function ScenarioClient({
   baseExtendedKpis,
   savedKpis,
   baseSeries,
+  baseAnnual,
   canEdit,
 }: Props) {
   const [form, setForm] = useState<FormState>(initialFromBase(baseScenario));
@@ -862,7 +867,153 @@ export function ScenarioClient({
           </div>
         </Section>
       )}
+
+      {/* V4.5d — Annual P&L by scenario */}
+      {savedKpis && savedKpis.length > 0 && baseAnnual && savedKpis.every((s) => s.annual) && (
+        <Section
+          title="Annual P&L by scenario"
+          subtitle="Sales and profit-before-tax per fiscal year, base + every saved scenario. Useful for spotting which year a scenario hits hardest."
+        >
+          <AnnualPlTable
+            baseAnnual={baseAnnual}
+            scenarios={savedKpis.map((s) => ({ id: s.id, name: s.name, annual: s.annual! }))}
+          />
+        </Section>
+      )}
     </div>
+  );
+}
+
+/** V4.5d — Annual P&L table. Two metric blocks (Sales + PBT) stacked
+ *  vertically, FYs as rows, scenarios as columns. FY ordering is the
+ *  union of every scenario's FYs, sorted ascending. */
+function AnnualPlTable({
+  baseAnnual,
+  scenarios,
+}: {
+  baseAnnual: Record<string, { sales: number; profit_before_tax: number }>;
+  scenarios: Array<{ id: string; name: string; annual: Record<string, { sales: number; profit_before_tax: number }> }>;
+}) {
+  // Build the FY union — different scenarios may have different fiscal
+  // years if timing_shift_months pushes them across boundaries.
+  const allFys = new Set<string>(Object.keys(baseAnnual));
+  for (const s of scenarios) {
+    for (const fy of Object.keys(s.annual)) allFys.add(fy);
+  }
+  const fys = Array.from(allFys).sort();
+
+  if (fys.length === 0) {
+    return (
+      <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-tertiary)' }}>
+        No fiscal years in the model horizon yet.
+      </p>
+    );
+  }
+
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <thead>
+          <tr style={{ borderBottom: '1px solid var(--color-border-hairline)' }}>
+            <th style={th()}>Metric</th>
+            <th style={th()}>FY</th>
+            <th style={th('right')}>Base case</th>
+            {scenarios.map((s) => (
+              <th key={s.id} style={th('right')}>
+                {s.name}
+              </th>
+            ))}
+            <th style={th('right')}>Δ vs base (avg)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {/* Sales block */}
+          {fys.map((fy, i) => (
+            <AnnualRow
+              key={`sales-${fy}`}
+              metricLabel={i === 0 ? 'Sales' : ''}
+              fy={fy}
+              baseVal={baseAnnual[fy]?.sales ?? 0}
+              cells={scenarios.map((s) => s.annual[fy]?.sales ?? 0)}
+              firstInGroup={i === 0}
+            />
+          ))}
+          {/* Spacer */}
+          <tr aria-hidden="true">
+            <td colSpan={3 + scenarios.length + 1} style={{ height: 8 }} />
+          </tr>
+          {/* PBT block */}
+          {fys.map((fy, i) => (
+            <AnnualRow
+              key={`pbt-${fy}`}
+              metricLabel={i === 0 ? 'Profit (pre-tax)' : ''}
+              fy={fy}
+              baseVal={baseAnnual[fy]?.profit_before_tax ?? 0}
+              cells={scenarios.map((s) => s.annual[fy]?.profit_before_tax ?? 0)}
+              firstInGroup={i === 0}
+            />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function AnnualRow({
+  metricLabel,
+  fy,
+  baseVal,
+  cells,
+  firstInGroup,
+}: {
+  metricLabel: string;
+  fy: string;
+  baseVal: number;
+  cells: number[];
+  firstInGroup: boolean;
+}) {
+  // Average Δ across saved scenarios (informational summary col).
+  const avgDelta =
+    cells.length > 0 ? cells.reduce((a, b) => a + (b - baseVal), 0) / cells.length : 0;
+  return (
+    <tr style={{ borderTop: firstInGroup ? '2px solid var(--color-border-strong)' : '1px solid var(--color-border-hairline)' }}>
+      <td
+        style={{
+          ...comparisonTd(),
+          fontWeight: firstInGroup ? 600 : 400,
+          color: firstInGroup ? 'var(--color-text-primary)' : 'transparent',
+        }}
+      >
+        {metricLabel || '·'}
+      </td>
+      <td style={{ ...comparisonTd(), color: 'var(--color-text-tertiary)', fontSize: 12 }}>{fy}</td>
+      <td style={{ ...comparisonTd('right'), color: 'var(--color-text-secondary)' }}>
+        {fmtCell(baseVal, 'usd')}
+      </td>
+      {cells.map((v, i) => {
+        const delta = v - baseVal;
+        const color =
+          delta === 0
+            ? 'var(--color-text-primary)'
+            : delta > 0
+            ? 'var(--color-positive, #15803d)'
+            : 'var(--color-negative, #dc2626)';
+        return (
+          <td key={i} style={{ ...comparisonTd('right'), color }}>
+            {fmtCell(v, 'usd')}
+          </td>
+        );
+      })}
+      <td
+        style={{
+          ...comparisonTd('right'),
+          fontWeight: 500,
+          color: avgDelta === 0 ? 'var(--color-text-tertiary)' : avgDelta > 0 ? 'var(--color-positive, #15803d)' : 'var(--color-negative, #dc2626)',
+        }}
+      >
+        {avgDelta === 0 ? '—' : `${avgDelta > 0 ? '+' : ''}${fmtCell(avgDelta, 'usd')}`}
+      </td>
+    </tr>
   );
 }
 
