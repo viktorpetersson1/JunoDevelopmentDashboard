@@ -78,6 +78,17 @@ export function AskJunoWidget() {
     return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
+  // V4.1b — listen for the sidebar CTA's open event. AppShell.tsx exports
+  // the event name as ASK_JUNO_OPEN_EVENT; consumers can dispatch it from
+  // anywhere (sidebar item, future deep-link, in-page CTA buttons, etc.).
+  useEffect(() => {
+    function onOpen() {
+      setOpen(true);
+    }
+    window.addEventListener('atlas:open-ask-juno', onOpen);
+    return () => window.removeEventListener('atlas:open-ask-juno', onOpen);
+  }, []);
+
   const onSend = useCallback(async () => {
     const trimmed = input.trim();
     if (!trimmed || pending) return;

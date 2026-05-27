@@ -21,7 +21,9 @@ import './layout.css';
 // ─── Prop Types ─────────────────────────────────────────────────────────────
 
 export interface SidebarNavItem {
-  /** Destination URL */
+  /** Destination URL. For action items (onClick), use a unique '#…' anchor
+   *  string so the active-href check stays predictable; the anchor is
+   *  intercepted via preventDefault and won't navigate. */
   href: string;
   /** Display label */
   label: string;
@@ -29,6 +31,11 @@ export interface SidebarNavItem {
   icon?: ReactNode;
   /** Optional badge: numeric count or string label */
   badge?: string | number;
+  /** V4.1b — Action items: when set, clicking fires this callback INSTEAD
+   *  of navigating. Used by the sidebar Ask Juno CTA to open the global
+   *  right-docked widget without leaving the page. The element still
+   *  renders as an `<a>` for keyboard + screen-reader compatibility. */
+  onClick?: (e: React.MouseEvent) => void;
 }
 
 export interface SidebarSection {
@@ -132,12 +139,21 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar(
                 .filter(Boolean)
                 .join(' ');
 
+              const handleClick = item.onClick
+                ? (e: React.MouseEvent) => {
+                    e.preventDefault();
+                    item.onClick!(e);
+                  }
+                : undefined;
+
               return (
                 <a
                   key={item.href}
                   href={item.href}
                   className={itemClass}
                   aria-current={isActive ? 'page' : undefined}
+                  onClick={handleClick}
+                  role={item.onClick ? 'button' : undefined}
                 >
                   {/* Icon */}
                   {item.icon && (

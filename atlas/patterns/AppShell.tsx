@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * AppShell
  * --------
@@ -7,6 +9,10 @@
  * user object, overridable via `user`.
  *
  * Used on: every authenticated page in the application.
+ *
+ * 'use client' because the default sidebar sections include the Ask Juno
+ * CTA (V4.1b) whose onClick handler dispatches a custom DOM event —
+ * window.dispatchEvent only exists at runtime in the browser.
  *
  * @example
  * ```tsx
@@ -111,9 +117,26 @@ const PricingIcon = () => (
   </svg>
 );
 
-// V4.1 — Ask Juno icon removed. The widget lives in app/providers.tsx now
-// (right-docked panel + bottom-right floating launcher) and uses the
-// JunoMark component directly, not this sidebar-styled SVG.
+/**
+ * V4.1b — Ask Juno icon restored. The widget is still global (right-docked
+ * panel + bottom-right floating launcher mounted via app/providers.tsx),
+ * but the sidebar now also offers a CTA that DISPATCHES an open event
+ * instead of navigating. Two entry points, one widget.
+ */
+const AskJunoIcon = () => (
+  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+    <circle cx="10" cy="10" r="7.75" />
+    <line x1="10" y1="2.25" x2="10" y2="17.75" strokeLinecap="round" />
+  </svg>
+);
+
+/** Custom DOM event the sidebar fires; the AskJunoWidget listens for it. */
+export const ASK_JUNO_OPEN_EVENT = 'atlas:open-ask-juno';
+function openAskJuno() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(ASK_JUNO_OPEN_EVENT));
+  }
+}
 
 const NotificationsIcon = () => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
@@ -182,10 +205,16 @@ export const DEFAULT_SIDEBAR_SECTIONS: SidebarSection[] = [
       { href: '/pipeline', label: 'Pipeline', icon: <PipelineIcon /> },
       { href: '/pricing', label: 'Pricing', icon: <PricingIcon /> },
       { href: '/suggestions', label: 'Suggestions', icon: <SuggestionsIcon /> },
-      // V4.1 — Ask Juno moved out of the left sidebar per INVENTORY §28.
-      // Now a right-docked panel + bottom-right floating launcher, mounted
-      // globally via app/providers.tsx → AskJunoWidget. AskJunoIcon export
-      // is preserved below in case a per-page entry returns later.
+      // V4.1b — Ask Juno CTA. Does NOT navigate — fires the open event so
+      // the global AskJunoWidget (app/providers.tsx) pops the right-docked
+      // panel. href '#ask-juno' is a stable anchor (never matches an
+      // activeHref) so the keyboard/screen-reader path stays sane.
+      {
+        href: '#ask-juno',
+        label: 'Ask Juno',
+        icon: <AskJunoIcon />,
+        onClick: openAskJuno,
+      },
     ],
   },
   {
