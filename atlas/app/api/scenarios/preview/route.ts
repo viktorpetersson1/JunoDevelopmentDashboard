@@ -17,7 +17,7 @@ import { withErrorBoundary } from '@/lib/api/handler';
 import { requireAuth } from '@/lib/auth/requireAuth';
 import { findManyProjects } from '@/lib/repos/project';
 import { aggregatePortfolio } from '@/lib/calc/portfolio/aggregate';
-import { BASELINE_GLOBALS } from '@/lib/calc/baselines';
+import { getActiveGlobals } from '@/lib/globals/active';
 import type { Scenario } from '@/lib/calc/project/types';
 
 export const dynamic = 'force-dynamic';
@@ -62,7 +62,10 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
   };
 
   const { projects } = await findManyProjects({ limit: 100 });
-  const result = aggregatePortfolio(projects, BASELINE_GLOBALS, draftScenario);
+  // V4.11b — preview uses active globals so what the user sees here
+  // matches what they'll see on the dashboard after applying.
+  const globalsCtx = await getActiveGlobals();
+  const result = aggregatePortfolio(projects, globalsCtx.globals, draftScenario);
 
   return ok({
     kpis: {

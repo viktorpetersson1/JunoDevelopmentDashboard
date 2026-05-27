@@ -24,6 +24,7 @@ import { LinkTab } from './_components/link-tab';
 import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
 import { hasRole } from '@/lib/auth/requireRole';
 import { fetchCapTable, fetchAllProfiles } from '@/lib/repos/settings';
+import { getActiveGlobals } from '@/lib/globals/active';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -58,9 +59,12 @@ export default async function SettingsPage({
   }
 
   // Parallel fetch only what the active tab needs.
-  const [capTable, allProfiles] = await Promise.all([
+  const [capTable, allProfiles, activeGlobals] = await Promise.all([
     tab === 'cap-table' ? fetchCapTable() : Promise.resolve(null),
     tab === 'owners' ? fetchAllProfiles() : Promise.resolve(null),
+    tab === 'general'
+      ? getActiveGlobals()
+      : Promise.resolve(null),
   ]);
 
   const dashboardUser = {
@@ -74,7 +78,14 @@ export default async function SettingsPage({
       tabContent = <ProfileTab profile={profile} authEmail={user.email ?? null} />;
       break;
     case 'general':
-      tabContent = <GeneralTab />;
+      tabContent = (
+        <GeneralTab
+          initialGlobals={activeGlobals!.globals}
+          initialIsBaseline={activeGlobals!.isBaseline}
+          initialUpdatedAt={activeGlobals!.updatedAt}
+          canEdit={isEditor}
+        />
+      );
       break;
     case 'cap-table':
       tabContent = <CapTableTab entries={capTable ?? []} isAdmin={isAdmin} />;

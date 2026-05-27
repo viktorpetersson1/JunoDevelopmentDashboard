@@ -15,7 +15,7 @@ import { KPIStrip } from '@/components/data/KPIStrip';
 import { KPITile } from '@/components/data/KPITile';
 import { findManyProjects } from '@/lib/repos/project';
 import { aggregatePortfolio } from '@/lib/calc/portfolio/aggregate';
-import { BASELINE_GLOBALS } from '@/lib/calc/baselines';
+import { getActiveGlobals } from '@/lib/globals/active';
 import { getActiveScenario } from '@/lib/scenarios/active';
 import { formatMoney } from '@/lib/utils/money';
 import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
@@ -27,8 +27,8 @@ export const runtime = 'edge';
 export default async function CashflowPage() {
   const { profile, user } = await requireAuthOrRedirect('/cashflow');
   const { projects } = await findManyProjects({ limit: 100 });
-  const active = await getActiveScenario(); // V4.12
-  const portfolio = aggregatePortfolio(projects, BASELINE_GLOBALS, active.scenario);
+  const [active, globalsCtx] = await Promise.all([getActiveScenario(), getActiveGlobals()]);
+  const portfolio = aggregatePortfolio(projects, globalsCtx.globals, active.scenario);
   const k = portfolio.kpis;
 
   const dashboardUser = {

@@ -14,7 +14,7 @@ import { DashboardShell } from '../_components/dashboard-shell';
 import { findManyProjects } from '@/lib/repos/project';
 import { aggregatePortfolio } from '@/lib/calc/portfolio/aggregate';
 import { runProject } from '@/lib/calc/project/runProject';
-import { BASELINE_GLOBALS } from '@/lib/calc/baselines';
+import { getActiveGlobals } from '@/lib/globals/active';
 import { getActiveScenario } from '@/lib/scenarios/active';
 import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
 import { buildPortfolioRiskReport, type RiskFinding, type RiskSeverity } from '@/lib/risk/portfolio-risk';
@@ -26,11 +26,11 @@ export const runtime = 'edge';
 export default async function RisksCenterPage() {
   const { profile, user } = await requireAuthOrRedirect('/risks');
   const { projects } = await findManyProjects({ limit: 100 });
-  const active = await getActiveScenario(); // V4.12
-  const portfolio = aggregatePortfolio(projects, BASELINE_GLOBALS, active.scenario);
+  const [active, globalsCtx] = await Promise.all([getActiveScenario(), getActiveGlobals()]);
+  const portfolio = aggregatePortfolio(projects, globalsCtx.globals, active.scenario);
   const perProject = projects.map((p) => ({
     project: p,
-    result: runProject(p, BASELINE_GLOBALS, active.scenario),
+    result: runProject(p, globalsCtx.globals, active.scenario),
   }));
   const report = buildPortfolioRiskReport({ projects: perProject, portfolio });
 

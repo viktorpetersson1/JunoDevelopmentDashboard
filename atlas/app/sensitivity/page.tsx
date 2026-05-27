@@ -16,7 +16,8 @@ import { DashboardShell } from '../_components/dashboard-shell';
 import { TornadoChart } from './_components/tornado-chart';
 import { findManyProjects } from '@/lib/repos/project';
 import { runSensitivityTornado } from '@/lib/calc/sensitivity/tornado';
-import { BASELINE_GLOBALS, BASELINE_SCENARIO } from '@/lib/calc/baselines';
+import { BASELINE_SCENARIO } from '@/lib/calc/baselines';
+import { getActiveGlobals } from '@/lib/globals/active';
 import { formatMoney } from '@/lib/utils/money';
 import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
 
@@ -27,7 +28,12 @@ export const runtime = 'edge';
 export default async function SensitivityPage() {
   const { profile, user } = await requireAuthOrRedirect('/sensitivity');
   const { projects } = await findManyProjects({ limit: 100 });
-  const report = runSensitivityTornado(projects, BASELINE_GLOBALS, BASELINE_SCENARIO);
+  const globalsCtx = await getActiveGlobals();
+  // Tornado intentionally anchors at the BASE scenario (not the active
+  // scenario) so the deltas are interpretable. Active globals DO flow
+  // through so org-wide overrides change the reference profit + perturbation
+  // magnitudes consistently.
+  const report = runSensitivityTornado(projects, globalsCtx.globals, BASELINE_SCENARIO);
 
   const dashboardUser = {
     name: profile.displayName ?? profile.email ?? user.email ?? 'Juno',

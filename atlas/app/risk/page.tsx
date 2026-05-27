@@ -25,7 +25,8 @@ import { DashboardShell } from '../_components/dashboard-shell';
 import { DistributionChart } from './_components/distribution-chart';
 import { findManyProjects } from '@/lib/repos/project';
 import { runMonteCarlo, DEFAULT_DISTRIBUTIONS } from '@/lib/calc/risk/monte-carlo';
-import { BASELINE_GLOBALS, BASELINE_SCENARIO } from '@/lib/calc/baselines';
+import { BASELINE_SCENARIO } from '@/lib/calc/baselines';
+import { getActiveGlobals } from '@/lib/globals/active';
 import { formatMoney } from '@/lib/utils/money';
 import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
 
@@ -38,11 +39,14 @@ const DEFAULT_TRIALS = 200;
 export default async function RiskPage() {
   const { profile, user } = await requireAuthOrRedirect('/risk');
   const { projects } = await findManyProjects({ limit: 100 });
+  const globalsCtx = await getActiveGlobals();
 
   // Seeded run so refresh shows the same percentiles — important for
   // diligence (a board paper citing P10 should match on re-open).
+  // MC perturbs around BASE scenario (not active) so the trial envelope
+  // semantics are stable; active globals flow through normally.
   const t0 = Date.now();
-  const report = runMonteCarlo(projects, BASELINE_GLOBALS, BASELINE_SCENARIO, {
+  const report = runMonteCarlo(projects, globalsCtx.globals, BASELINE_SCENARIO, {
     trials: DEFAULT_TRIALS,
     seed: 0xc0ffee,
   });

@@ -24,7 +24,7 @@ import { DashboardShell } from '../_components/dashboard-shell';
 import { EquityTimelineChart } from './_components/equity-timeline-chart';
 import { findManyProjects } from '@/lib/repos/project';
 import { aggregatePortfolio } from '@/lib/calc/portfolio/aggregate';
-import { BASELINE_GLOBALS } from '@/lib/calc/baselines';
+import { getActiveGlobals } from '@/lib/globals/active';
 import { getActiveScenario } from '@/lib/scenarios/active';
 import {
   computeWaterfall,
@@ -63,9 +63,9 @@ function toInvestorInput(row: CapTableEntryView): WaterfallInvestorInput {
 export default async function WaterfallPage() {
   const { profile, user } = await requireAuthOrRedirect('/waterfall');
   const { projects } = await findManyProjects({ limit: 100 });
-  const active = await getActiveScenario(); // V4.12
+  const [active, globalsCtx] = await Promise.all([getActiveScenario(), getActiveGlobals()]);
   const [portfolio, capTable] = await Promise.all([
-    Promise.resolve(aggregatePortfolio(projects, BASELINE_GLOBALS, active.scenario)),
+    Promise.resolve(aggregatePortfolio(projects, globalsCtx.globals, active.scenario)),
     fetchCapTable(),
   ]);
 

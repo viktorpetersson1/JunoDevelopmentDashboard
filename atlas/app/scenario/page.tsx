@@ -28,7 +28,8 @@ import { DashboardShell } from '../_components/dashboard-shell';
 import { ScenarioClient } from './_components/scenario-client';
 import { findManyProjects } from '@/lib/repos/project';
 import { aggregatePortfolio } from '@/lib/calc/portfolio/aggregate';
-import { BASELINE_GLOBALS, BASELINE_SCENARIO } from '@/lib/calc/baselines';
+import { BASELINE_SCENARIO } from '@/lib/calc/baselines';
+import { getActiveGlobals } from '@/lib/globals/active';
 import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
 import { hasRole } from '@/lib/auth/requireRole';
 import { findManyScenarios, viewToCalcScenario } from '@/lib/repos/scenarios';
@@ -39,15 +40,18 @@ export const runtime = 'edge';
 
 export default async function ScenarioPage() {
   const { profile, user } = await requireAuthOrRedirect('/scenario');
-  const [{ projects }, saved] = await Promise.all([
+  const [{ projects }, saved, globalsCtx] = await Promise.all([
     findManyProjects({ limit: 100 }),
     findManyScenarios(),
+    getActiveGlobals(),
   ]);
 
   // Base case run — gives the comparison reference point. All client-side
   // compute (Apply, Save, etc.) re-fetches via /api/scenarios so the
-  // server stays stateless.
-  const baseResult = aggregatePortfolio(projects, BASELINE_GLOBALS, BASELINE_SCENARIO);
+  // server stays stateless. V4.11b — uses active globals so org overrides
+  // flow into the base reference, otherwise the "Effect on KPIs" panel
+  // would show artificial deltas against unmodified baseline constants.
+  const baseResult = aggregatePortfolio(projects, globalsCtx.globals, BASELINE_SCENARIO);
 
   const dashboardUser = {
     name: profile.displayName ?? profile.email ?? user.email ?? 'Juno',

@@ -13,7 +13,7 @@ import { LocDrawdownChart } from './_components/loc-drawdown-chart';
 import { CapitalStackChart } from './_components/capital-stack-chart';
 import { findManyProjects } from '@/lib/repos/project';
 import { aggregatePortfolio } from '@/lib/calc/portfolio/aggregate';
-import { BASELINE_GLOBALS } from '@/lib/calc/baselines';
+import { getActiveGlobals } from '@/lib/globals/active';
 import { getActiveScenario } from '@/lib/scenarios/active';
 import { formatMoney } from '@/lib/utils/money';
 import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
@@ -26,10 +26,10 @@ export const runtime = 'edge';
 export default async function CapitalOverviewPage() {
   const { profile, user } = await requireAuthOrRedirect('/capital');
   const { projects } = await findManyProjects({ limit: 100 });
-  // V4.12 — active scenario from cookie; falls back to base.
-  const active = await getActiveScenario();
+  // V4.12 active scenario + V4.11b active globals.
+  const [active, globalsCtx] = await Promise.all([getActiveScenario(), getActiveGlobals()]);
   const [portfolio, capTable] = await Promise.all([
-    Promise.resolve(aggregatePortfolio(projects, BASELINE_GLOBALS, active.scenario)),
+    Promise.resolve(aggregatePortfolio(projects, globalsCtx.globals, active.scenario)),
     fetchCapTable(),
   ]);
 
