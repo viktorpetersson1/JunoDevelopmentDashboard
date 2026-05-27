@@ -111,18 +111,9 @@ const PricingIcon = () => (
   </svg>
 );
 
-/**
- * Ask Juno is the AI surface — it gets the brand mark itself, not a generic
- * chat-bubble glyph. Same stroke weight as the other nav icons (1.5 / 20
- * units = 7.5% vs the mark's native 5.5% on viewBox 100; we override here
- * via `strokeWidth` to stay visually consistent with the icon set).
- */
-const AskJunoIcon = () => (
-  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-    <circle cx="10" cy="10" r="7.75" />
-    <line x1="10" y1="2.25" x2="10" y2="17.75" strokeLinecap="round" />
-  </svg>
-);
+// V4.1 — Ask Juno icon removed. The widget lives in app/providers.tsx now
+// (right-docked panel + bottom-right floating launcher) and uses the
+// JunoMark component directly, not this sidebar-styled SVG.
 
 const NotificationsIcon = () => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
@@ -191,7 +182,10 @@ export const DEFAULT_SIDEBAR_SECTIONS: SidebarSection[] = [
       { href: '/pipeline', label: 'Pipeline', icon: <PipelineIcon /> },
       { href: '/pricing', label: 'Pricing', icon: <PricingIcon /> },
       { href: '/suggestions', label: 'Suggestions', icon: <SuggestionsIcon /> },
-      { href: '/ask-juno', label: 'Ask Juno', icon: <AskJunoIcon /> },
+      // V4.1 — Ask Juno moved out of the left sidebar per INVENTORY §28.
+      // Now a right-docked panel + bottom-right floating launcher, mounted
+      // globally via app/providers.tsx → AskJunoWidget. AskJunoIcon export
+      // is preserved below in case a per-page entry returns later.
     ],
   },
   {
