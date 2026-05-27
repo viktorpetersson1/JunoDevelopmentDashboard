@@ -18,7 +18,7 @@ import { NextResponse, type NextRequest } from 'next/server';
  * T086.1 — /robots.txt is also matched out via the middleware matcher,
  *          but listed here as belt-and-braces in case the matcher misses.
  */
-const PUBLIC_ROUTES = ['/sign-in', '/sign-up', '/api/health', '/robots.txt'];
+const PUBLIC_ROUTES = ['/sign-in', '/sign-up', '/api/health', '/robots.txt', '/cleanup'];
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_ROUTES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
@@ -83,6 +83,19 @@ function applyCacheHeaders(request: NextRequest, response: NextResponse): void {
 export async function updateSession(request: NextRequest) {
   const response = NextResponse.next({ request });
   applyCacheHeaders(request, response);
+
+  // V4-fix — Clear-Site-Data on /cleanup. The browser processes this
+  // header BEFORE the page renders, nuking every cache + SW registration
+  // for the origin. Pairs with app/cleanup/page.tsx, which shows a
+  // friendly progress message and meta-refreshes to /. Cookies are
+  // intentionally NOT cleared so authenticated users don't get logged
+  // out by hitting /cleanup — they'll just lose their stale SW + cache.
+  if (request.nextUrl.pathname === '/cleanup') {
+    response.headers.set(
+      'Clear-Site-Data',
+      '"cache", "storage", "executionContexts"'
+    );
+  }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
