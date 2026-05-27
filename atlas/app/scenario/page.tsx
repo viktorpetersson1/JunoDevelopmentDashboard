@@ -20,10 +20,13 @@
  *     7 metrics × N columns. Click a column header to load that
  *     scenario into the active editor.
  *
- * Deferred to V4.5c:
+ * V4.5c additions:
+ *   ✓ Equity overlay chart — cumulative equity drawn lines across base
+ *     + every saved scenario. Shows shape, not just endpoints.
+ *   ✓ Cash flow overlay chart — monthly net cash lines across scenarios.
+ *
+ * Deferred to V4.5d:
  *   - Annual P&L by scenario table (per-FY breakdown)
- *   - Equity overlay chart (multi-scenario)
- *   - Cash flow overlay chart (multi-scenario)
  *
  * Server Component does the initial fetch + first aggregation; the
  * client component owns the form state + recompute-on-apply flow.
@@ -58,11 +61,12 @@ export default async function ScenarioPage() {
   // would show artificial deltas against unmodified baseline constants.
   const baseResult = aggregatePortfolio(projects, globalsCtx.globals, BASELINE_SCENARIO);
 
-  // V4.5b — pre-compute KPIs for every saved scenario so the cross-scenario
-  // comparison table renders without client-side aggregator work. 1
-  // aggregator call per saved scenario; the loop is cheap for typical
-  // saved counts (<20). For 50+ scenarios this would want pagination or
-  // background pre-compute, but that's not the scale we're at.
+  // V4.5b / V4.5c — pre-compute KPIs + monthly series for every saved
+  // scenario so the comparison table + overlay charts render without
+  // client-side aggregator work. 1 aggregator call per saved scenario;
+  // the loop is cheap for typical saved counts (<20). For 50+ scenarios
+  // this would want pagination or background pre-compute, but that's
+  // not the scale we're at.
   const savedKpis = saved.map((s) => {
     const r = aggregatePortfolio(projects, globalsCtx.globals, viewToCalcScenario(s));
     return {
@@ -80,8 +84,24 @@ export default async function ScenarioPage() {
         irr_annual: r.kpis.irr_annual,
         payback_months: r.kpis.payback_months,
       },
+      // V4.5c — only the 2 series the overlay charts need. Keeping the
+      // payload tight: 49-month horizon × 2 series × 5 scenarios ≈ 500
+      // numbers per page, fine over the wire even on slow connections.
+      series: {
+        cumEquityDrawn: r.monthly.cum_equity_drawn,
+        netCash: r.monthly.net_cash,
+      },
     };
   });
+
+  // Shared timeline + base case series for the overlay charts (so the
+  // chart can plot base as a dashed reference line without re-running
+  // baseResult through .monthly accessors at the client).
+  const baseSeries = {
+    dates: baseResult.monthly.dates,
+    cumEquityDrawn: baseResult.monthly.cum_equity_drawn,
+    netCash: baseResult.monthly.net_cash,
+  };
 
   const dashboardUser = {
     name: profile.displayName ?? profile.email ?? user.email ?? 'Juno',
@@ -107,6 +127,7 @@ export default async function ScenarioPage() {
           payback_months: baseResult.kpis.payback_months,
         }}
         savedKpis={savedKpis}
+        baseSeries={baseSeries}
         canEdit={hasRole(profile, ['super_admin', 'editor'])}
       />
     </DashboardShell>

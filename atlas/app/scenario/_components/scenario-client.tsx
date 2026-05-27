@@ -15,6 +15,7 @@
 import { useMemo, useState, useTransition } from 'react';
 import type { Scenario } from '@/lib/calc/project/types';
 import type { ScenarioView, ScenarioClass } from '@/lib/repos/scenarios';
+import { ScenarioOverlayChart } from './scenario-overlay-chart';
 
 const CLASS_OPTIONS: { value: ScenarioClass; label: string }[] = [
   { value: 'base', label: 'Base case' },
@@ -71,14 +72,18 @@ interface Props {
   /** V4.5b — base IRR + payback for the extended cross-scenario table. */
   baseExtendedKpis?: { irr_annual: number | null; payback_months: number | null };
   /** V4.5b — pre-computed KPIs per saved scenario for the comparison table.
-   *  Server-side compute so the page renders without client aggregator work. */
+   *  Server-side compute so the page renders without client aggregator work.
+   *  V4.5c — `series` field added for the overlay charts. */
   savedKpis?: Array<{
     id: string;
     name: string;
     class: string;
     locked: boolean;
     kpis: KpiBag & { irr_annual: number | null; payback_months: number | null };
+    series?: { cumEquityDrawn: number[]; netCash: number[] };
   }>;
+  /** V4.5c — base case monthly series for the overlay charts. */
+  baseSeries?: { dates: string[]; cumEquityDrawn: number[]; netCash: number[] };
   canEdit: boolean;
 }
 
@@ -135,6 +140,7 @@ export function ScenarioClient({
   baseKpis,
   baseExtendedKpis,
   savedKpis,
+  baseSeries,
   canEdit,
 }: Props) {
   const [form, setForm] = useState<FormState>(initialFromBase(baseScenario));
@@ -756,6 +762,45 @@ export function ScenarioClient({
             </table>
           </div>
         </Section>
+      )}
+
+      {/* V4.5c — Equity + cashflow overlay charts. Sit just above the
+          comparison table so the reader's eye flows: shape (chart) →
+          endpoints (table). Conditional on saved scenarios + payload
+          presence so the page still renders cleanly on a fresh org. */}
+      {savedKpis && savedKpis.length > 0 && baseSeries && savedKpis.every((s) => s.series) && (
+        <>
+          <Section
+            title="Equity overlay"
+            subtitle="Cumulative equity drawn — base (dashed) vs every saved scenario. Shape matters more than endpoint: steeper curves = faster equity calls."
+          >
+            <ScenarioOverlayChart
+              dates={baseSeries.dates}
+              baseValues={baseSeries.cumEquityDrawn}
+              scenarios={savedKpis.map((s) => ({
+                id: s.id,
+                name: s.name,
+                values: s.series!.cumEquityDrawn,
+              }))}
+              valueKind="cumulative"
+            />
+          </Section>
+          <Section
+            title="Cash flow overlay"
+            subtitle="Monthly net cash — base (dashed) vs every saved scenario. Months below 0 are equity-call months; above 0 are distribution months."
+          >
+            <ScenarioOverlayChart
+              dates={baseSeries.dates}
+              baseValues={baseSeries.netCash}
+              scenarios={savedKpis.map((s) => ({
+                id: s.id,
+                name: s.name,
+                values: s.series!.netCash,
+              }))}
+              valueKind="monthly"
+            />
+          </Section>
+        </>
       )}
 
       {/* V4.5b — Cross-scenario comparison (metric rows × scenario columns) */}
