@@ -42,6 +42,7 @@ const PROTECTED_PREFIXES = [
   '/pricing',
   '/waterfall', // V4.4 — owner waterfall (INVENTORY §18)
   '/sensitivity', // V4.6 — tornado (INVENTORY §20)
+  '/scenario', // V4.5 — scenarios editor (INVENTORY §19)
   '/suggestions', // V4.8 — suggestions queue (INVENTORY §25, editor+)
   '/api',
   '/dev', // dev-only routes; production-blocked in atlas/middleware.ts

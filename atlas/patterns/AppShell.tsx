@@ -114,6 +114,20 @@ const SensitivityIcon = () => (
   </svg>
 );
 
+/** V4.5 — Scenarios icon: three branching paths from a single point, evoking
+ *  "what-if" forks. */
+const ScenarioIcon = () => (
+  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+    <circle cx="5" cy="10" r="1.75" />
+    <circle cx="15" cy="4.5" r="1.75" />
+    <circle cx="15" cy="10" r="1.75" />
+    <circle cx="15" cy="15.5" r="1.75" />
+    <path d="M6.5 9 L13.5 5" strokeLinecap="round" />
+    <path d="M6.75 10 L13.25 10" strokeLinecap="round" />
+    <path d="M6.5 11 L13.5 15" strokeLinecap="round" />
+  </svg>
+);
+
 const SuggestionsIcon = () => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
     <circle cx="10" cy="9" r="5.5" />
@@ -220,6 +234,7 @@ export const DEFAULT_SIDEBAR_SECTIONS: SidebarSection[] = [
       { href: '/capital', label: 'Capital', icon: <CapitalIcon /> },
       { href: '/waterfall', label: 'Waterfall', icon: <WaterfallIcon /> },
       { href: '/sensitivity', label: 'Sensitivity', icon: <SensitivityIcon /> },
+      { href: '/scenario', label: 'Scenarios', icon: <ScenarioIcon /> },
       { href: '/risks', label: 'Risks', icon: <RisksIcon /> },
     ],
   },
