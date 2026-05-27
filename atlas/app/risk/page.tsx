@@ -5,26 +5,33 @@
  * INVENTORY's `view_key: risk`; `/risks` (plural) is the qualitative
  * Risks Center (V4.3). Same root word, different surfaces.
  *
- * V4.7 MVP scope (this commit):
+ * V4.7 + V4.7b scope:
  *   ✓ Server-side Monte Carlo on every page load (200 trials default,
  *     reproducible via seeded RNG so the page is byte-stable on refresh)
+ *   ✓ Editable driver distributions (triangular min/mode/max inputs)
+ *     and trials count via URL searchParams — bookmarkable/shareable
+ *   ✓ "Run simulation" button submits a GET form → page re-renders
+ *   ✓ "Reset to defaults" link clears query
  *   ✓ KPI strip (trials / median profit / P10 / P(loss))
  *   ✓ Quick interpretation panel
  *   ✓ Outcome percentiles table (7 outcomes × 9 percentile cols)
  *   ✓ Profit distribution histogram
  *   ✓ Peak equity distribution histogram
  *
- * Deferred to V4.7b:
- *   - Editable driver distributions (triangular min/mode/max inputs)
- *   - "Run simulation" button + trials slider
- *   - Worker-based async run for >500 trials
- *   - Distribution param persistence
+ * Deferred to V4.7c:
+ *   - Worker-based async run for >500 trials (current ceiling)
+ *   - Distribution param persistence (atlas.risk_configs table)
  */
 
 import { DashboardShell } from '../_components/dashboard-shell';
 import { DistributionChart } from './_components/distribution-chart';
+import { DriverControls } from './_components/driver-controls';
 import { findManyProjects } from '@/lib/repos/project';
-import { runMonteCarlo, DEFAULT_DISTRIBUTIONS } from '@/lib/calc/risk/monte-carlo';
+import {
+  runMonteCarlo,
+  DEFAULT_DISTRIBUTIONS,
+  type MonteCarloDistributions,
+} from '@/lib/calc/risk/monte-carlo';
 import { BASELINE_SCENARIO } from '@/lib/calc/baselines';
 import { getActiveGlobals } from '@/lib/globals/active';
 import { formatMoney } from '@/lib/utils/money';
@@ -36,10 +43,76 @@ export const runtime = 'edge';
 
 const DEFAULT_TRIALS = 200;
 
-export default async function RiskPage() {
+/** Parse a single numeric searchParam with a fallback. Tolerates invalid
+ *  input (returns the fallback) so a malformed URL never 500s the page. */
+function parseNum(raw: string | string[] | undefined, fallback: number): number {
+  if (raw == null) return fallback;
+  const s = Array.isArray(raw) ? raw[0] : raw;
+  if (s == null) return fallback;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+/** Build distributions from searchParams, falling back per-field to
+ *  DEFAULT_DISTRIBUTIONS. Returns { dists, isDefault } so the page can
+ *  hint "you're looking at defaults" vs "you customized this". */
+function buildDistributions(searchParams: Record<string, string | string[] | undefined>): {
+  dists: MonteCarloDistributions;
+  isDefault: boolean;
+} {
+  const d = DEFAULT_DISTRIBUTIONS;
+  const dists: MonteCarloDistributions = {
+    sale_price_multiplier: {
+      min: parseNum(searchParams.sale_min, d.sale_price_multiplier.min),
+      mode: parseNum(searchParams.sale_mode, d.sale_price_multiplier.mode),
+      max: parseNum(searchParams.sale_max, d.sale_price_multiplier.max),
+    },
+    build_cost_multiplier: {
+      min: parseNum(searchParams.build_min, d.build_cost_multiplier.min),
+      mode: parseNum(searchParams.build_mode, d.build_cost_multiplier.mode),
+      max: parseNum(searchParams.build_max, d.build_cost_multiplier.max),
+    },
+    interest_rate_delta_bps: {
+      min: parseNum(searchParams.rate_min, d.interest_rate_delta_bps.min),
+      mode: parseNum(searchParams.rate_mode, d.interest_rate_delta_bps.mode),
+      max: parseNum(searchParams.rate_max, d.interest_rate_delta_bps.max),
+    },
+    timing_shift_months: {
+      min: parseNum(searchParams.timing_min, d.timing_shift_months.min),
+      mode: parseNum(searchParams.timing_mode, d.timing_shift_months.mode),
+      max: parseNum(searchParams.timing_max, d.timing_shift_months.max),
+    },
+  };
+  // "Default" = every value matches the canned defaults — used to render
+  // the "showing defaults" indicator on the controls panel.
+  const isDefault =
+    dists.sale_price_multiplier.min === d.sale_price_multiplier.min &&
+    dists.sale_price_multiplier.mode === d.sale_price_multiplier.mode &&
+    dists.sale_price_multiplier.max === d.sale_price_multiplier.max &&
+    dists.build_cost_multiplier.min === d.build_cost_multiplier.min &&
+    dists.build_cost_multiplier.mode === d.build_cost_multiplier.mode &&
+    dists.build_cost_multiplier.max === d.build_cost_multiplier.max &&
+    dists.interest_rate_delta_bps.min === d.interest_rate_delta_bps.min &&
+    dists.interest_rate_delta_bps.mode === d.interest_rate_delta_bps.mode &&
+    dists.interest_rate_delta_bps.max === d.interest_rate_delta_bps.max &&
+    dists.timing_shift_months.min === d.timing_shift_months.min &&
+    dists.timing_shift_months.mode === d.timing_shift_months.mode &&
+    dists.timing_shift_months.max === d.timing_shift_months.max;
+  return { dists, isDefault };
+}
+
+export default async function RiskPage({
+  searchParams,
+}: {
+  searchParams: Record<string, string | string[] | undefined>;
+}) {
   const { profile, user } = await requireAuthOrRedirect('/risk');
   const { projects } = await findManyProjects({ limit: 100 });
   const globalsCtx = await getActiveGlobals();
+
+  // V4.7b — pull custom distributions + trials from URL; defaults when absent.
+  const trials = Math.min(Math.max(parseNum(searchParams.trials, DEFAULT_TRIALS), 100), 500);
+  const { dists, isDefault } = buildDistributions(searchParams);
 
   // Seeded run so refresh shows the same percentiles — important for
   // diligence (a board paper citing P10 should match on re-open).
@@ -47,7 +120,8 @@ export default async function RiskPage() {
   // semantics are stable; active globals flow through normally.
   const t0 = Date.now();
   const report = runMonteCarlo(projects, globalsCtx.globals, BASELINE_SCENARIO, {
-    trials: DEFAULT_TRIALS,
+    trials,
+    distributions: dists,
     seed: 0xc0ffee,
   });
   const tookMs = Date.now() - t0;
@@ -200,16 +274,17 @@ export default async function RiskPage() {
           <DistributionChart values={equityOutcomes} valueLabel="Peak equity" negativeIsBad={false} />
         </Section>
 
+        {/* V4.7b — editable driver envelopes. URL-driven via GET form
+            so a particular sim is bookmarkable + shareable. */}
         <Section
-          title="Editable driver envelopes (coming in V4.7b)"
-          subtitle="Triangular min/mode/max inputs per driver + a Run button, with a trials slider."
+          title="Driver envelopes"
+          subtitle="Triangular min / mode / max per driver. Run simulation re-renders the page with the new sweep."
         >
-          <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>
-            The current run uses sensible defaults baked into the calc module (see
-            <code style={chip()}>DEFAULT_DISTRIBUTIONS</code> in lib/calc/risk/monte-carlo.ts). Editable
-            envelopes + on-demand re-runs land in a follow-up — the calc API already accepts custom
-            distributions, the UI just hasn&apos;t shipped the controls yet.
-          </p>
+          <DriverControls
+            trials={report.trials}
+            distributions={report.distributions}
+            isDefault={isDefault}
+          />
         </Section>
       </div>
     </DashboardShell>
@@ -310,17 +385,6 @@ function KpiTile({
       )}
     </div>
   );
-}
-
-function chip(): React.CSSProperties {
-  return {
-    background: 'var(--color-surface-sunken, #f7f7f7)',
-    padding: '1px 6px',
-    borderRadius: 4,
-    fontSize: 11,
-    fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
-    color: 'var(--color-text-primary)',
-  };
 }
 
 function th(align: 'left' | 'right' = 'left'): React.CSSProperties {
