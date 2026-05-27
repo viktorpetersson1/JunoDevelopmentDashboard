@@ -173,10 +173,25 @@ export async function updateSession(request: NextRequest) {
       return redirect;
     }
 
-    // Signed-in user hitting /sign-in or /sign-up → bounce to canonical home.
+    // Signed-in user hitting /, /sign-in, or /sign-up → bounce to canonical home.
+    //
+    // Including `/` here (V4-fix-3) is critical: app/page.tsx calls
+    // `redirect('/dashboard')` server-side, but on @cloudflare/next-on-pages
+    // 1.13.7 + Next 14.2.18 a synchronous redirect() from a non-async Server
+    // Component occasionally gets misclassified as "not found" by the
+    // adapter, rendering app/not-found.tsx with HTTP 200 instead of a 307.
+    // Unauthenticated users never hit the page (middleware redirects them
+    // earlier), so the bug only ever fires for signed-in users — which made
+    // it invisible until prod had an authenticated session.
+    //
+    // The clean fix is to handle the redirect here so the page component
+    // is never invoked for signed-in users on `/`. app/page.tsx is kept
+    // as belt-and-braces, now async for additional robustness.
     if (
       user &&
-      (request.nextUrl.pathname === '/sign-in' || request.nextUrl.pathname === '/sign-up')
+      (request.nextUrl.pathname === '/' ||
+        request.nextUrl.pathname === '/sign-in' ||
+        request.nextUrl.pathname === '/sign-up')
     ) {
       const home = request.nextUrl.clone();
       home.pathname = CANONICAL_POST_LOGIN;
