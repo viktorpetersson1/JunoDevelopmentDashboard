@@ -43,6 +43,15 @@
   Cache-Control: public, max-age=3600, must-revalidate
   X-Content-Type-Options: nosniff
 
+# V4-fix — SW kill switch. /sw.js MUST NOT cache (browsers check for SW
+# updates on every navigation, plus we want the kill-switch contents to
+# replace any stale registration ASAP). Content-Type is critical so the
+# browser actually treats this as a service worker.
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+  Content-Type: application/javascript
+  Service-Worker-Allowed: /
+
 /robots.txt
   Cache-Control: public, max-age=3600, must-revalidate
 
