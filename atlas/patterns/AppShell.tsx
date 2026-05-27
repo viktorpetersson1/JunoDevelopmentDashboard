@@ -102,6 +102,18 @@ const WaterfallIcon = () => (
   </svg>
 );
 
+/** V4.6 — Sensitivity icon: horizontal bars of varying length around a
+ *  center axis, evoking the tornado chart shape. */
+const SensitivityIcon = () => (
+  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+    <line x1="10" y1="2.5" x2="10" y2="17.5" strokeLinecap="round" />
+    <rect x="4" y="4" width="6" height="2" rx="0.5" />
+    <rect x="10" y="7.5" width="5" height="2" rx="0.5" />
+    <rect x="5.5" y="11" width="4.5" height="2" rx="0.5" />
+    <rect x="10" y="14.5" width="3" height="2" rx="0.5" />
+  </svg>
+);
+
 const SuggestionsIcon = () => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
     <circle cx="10" cy="9" r="5.5" />
@@ -207,6 +219,7 @@ export const DEFAULT_SIDEBAR_SECTIONS: SidebarSection[] = [
       { href: '/cashflow', label: 'Forecast', icon: <ForecastIcon /> },
       { href: '/capital', label: 'Capital', icon: <CapitalIcon /> },
       { href: '/waterfall', label: 'Waterfall', icon: <WaterfallIcon /> },
+      { href: '/sensitivity', label: 'Sensitivity', icon: <SensitivityIcon /> },
       { href: '/risks', label: 'Risks', icon: <RisksIcon /> },
     ],
   },
