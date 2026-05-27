@@ -15,8 +15,13 @@
  *   ✓ Variance drivers — which knobs differ from base
  *   ✓ Saved scenarios list (load by click)
  *
- * Deferred to V4.5b:
- *   - Annual P&L by scenario table (cross-scenario aggregator runs)
+ * V4.5b additions:
+ *   ✓ Cross-scenario comparison table — base + every saved scenario,
+ *     7 metrics × N columns. Click a column header to load that
+ *     scenario into the active editor.
+ *
+ * Deferred to V4.5c:
+ *   - Annual P&L by scenario table (per-FY breakdown)
  *   - Equity overlay chart (multi-scenario)
  *   - Cash flow overlay chart (multi-scenario)
  *
@@ -53,6 +58,31 @@ export default async function ScenarioPage() {
   // would show artificial deltas against unmodified baseline constants.
   const baseResult = aggregatePortfolio(projects, globalsCtx.globals, BASELINE_SCENARIO);
 
+  // V4.5b — pre-compute KPIs for every saved scenario so the cross-scenario
+  // comparison table renders without client-side aggregator work. 1
+  // aggregator call per saved scenario; the loop is cheap for typical
+  // saved counts (<20). For 50+ scenarios this would want pagination or
+  // background pre-compute, but that's not the scale we're at.
+  const savedKpis = saved.map((s) => {
+    const r = aggregatePortfolio(projects, globalsCtx.globals, viewToCalcScenario(s));
+    return {
+      id: s.id,
+      name: s.name,
+      class: s.class,
+      locked: s.locked,
+      kpis: {
+        total_profit_before_tax: r.kpis.total_profit_before_tax,
+        peak_equity_required: r.kpis.peak_equity_required,
+        max_debt_outstanding: r.kpis.max_debt_outstanding,
+        total_sales: r.kpis.total_sales,
+        total_interest: r.kpis.total_interest,
+        moic_gross: r.kpis.moic_gross,
+        irr_annual: r.kpis.irr_annual,
+        payback_months: r.kpis.payback_months,
+      },
+    };
+  });
+
   const dashboardUser = {
     name: profile.displayName ?? profile.email ?? user.email ?? 'Juno',
     email: profile.email ?? user.email ?? '',
@@ -72,6 +102,11 @@ export default async function ScenarioPage() {
           total_interest: baseResult.kpis.total_interest,
           moic_gross: baseResult.kpis.moic_gross,
         }}
+        baseExtendedKpis={{
+          irr_annual: baseResult.kpis.irr_annual,
+          payback_months: baseResult.kpis.payback_months,
+        }}
+        savedKpis={savedKpis}
         canEdit={hasRole(profile, ['super_admin', 'editor'])}
       />
     </DashboardShell>

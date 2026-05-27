@@ -68,6 +68,17 @@ interface Props {
   savedScenarios: ScenarioView[];
   baseScenario: Scenario;
   baseKpis: KpiBag;
+  /** V4.5b — base IRR + payback for the extended cross-scenario table. */
+  baseExtendedKpis?: { irr_annual: number | null; payback_months: number | null };
+  /** V4.5b — pre-computed KPIs per saved scenario for the comparison table.
+   *  Server-side compute so the page renders without client aggregator work. */
+  savedKpis?: Array<{
+    id: string;
+    name: string;
+    class: string;
+    locked: boolean;
+    kpis: KpiBag & { irr_annual: number | null; payback_months: number | null };
+  }>;
   canEdit: boolean;
 }
 
@@ -122,6 +133,8 @@ export function ScenarioClient({
   savedScenarios: initialSaved,
   baseScenario,
   baseKpis,
+  baseExtendedKpis,
+  savedKpis,
   canEdit,
 }: Props) {
   const [form, setForm] = useState<FormState>(initialFromBase(baseScenario));
@@ -744,11 +757,132 @@ export function ScenarioClient({
           </div>
         </Section>
       )}
+
+      {/* V4.5b — Cross-scenario comparison (metric rows × scenario columns) */}
+      {savedKpis && savedKpis.length > 0 && (
+        <Section
+          title="Cross-scenario comparison"
+          subtitle="Base + every saved scenario, side by side. Click a column header to load that scenario."
+        >
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--color-border-hairline)' }}>
+                  <th style={th()}>Metric</th>
+                  <th style={th('right')}>Base case</th>
+                  {savedKpis.map((s) => (
+                    <th key={s.id} style={th('right')}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const full = saved.find((x) => x.id === s.id);
+                          if (full) loadSaved(full);
+                        }}
+                        style={{
+                          all: 'unset',
+                          cursor: 'pointer',
+                          textTransform: 'uppercase',
+                          fontSize: 11,
+                          fontWeight: form.loadedId === s.id ? 700 : 600,
+                          letterSpacing: '0.04em',
+                          color: form.loadedId === s.id ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)',
+                        }}
+                        title={`Load "${s.name}" into the editor`}
+                      >
+                        {s.name}
+                        {s.locked && ' 🔒'}
+                      </button>
+                      <div style={{ marginTop: 4, fontSize: 10, fontWeight: 400, color: 'var(--color-text-tertiary)' }}>
+                        {CLASS_OPTIONS.find((c) => c.value === s.class)?.label ?? s.class}
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <ComparisonRow label="Total profit (pre-tax)" baseVal={baseKpis.total_profit_before_tax} kind="usd" cells={savedKpis.map((s) => s.kpis.total_profit_before_tax)} />
+                <ComparisonRow label="Total sales" baseVal={baseKpis.total_sales} kind="usd" cells={savedKpis.map((s) => s.kpis.total_sales)} />
+                <ComparisonRow label="Peak equity" baseVal={baseKpis.peak_equity_required} kind="usd-cost" cells={savedKpis.map((s) => s.kpis.peak_equity_required)} />
+                <ComparisonRow label="Max debt" baseVal={baseKpis.max_debt_outstanding} kind="usd-cost" cells={savedKpis.map((s) => s.kpis.max_debt_outstanding)} />
+                <ComparisonRow label="Total interest" baseVal={baseKpis.total_interest} kind="usd-cost" cells={savedKpis.map((s) => s.kpis.total_interest)} />
+                <ComparisonRow label="Gross MOIC" baseVal={baseKpis.moic_gross} kind="moic" cells={savedKpis.map((s) => s.kpis.moic_gross)} />
+                {baseExtendedKpis && (
+                  <>
+                    <ComparisonRow label="Portfolio IRR" baseVal={baseExtendedKpis.irr_annual} kind="pct" cells={savedKpis.map((s) => s.kpis.irr_annual)} />
+                    <ComparisonRow label="Payback" baseVal={baseExtendedKpis.payback_months} kind="months" cells={savedKpis.map((s) => s.kpis.payback_months)} />
+                  </>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Section>
+      )}
     </div>
   );
 }
 
 // ─── Subcomponents ──────────────────────────────────────────────────────────
+
+/** Format value per metric kind. Returns "—" for null/undefined. */
+function fmtCell(value: number | null | undefined, kind: 'usd' | 'usd-cost' | 'moic' | 'pct' | 'months'): string {
+  if (value == null || !Number.isFinite(value)) return '—';
+  if (kind === 'moic') return `${value.toFixed(2)}×`;
+  if (kind === 'pct') return `${(value * 100).toFixed(1)}%`;
+  if (kind === 'months') return `${Math.round(value)} mo`;
+  const abs = Math.abs(value);
+  const sign = value < 0 ? '−' : '';
+  if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(2)}M`;
+  if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(1)}k`;
+  return `${sign}$${abs.toFixed(0)}`;
+}
+
+/** Whether a positive delta is "good" for this metric. For costs (peak
+ *  equity, max debt, interest), down is good. */
+function isProfitFavoringMetric(kind: 'usd' | 'usd-cost' | 'moic' | 'pct' | 'months'): boolean {
+  return kind === 'usd' || kind === 'moic' || kind === 'pct';
+}
+
+function ComparisonRow({
+  label,
+  baseVal,
+  kind,
+  cells,
+}: {
+  label: string;
+  baseVal: number | null | undefined;
+  kind: 'usd' | 'usd-cost' | 'moic' | 'pct' | 'months';
+  cells: Array<number | null | undefined>;
+}) {
+  const favorPositive = isProfitFavoringMetric(kind);
+  return (
+    <tr style={{ borderBottom: '1px solid var(--color-border-hairline)' }}>
+      <td style={comparisonTd()}>{label}</td>
+      <td style={{ ...comparisonTd('right'), color: 'var(--color-text-secondary)' }}>{fmtCell(baseVal ?? null, kind)}</td>
+      {cells.map((v, i) => {
+        const delta = v != null && baseVal != null ? v - baseVal : null;
+        const color =
+          delta == null || delta === 0
+            ? 'var(--color-text-primary)'
+            : (favorPositive ? delta > 0 : delta < 0)
+            ? 'var(--color-positive, #15803d)'
+            : 'var(--color-negative, #dc2626)';
+        return (
+          <td key={i} style={{ ...comparisonTd('right'), color }}>
+            {fmtCell(v ?? null, kind)}
+          </td>
+        );
+      })}
+    </tr>
+  );
+}
+
+function comparisonTd(align: 'left' | 'right' = 'left'): React.CSSProperties {
+  return {
+    textAlign: align,
+    padding: '10px 8px 10px 0',
+    fontVariantNumeric: align === 'right' ? 'tabular-nums' : 'normal',
+  };
+}
 
 function Section({
   title,
