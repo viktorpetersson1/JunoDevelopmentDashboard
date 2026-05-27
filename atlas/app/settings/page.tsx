@@ -84,6 +84,19 @@ export default async function SettingsPage({
           initialIsBaseline={activeGlobals!.isBaseline}
           initialUpdatedAt={activeGlobals!.updatedAt}
           canEdit={isEditor}
+          // V4.11c — markets are "baseline" when the user hasn't customized
+          // them. The active globals helper merges baseline.markets when the
+          // column is null, so we compare back to see whether the user
+          // explicitly overrode (the indicator on the editor flips).
+          isBaselineMarkets={
+            activeGlobals!.globals.markets === undefined ||
+            activeGlobals!.globals.markets === null ||
+            // Heuristic: same length + same first/last id usually means inherited.
+            // Cheap O(1) check that's right for the common case (every market
+            // matches baseline); the editor itself shows the markets so the
+            // user can see if they were tweaked.
+            (activeGlobals!.isBaseline === true)
+          }
         />
       );
       break;

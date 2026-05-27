@@ -14,6 +14,15 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export const SINGLETON_GLOBALS_ID = '00000000-0000-0000-0000-00000000abcd';
 
+/** Raw market row stored in the markets jsonb column. */
+export interface MarketRow {
+  id: string;
+  name?: string;
+  sale_price_multiplier?: number;
+  build_cost_multiplier?: number;
+  demand_outlook?: 'soft' | 'stable' | 'strong';
+}
+
 /** Raw row shape — numerics may come back as strings via PostgREST. */
 export interface GlobalsRow {
   id: string;
@@ -33,6 +42,7 @@ export interface GlobalsRow {
   build_cost_realization_pct: number | string | null;
   fiscal_year_mode: string | null;
   include_sold_projects: boolean | null;
+  markets: MarketRow[] | null;
   updated_by: string | null;
   updated_at: string;
 }
@@ -55,10 +65,12 @@ export interface GlobalsPatch {
   build_cost_realization_pct?: number | null;
   fiscal_year_mode?: string | null;
   include_sold_projects?: boolean | null;
+  /** null = fall back to baseline markets; empty array = explicitly no markets. */
+  markets?: MarketRow[] | null;
 }
 
 const ROW_SELECT =
-  'id, interest_rate_apr, ltc_pct, ltc_land_pct, contingency_pct, default_build_cost_per_sqft, default_kingshaus_cost_per_sqft, target_margin, default_program_months, model_start, horizon_months, capitalize_interest, financing_fees_per_project_usd, build_cost_curve, build_cost_realization_pct, fiscal_year_mode, include_sold_projects, updated_by, updated_at';
+  'id, interest_rate_apr, ltc_pct, ltc_land_pct, contingency_pct, default_build_cost_per_sqft, default_kingshaus_cost_per_sqft, target_margin, default_program_months, model_start, horizon_months, capitalize_interest, financing_fees_per_project_usd, build_cost_curve, build_cost_realization_pct, fiscal_year_mode, include_sold_projects, markets, updated_by, updated_at';
 
 export async function fetchGlobalsRow(): Promise<GlobalsRow | null> {
   const supabase = createSupabaseServerClient();

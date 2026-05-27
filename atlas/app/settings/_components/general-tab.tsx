@@ -25,6 +25,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Globals } from '@/lib/calc/project/types';
+import { MarketsEditor, type MarketRow } from './markets-editor';
 
 interface Props {
   /** Server-fetched initial active globals so the form hydrates cleanly. */
@@ -35,6 +36,9 @@ interface Props {
   initialUpdatedAt: string | null;
   /** Whether the current user is editor or super_admin. */
   canEdit: boolean;
+  /** V4.11c — true when atlas.globals.markets is null (i.e. inherited
+   *  from baseline). Shown as a label on the markets editor. */
+  isBaselineMarkets: boolean;
 }
 
 // String-form state so blank inputs cleanly represent "use baseline".
@@ -84,6 +88,7 @@ export function GeneralTab({
   initialIsBaseline,
   initialUpdatedAt,
   canEdit,
+  isBaselineMarkets,
 }: Props) {
   const router = useRouter();
   const [form, setForm] = useState<FormState>(formFromGlobals(initialGlobals));
@@ -326,8 +331,16 @@ export function GeneralTab({
         </Grid>
       </Section>
 
+      {/* V4.11c — Markets editor. Lives below the scalar form so users
+          see the high-impact settings first. */}
+      <MarketsEditor
+        initialMarkets={(initialGlobals.markets ?? []) as MarketRow[]}
+        isBaselineMarkets={isBaselineMarkets}
+        canEdit={canEdit}
+      />
+
       <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-tertiary)' }}>
-        Markets, shareholders, risk thresholds, OPEX, hypothetical LP, and data export ship in V4.11c.
+        Shareholders, risk thresholds, OPEX, hypothetical LP, and data export ship in V4.11d.
       </p>
     </div>
   );

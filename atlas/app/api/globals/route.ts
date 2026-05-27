@@ -22,6 +22,14 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const runtime = 'edge';
 
+const MarketSchema = z.object({
+  id: z.string().min(1).max(64),
+  name: z.string().min(1).max(120).optional(),
+  sale_price_multiplier: z.number().positive().max(5).optional(),
+  build_cost_multiplier: z.number().positive().max(5).optional(),
+  demand_outlook: z.enum(['soft', 'stable', 'strong']).optional(),
+});
+
 const PatchSchema = z.object({
   interest_rate_apr: z.number().min(0).max(1).nullable().optional(),
   ltc_pct: z.number().min(0).max(1).nullable().optional(),
@@ -39,6 +47,8 @@ const PatchSchema = z.object({
   build_cost_realization_pct: z.number().min(0).max(1).nullable().optional(),
   fiscal_year_mode: z.enum(['calendar', 'juno13']).nullable().optional(),
   include_sold_projects: z.boolean().nullable().optional(),
+  /** V4.11c — markets jsonb. null = revert to baseline; [] = explicitly empty. */
+  markets: z.array(MarketSchema).max(40).nullable().optional(),
 });
 
 export const GET = withErrorBoundary(async () => {

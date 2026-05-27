@@ -94,6 +94,13 @@ function mergeOverBaseline(row: GlobalsRow): Globals {
       row.include_sold_projects == null
         ? BASELINE_GLOBALS.include_sold_projects
         : Boolean(row.include_sold_projects),
+    // V4.11c — markets: null OR empty array = fall back to baseline. An
+    // editor-saved [] is treated as "I want zero markets" (degenerate but
+    // explicit), distinguished from null ("use defaults").
+    markets:
+      row.markets == null
+        ? BASELINE_GLOBALS.markets
+        : (row.markets as Globals['markets']),
   };
 }
 
@@ -114,6 +121,7 @@ function hasAnyOverride(row: GlobalsRow): boolean {
     row.build_cost_curve != null ||
     row.build_cost_realization_pct != null ||
     row.fiscal_year_mode != null ||
-    row.include_sold_projects != null
+    row.include_sold_projects != null ||
+    row.markets != null
   );
 }
