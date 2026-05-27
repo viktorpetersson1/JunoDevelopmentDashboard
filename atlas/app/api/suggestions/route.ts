@@ -1,15 +1,11 @@
 /**
- * POST /api/suggestions
+ * /api/suggestions — collection endpoint.
  *
- * V4.1 — temporary stub for Ask Juno's "Suggest a change" mode.
- * V4.8 will replace this with a real queue (atlas.suggestions table +
- * editor approval flow).
+ * POST   any authenticated user — submit a suggestion (Ask Juno widget).
+ *        V4.8 now persists to atlas.suggestions (was V4.1 audit-only stub).
+ * GET    editor+ — list suggestions for the /suggestions queue page.
  *
- * Today: validates the payload, logs the suggestion in a best-effort
- * audit entry, returns a "queued" envelope. No persistence yet — Viktor
- * agreed in V4 sprint plan that the queue ships separately in V4.8.
- *
- * Auth: any authenticated user can suggest a change.
+ * Per-item status mutations live at /api/suggestions/[id]/route.ts.
  */
 
 import { z } from 'zod';
@@ -17,22 +13,26 @@ import type { NextRequest } from 'next/server';
 import { ok, badRequest } from '@/lib/api/response';
 import { withErrorBoundary } from '@/lib/api/handler';
 import { requireAuth } from '@/lib/auth/requireAuth';
+import { requireEditor } from '@/lib/auth/requireRole';
 import { recordMutation } from '@/lib/services/audit';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { findManySuggestions, insertSuggestion } from '@/lib/repos/suggestions';
+import type { SuggestionStatus } from '@/lib/repos/suggestions';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const runtime = 'edge';
 
-const BodySchema = z.object({
+const PostBodySchema = z.object({
   prompt: z.string().min(1).max(4000),
   pathname: z.string().max(500).optional(),
+  assistantSummary: z.string().max(2000).optional(),
 });
 
 export const POST = withErrorBoundary(async (req: NextRequest) => {
   const { user } = await requireAuth();
   const json = await req.json().catch(() => null);
-  const parsed = BodySchema.safeParse(json);
+  const parsed = PostBodySchema.safeParse(json);
   if (!parsed.success) {
     return badRequest(
       `Validation failed: ${parsed.error.issues
@@ -42,7 +42,22 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
     );
   }
 
-  // Best-effort audit log so suggestions don't vanish before V4.8 lands.
+  // Persist to the queue (V4.8). Falls back to audit-only logging on
+  // failure so the user never loses a suggestion to a transient DB blip.
+  let suggestionId: string | null = null;
+  let persistError: string | null = null;
+  try {
+    suggestionId = await insertSuggestion({
+      submittedBy: user.id,
+      prompt: parsed.data.prompt,
+      pathname: parsed.data.pathname ?? null,
+      assistantSummary: parsed.data.assistantSummary ?? null,
+    });
+  } catch (err) {
+    persistError = err instanceof Error ? err.message : String(err);
+  }
+
+  // Belt + braces: audit-log the submission regardless of DB persist outcome.
   try {
     const orgId = await resolveOrgId();
     await recordMutation({
@@ -50,11 +65,15 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
       userId: user.id,
       route: 'POST:/api/suggestions',
       method: 'POST',
-      statusCode: 202,
+      statusCode: persistError ? 207 : 202,
       ip: null,
-      userAgent: `atlas-ask-juno suggest path=${parsed.data.pathname ?? '/'}`,
+      userAgent: `atlas-ask-juno suggest path=${parsed.data.pathname ?? '/'} persistOk=${suggestionId != null}`,
       before: null,
-      after: { prompt: parsed.data.prompt.slice(0, 1000) },
+      after: {
+        prompt: parsed.data.prompt.slice(0, 1000),
+        suggestionId,
+        persistError,
+      },
     });
   } catch {
     // best-effort
@@ -62,10 +81,41 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
 
   return ok({
     status: 'queued',
-    reply:
-      'Suggestion received. An admin will review it from the Suggestions queue ' +
-      '(coming online in V4.8). For now, it has been logged to the audit feed.',
+    id: suggestionId,
+    reply: suggestionId
+      ? 'Suggestion received. An admin will review it from the Suggestions queue.'
+      : 'Suggestion received and logged to audit (database persist deferred — admin alerted).',
   });
+});
+
+const ListStatusEnum = z.enum(['pending', 'approved', 'rejected', 'applied', 'all']);
+
+export const GET = withErrorBoundary(async (req: NextRequest) => {
+  const { profile } = await requireAuth();
+  requireEditor(profile);
+
+  const statusParam = req.nextUrl.searchParams.get('status');
+  const limitParam = req.nextUrl.searchParams.get('limit');
+  const parsedStatus = statusParam
+    ? ListStatusEnum.safeParse(statusParam)
+    : { success: true as const, data: 'all' as const };
+  if (!parsedStatus.success) {
+    return badRequest(
+      `Invalid status filter '${statusParam}'. Allowed: pending, approved, rejected, applied, all`,
+      'VALIDATION_FAILED'
+    );
+  }
+
+  const parsedLimit = limitParam ? parseInt(limitParam, 10) : 200;
+  if (Number.isNaN(parsedLimit) || parsedLimit < 1 || parsedLimit > 500) {
+    return badRequest('Invalid limit (1-500)', 'VALIDATION_FAILED');
+  }
+
+  const rows = await findManySuggestions({
+    status: parsedStatus.data as SuggestionStatus | 'all',
+    limit: parsedLimit,
+  });
+  return ok({ suggestions: rows });
 });
 
 let cachedOrgId: string | null = null;
