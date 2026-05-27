@@ -128,6 +128,15 @@ const ScenarioIcon = () => (
   </svg>
 );
 
+/** V4.7 — Stress-test icon: a bell-curve sketch, evoking the Monte-Carlo
+ *  outcome distribution. */
+const StressIcon = () => (
+  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+    <path d="M2.5 16 Q5 16 6.5 12 T10 6 T13.5 12 T17.5 16" strokeLinecap="round" strokeLinejoin="round" />
+    <line x1="2.5" y1="17" x2="17.5" y2="17" strokeLinecap="round" />
+  </svg>
+);
+
 const SuggestionsIcon = () => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
     <circle cx="10" cy="9" r="5.5" />
@@ -236,6 +245,7 @@ export const DEFAULT_SIDEBAR_SECTIONS: SidebarSection[] = [
       { href: '/sensitivity', label: 'Sensitivity', icon: <SensitivityIcon /> },
       { href: '/scenario', label: 'Scenarios', icon: <ScenarioIcon /> },
       { href: '/risks', label: 'Risks', icon: <RisksIcon /> },
+      { href: '/risk', label: 'Stress test', icon: <StressIcon /> },
     ],
   },
   {
