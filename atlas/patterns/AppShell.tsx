@@ -91,6 +91,17 @@ const RisksIcon = () => (
   </svg>
 );
 
+/** V4.4 — Waterfall icon: stacked horizontal bars cascading down + right,
+ *  evoking the European-waterfall tier diagram. */
+const WaterfallIcon = () => (
+  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+    <rect x="2.5" y="3.5" width="7" height="2" rx="0.5" />
+    <rect x="5.5" y="7" width="7" height="2" rx="0.5" />
+    <rect x="8.5" y="10.5" width="7" height="2" rx="0.5" />
+    <rect x="11.5" y="14" width="5" height="2" rx="0.5" />
+  </svg>
+);
+
 const SuggestionsIcon = () => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
     <circle cx="10" cy="9" r="5.5" />
@@ -195,6 +206,7 @@ export const DEFAULT_SIDEBAR_SECTIONS: SidebarSection[] = [
       { href: '/dashboard', label: 'Overview', icon: <OverviewIcon /> },
       { href: '/cashflow', label: 'Forecast', icon: <ForecastIcon /> },
       { href: '/capital', label: 'Capital', icon: <CapitalIcon /> },
+      { href: '/waterfall', label: 'Waterfall', icon: <WaterfallIcon /> },
       { href: '/risks', label: 'Risks', icon: <RisksIcon /> },
     ],
   },

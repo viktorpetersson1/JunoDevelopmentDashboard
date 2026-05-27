@@ -40,6 +40,7 @@ const PROTECTED_PREFIXES = [
   '/notifications',
   '/settings',
   '/pricing',
+  '/waterfall', // V4.4 — owner waterfall (INVENTORY §18)
   '/api',
   '/dev', // dev-only routes; production-blocked in atlas/middleware.ts
 ];
