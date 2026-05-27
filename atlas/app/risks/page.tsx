@@ -14,7 +14,8 @@ import { DashboardShell } from '../_components/dashboard-shell';
 import { findManyProjects } from '@/lib/repos/project';
 import { aggregatePortfolio } from '@/lib/calc/portfolio/aggregate';
 import { runProject } from '@/lib/calc/project/runProject';
-import { BASELINE_GLOBALS, BASELINE_SCENARIO } from '@/lib/calc/baselines';
+import { BASELINE_GLOBALS } from '@/lib/calc/baselines';
+import { getActiveScenario } from '@/lib/scenarios/active';
 import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
 import { buildPortfolioRiskReport, type RiskFinding, type RiskSeverity } from '@/lib/risk/portfolio-risk';
 
@@ -25,10 +26,11 @@ export const runtime = 'edge';
 export default async function RisksCenterPage() {
   const { profile, user } = await requireAuthOrRedirect('/risks');
   const { projects } = await findManyProjects({ limit: 100 });
-  const portfolio = aggregatePortfolio(projects, BASELINE_GLOBALS, BASELINE_SCENARIO);
+  const active = await getActiveScenario(); // V4.12
+  const portfolio = aggregatePortfolio(projects, BASELINE_GLOBALS, active.scenario);
   const perProject = projects.map((p) => ({
     project: p,
-    result: runProject(p, BASELINE_GLOBALS, BASELINE_SCENARIO),
+    result: runProject(p, BASELINE_GLOBALS, active.scenario),
   }));
   const report = buildPortfolioRiskReport({ projects: perProject, portfolio });
 
@@ -65,7 +67,12 @@ export default async function RisksCenterPage() {
   });
 
   return (
-    <DashboardShell activeHref="/risks" user={dashboardUser}>
+    <DashboardShell
+      activeHref="/risks"
+      user={dashboardUser}
+      activeScenarioId={active.activeId}
+      activeScenarioName={active.displayName}
+    >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
         <header>
           <h1 style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}>

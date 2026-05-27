@@ -15,7 +15,8 @@ import { KPIStrip } from '@/components/data/KPIStrip';
 import { KPITile } from '@/components/data/KPITile';
 import { findManyProjects } from '@/lib/repos/project';
 import { aggregatePortfolio } from '@/lib/calc/portfolio/aggregate';
-import { BASELINE_GLOBALS, BASELINE_SCENARIO } from '@/lib/calc/baselines';
+import { BASELINE_GLOBALS } from '@/lib/calc/baselines';
+import { getActiveScenario } from '@/lib/scenarios/active';
 import { formatMoney } from '@/lib/utils/money';
 import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
 
@@ -26,7 +27,8 @@ export const runtime = 'edge';
 export default async function CashflowPage() {
   const { profile, user } = await requireAuthOrRedirect('/cashflow');
   const { projects } = await findManyProjects({ limit: 100 });
-  const portfolio = aggregatePortfolio(projects, BASELINE_GLOBALS, BASELINE_SCENARIO);
+  const active = await getActiveScenario(); // V4.12
+  const portfolio = aggregatePortfolio(projects, BASELINE_GLOBALS, active.scenario);
   const k = portfolio.kpis;
 
   const dashboardUser = {
@@ -35,7 +37,12 @@ export default async function CashflowPage() {
   };
 
   return (
-    <DashboardShell activeHref="/cashflow" user={dashboardUser}>
+    <DashboardShell
+      activeHref="/cashflow"
+      user={dashboardUser}
+      activeScenarioId={active.activeId}
+      activeScenarioName={active.displayName}
+    >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
         <header>
           <h1

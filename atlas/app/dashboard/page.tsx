@@ -18,7 +18,8 @@ import { KpiPattern } from '@/patterns/KpiPattern';
 import { PortfolioCashFlowChart } from '../_components/portfolio-cash-flow-chart';
 import { findManyProjects } from '@/lib/repos/project';
 import { aggregatePortfolio } from '@/lib/calc/portfolio/aggregate';
-import { BASELINE_GLOBALS, BASELINE_SCENARIO } from '@/lib/calc/baselines';
+import { BASELINE_GLOBALS } from '@/lib/calc/baselines';
+import { getActiveScenario } from '@/lib/scenarios/active';
 import { formatMoney } from '@/lib/utils/money';
 import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
 import type { KPITileProps } from '@/components/data/KPITile';
@@ -31,10 +32,14 @@ export default async function DashboardPage() {
   const { profile, user } = await requireAuthOrRedirect('/dashboard');
   const { projects } = await findManyProjects({ limit: 100 });
 
+  // V4.12 — pick up the active scenario from the cookie. Falls back to
+  // BASELINE_SCENARIO when no cookie or the cookie's scenario was deleted.
+  const active = await getActiveScenario();
+
   // T042 portfolio aggregator: real cross-project capital pressure, Excel-
   // style equity calls, KPC LOC pool, annual P&L. Replaces the prior naïve
   // per-project reduce. Golden-verified ≤ 0.5% / $1 vs vanilla.
-  const portfolio = aggregatePortfolio(projects, BASELINE_GLOBALS, BASELINE_SCENARIO);
+  const portfolio = aggregatePortfolio(projects, BASELINE_GLOBALS, active.scenario);
   const k = portfolio.kpis;
 
   const kpis: KPITileProps[] = [
@@ -76,7 +81,12 @@ export default async function DashboardPage() {
   };
 
   return (
-    <DashboardShell activeHref="/dashboard" user={dashboardUser}>
+    <DashboardShell
+      activeHref="/dashboard"
+      user={dashboardUser}
+      activeScenarioId={active.activeId}
+      activeScenarioName={active.displayName}
+    >
       <KpiPattern
         kpis={kpis}
         chartTitle="Cash flow — portfolio aggregated"
