@@ -14,11 +14,12 @@
  * get back a structured list of findings.
  *
  * Severity heuristics are deliberately conservative (this is a smoke
- * detector, not an oracle). Tightening lives behind Globals.risk_*
- * once those land in the typed contract.
+ * detector, not an oracle). Top-level tunables now live behind
+ * Globals.risk_* (D-015); per-severity bucket cutoffs remain inline
+ * until per-project overrides land in V4.11d's follow-up.
  */
 
-import type { ProjectInput, ProjectResult } from '@/lib/calc/project/types';
+import type { Globals, ProjectInput, ProjectResult } from '@/lib/calc/project/types';
 import type { PortfolioResult } from '@/lib/calc/portfolio/types';
 
 export type RiskSeverity = 'high' | 'medium' | 'low';
@@ -105,14 +106,44 @@ const CATEGORIES: Array<Omit<RiskCategorySummary, 'count'>> = [
 ];
 
 // ────────────────────────────────────────────────────────────────────────────
-// Tunables. Mirror BASELINE_GLOBALS where possible.
+// Tunables. Promoted to Globals.risk_* (D-015). Defaults below match the
+// historical hardcoded values so unconfigured callers see no behavior change.
 // ────────────────────────────────────────────────────────────────────────────
 
-const SAFE_LTC_PCT = 0.85;
-const SALES_DELAY_GRACE_MONTHS = 1;
-const COST_OVERRUN_RATIO = 1.05; // actuals/forecast above this = finding
-const EQUITY_CLUSTER_PCTILE = 0.9; // top 10% of equity_called[] months
-const SALE_DOWNSIDE_HAIRCUT = 0.9; // 10% market softening test
+export interface RiskThresholds {
+  /** Loan-to-cost ceiling above which a project triggers a lender-risk finding. */
+  safeLtcPct: number;
+  /** Months past planned sale date before a sales-delay finding fires. */
+  salesDelayGraceMonths: number;
+  /** actuals/forecast ratio above which a cost-overrun finding fires. */
+  costOverrunRatio: number;
+  /** Percentile cutoff for the equity-clustering scan (0.9 = top decile). */
+  equityClusterPctile: number;
+  /** Multiplier applied to sale price for the downside stress test (0.9 = -10%). */
+  saleDownsideHaircut: number;
+}
+
+export const DEFAULT_RISK_THRESHOLDS: RiskThresholds = {
+  safeLtcPct: 0.85,
+  salesDelayGraceMonths: 1,
+  costOverrunRatio: 1.05,
+  equityClusterPctile: 0.9,
+  saleDownsideHaircut: 0.9,
+};
+
+/** Pull risk_* fields off Globals, falling back to defaults for anything unset. */
+export function thresholdsFromGlobals(globals: Globals): RiskThresholds {
+  return {
+    safeLtcPct: globals.risk_safe_ltc_pct ?? DEFAULT_RISK_THRESHOLDS.safeLtcPct,
+    salesDelayGraceMonths:
+      globals.risk_sales_delay_grace_months ?? DEFAULT_RISK_THRESHOLDS.salesDelayGraceMonths,
+    costOverrunRatio: globals.risk_cost_overrun_ratio ?? DEFAULT_RISK_THRESHOLDS.costOverrunRatio,
+    equityClusterPctile:
+      globals.risk_equity_cluster_pctile ?? DEFAULT_RISK_THRESHOLDS.equityClusterPctile,
+    saleDownsideHaircut:
+      globals.risk_sale_downside_haircut ?? DEFAULT_RISK_THRESHOLDS.saleDownsideHaircut,
+  };
+}
 
 // ────────────────────────────────────────────────────────────────────────────
 // Inputs that the caller supplies (the page builds these from existing
@@ -129,6 +160,8 @@ export interface RiskEngineInput {
   portfolio: PortfolioResult;
   /** "Today" anchor — usually new Date() at request time. Pass as ISO YYYY-MM. */
   asOfYm?: string;
+  /** Top-level severity tunables. Defaults to DEFAULT_RISK_THRESHOLDS when omitted. */
+  thresholds?: RiskThresholds;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -137,13 +170,14 @@ export interface RiskEngineInput {
 
 export function buildPortfolioRiskReport(input: RiskEngineInput): PortfolioRiskReport {
   const asOfYm = input.asOfYm ?? new Date().toISOString().slice(0, 7);
+  const thresholds = input.thresholds ?? DEFAULT_RISK_THRESHOLDS;
   const findings: RiskFinding[] = [];
 
-  findings.push(...salesDelayFindings(input, asOfYm));
-  findings.push(...saleDownsideFindings(input));
-  findings.push(...costOverrunFindings(input));
-  findings.push(...lenderFindings(input));
-  findings.push(...equityClusterFindings(input));
+  findings.push(...salesDelayFindings(input, asOfYm, thresholds));
+  findings.push(...saleDownsideFindings(input, thresholds));
+  findings.push(...costOverrunFindings(input, thresholds));
+  findings.push(...lenderFindings(input, thresholds));
+  findings.push(...equityClusterFindings(input, thresholds));
   findings.push(...fundingGapFindings(input));
 
   return {
@@ -171,7 +205,11 @@ export function buildPortfolioRiskReport(input: RiskEngineInput): PortfolioRiskR
 // Per-category builders
 // ────────────────────────────────────────────────────────────────────────────
 
-function salesDelayFindings(input: RiskEngineInput, asOfYm: string): RiskFinding[] {
+function salesDelayFindings(
+  input: RiskEngineInput,
+  asOfYm: string,
+  thresholds: RiskThresholds
+): RiskFinding[] {
   const findings: RiskFinding[] = [];
   for (const { project, result } of input.projects) {
     if (project.status === 'sold') continue;
@@ -180,7 +218,7 @@ function salesDelayFindings(input: RiskEngineInput, asOfYm: string): RiskFinding
     // Both planned and asOfYm are YYYY-MM. Lexicographic compare works.
     if (planned >= asOfYm) continue;
     const monthsLate = monthsBetween(planned, asOfYm);
-    if (monthsLate <= SALES_DELAY_GRACE_MONTHS) continue;
+    if (monthsLate <= thresholds.salesDelayGraceMonths) continue;
     const severity: RiskSeverity =
       monthsLate >= 6 ? 'high' : monthsLate >= 3 ? 'medium' : 'low';
     findings.push({
@@ -201,14 +239,17 @@ function salesDelayFindings(input: RiskEngineInput, asOfYm: string): RiskFinding
   return findings;
 }
 
-function saleDownsideFindings(input: RiskEngineInput): RiskFinding[] {
+function saleDownsideFindings(
+  input: RiskEngineInput,
+  thresholds: RiskThresholds
+): RiskFinding[] {
   const findings: RiskFinding[] = [];
   for (const { project, result } of input.projects) {
     if (project.status === 'sold') continue;
     const sale = result.kpis.total_sales;
     const cost = result.kpis.total_dev_cost + result.kpis.total_interest;
     if (sale <= 0 || cost <= 0) continue;
-    const downsideSale = sale * SALE_DOWNSIDE_HAIRCUT;
+    const downsideSale = sale * thresholds.saleDownsideHaircut;
     const profitAt10Off = downsideSale - cost;
     if (profitAt10Off >= 0) continue;
     const exposure = Math.abs(profitAt10Off);
@@ -223,7 +264,7 @@ function saleDownsideFindings(input: RiskEngineInput): RiskFinding[] {
       scopeId: project.id,
       scopeLabel: project.name,
       financialImpactUsd: -exposure,
-      trigger: `At a 10% sale-price haircut, this project goes ${formatUsd(-exposure)} negative.`,
+      trigger: `At a ${Math.round((1 - thresholds.saleDownsideHaircut) * 100)}% sale-price haircut, this project goes ${formatUsd(-exposure)} negative.`,
       timingImpact: null,
       mitigation:
         'Hold the listing band; consider concessions before reducing the headline price; re-test target margin.',
@@ -232,7 +273,10 @@ function saleDownsideFindings(input: RiskEngineInput): RiskFinding[] {
   return findings;
 }
 
-function costOverrunFindings(input: RiskEngineInput): RiskFinding[] {
+function costOverrunFindings(
+  input: RiskEngineInput,
+  thresholds: RiskThresholds
+): RiskFinding[] {
   const findings: RiskFinding[] = [];
   for (const { project, result, actualsCents } of input.projects) {
     if (actualsCents == null) continue;
@@ -240,7 +284,7 @@ function costOverrunFindings(input: RiskEngineInput): RiskFinding[] {
     const forecast = result.kpis.total_dev_cost;
     if (forecast <= 0) continue;
     const ratio = actualsUsd / forecast;
-    if (ratio < COST_OVERRUN_RATIO) continue;
+    if (ratio < thresholds.costOverrunRatio) continue;
     const overrunUsd = actualsUsd - forecast;
     const severity: RiskSeverity =
       ratio >= 1.2 ? 'high' : ratio >= 1.1 ? 'medium' : 'low';
@@ -262,11 +306,14 @@ function costOverrunFindings(input: RiskEngineInput): RiskFinding[] {
   return findings;
 }
 
-function lenderFindings(input: RiskEngineInput): RiskFinding[] {
+function lenderFindings(
+  input: RiskEngineInput,
+  thresholds: RiskThresholds
+): RiskFinding[] {
   const findings: RiskFinding[] = [];
   for (const { project } of input.projects) {
     const ltc = project.senior_ltv_pct ?? project.ltc_pct ?? 0;
-    if (ltc <= SAFE_LTC_PCT) continue;
+    if (ltc <= thresholds.safeLtcPct) continue;
     const severity: RiskSeverity =
       ltc >= 0.95 ? 'high' : ltc >= 0.9 ? 'medium' : 'low';
     findings.push({
@@ -278,7 +325,7 @@ function lenderFindings(input: RiskEngineInput): RiskFinding[] {
       scopeId: project.id,
       scopeLabel: project.name,
       financialImpactUsd: 0,
-      trigger: `Loan-to-cost set at ${(ltc * 100).toFixed(0)}% — above the ${(SAFE_LTC_PCT * 100).toFixed(0)}% safe ceiling for senior debt.`,
+      trigger: `Loan-to-cost set at ${(ltc * 100).toFixed(0)}% — above the ${(thresholds.safeLtcPct * 100).toFixed(0)}% safe ceiling for senior debt.`,
       timingImpact: 'Likely re-trade with the lender; expect 2-4 weeks of friction at IC.',
       mitigation:
         'Pre-cleared LTC with KPC LOC top-up; or trim build budget to bring LTC under the ceiling.',
@@ -287,12 +334,15 @@ function lenderFindings(input: RiskEngineInput): RiskFinding[] {
   return findings;
 }
 
-function equityClusterFindings(input: RiskEngineInput): RiskFinding[] {
+function equityClusterFindings(
+  input: RiskEngineInput,
+  thresholds: RiskThresholds
+): RiskFinding[] {
   const m = input.portfolio.monthly;
   if (!m.equity_called || m.equity_called.length === 0) return [];
-  // Find months in the top decile of equity_called magnitude.
+  // Find months in the top (1 - equityClusterPctile) of equity_called magnitude.
   const sorted = [...m.equity_called].map((v) => Math.abs(v)).sort((a, b) => a - b);
-  const cut = sorted[Math.floor(sorted.length * EQUITY_CLUSTER_PCTILE)] ?? 0;
+  const cut = sorted[Math.floor(sorted.length * thresholds.equityClusterPctile)] ?? 0;
   if (cut <= 0) return [];
   const clusterMonths: Array<{ ym: string; usd: number }> = [];
   for (let i = 0; i < m.equity_called.length; i++) {
@@ -304,6 +354,7 @@ function equityClusterFindings(input: RiskEngineInput): RiskFinding[] {
   const peak = clusterMonths.reduce((a, b) => (b.usd > a.usd ? b : a), clusterMonths[0]!);
   const severity: RiskSeverity =
     peak.usd >= 5_000_000 ? 'high' : peak.usd >= 2_500_000 ? 'medium' : 'low';
+  const topPct = Math.round((1 - thresholds.equityClusterPctile) * 100);
   return [
     {
       id: 'equity_cluster:portfolio',
@@ -314,7 +365,7 @@ function equityClusterFindings(input: RiskEngineInput): RiskFinding[] {
       scopeId: null,
       scopeLabel: 'Portfolio',
       financialImpactUsd: -peak.usd,
-      trigger: `${clusterMonths.length} month${clusterMonths.length === 1 ? '' : 's'} in the top 10% of equity calls (peak ${formatUsd(peak.usd)} in ${peak.ym}).`,
+      trigger: `${clusterMonths.length} month${clusterMonths.length === 1 ? '' : 's'} in the top ${topPct}% of equity calls (peak ${formatUsd(peak.usd)} in ${peak.ym}).`,
       timingImpact: `Top-decile call total: ${formatUsd(total)} across ${clusterMonths.length} months.`,
       mitigation:
         'Stagger project starts to spread equity demand; preload LOC headroom; warn owners early.',

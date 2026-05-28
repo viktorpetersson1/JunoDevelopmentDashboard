@@ -153,6 +153,15 @@ export interface Globals {
   build_cost_realization_pct?: number;
   markets?: MarketDef[];
   include_sold_projects?: boolean;
+  // Risk-engine tunables (D-015). Promoted to typed Globals so super-admin
+  // can tune thresholds from Settings; lib/risk/portfolio-risk.ts reads
+  // these via thresholdsFromGlobals(). Each is optional — unset falls back
+  // to the constant defaults baked into the risk engine.
+  risk_safe_ltc_pct?: number;
+  risk_sales_delay_grace_months?: number;
+  risk_cost_overrun_ratio?: number;
+  risk_equity_cluster_pctile?: number;
+  risk_sale_downside_haircut?: number;
   // ... other fields exist but aren't read by calcProject
 }
 

@@ -45,6 +45,11 @@ const PatchSchema = z.object({
   financing_fees_per_project_usd: z.number().min(0).nullable().optional(),
   build_cost_curve: z.enum(['linear', 's_curve', 'front_loaded']).nullable().optional(),
   build_cost_realization_pct: z.number().min(0).max(1).nullable().optional(),
+  risk_safe_ltc_pct: z.number().min(0).max(1).nullable().optional(),
+  risk_sales_delay_grace_months: z.number().int().min(0).max(60).nullable().optional(),
+  risk_cost_overrun_ratio: z.number().min(1).max(5).nullable().optional(),
+  risk_equity_cluster_pctile: z.number().min(0).max(1).nullable().optional(),
+  risk_sale_downside_haircut: z.number().min(0).max(1).nullable().optional(),
   include_sold_projects: z.boolean().nullable().optional(),
   /** V4.11c — markets jsonb. null = revert to baseline; [] = explicitly empty. */
   markets: z.array(MarketSchema).max(40).nullable().optional(),

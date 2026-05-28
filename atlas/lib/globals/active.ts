@@ -88,6 +88,23 @@ function mergeOverBaseline(row: GlobalsRow): Globals {
       row.build_cost_realization_pct,
       'build_cost_realization_pct'
     ),
+    risk_safe_ltc_pct: numOrDefault(row.risk_safe_ltc_pct, 'risk_safe_ltc_pct'),
+    risk_sales_delay_grace_months: numOrDefault(
+      row.risk_sales_delay_grace_months,
+      'risk_sales_delay_grace_months'
+    ),
+    risk_cost_overrun_ratio: numOrDefault(
+      row.risk_cost_overrun_ratio,
+      'risk_cost_overrun_ratio'
+    ),
+    risk_equity_cluster_pctile: numOrDefault(
+      row.risk_equity_cluster_pctile,
+      'risk_equity_cluster_pctile'
+    ),
+    risk_sale_downside_haircut: numOrDefault(
+      row.risk_sale_downside_haircut,
+      'risk_sale_downside_haircut'
+    ),
     include_sold_projects:
       row.include_sold_projects == null
         ? BASELINE_GLOBALS.include_sold_projects
@@ -118,6 +135,11 @@ function hasAnyOverride(row: GlobalsRow): boolean {
     row.financing_fees_per_project_usd != null ||
     row.build_cost_curve != null ||
     row.build_cost_realization_pct != null ||
+    row.risk_safe_ltc_pct != null ||
+    row.risk_sales_delay_grace_months != null ||
+    row.risk_cost_overrun_ratio != null ||
+    row.risk_equity_cluster_pctile != null ||
+    row.risk_sale_downside_haircut != null ||
     row.include_sold_projects != null ||
     row.markets != null
   );

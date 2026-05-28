@@ -58,6 +58,11 @@ interface FormState {
   financing_fees_per_project_usd: string;
   build_cost_curve: 'linear' | 's_curve' | 'front_loaded' | 'baseline';
   build_cost_realization_pct: string;
+  risk_safe_ltc_pct: string;
+  risk_sales_delay_grace_months: string;
+  risk_cost_overrun_ratio: string;
+  risk_equity_cluster_pctile: string;
+  risk_sale_downside_haircut: string;
   include_sold_projects: 'on' | 'off' | 'baseline';
 }
 
@@ -77,6 +82,11 @@ function formFromGlobals(g: Globals): FormState {
     financing_fees_per_project_usd: String(g.financing_fees_per_project_usd ?? 0),
     build_cost_curve: (g.build_cost_curve ?? 'linear') as FormState['build_cost_curve'],
     build_cost_realization_pct: String(g.build_cost_realization_pct ?? 1),
+    risk_safe_ltc_pct: String(g.risk_safe_ltc_pct ?? 0.85),
+    risk_sales_delay_grace_months: String(g.risk_sales_delay_grace_months ?? 1),
+    risk_cost_overrun_ratio: String(g.risk_cost_overrun_ratio ?? 1.05),
+    risk_equity_cluster_pctile: String(g.risk_equity_cluster_pctile ?? 0.9),
+    risk_sale_downside_haircut: String(g.risk_sale_downside_haircut ?? 0.9),
     include_sold_projects: g.include_sold_projects ? 'on' : 'off',
   };
 }
@@ -318,6 +328,29 @@ export function GeneralTab({
         </Grid>
       </Section>
 
+      <Section title="Risk thresholds">
+        <Grid>
+          <Field label="Safe LTC ceiling">
+            <NumberInput value={form.risk_safe_ltc_pct} onChange={(v) => update('risk_safe_ltc_pct', v)} step="0.01" disabled={!canEdit} />
+          </Field>
+          <Field label="Sales delay grace (months)">
+            <NumberInput value={form.risk_sales_delay_grace_months} onChange={(v) => update('risk_sales_delay_grace_months', v)} step="1" disabled={!canEdit} />
+          </Field>
+          <Field label="Cost overrun ratio">
+            <NumberInput value={form.risk_cost_overrun_ratio} onChange={(v) => update('risk_cost_overrun_ratio', v)} step="0.01" disabled={!canEdit} />
+          </Field>
+          <Field label="Equity cluster pctile">
+            <NumberInput value={form.risk_equity_cluster_pctile} onChange={(v) => update('risk_equity_cluster_pctile', v)} step="0.05" disabled={!canEdit} />
+          </Field>
+          <Field label="Sale downside haircut">
+            <NumberInput value={form.risk_sale_downside_haircut} onChange={(v) => update('risk_sale_downside_haircut', v)} step="0.05" disabled={!canEdit} />
+          </Field>
+        </Grid>
+        <p style={{ margin: '8px 0 0 0', fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+          Tunes the /risks engine. Defaults: 0.85 / 1 / 1.05 / 0.9 / 0.9.
+        </p>
+      </Section>
+
       {/* V4.11c — Markets editor. Lives below the scalar form so users
           see the high-impact settings first. */}
       <MarketsEditor
@@ -327,7 +360,7 @@ export function GeneralTab({
       />
 
       <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-tertiary)' }}>
-        Shareholders, risk thresholds, OPEX, hypothetical LP, and data export ship in V4.11d.
+        Shareholders, OPEX, hypothetical LP, and data export ship in V4.11d.
       </p>
     </div>
   );
@@ -549,6 +582,11 @@ function buildPayload(form: FormState): Record<string, unknown> {
     financing_fees_per_project_usd: num(form.financing_fees_per_project_usd),
     build_cost_curve: enumFrom(form.build_cost_curve),
     build_cost_realization_pct: num(form.build_cost_realization_pct),
+    risk_safe_ltc_pct: num(form.risk_safe_ltc_pct),
+    risk_sales_delay_grace_months: int(form.risk_sales_delay_grace_months),
+    risk_cost_overrun_ratio: num(form.risk_cost_overrun_ratio),
+    risk_equity_cluster_pctile: num(form.risk_equity_cluster_pctile),
+    risk_sale_downside_haircut: num(form.risk_sale_downside_haircut),
     include_sold_projects: boolFrom(form.include_sold_projects),
   };
 }

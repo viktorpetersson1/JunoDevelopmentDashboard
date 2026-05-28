@@ -17,7 +17,12 @@ import { runProject } from '@/lib/calc/project/runProject';
 import { getActiveGlobals } from '@/lib/globals/active';
 import { getActiveScenario } from '@/lib/scenarios/active';
 import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
-import { buildPortfolioRiskReport, type RiskFinding, type RiskSeverity } from '@/lib/risk/portfolio-risk';
+import {
+  buildPortfolioRiskReport,
+  thresholdsFromGlobals,
+  type RiskFinding,
+  type RiskSeverity,
+} from '@/lib/risk/portfolio-risk';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -32,7 +37,11 @@ export default async function RisksCenterPage() {
     project: p,
     result: runProject(p, globalsCtx.globals, active.scenario),
   }));
-  const report = buildPortfolioRiskReport({ projects: perProject, portfolio });
+  const report = buildPortfolioRiskReport({
+    projects: perProject,
+    portfolio,
+    thresholds: thresholdsFromGlobals(globalsCtx.globals),
+  });
 
   const dashboardUser = {
     name: profile.displayName ?? profile.email ?? user.email ?? 'Juno',

@@ -33,6 +33,11 @@ export const BASELINE_GLOBALS: Globals = {
   financing_fees_per_project_usd: 350_000,
   build_cost_curve: 'linear',
   build_cost_realization_pct: 1.0,
+  risk_safe_ltc_pct: 0.85,
+  risk_sales_delay_grace_months: 1,
+  risk_cost_overrun_ratio: 1.05,
+  risk_equity_cluster_pctile: 0.9,
+  risk_sale_downside_haircut: 0.9,
   markets: [
     {
       id: 'hamptons',
