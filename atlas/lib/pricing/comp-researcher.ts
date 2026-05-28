@@ -39,6 +39,8 @@ export interface ResearchedComp {
   yearBuilt: number | null;
   lotSizeAcres: number | null;
   isNewConstruction: boolean;
+  /** Days on market (listing → contract/closing). Null when unknown. */
+  domDays: number | null;
   sourceUrl: string | null;
   sourceName: string;
   psf: number;
@@ -109,6 +111,7 @@ Return ONLY a valid JSON object — no markdown fences, no explanation text outs
       "year_built": 2023,
       "lot_size_acres": 1.2,
       "is_new_construction": true,
+      "dom_days": 87,
       "source_url": "https://www.zillow.com/homedetails/...",
       "source_name": "Zillow",
       "psf": 627.45,
@@ -124,6 +127,7 @@ RULES:
 - psf = sale_price_usd / ag_sqft (always provide this field).
 - closing_date must be YYYY-MM-DD or null.
 - status must be "closed" or "active".
+- dom_days = days on market (listing → contract/closing). If you can find or estimate it, provide an integer; otherwise null.
 - Sort output: closed comps first (newest first), then active listings.
 - If you cannot find 3+ real comps, include best-knowledge estimates with confidence: "estimated".
 - If no data exists for this area, return comps: [] with an explanation in narrative_summary.`;
@@ -168,6 +172,10 @@ function parseResponse(raw: string, usedWebSearch: boolean): CompResearchOutput 
           yearBuilt: c.year_built ? Number(c.year_built) : null,
           lotSizeAcres: c.lot_size_acres ? Number(c.lot_size_acres) : null,
           isNewConstruction: Boolean(c.is_new_construction),
+          domDays:
+            c.dom_days !== undefined && c.dom_days !== null
+              ? Math.max(0, Math.round(Number(c.dom_days)))
+              : null,
           sourceUrl: c.source_url ? String(c.source_url) : null,
           sourceName: String(c.source_name ?? 'AI Research'),
           psf: Math.round(psf * 100) / 100,

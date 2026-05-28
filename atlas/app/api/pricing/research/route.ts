@@ -30,6 +30,7 @@ import {
   type ResearchedComp,
 } from '@/lib/pricing/comp-researcher';
 import { BASELINE_GLOBALS } from '@/lib/calc/baselines';
+import { bulkUpsertCompsIgnoreDupes, type NewCompInput } from '@/lib/repos/comps';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -249,6 +250,30 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
     { address, subCutLabel, agSqft, lotSizeAcres, yearBuilt, isNc, compWindowMonths },
     apiKey
   );
+
+  // D-026: auto-save AI-researched comps to library (same logic as brief flow).
+  const compsToSave: NewCompInput[] = research.comps
+    .filter((c) => c.address && c.agSqft > 0 && c.salePriceUsd > 0)
+    .map((c) => ({
+      address: c.address,
+      subCutKey,
+      isNc: c.isNewConstruction,
+      status: c.status,
+      closingDate: c.closingDate,
+      salePriceCents: Math.round(c.salePriceUsd * 100),
+      agSqft: c.agSqft,
+      lotSizeAcres: c.lotSizeAcres ?? null,
+      yearBuilt: c.yearBuilt ?? null,
+      domDays: c.domDays ?? null,
+      sourceUrl: c.sourceUrl,
+      source: 'other' as const,
+      notes: `Auto-saved from Quick Price — ${c.sourceName}${c.confidence === 'estimated' ? ' (AI-estimated)' : ''}`,
+    }));
+  if (compsToSave.length > 0) {
+    void bulkUpsertCompsIgnoreDupes(compsToSave).catch(() => {
+      // best-effort
+    });
+  }
 
   const analysis = computeAnalysis(research.comps, agSqft, landCostUsd ?? null);
 

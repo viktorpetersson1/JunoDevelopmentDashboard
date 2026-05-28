@@ -150,6 +150,73 @@ export async function findBriefById(briefId: string): Promise<PricingBriefView |
   return data ? toView(data as unknown as PricingBriefRow) : null;
 }
 
+/**
+ * D-026 — One brief per project (the latest version) across every project,
+ * joined with project name + key so the dashboard can deep-link. Used by the
+ * /pricing dashboard's "Active project recommendations" tile grid.
+ */
+export interface CurrentBriefForDashboard extends PricingBriefView {
+  projectName: string;
+  projectKey: string;
+  projectMarketId: string;
+  projectAddress: string | null;
+}
+
+export async function listAllCurrentBriefs(): Promise<CurrentBriefForDashboard[]> {
+  const supabase = createSupabaseServerClient();
+  // Pull every brief joined with the (current) project row, ordered so the
+  // latest version per project is first. We dedupe client-side by project_id.
+  const { data, error } = await supabase
+    .schema('atlas')
+    .from('pricing_briefs')
+    .select(
+      `${ROW_SELECT}, projects!inner ( project_key, name, market_id, address, is_current, is_archived )`
+    )
+    .order('project_id', { ascending: true })
+    .order('version', { ascending: false });
+  if (error) throw new Error(`listAllCurrentBriefs: ${error.message}`);
+
+  const rowsRaw =
+    (data as unknown as Array<
+      PricingBriefRow & {
+        projects: {
+          project_key: string;
+          name: string;
+          market_id: string;
+          address: string | null;
+          is_current: boolean;
+          is_archived: boolean;
+        } | null;
+      }
+    >) ?? [];
+
+  // Keep only one brief per project (the highest-version), and only when the
+  // joined project row is still current + not archived.
+  const seen = new Set<string>();
+  const out: CurrentBriefForDashboard[] = [];
+  for (const row of rowsRaw) {
+    if (!row.projects || !row.projects.is_current || row.projects.is_archived) continue;
+    if (seen.has(row.project_id)) continue;
+    seen.add(row.project_id);
+    const base = toView(row);
+    out.push({
+      ...base,
+      projectName: row.projects.name,
+      projectKey: row.projects.project_key,
+      projectMarketId: row.projects.market_id,
+      projectAddress: row.projects.address,
+    });
+  }
+  // Sort applied first, then by version desc — matches the dashboard intent
+  // ("what's actually driving the model" before "drafts I haven't decided on").
+  out.sort((a, b) => {
+    if (a.status === 'applied' && b.status !== 'applied') return -1;
+    if (b.status === 'applied' && a.status !== 'applied') return 1;
+    return b.createdAt.localeCompare(a.createdAt);
+  });
+  return out;
+}
+
 export async function listBriefs(projectId: string): Promise<PricingBriefView[]> {
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase

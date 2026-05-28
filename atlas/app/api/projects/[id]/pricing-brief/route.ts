@@ -19,6 +19,7 @@ import {
   findCurrentProjectUuidByKey,
 } from '@/lib/repos/project';
 import { listBriefs, insertBrief } from '@/lib/repos/pricing-briefs';
+import { bulkUpsertCompsIgnoreDupes, type NewCompInput } from '@/lib/repos/comps';
 import { getActiveGlobals } from '@/lib/globals/active';
 import {
   generateStrategyBrief,
@@ -113,6 +114,36 @@ export const POST = withErrorBoundary(async (_req: NextRequest, ctx: RouteContex
 
   const result = await generateStrategyBrief(facts, closingCosts, apiKey);
 
+  // D-026: auto-save AI-researched comps to the library. Closed + active comps
+  // get persisted with source='ai_research' so the /pricing dashboard can render
+  // market intelligence. Dupes are silently skipped — unique indexes guard.
+  const subCutKey = mapMarketIdToSubCutKey(project.market ?? 'default');
+  const compsToSave: NewCompInput[] = [
+    ...result.brief.compEvidence.closedComps,
+    ...result.brief.compEvidence.activeComps,
+  ]
+    .filter((c) => c.address && c.agSqft > 0 && c.salePriceUsd > 0)
+    .map((c) => ({
+      address: c.address,
+      subCutKey,
+      isNc: c.isNewConstruction,
+      status: c.status,
+      closingDate: c.closingDate,
+      salePriceCents: Math.round(c.salePriceUsd * 100),
+      agSqft: c.agSqft,
+      lotSizeAcres: c.lotSizeAcres ?? null,
+      yearBuilt: c.yearBuilt ?? null,
+      domDays: c.domDays ?? null,
+      sourceUrl: c.sourceUrl,
+      source: 'other' as const,
+      notes: `Auto-saved from brief — ${c.sourceName}${c.confidence === 'estimated' ? ' (AI-estimated)' : ''}`,
+    }));
+  if (compsToSave.length > 0) {
+    void bulkUpsertCompsIgnoreDupes(compsToSave).catch(() => {
+      // Best-effort. Failing to save the library should not fail the brief.
+    });
+  }
+
   const inserted = await insertBrief({
     projectId: uuid,
     phase,
@@ -130,6 +161,28 @@ export const POST = withErrorBoundary(async (_req: NextRequest, ctx: RouteContex
 // ────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Map the project's legacy market_id (flat slug like "sag_harbor") to a
+ * sub-cut key (compound like "hamptons_sag_harbor") used by atlas.comps.
+ * Best-effort: unknown markets fall back to a generic "hamptons_other".
+ */
+function mapMarketIdToSubCutKey(marketId: string): string {
+  const id = marketId.toLowerCase();
+  if (id === 'sag_harbor' || id === 'south_hampton' || id === 'southampton') {
+    return id === 'sag_harbor' ? 'hamptons_sag_harbor' : 'hamptons_southampton';
+  }
+  if (id === 'east_hampton') return 'hamptons_east_hampton';
+  if (id === 'bridgehampton') return 'hamptons_bridgehampton';
+  if (id === 'amagansett') return 'hamptons_amagansett';
+  if (id === 'montauk') return 'hamptons_montauk';
+  if (id === 'north_haven') return 'hamptons_north_haven';
+  if (id === 'shelter_island') return 'shelter_island_non_wf';
+  if (id.startsWith('north_fork')) return 'north_fork_inland';
+  // already a compound key — pass through.
+  if (id.includes('_')) return id;
+  return 'hamptons_other';
+}
 
 function prettifyMarketId(marketId: string): string {
   // Convert 'sag_harbor' → 'Sag Harbor'. Falls through for already-pretty values.

@@ -45,6 +45,8 @@ export interface CompView {
   agSqft: number;
   lotSizeAcres: number | null;
   yearBuilt: number | null;
+  /** Days on market (listing → contract/closing). Null when unknown. */
+  domDays: number | null;
   broker: string | null;
   sourceUrl: string | null;
   source: CompSource;
@@ -72,6 +74,7 @@ interface CompRow {
   ag_sqft: number;
   lot_size_acres: string | number | null;
   year_built: number | null;
+  dom_days: number | null;
   broker: string | null;
   source_url: string | null;
   source: CompSource;
@@ -83,7 +86,7 @@ interface CompRow {
 }
 
 const SELECT_COLUMNS =
-  'id, address, latitude, longitude, sub_cut_key, waterfront_type, is_nc, status, closing_date, sale_price_cents, ag_sqft, lot_size_acres, year_built, broker, source_url, source, notes, is_archived, created_by, created_at, updated_at';
+  'id, address, latitude, longitude, sub_cut_key, waterfront_type, is_nc, status, closing_date, sale_price_cents, ag_sqft, lot_size_acres, year_built, dom_days, broker, source_url, source, notes, is_archived, created_by, created_at, updated_at';
 
 function num(v: string | number | null | undefined): number | null {
   if (v === null || v === undefined) return null;
@@ -112,6 +115,7 @@ function toView(row: CompRow): CompView {
     agSqft: row.ag_sqft,
     lotSizeAcres: num(row.lot_size_acres),
     yearBuilt: row.year_built,
+    domDays: row.dom_days,
     broker: row.broker,
     sourceUrl: row.source_url,
     source: row.source,
@@ -171,6 +175,7 @@ export interface NewCompInput {
   agSqft: number;
   lotSizeAcres?: number | null;
   yearBuilt?: number | null;
+  domDays?: number | null;
   broker?: string | null;
   sourceUrl?: string | null;
   source?: CompSource;
@@ -213,6 +218,7 @@ export async function createComp(input: NewCompInput): Promise<CompView> {
       ag_sqft: input.agSqft,
       lot_size_acres: input.lotSizeAcres ?? null,
       year_built: input.yearBuilt ?? null,
+      dom_days: input.domDays ?? null,
       broker: input.broker ?? null,
       source_url: input.sourceUrl ?? null,
       source: input.source ?? 'manual',
@@ -420,4 +426,204 @@ export async function countComps(includeArchived = false): Promise<number> {
   const { count, error } = await q;
   if (error) throw new Error(`countComps: ${error.message}`);
   return count ?? 0;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// D-026 — Auto-save AI-researched comps (called by strategy brief + quick price)
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Insert each comp individually; swallow unique-violation errors so duplicates
+ * don't fail the batch. Returns counts so the caller can surface telemetry.
+ *
+ * Use case: when a brief / quick-price runs, every comp Claude found gets
+ * persisted to atlas.comps with source='ai_research'. The partial unique
+ * indexes (address+closing_date for closed, address for active) prevent
+ * duplicate entries on subsequent runs.
+ */
+export async function bulkUpsertCompsIgnoreDupes(
+  inputs: NewCompInput[]
+): Promise<{ inserted: number; skipped: number }> {
+  if (inputs.length === 0) return { inserted: 0, skipped: 0 };
+  let inserted = 0;
+  let skipped = 0;
+  for (const input of inputs) {
+    try {
+      validateNewComp(input);
+      await createComp(input);
+      inserted++;
+    } catch (e) {
+      // Unique-violation = duplicate. Anything else we suppress here too — the
+      // dashboard would rather be a few rows lighter than fail end-to-end on
+      // a malformed AI comp.
+      if (e instanceof CompDuplicateError) skipped++;
+      else skipped++;
+    }
+  }
+  return { inserted, skipped };
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// D-026 — Pricing dashboard aggregations
+// ────────────────────────────────────────────────────────────────────────────
+
+export interface MarketKpis {
+  windowDays: number;
+  avgPsfUsd: number | null;
+  medianDomDays: number | null;
+  closedCount: number;
+  activeCount: number;
+  /** Same KPIs for the same-length window ending one year earlier. */
+  prior: {
+    avgPsfUsd: number | null;
+    medianDomDays: number | null;
+    closedCount: number;
+  };
+}
+
+function median(nums: number[]): number | null {
+  if (nums.length === 0) return null;
+  const sorted = [...nums].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 1) return sorted[mid] ?? null;
+  return ((sorted[mid - 1] ?? 0) + (sorted[mid] ?? 0)) / 2;
+}
+
+function avg(nums: number[]): number | null {
+  if (nums.length === 0) return null;
+  return nums.reduce((s, n) => s + n, 0) / nums.length;
+}
+
+function daysAgo(n: number): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - n);
+  return d.toISOString().slice(0, 10);
+}
+
+function compToPsf(row: CompRow): number | null {
+  if (row.status !== 'closed') return null;
+  if (!row.sale_price_cents || !row.ag_sqft) return null;
+  return row.sale_price_cents / 100 / row.ag_sqft;
+}
+
+export async function getMarketKpis(windowDays = 90): Promise<MarketKpis> {
+  const supabase = createSupabaseServerClient();
+  const start = daysAgo(windowDays);
+  const priorStart = daysAgo(windowDays + 365);
+  const priorEnd = daysAgo(365);
+
+  // Current window: closed
+  const closedQ = supabase
+    .schema('atlas')
+    .from('comps')
+    .select('sale_price_cents, ag_sqft, dom_days, status, closing_date')
+    .eq('is_archived', false)
+    .eq('status', 'closed')
+    .gte('closing_date', start);
+  // Current window: active count
+  const activeQ = supabase
+    .schema('atlas')
+    .from('comps')
+    .select('id', { count: 'exact', head: true })
+    .eq('is_archived', false)
+    .in('status', ['active', 'pending']);
+  // Prior window: closed only
+  const priorClosedQ = supabase
+    .schema('atlas')
+    .from('comps')
+    .select('sale_price_cents, ag_sqft, dom_days, status, closing_date')
+    .eq('is_archived', false)
+    .eq('status', 'closed')
+    .gte('closing_date', priorStart)
+    .lt('closing_date', priorEnd);
+
+  const [closedRes, activeRes, priorRes] = await Promise.all([closedQ, activeQ, priorClosedQ]);
+
+  if (closedRes.error) throw new Error(`getMarketKpis closed: ${closedRes.error.message}`);
+  if (activeRes.error) throw new Error(`getMarketKpis active: ${activeRes.error.message}`);
+  if (priorRes.error) throw new Error(`getMarketKpis prior: ${priorRes.error.message}`);
+
+  const closedRows = (closedRes.data ?? []) as unknown as CompRow[];
+  const priorRows = (priorRes.data ?? []) as unknown as CompRow[];
+
+  const closedPsfs = closedRows
+    .map(compToPsf)
+    .filter((n): n is number => n != null && n > 0);
+  const closedDoms = closedRows
+    .map((r) => r.dom_days)
+    .filter((n): n is number => n != null && n >= 0);
+
+  const priorPsfs = priorRows
+    .map(compToPsf)
+    .filter((n): n is number => n != null && n > 0);
+  const priorDoms = priorRows
+    .map((r) => r.dom_days)
+    .filter((n): n is number => n != null && n >= 0);
+
+  return {
+    windowDays,
+    avgPsfUsd: closedPsfs.length > 0 ? Math.round(avg(closedPsfs) ?? 0) : null,
+    medianDomDays: closedDoms.length > 0 ? Math.round(median(closedDoms) ?? 0) : null,
+    closedCount: closedRows.length,
+    activeCount: activeRes.count ?? 0,
+    prior: {
+      avgPsfUsd: priorPsfs.length > 0 ? Math.round(avg(priorPsfs) ?? 0) : null,
+      medianDomDays: priorDoms.length > 0 ? Math.round(median(priorDoms) ?? 0) : null,
+      closedCount: priorRows.length,
+    },
+  };
+}
+
+export interface SubCutPsf {
+  subCutKey: string;
+  medianPsfUsd: number | null;
+  closedCount: number;
+  medianDomDays: number | null;
+}
+
+export async function getPsfBySubCut(windowDays = 90): Promise<SubCutPsf[]> {
+  const supabase = createSupabaseServerClient();
+  const start = daysAgo(windowDays);
+  const { data, error } = await supabase
+    .schema('atlas')
+    .from('comps')
+    .select('sale_price_cents, ag_sqft, dom_days, sub_cut_key, status, closing_date')
+    .eq('is_archived', false)
+    .eq('status', 'closed')
+    .gte('closing_date', start);
+  if (error) throw new Error(`getPsfBySubCut: ${error.message}`);
+
+  const rows = (data ?? []) as unknown as CompRow[];
+  const bySubCut = new Map<string, { psfs: number[]; doms: number[] }>();
+  for (const r of rows) {
+    const psf = compToPsf(r);
+    if (psf == null || psf <= 0) continue;
+    const bucket = bySubCut.get(r.sub_cut_key) ?? { psfs: [], doms: [] };
+    bucket.psfs.push(psf);
+    if (r.dom_days != null && r.dom_days >= 0) bucket.doms.push(r.dom_days);
+    bySubCut.set(r.sub_cut_key, bucket);
+  }
+  return Array.from(bySubCut.entries())
+    .map(([subCutKey, { psfs, doms }]) => ({
+      subCutKey,
+      medianPsfUsd: Math.round(median(psfs) ?? 0),
+      closedCount: psfs.length,
+      medianDomDays: doms.length > 0 ? Math.round(median(doms) ?? 0) : null,
+    }))
+    .sort((a, b) => (b.medianPsfUsd ?? 0) - (a.medianPsfUsd ?? 0));
+}
+
+/** Last N closed comps across all sub-cuts (newest first). */
+export async function getRecentClosedComps(limit = 10): Promise<CompView[]> {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .schema('atlas')
+    .from('comps')
+    .select(SELECT_COLUMNS)
+    .eq('is_archived', false)
+    .eq('status', 'closed')
+    .order('closing_date', { ascending: false, nullsFirst: false })
+    .limit(limit);
+  if (error) throw new Error(`getRecentClosedComps: ${error.message}`);
+  return ((data as unknown as CompRow[]) ?? []).map(toView);
 }
