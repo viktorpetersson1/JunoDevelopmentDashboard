@@ -45,6 +45,12 @@ export interface GlobalsRow {
   risk_cost_overrun_ratio: number | string | null;
   risk_equity_cluster_pctile: number | string | null;
   risk_sale_downside_haircut: number | string | null;
+  annual_opex_usd: number | string | null;
+  opex_growth_rate: number | string | null;
+  apply_tax: boolean | null;
+  tax_rate_pct: number | string | null;
+  tax_state_rate_pct: number | string | null;
+  loss_carryforward: boolean | null;
   include_sold_projects: boolean | null;
   markets: MarketRow[] | null;
   updated_by: string | null;
@@ -72,13 +78,19 @@ export interface GlobalsPatch {
   risk_cost_overrun_ratio?: number | null;
   risk_equity_cluster_pctile?: number | null;
   risk_sale_downside_haircut?: number | null;
+  annual_opex_usd?: number | null;
+  opex_growth_rate?: number | null;
+  apply_tax?: boolean | null;
+  tax_rate_pct?: number | null;
+  tax_state_rate_pct?: number | null;
+  loss_carryforward?: boolean | null;
   include_sold_projects?: boolean | null;
   /** null = fall back to baseline markets; empty array = explicitly no markets. */
   markets?: MarketRow[] | null;
 }
 
 const ROW_SELECT =
-  'id, interest_rate_apr, ltc_pct, ltc_land_pct, contingency_pct, default_build_cost_per_sqft, default_kingshaus_cost_per_sqft, target_margin, default_program_months, model_start, horizon_months, capitalize_interest, financing_fees_per_project_usd, build_cost_curve, build_cost_realization_pct, risk_safe_ltc_pct, risk_sales_delay_grace_months, risk_cost_overrun_ratio, risk_equity_cluster_pctile, risk_sale_downside_haircut, include_sold_projects, markets, updated_by, updated_at';
+  'id, interest_rate_apr, ltc_pct, ltc_land_pct, contingency_pct, default_build_cost_per_sqft, default_kingshaus_cost_per_sqft, target_margin, default_program_months, model_start, horizon_months, capitalize_interest, financing_fees_per_project_usd, build_cost_curve, build_cost_realization_pct, risk_safe_ltc_pct, risk_sales_delay_grace_months, risk_cost_overrun_ratio, risk_equity_cluster_pctile, risk_sale_downside_haircut, annual_opex_usd, opex_growth_rate, apply_tax, tax_rate_pct, tax_state_rate_pct, loss_carryforward, include_sold_projects, markets, updated_by, updated_at';
 
 export async function fetchGlobalsRow(): Promise<GlobalsRow | null> {
   const supabase = createSupabaseServerClient();

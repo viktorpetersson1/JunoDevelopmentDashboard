@@ -84,15 +84,11 @@ function fyOf(ym: string): string {
   return `FY${String(y).slice(2)}`;
 }
 
-// Vanilla aggregatePortfolio reads these globals that aren't on the strict
-// Globals interface; cast at boundary so the rest of the file is typed.
+// Vanilla aggregatePortfolio reads these nested globals that aren't on the
+// strict Globals interface; cast at boundary so the rest of the file is typed.
+// (OPEX/tax/contingency now live on the typed Globals; only kpc_loc remains
+// as a nested-object holdout pending its own promotion ticket.)
 interface ExtendedGlobals extends Globals {
-  annual_opex_usd?: number;
-  opex_growth_rate?: number;
-  apply_tax?: boolean;
-  tax_rate_pct?: number;
-  tax_state_rate_pct?: number;
-  loss_carryforward?: boolean;
   kpc_loc?: {
     facility_size_usd?: number;
     interest_rate_apr?: number;
@@ -100,7 +96,6 @@ interface ExtendedGlobals extends Globals {
     seniority?: string;
     provider?: string;
   };
-  contingency_pct?: number;
 }
 
 const NUMERIC_KEYS = [

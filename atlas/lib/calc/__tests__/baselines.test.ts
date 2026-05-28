@@ -46,6 +46,15 @@ describe('baselines vs vanilla snapshot fixtures', () => {
     );
   });
 
+  it('OPEX + tax fields match vanilla', () => {
+    expect(BASELINE_GLOBALS.annual_opex_usd).toBe(fx.inputs.globals.annual_opex_usd);
+    expect(BASELINE_GLOBALS.opex_growth_rate).toBe(fx.inputs.globals.opex_growth_rate);
+    expect(BASELINE_GLOBALS.apply_tax).toBe(fx.inputs.globals.apply_tax);
+    expect(BASELINE_GLOBALS.tax_rate_pct).toBe(fx.inputs.globals.tax_rate_pct);
+    expect(BASELINE_GLOBALS.tax_state_rate_pct).toBe(fx.inputs.globals.tax_state_rate_pct);
+    expect(BASELINE_GLOBALS.loss_carryforward).toBe(fx.inputs.globals.loss_carryforward);
+  });
+
   it('BASELINE_SCENARIO matches vanilla fixture inputs.scenario', () => {
     expect(BASELINE_SCENARIO.name).toBe(fx.inputs.scenario.name);
     expect(BASELINE_SCENARIO.class).toBe(fx.inputs.scenario.class);

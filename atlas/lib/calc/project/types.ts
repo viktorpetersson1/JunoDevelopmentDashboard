@@ -162,6 +162,14 @@ export interface Globals {
   risk_cost_overrun_ratio?: number;
   risk_equity_cluster_pctile?: number;
   risk_sale_downside_haircut?: number;
+  // OPEX + tax (V4.11d). Read by aggregatePortfolio for the annual P&L
+  // roll-up. Match vanilla BASELINE_GLOBALS defaults when unset.
+  annual_opex_usd?: number;
+  opex_growth_rate?: number;
+  apply_tax?: boolean;
+  tax_rate_pct?: number;
+  tax_state_rate_pct?: number;
+  loss_carryforward?: boolean;
   // ... other fields exist but aren't read by calcProject
 }
 

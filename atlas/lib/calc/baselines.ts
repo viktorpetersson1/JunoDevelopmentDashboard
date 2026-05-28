@@ -38,6 +38,12 @@ export const BASELINE_GLOBALS: Globals = {
   risk_cost_overrun_ratio: 1.05,
   risk_equity_cluster_pctile: 0.9,
   risk_sale_downside_haircut: 0.9,
+  annual_opex_usd: 475_000,
+  opex_growth_rate: 0,
+  apply_tax: true,
+  tax_rate_pct: 0.21,
+  tax_state_rate_pct: 0.045,
+  loss_carryforward: true,
   markets: [
     {
       id: 'hamptons',

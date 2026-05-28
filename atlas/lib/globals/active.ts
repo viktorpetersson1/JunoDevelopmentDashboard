@@ -105,6 +105,18 @@ function mergeOverBaseline(row: GlobalsRow): Globals {
       row.risk_sale_downside_haircut,
       'risk_sale_downside_haircut'
     ),
+    annual_opex_usd: numOrDefault(row.annual_opex_usd, 'annual_opex_usd'),
+    opex_growth_rate: numOrDefault(row.opex_growth_rate, 'opex_growth_rate'),
+    apply_tax:
+      row.apply_tax == null
+        ? BASELINE_GLOBALS.apply_tax
+        : Boolean(row.apply_tax),
+    tax_rate_pct: numOrDefault(row.tax_rate_pct, 'tax_rate_pct'),
+    tax_state_rate_pct: numOrDefault(row.tax_state_rate_pct, 'tax_state_rate_pct'),
+    loss_carryforward:
+      row.loss_carryforward == null
+        ? BASELINE_GLOBALS.loss_carryforward
+        : Boolean(row.loss_carryforward),
     include_sold_projects:
       row.include_sold_projects == null
         ? BASELINE_GLOBALS.include_sold_projects
@@ -140,6 +152,12 @@ function hasAnyOverride(row: GlobalsRow): boolean {
     row.risk_cost_overrun_ratio != null ||
     row.risk_equity_cluster_pctile != null ||
     row.risk_sale_downside_haircut != null ||
+    row.annual_opex_usd != null ||
+    row.opex_growth_rate != null ||
+    row.apply_tax != null ||
+    row.tax_rate_pct != null ||
+    row.tax_state_rate_pct != null ||
+    row.loss_carryforward != null ||
     row.include_sold_projects != null ||
     row.markets != null
   );

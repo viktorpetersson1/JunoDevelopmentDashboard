@@ -63,6 +63,12 @@ interface FormState {
   risk_cost_overrun_ratio: string;
   risk_equity_cluster_pctile: string;
   risk_sale_downside_haircut: string;
+  annual_opex_usd: string;
+  opex_growth_rate: string;
+  apply_tax: 'on' | 'off' | 'baseline';
+  tax_rate_pct: string;
+  tax_state_rate_pct: string;
+  loss_carryforward: 'on' | 'off' | 'baseline';
   include_sold_projects: 'on' | 'off' | 'baseline';
 }
 
@@ -87,6 +93,12 @@ function formFromGlobals(g: Globals): FormState {
     risk_cost_overrun_ratio: String(g.risk_cost_overrun_ratio ?? 1.05),
     risk_equity_cluster_pctile: String(g.risk_equity_cluster_pctile ?? 0.9),
     risk_sale_downside_haircut: String(g.risk_sale_downside_haircut ?? 0.9),
+    annual_opex_usd: String(g.annual_opex_usd ?? 0),
+    opex_growth_rate: String(g.opex_growth_rate ?? 0),
+    apply_tax: (g.apply_tax ?? true) ? 'on' : 'off',
+    tax_rate_pct: String(g.tax_rate_pct ?? 0),
+    tax_state_rate_pct: String(g.tax_state_rate_pct ?? 0),
+    loss_carryforward: (g.loss_carryforward ?? true) ? 'on' : 'off',
     include_sold_projects: g.include_sold_projects ? 'on' : 'off',
   };
 }
@@ -328,6 +340,56 @@ export function GeneralTab({
         </Grid>
       </Section>
 
+      <Section title="OPEX">
+        <Grid>
+          <Field label="Annual OPEX (USD)">
+            <NumberInput value={form.annual_opex_usd} onChange={(v) => update('annual_opex_usd', v)} step="10000" disabled={!canEdit} />
+          </Field>
+          <Field label="OPEX growth rate (fraction)">
+            <NumberInput value={form.opex_growth_rate} onChange={(v) => update('opex_growth_rate', v)} step="0.01" disabled={!canEdit} />
+          </Field>
+        </Grid>
+        <p style={{ margin: '8px 0 0 0', fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+          Annual roll-up overhead. Growth rate compounds year-over-year from the model start.
+        </p>
+      </Section>
+
+      <Section title="Tax">
+        <Grid>
+          <Field label="Apply tax">
+            <SelectInput
+              value={form.apply_tax}
+              onChange={(v) => update('apply_tax', v as FormState['apply_tax'])}
+              options={[
+                { value: 'on', label: 'Yes (compute tax)' },
+                { value: 'off', label: 'No (pre-tax only)' },
+              ]}
+              disabled={!canEdit}
+            />
+          </Field>
+          <Field label="Federal tax rate (fraction)">
+            <NumberInput value={form.tax_rate_pct} onChange={(v) => update('tax_rate_pct', v)} step="0.01" disabled={!canEdit} />
+          </Field>
+          <Field label="State tax rate (fraction)">
+            <NumberInput value={form.tax_state_rate_pct} onChange={(v) => update('tax_state_rate_pct', v)} step="0.005" disabled={!canEdit} />
+          </Field>
+          <Field label="NOL carryforward">
+            <SelectInput
+              value={form.loss_carryforward}
+              onChange={(v) => update('loss_carryforward', v as FormState['loss_carryforward'])}
+              options={[
+                { value: 'on', label: 'Yes (offset gains)' },
+                { value: 'off', label: 'No' },
+              ]}
+              disabled={!canEdit}
+            />
+          </Field>
+        </Grid>
+        <p style={{ margin: '8px 0 0 0', fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+          Effective rate = federal + state. NOL carryforward offsets taxable profit with prior-year net losses.
+        </p>
+      </Section>
+
       <Section title="Risk thresholds">
         <Grid>
           <Field label="Safe LTC ceiling">
@@ -360,7 +422,7 @@ export function GeneralTab({
       />
 
       <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-tertiary)' }}>
-        Shareholders, OPEX, hypothetical LP, and data export ship in V4.11d.
+        Shareholders, hypothetical LP, and data export ship in the rest of V4.11d.
       </p>
     </div>
   );
@@ -587,6 +649,12 @@ function buildPayload(form: FormState): Record<string, unknown> {
     risk_cost_overrun_ratio: num(form.risk_cost_overrun_ratio),
     risk_equity_cluster_pctile: num(form.risk_equity_cluster_pctile),
     risk_sale_downside_haircut: num(form.risk_sale_downside_haircut),
+    annual_opex_usd: num(form.annual_opex_usd),
+    opex_growth_rate: num(form.opex_growth_rate),
+    apply_tax: boolFrom(form.apply_tax),
+    tax_rate_pct: num(form.tax_rate_pct),
+    tax_state_rate_pct: num(form.tax_state_rate_pct),
+    loss_carryforward: boolFrom(form.loss_carryforward),
     include_sold_projects: boolFrom(form.include_sold_projects),
   };
 }

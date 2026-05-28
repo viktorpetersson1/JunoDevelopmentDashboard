@@ -50,6 +50,12 @@ const PatchSchema = z.object({
   risk_cost_overrun_ratio: z.number().min(1).max(5).nullable().optional(),
   risk_equity_cluster_pctile: z.number().min(0).max(1).nullable().optional(),
   risk_sale_downside_haircut: z.number().min(0).max(1).nullable().optional(),
+  annual_opex_usd: z.number().min(0).max(100_000_000).nullable().optional(),
+  opex_growth_rate: z.number().min(-0.5).max(1).nullable().optional(),
+  apply_tax: z.boolean().nullable().optional(),
+  tax_rate_pct: z.number().min(0).max(1).nullable().optional(),
+  tax_state_rate_pct: z.number().min(0).max(1).nullable().optional(),
+  loss_carryforward: z.boolean().nullable().optional(),
   include_sold_projects: z.boolean().nullable().optional(),
   /** V4.11c — markets jsonb. null = revert to baseline; [] = explicitly empty. */
   markets: z.array(MarketSchema).max(40).nullable().optional(),
