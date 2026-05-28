@@ -312,6 +312,140 @@ async function callAnthropic(
  * Tries live web search first (Anthropic beta); falls back to training-data
  * knowledge if the beta is unavailable or the API call fails.
  */
+// ────────────────────────────────────────────────────────────────────────────
+// Market sampling — no subject property; general "what's happening in this
+// sub-market?" research. Used by the /pricing dashboard to bootstrap the
+// comp library before any project briefs have run.
+// ────────────────────────────────────────────────────────────────────────────
+
+export interface MarketResearchInput {
+  /** Human-readable sub-cut label (e.g. "Sag Harbor — Hamptons"). */
+  subCutLabel: string;
+  /** How far back to look for closed sales (months). Default 12. */
+  windowMonths?: number;
+  /** Max closed sales to return. Default 8. */
+  maxClosed?: number;
+  /** Max active listings to return. Default 4. */
+  maxActive?: number;
+}
+
+function buildMarketResearchPrompt(input: MarketResearchInput): string {
+  const window = input.windowMonths ?? 12;
+  const maxClosed = input.maxClosed ?? 8;
+  const maxActive = input.maxActive ?? 4;
+
+  return `You are researching residential sales activity in a sub-market on the East End of Long Island (Hamptons / North Fork / Shelter Island), NY. This is general market intelligence — NOT pricing for a specific subject property.
+
+SUB-MARKET: ${input.subCutLabel}
+
+Search Zillow, Realtor.com, Out East (outeast.com), Sotheby's International, Compass, Douglas Elliman, and Bespoke for sales activity.
+
+TASK:
+- Return up to ${maxClosed} CLOSED sales from the last ${window} months in ${input.subCutLabel}. Diversify across price/size/age.
+- Return up to ${maxActive} ACTIVE listings currently on market in ${input.subCutLabel}.
+- Prefer real verifiable comps; if you don't have credible data, return fewer comps rather than fabricating.
+- Include diverse points — don't cluster around a single price range.
+
+Return ONLY a valid JSON object — no markdown fences, no explanation:
+{
+  "comps": [
+    {
+      "address": "123 Ocean View Rd, East Hampton, NY 11937",
+      "sale_price_usd": 3200000,
+      "ag_sqft": 5100,
+      "closing_date": "2024-09-12",
+      "status": "closed",
+      "year_built": 2023,
+      "lot_size_acres": 1.2,
+      "is_new_construction": true,
+      "dom_days": 87,
+      "source_url": "https://www.zillow.com/homedetails/...",
+      "source_name": "Zillow",
+      "psf": 627.45,
+      "confidence": "confirmed",
+      "notes": null
+    }
+  ],
+  "sources_searched": ["Zillow", "Realtor.com", "Out East", "Sotheby's", "Compass"],
+  "narrative_summary": "Sampled 6 closed and 3 active in ${input.subCutLabel} over the last ${window} months. Price range $X-$Y, $/SF range..."
+}
+
+RULES:
+- psf = sale_price_usd / ag_sqft (always provide this).
+- closing_date must be YYYY-MM-DD or null.
+- status must be "closed" or "active".
+- dom_days = days on market (integer or null).
+- If you have no credible data for ${input.subCutLabel}, return comps: [] with a clear narrative_summary explaining why.
+- Output ONLY the JSON object. No markdown fences. No commentary.`;
+}
+
+/**
+ * Sample recent sales activity in a sub-market — no subject property anchor.
+ * Used by the /pricing dashboard's market-data refresh action to bootstrap
+ * the comp library before any project briefs have run.
+ */
+export async function researchMarketActivity(
+  input: MarketResearchInput,
+  apiKey: string
+): Promise<CompResearchOutput> {
+  // Attempt 1: live web search.
+  try {
+    const { text, ok, status } = await callAnthropic(
+      apiKey,
+      [{ role: 'user', content: buildMarketResearchPrompt(input) }],
+      { useWebSearch: true }
+    );
+    if (ok && text.trim()) return parseResponse(text, true);
+    if (status === 400) {
+      // beta unavailable, fall through to knowledge mode
+    } else if (!ok) {
+      return {
+        comps: [],
+        dataGap: true,
+        confidence: 'low',
+        sourcesSearched: [],
+        narrativeSummary: `Market research for ${input.subCutLabel} returned ${status}.`,
+        usedWebSearch: false,
+        error: `Anthropic API error (HTTP ${status})`,
+      };
+    }
+  } catch {
+    // network error → fall through
+  }
+
+  // Attempt 2: knowledge-only.
+  try {
+    const knowledgePrompt =
+      buildMarketResearchPrompt(input) +
+      '\n\nNote: Use your training-data knowledge. All comps must be marked confidence: "estimated".';
+    const { text, ok, status } = await callAnthropic(
+      apiKey,
+      [{ role: 'user', content: knowledgePrompt }],
+      { useWebSearch: false }
+    );
+    if (ok && text.trim()) return parseResponse(text, false);
+    return {
+      comps: [],
+      dataGap: true,
+      confidence: 'low',
+      sourcesSearched: [],
+      narrativeSummary: `Market research for ${input.subCutLabel} unavailable.`,
+      usedWebSearch: false,
+      error: `Anthropic API error (HTTP ${status})`,
+    };
+  } catch (err) {
+    return {
+      comps: [],
+      dataGap: true,
+      confidence: 'low',
+      sourcesSearched: [],
+      narrativeSummary: `Market research for ${input.subCutLabel} unavailable.`,
+      usedWebSearch: false,
+      error: err instanceof Error ? err.message : 'Unknown error',
+    };
+  }
+}
+
 export async function researchComps(
   input: CompResearchInput,
   apiKey: string

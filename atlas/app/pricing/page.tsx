@@ -36,6 +36,7 @@ import {
   listAllCurrentBriefs,
   type CurrentBriefForDashboard,
 } from '@/lib/repos/pricing-briefs';
+import { RefreshMarketButton } from './_components/refresh-market-button';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -69,7 +70,7 @@ export default async function PricingDashboardPage() {
     <DashboardShell activeHref="/pricing" user={dashboardUser}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <PageHeader canEdit={canEdit} />
-        <MarketPulse kpis={kpis} totalComps={totalComps} />
+        <MarketPulse kpis={kpis} totalComps={totalComps} canEdit={canEdit} />
         <PsfBySubCut rows={psfBySubCut} labelMap={subCutLabelMap} />
         <ActiveBriefs briefs={currentBriefs} />
         <RecentActivity comps={recentComps} labelMap={subCutLabelMap} />
@@ -174,7 +175,15 @@ function PageHeader({ canEdit }: { canEdit: boolean }) {
 // Market Pulse — 4 KPI tiles (last 90 days) with YoY indicators
 // ────────────────────────────────────────────────────────────────────────────
 
-function MarketPulse({ kpis, totalComps }: { kpis: MarketKpis; totalComps: number }) {
+function MarketPulse({
+  kpis,
+  totalComps,
+  canEdit,
+}: {
+  kpis: MarketKpis;
+  totalComps: number;
+  canEdit: boolean;
+}) {
   const psfDelta =
     kpis.avgPsfUsd !== null && kpis.prior.avgPsfUsd !== null && kpis.prior.avgPsfUsd > 0
       ? (kpis.avgPsfUsd - kpis.prior.avgPsfUsd) / kpis.prior.avgPsfUsd
@@ -192,10 +201,22 @@ function MarketPulse({ kpis, totalComps }: { kpis: MarketKpis; totalComps: numbe
 
   return (
     <Card>
-      <SectionHeader
-        label="Market pulse"
-        badge={`last ${kpis.windowDays} days · ${totalComps} comps in library`}
-      />
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          justifyContent: 'space-between',
+          gap: 12,
+          flexWrap: 'wrap',
+          marginBottom: 12,
+        }}
+      >
+        <SectionHeader
+          label="Market pulse"
+          badge={`last ${kpis.windowDays} days · ${totalComps} comps in library`}
+        />
+        {canEdit && <RefreshMarketButton />}
+      </div>
       <div
         style={{
           display: 'grid',
