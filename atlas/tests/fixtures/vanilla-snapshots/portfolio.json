@@ -47,7 +47,6 @@
       "excel_baseline_snapshot": "2026-05-10",
       "capitalize_interest": false,
       "financing_fees_per_project_usd": 350000,
-      "fiscal_year_mode": "juno13",
       "build_cost_curve": "linear",
       "build_cost_realization_pct": 1,
       "risk_peak_equity_threshold": 10000000,
@@ -1859,8 +1858,8 @@
         "profit_before_tax": -11551323.806249999,
         "taxable_profit": 0,
         "nol_used": 0,
-        "tax": 0,
         "nol_balance": 11551323.806249999,
+        "tax": 0,
         "profit_after_tax": -11551323.806249999
       },
       "FY27": {
@@ -1874,8 +1873,8 @@
         "profit_before_tax": -539418.2526923101,
         "taxable_profit": 0,
         "nol_used": 0,
-        "tax": 0,
         "nol_balance": 12090742.058942309,
+        "tax": 0,
         "profit_after_tax": -539418.2526923101
       },
       "FY28": {
@@ -1887,26 +1886,41 @@
         "opex": -474999.99999999994,
         "interest": -1763362.5360576925,
         "profit_before_tax": 1260861.3485576934,
-        "nol_used": 1260861.3485576934,
         "taxable_profit": 0,
-        "tax": 0,
+        "nol_used": 1260861.3485576934,
         "nol_balance": 10829880.710384615,
+        "tax": 0,
         "profit_after_tax": 1260861.3485576934
       },
       "FY29": {
-        "sales": 33876965,
+        "sales": 27101572,
         "land": 0,
         "build": -5965384.615384616,
         "kingshaus": 0,
         "soft": 0,
-        "opex": -514583.33333333326,
-        "interest": -2402697.9567307695,
-        "profit_before_tax": 24994299.094551284,
+        "opex": -474999.99999999994,
+        "interest": -2028989.5192307695,
+        "profit_before_tax": 18632197.865384616,
+        "taxable_profit": 7802317.155000001,
         "nol_used": 10829880.710384615,
-        "taxable_profit": 14164418.38416667,
-        "tax": -3611926.687962501,
         "nol_balance": 0,
-        "profit_after_tax": 21382372.40658878
+        "tax": -1989590.8745250003,
+        "profit_after_tax": 16642606.990859617
+      },
+      "FY30": {
+        "sales": 6775393,
+        "land": 0,
+        "build": 0,
+        "kingshaus": 0,
+        "soft": 0,
+        "opex": -39583.333333333336,
+        "interest": -373708.4375,
+        "profit_before_tax": 6362101.229166667,
+        "taxable_profit": 6362101.229166667,
+        "nol_used": 0,
+        "nol_balance": 0,
+        "tax": -1622335.8134375,
+        "profit_after_tax": 4739765.415729167
       }
     },
     "waterfall": [

@@ -76,13 +76,11 @@ function findPaybackIdx(drawn: readonly number[], returned: readonly number[]): 
   return -1;
 }
 
-function fyOf(ym: string, mode: 'calendar' | 'juno13'): string {
-  const { y, m } = parseYM(ym);
-  if (mode === 'juno13') {
-    // Juno's convention: FY29 = Jan-2029 → Jan-2030 (13 months). Jan-30 rolls into FY29.
-    if (m === 1 && y === 2030) return 'FY29';
-    return `FY${String(y).slice(2)}`;
-  }
+function fyOf(ym: string): string {
+  // Fiscal year is calendar-aligned: Jan-Dec → FYyy.
+  // Years self-extend — the aggregator buckets every month in the
+  // horizon and emits a row for whatever year keys appear.
+  const { y } = parseYM(ym);
   return `FY${String(y).slice(2)}`;
 }
 
@@ -264,7 +262,6 @@ export function aggregatePortfolio(
   };
 
   // ── Annual P&L roll-up with tax + NOL ────────────────────────────────
-  const fyMode = globals.fiscal_year_mode ?? 'calendar';
   const annual: Record<string, PortfolioAnnualEntry> = {};
   const emptyEntry = (): PortfolioAnnualEntry => ({
     sales: 0,
@@ -283,7 +280,7 @@ export function aggregatePortfolio(
   });
 
   for (let i = 0; i < N; i++) {
-    const fy = fyOf(timeline[i]!, fyMode);
+    const fy = fyOf(timeline[i]!);
     if (!annual[fy]) annual[fy] = emptyEntry();
     const a = annual[fy];
     a.sales += port.sales![i] ?? 0;

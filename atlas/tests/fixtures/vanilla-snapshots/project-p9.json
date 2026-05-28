@@ -72,7 +72,6 @@
       "excel_baseline_snapshot": "2026-05-10",
       "capitalize_interest": false,
       "financing_fees_per_project_usd": 350000,
-      "fiscal_year_mode": "juno13",
       "build_cost_curve": "linear",
       "build_cost_realization_pct": 1,
       "risk_peak_equity_threshold": 10000000,

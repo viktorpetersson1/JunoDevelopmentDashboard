@@ -45,7 +45,6 @@ const PatchSchema = z.object({
   financing_fees_per_project_usd: z.number().min(0).nullable().optional(),
   build_cost_curve: z.enum(['linear', 's_curve', 'front_loaded']).nullable().optional(),
   build_cost_realization_pct: z.number().min(0).max(1).nullable().optional(),
-  fiscal_year_mode: z.enum(['calendar', 'juno13']).nullable().optional(),
   include_sold_projects: z.boolean().nullable().optional(),
   /** V4.11c — markets jsonb. null = revert to baseline; [] = explicitly empty. */
   markets: z.array(MarketSchema).max(40).nullable().optional(),

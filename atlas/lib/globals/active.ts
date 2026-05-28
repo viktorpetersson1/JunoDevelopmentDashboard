@@ -88,8 +88,6 @@ function mergeOverBaseline(row: GlobalsRow): Globals {
       row.build_cost_realization_pct,
       'build_cost_realization_pct'
     ),
-    fiscal_year_mode:
-      (row.fiscal_year_mode as Globals['fiscal_year_mode']) ?? BASELINE_GLOBALS.fiscal_year_mode,
     include_sold_projects:
       row.include_sold_projects == null
         ? BASELINE_GLOBALS.include_sold_projects
@@ -120,7 +118,6 @@ function hasAnyOverride(row: GlobalsRow): boolean {
     row.financing_fees_per_project_usd != null ||
     row.build_cost_curve != null ||
     row.build_cost_realization_pct != null ||
-    row.fiscal_year_mode != null ||
     row.include_sold_projects != null ||
     row.markets != null
   );

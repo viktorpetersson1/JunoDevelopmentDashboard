@@ -33,7 +33,6 @@ export const BASELINE_GLOBALS: Globals = {
   financing_fees_per_project_usd: 350_000,
   build_cost_curve: 'linear',
   build_cost_realization_pct: 1.0,
-  fiscal_year_mode: 'juno13',
   markets: [
     {
       id: 'hamptons',

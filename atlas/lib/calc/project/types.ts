@@ -151,7 +151,6 @@ export interface Globals {
   financing_fees_per_project_usd?: number;
   build_cost_curve?: BuildCostCurve;
   build_cost_realization_pct?: number;
-  fiscal_year_mode?: 'calendar' | 'juno13';
   markets?: MarketDef[];
   include_sold_projects?: boolean;
   // ... other fields exist but aren't read by calcProject

@@ -58,7 +58,6 @@ interface FormState {
   financing_fees_per_project_usd: string;
   build_cost_curve: 'linear' | 's_curve' | 'front_loaded' | 'baseline';
   build_cost_realization_pct: string;
-  fiscal_year_mode: 'calendar' | 'juno13' | 'baseline';
   include_sold_projects: 'on' | 'off' | 'baseline';
 }
 
@@ -78,7 +77,6 @@ function formFromGlobals(g: Globals): FormState {
     financing_fees_per_project_usd: String(g.financing_fees_per_project_usd ?? 0),
     build_cost_curve: (g.build_cost_curve ?? 'linear') as FormState['build_cost_curve'],
     build_cost_realization_pct: String(g.build_cost_realization_pct ?? 1),
-    fiscal_year_mode: (g.fiscal_year_mode ?? 'juno13') as FormState['fiscal_year_mode'],
     include_sold_projects: g.include_sold_projects ? 'on' : 'off',
   };
 }
@@ -305,17 +303,6 @@ export function GeneralTab({
           </Field>
           <Field label="Horizon (months)">
             <NumberInput value={form.horizon_months} onChange={(v) => update('horizon_months', v)} step="1" disabled={!canEdit} />
-          </Field>
-          <Field label="Fiscal year mode">
-            <SelectInput
-              value={form.fiscal_year_mode}
-              onChange={(v) => update('fiscal_year_mode', v as FormState['fiscal_year_mode'])}
-              options={[
-                { value: 'juno13', label: 'Juno 13 (4-4-5)' },
-                { value: 'calendar', label: 'Calendar' },
-              ]}
-              disabled={!canEdit}
-            />
           </Field>
           <Field label="Include sold projects in roll-up">
             <SelectInput
@@ -562,7 +549,6 @@ function buildPayload(form: FormState): Record<string, unknown> {
     financing_fees_per_project_usd: num(form.financing_fees_per_project_usd),
     build_cost_curve: enumFrom(form.build_cost_curve),
     build_cost_realization_pct: num(form.build_cost_realization_pct),
-    fiscal_year_mode: enumFrom(form.fiscal_year_mode),
     include_sold_projects: boolFrom(form.include_sold_projects),
   };
 }
