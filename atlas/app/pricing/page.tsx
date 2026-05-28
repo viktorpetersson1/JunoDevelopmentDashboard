@@ -89,6 +89,15 @@ export default async function PricingLandingPage() {
             gap: 12,
           }}
         >
+            {canEdit && (
+            <ActionCard
+              title="Price a property"
+              description="Paste a Google Maps link — the model researches comps from Zillow, Out East, and Compass, then runs the full 5-stage exit pricing analysis."
+              primaryHref="/pricing/new"
+              primaryLabel="Quick price →"
+              accent
+            />
+          )}
           <ActionCard
             title="Comp library"
             description="Browse, add, and edit closed and active sales used as anchors and ceilings."
@@ -216,6 +225,7 @@ function ActionCard({
   primaryLabel,
   secondaryHref,
   secondaryLabel,
+  accent,
 }: {
   title: string;
   description: string;
@@ -223,12 +233,13 @@ function ActionCard({
   primaryLabel: string;
   secondaryHref?: string;
   secondaryLabel?: string;
+  accent?: boolean;
 }) {
   return (
     <div
       style={{
-        background: 'var(--color-surface-raised)',
-        border: '1px solid var(--color-border-hairline)',
+        background: accent ? 'var(--color-accent-base, #131313)' : 'var(--color-surface-raised)',
+        border: accent ? 'none' : '1px solid var(--color-border-hairline)',
         borderRadius: 12,
         padding: 16,
         display: 'flex',
@@ -242,7 +253,7 @@ function ActionCard({
             margin: 0,
             fontSize: 15,
             fontWeight: 600,
-            color: 'var(--color-text-primary)',
+            color: accent ? '#fff' : 'var(--color-text-primary)',
           }}
         >
           {title}
@@ -251,7 +262,7 @@ function ActionCard({
           style={{
             margin: '4px 0 0 0',
             fontSize: 12,
-            color: 'var(--color-text-secondary)',
+            color: accent ? 'rgba(255,255,255,0.7)' : 'var(--color-text-secondary)',
             lineHeight: 1.5,
           }}
         >
@@ -267,8 +278,8 @@ function ActionCard({
             padding: '8px 14px',
             fontSize: 13,
             fontWeight: 500,
-            color: '#fff',
-            background: 'var(--color-accent-base, #131313)',
+            color: accent ? '#131313' : '#fff',
+            background: accent ? '#fff' : 'var(--color-accent-base, #131313)',
             borderRadius: 8,
             textDecoration: 'none',
           }}
