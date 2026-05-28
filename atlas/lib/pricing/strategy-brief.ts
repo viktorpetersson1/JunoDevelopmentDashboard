@@ -226,6 +226,127 @@ function netAfterClosing(grossSale: number, cc: ClosingCostAssumptions): number 
 }
 
 /**
+ * Deterministic math reconciliation.
+ *
+ * LLMs reliably get qualitative reasoning right but reliably get multi-step
+ * arithmetic wrong (Claude is no exception). This pass:
+ *
+ *   - Trusts whatever exit prices and probabilities Claude chose.
+ *   - Overrides every derived number (net-after-closing, profit, margin,
+ *     probability-weighted exit and margin) with server-side math.
+ *
+ * Formula (single source of truth, matches breakeven solve above):
+ *   netAfterCC  = gross × (1 − variablePct) − fixedUsd
+ *   profit      = netAfterCC − totalDevCost
+ *   marginPct   = profit / gross
+ *
+ * This is the *only* path that should compute margins from prices anywhere
+ * in the engine.
+ */
+function reconcileMath(
+  brief: StrategyBrief,
+  totalDevCost: number,
+  cc: ClosingCostAssumptions
+): StrategyBrief {
+  const round2 = (n: number) => Math.round(n * 10_000) / 10_000;
+
+  function netCC(gross: number): number {
+    return Math.round(gross * (1 - cc.variablePct) - cc.fixedUsd);
+  }
+  function profitOf(gross: number): number {
+    return netCC(gross) - totalDevCost;
+  }
+  function marginOf(gross: number): number {
+    if (gross <= 0) return 0;
+    return round2(profitOf(gross) / gross);
+  }
+  function readFor(m: number): 'Loss' | 'Marginal' | 'Acceptable' | 'Strong' {
+    if (m < 0) return 'Loss';
+    if (m < 0.05) return 'Marginal';
+    if (m < 0.15) return 'Acceptable';
+    return 'Strong';
+  }
+
+  // Quick math — recompute net, profit, margin, read from exitUsd.
+  const correctedQuickMath = brief.quickMath.map((row) => {
+    const exit = row.exitUsd;
+    const net = netCC(exit);
+    const profit = net - totalDevCost;
+    const margin = marginOf(exit);
+    const psf =
+      row.psf > 0 ? row.psf : Math.round(exit / Math.max(row.psf || 1, 1));
+    return {
+      ...row,
+      psf,
+      netAfterClosingUsd: net,
+      profitUsd: Math.round(profit),
+      marginPct: margin,
+      read: readFor(margin),
+    };
+  });
+
+  // Reduction ladder — recompute margin per phase + walk-away floor.
+  const correctedPhases = brief.reductionLadder.phases.map((p) => ({
+    ...p,
+    marginPct: marginOf(p.priceUsd),
+  }));
+  const correctedFloor = {
+    ...brief.reductionLadder.walkAwayFloor,
+    marginPct: marginOf(brief.reductionLadder.walkAwayFloor.priceUsd),
+  };
+
+  // Outcome scenarios — recompute per-scenario margin.
+  const correctedScenarios = brief.outcomeScenarios.scenarios.map((s) => ({
+    ...s,
+    marginPct: marginOf(s.exitUsd),
+  }));
+
+  // Probability-weighted expected exit + margin (normalize if probs don't
+  // sum to exactly 100 — Claude sometimes drifts a bit).
+  const totalProb = correctedScenarios.reduce(
+    (sum, s) => sum + (s.probabilityPct || 0),
+    0
+  );
+  let probWeightedExit = 0;
+  if (totalProb > 0) {
+    probWeightedExit = Math.round(
+      correctedScenarios.reduce(
+        (sum, s) => sum + (s.probabilityPct / totalProb) * s.exitUsd,
+        0
+      )
+    );
+  }
+  const probWeightedMargin = probWeightedExit > 0 ? marginOf(probWeightedExit) : 0;
+
+  // Recommendation — margin at ask from the launch price; prob-weighted
+  // from the corrected scenarios.
+  const correctedRecommendation = {
+    ...brief.recommendation,
+    expectedMarginPct: marginOf(brief.recommendation.launchPriceUsd),
+    probWeightedMarginPct:
+      correctedScenarios.length > 0
+        ? probWeightedMargin
+        : marginOf(brief.recommendation.launchPriceUsd),
+  };
+
+  return {
+    ...brief,
+    recommendation: correctedRecommendation,
+    quickMath: correctedQuickMath,
+    reductionLadder: {
+      ...brief.reductionLadder,
+      phases: correctedPhases,
+      walkAwayFloor: correctedFloor,
+    },
+    outcomeScenarios: {
+      scenarios: correctedScenarios,
+      probWeightedExpectedMarginPct: probWeightedMargin,
+      probWeightedExpectedExitUsd: probWeightedExit,
+    },
+  };
+}
+
+/**
  * Phase-aware framing instructions inserted into the brief prompt. The same
  * project at different phases needs different IC emphasis.
  */
@@ -410,16 +531,16 @@ Produce a single JSON object. NO markdown, NO preamble, NO explanation text — 
 }
 
 CRITICAL RULES:
-- All margin percentages MUST be decimals (0.025 = 2.5%, not 2.5).
 - All prices in whole dollars (no cents).
-- Reduction ladder margins MUST be computed against the same cost basis and closing-cost model given above.
 - Outcome scenario probabilities MUST sum to 100.
-- probWeightedExpectedMarginPct = sum(p × margin) across all scenarios.
 - Use 4–6 risks. Each must have a concrete mitigation.
 - Comp evidence narrative must reference the actual addresses from the comp list above.
 - Be honest. If the deal is thin-margin or a loss, say so plainly in oneLineThesis and icFraming.
 - NEVER fabricate market data — if you don't have a specific number for an indicator, omit that indicator rather than make one up.
-- Output ONLY the JSON object. No markdown fences. No commentary.`;
+- Output ONLY the JSON object. No markdown fences. No commentary.
+
+ARITHMETIC NOTE:
+For every field where you provide an exit price (recommendation.launchPriceUsd, quickMath.exitUsd, reductionLadder.phases[].priceUsd, outcomeScenarios.scenarios[].exitUsd, walkAwayFloor.priceUsd) the server WILL OVERRIDE your marginPct / netAfterClosingUsd / profitUsd values with a deterministic computation. So put your best-guess numbers in those fields but do not stress the arithmetic — focus on getting the prices and scenarios right. Probability values are kept as-is, margins are recomputed.`;
 }
 
 interface ParsedBriefBody {
@@ -558,7 +679,7 @@ export async function generateStrategyBrief(
   }
 
   // 4. Compose final brief — merge AI output with deterministic sections.
-  const brief: StrategyBrief = {
+  const briefBeforeReconcile: StrategyBrief = {
     recommendation: parsed.recommendation,
     breakevenThresholds: breakevens,
     quickMath: parsed.quickMath ?? [],
@@ -584,6 +705,12 @@ export async function generateStrategyBrief(
     whyThisNumber: parsed.whyThisNumber ?? { headline: '', whyNotHigher: [], whyNotLower: [] },
     finalRecommendation: parsed.finalRecommendation ?? { icFraming: '', nextSteps: [] },
   };
+
+  // 5. Reconcile arithmetic. LLMs (Claude included) are unreliable on
+  //    multi-step margin math — for any number where Claude gave us an exit
+  //    price, we trust THAT and recompute net/profit/margin server-side.
+  //    Eliminates the "$7.99M at 9% margin" class of bug.
+  const brief = reconcileMath(briefBeforeReconcile, breakevens.totalDevCostUsd, closingCosts);
 
   return {
     brief,
