@@ -74,10 +74,10 @@ function buildPrompt(input: CompResearchInput, knowledgeOnly: boolean): string {
     .join('\n');
 
   const searchInstruction = knowledgeOnly
-    ? `Use your training-data knowledge of the Hamptons / East End real estate market. Mark all comps with confidence: "estimated" since this is not from live MLS data.`
-    : `Search Zillow, Realtor.com, Out East (outeast.com), Sotheby's International Realty (sothebysrealty.com), Compass (compass.com), and Douglas Elliman (elliman.com) for recent sales data.`;
+    ? `Use your knowledge of the Hamptons / East End real estate market. Mark all comps with confidence: "estimated" since this is not from live MLS data. Prefer the most recent comps you have credible knowledge of. If you have NO credible specific comps for this sub-market, return an empty comps array rather than fabricating addresses.`
+    : `Search Zillow.com, Realtor.com, Out East (outeast.com), Sotheby's International Realty (sothebysrealty.com), Compass (compass.com), Douglas Elliman (elliman.com), and Bespoke (bespokerealestate.com) for recent sales data. Only return comps with addresses you can verify via search results. Mark each comp's source_url with the actual URL you found it at.`;
 
-  return `You are a real estate comp researcher for the East End of Long Island (Hamptons, North Fork, Shelter Island), NY.
+  return `You are a real estate comp researcher for the East End of Long Island (Hamptons, North Fork, Shelter Island), NY. Your output drives an IC pricing decision — accuracy and honest sourcing matter more than coverage.
 
 SUBJECT PROPERTY:
 ${desc}
@@ -221,20 +221,27 @@ interface AnthropicResponseBody {
   error?: { type: string; message: string };
 }
 
+/**
+ * Model fallback chain — try newest first, fall back to older stable releases
+ * if Anthropic returns 404 (model deprecated). Pinning to a single concrete
+ * model id stopped working when claude-3-5-sonnet-20241022 was retired in
+ * 2026; -latest aliases + a fallback chain prevents that recurrence.
+ */
+const MODEL_FALLBACK_CHAIN = [
+  'claude-sonnet-4-5',
+  'claude-3-7-sonnet-latest',
+  'claude-3-5-sonnet-latest',
+];
+
 async function callAnthropic(
   apiKey: string,
   messages: AnthropicMessage[],
   options: {
-    model?: string;
     maxTokens?: number;
     useWebSearch?: boolean;
   } = {}
-): Promise<{ text: string; ok: boolean; status: number }> {
-  const {
-    model = 'claude-3-5-sonnet-20241022',
-    maxTokens = 4096,
-    useWebSearch = false,
-  } = options;
+): Promise<{ text: string; ok: boolean; status: number; modelUsed: string | null }> {
+  const { maxTokens = 4096, useWebSearch = false } = options;
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -245,37 +252,46 @@ async function callAnthropic(
     headers['anthropic-beta'] = 'web-search-2025-02-14';
   }
 
-  const body: Record<string, unknown> = {
-    model,
-    max_tokens: maxTokens,
-    messages,
-  };
-  if (useWebSearch) {
-    body.tools = [{ type: 'web_search_20250305', name: 'web_search' }];
-    body.tool_choice = { type: 'auto' };
+  let lastStatus = 0;
+  for (const model of MODEL_FALLBACK_CHAIN) {
+    const body: Record<string, unknown> = {
+      model,
+      max_tokens: maxTokens,
+      messages,
+    };
+    if (useWebSearch) {
+      body.tools = [{ type: 'web_search_20250305', name: 'web_search' }];
+      body.tool_choice = { type: 'auto' };
+    }
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+    });
+
+    if (resp.ok) {
+      const data = (await resp.json()) as AnthropicResponseBody;
+      const text =
+        data.content
+          ?.filter((c): c is { type: string; text: string } =>
+            c.type === 'text' && typeof c.text === 'string'
+          )
+          .map((c) => c.text)
+          .join('\n')
+          .trim() ?? '';
+      return { text, ok: true, status: resp.status, modelUsed: model };
+    }
+
+    lastStatus = resp.status;
+    // 404 = model not found → fall through to next candidate.
+    // 401/403 = auth issue → no point trying others.
+    if (resp.status === 401 || resp.status === 403) break;
+    // Any other non-ok also stops the loop (server error etc.).
+    if (resp.status !== 404) break;
   }
 
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-  });
-
-  if (!resp.ok) {
-    return { text: '', ok: false, status: resp.status };
-  }
-
-  const data = (await resp.json()) as AnthropicResponseBody;
-  const text =
-    data.content
-      ?.filter((c): c is { type: string; text: string } =>
-        c.type === 'text' && typeof c.text === 'string'
-      )
-      .map((c) => c.text)
-      .join('\n')
-      .trim() ?? '';
-
-  return { text, ok: true, status: resp.status };
+  return { text: '', ok: false, status: lastStatus, modelUsed: null };
 }
 
 // ────────────────────────────────────────────────────────────────────────────

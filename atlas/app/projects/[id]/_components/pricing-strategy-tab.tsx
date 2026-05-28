@@ -185,7 +185,12 @@ export function PricingStrategyTab({
       )}
 
       {/* The brief */}
-      <BriefRenderer brief={currentBrief.brief} meta={currentBrief} isApplied={isApplied} />
+      <BriefRenderer
+        brief={currentBrief.brief}
+        meta={currentBrief}
+        isApplied={isApplied}
+        hasError={hasError}
+      />
     </div>
   );
 }
@@ -409,24 +414,121 @@ function BriefRenderer({
   brief,
   meta,
   isApplied,
+  hasError,
 }: {
   brief: StrategyBrief;
   meta: PricingBriefView;
   isApplied: boolean;
+  hasError: boolean;
 }) {
+  // Heuristic for "did the AI actually produce a usable recommendation?"
+  // A fallback brief sets equal expected and prob-weighted margins to the
+  // same number and writes a stub thesis — we treat that as untrustworthy.
+  const hasUsableRecommendation =
+    !hasError &&
+    brief.recommendation.launchPriceUsd > 0 &&
+    !!brief.recommendation.oneLineThesis &&
+    brief.recommendation.oneLineThesis.indexOf('AI brief generation unavailable') === -1;
+
+  // Sub-sections that depend on AI output. Suppress when we don't trust it.
+  const hasMarketSentiment =
+    hasUsableRecommendation &&
+    (brief.marketSentiment.indicators.length > 0 || brief.marketSentiment.overallRead);
+  const hasReductionLadder =
+    hasUsableRecommendation && brief.reductionLadder.phases.length > 0;
+  const hasScenarios =
+    hasUsableRecommendation && brief.outcomeScenarios.scenarios.length > 0;
+  const hasRisks = hasUsableRecommendation && brief.risks.length > 0;
+  const hasWhy =
+    hasUsableRecommendation &&
+    (brief.whyThisNumber.whyNotHigher.length > 0 ||
+      brief.whyThisNumber.whyNotLower.length > 0);
+  const hasFinalRec =
+    hasUsableRecommendation && !!brief.finalRecommendation.icFraming;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <Recommendation rec={brief.recommendation} isApplied={isApplied} thesis={brief.recommendation.oneLineThesis} />
+      {hasUsableRecommendation ? (
+        <Recommendation
+          rec={brief.recommendation}
+          isApplied={isApplied}
+          thesis={brief.recommendation.oneLineThesis}
+        />
+      ) : (
+        <FailedRecommendationCard />
+      )}
+
+      {/* Breakeven thresholds are deterministic — always reliable. */}
       <BreakevenThresholds thresholds={brief.breakevenThresholds} />
-      {brief.quickMath.length > 0 && <QuickMath rows={brief.quickMath} />}
+
+      {hasUsableRecommendation && brief.quickMath.length > 0 && (
+        <QuickMath rows={brief.quickMath} />
+      )}
+
+      {/* Comp evidence is partly real (comps came from research) — show always. */}
       <CompEvidence evidence={brief.compEvidence} />
-      <MarketSentiment sentiment={brief.marketSentiment} />
-      <ReductionLadder ladder={brief.reductionLadder} />
-      <OutcomeScenarios scenarios={brief.outcomeScenarios} />
-      <RisksSection risks={brief.risks} />
-      <WhyThisNumber section={brief.whyThisNumber} />
-      <FinalRecommendation section={brief.finalRecommendation} />
+
+      {hasMarketSentiment && <MarketSentiment sentiment={brief.marketSentiment} />}
+      {hasReductionLadder && <ReductionLadder ladder={brief.reductionLadder} />}
+      {hasScenarios && <OutcomeScenarios scenarios={brief.outcomeScenarios} />}
+      {hasRisks && <RisksSection risks={brief.risks} />}
+      {hasWhy && <WhyThisNumber section={brief.whyThisNumber} />}
+      {hasFinalRec && <FinalRecommendation section={brief.finalRecommendation} />}
+
       <Footer meta={meta} />
+    </div>
+  );
+}
+
+// ── Failed-recommendation card ──────────────────────────────────────────────
+
+function FailedRecommendationCard() {
+  return (
+    <div
+      style={{
+        background: 'var(--color-warning-soft, #fefce8)',
+        border: '1px solid #fde047',
+        borderRadius: 14,
+        padding: 24,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 11,
+          fontWeight: 600,
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+          color: 'var(--color-warning, #a16207)',
+        }}
+      >
+        Recommendation unavailable
+      </div>
+      <h2
+        style={{
+          margin: '6px 0 0',
+          fontSize: 20,
+          fontWeight: 600,
+          color: 'var(--color-text-primary, #111)',
+          letterSpacing: '-0.02em',
+        }}
+      >
+        The AI recommendation engine could not complete a fresh analysis.
+      </h2>
+      <p
+        style={{
+          margin: '10px 0 0',
+          fontSize: 13,
+          color: 'var(--color-text-secondary, #6b7280)',
+          lineHeight: 1.6,
+          maxWidth: 720,
+        }}
+      >
+        Cost stack and breakeven thresholds below are still accurate — they are
+        computed deterministically from the project land + build cost
+        assumptions. Hit <strong>Refresh</strong> at the top to retry. If this
+        keeps happening, the Anthropic model may have been deprecated again —
+        flag it and the fallback chain needs a bump.
+      </p>
     </div>
   );
 }
@@ -442,66 +544,90 @@ function Recommendation({
   isApplied: boolean;
   thesis: string;
 }) {
+  // Only show probability-weighted as a separate metric if it materially
+  // differs from margin-at-ask (avoids the duplicate "+8.7% / +8.7%" look).
+  const askMargin = rec.expectedMarginPct;
+  const pwMargin = rec.probWeightedMarginPct;
+  const showPwSeparately =
+    pwMargin !== null &&
+    askMargin !== null &&
+    Math.abs(pwMargin - askMargin) >= 0.005; // ≥ 50 bps
+
   return (
     <Card accent>
       <SectionEyebrow label="Recommendation" />
       <div
         style={{
           display: 'flex',
-          alignItems: 'baseline',
-          gap: 16,
+          alignItems: 'flex-end',
+          gap: 20,
           flexWrap: 'wrap',
-          marginTop: 8,
+          justifyContent: 'space-between',
+          marginTop: 10,
         }}
       >
-        <div
-          style={{
-            fontSize: 30,
-            fontWeight: 700,
-            color: 'var(--color-text-primary, #111)',
-            letterSpacing: '-0.025em',
-            fontVariantNumeric: 'tabular-nums',
-          }}
-        >
-          {usd(rec.launchPriceUsd)}
+        <div>
+          <div
+            style={{
+              fontSize: 40,
+              fontWeight: 700,
+              color: 'var(--color-text-primary, #111)',
+              letterSpacing: '-0.03em',
+              fontVariantNumeric: 'tabular-nums',
+              lineHeight: 1.05,
+            }}
+          >
+            {usd(rec.launchPriceUsd)}
+          </div>
+          <div
+            style={{
+              marginTop: 4,
+              fontSize: 13,
+              color: 'var(--color-text-secondary, #6b7280)',
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            launch · {psfFmt(rec.psfAtLaunch)}
+          </div>
         </div>
-        <div
-          style={{
-            fontSize: 14,
-            color: 'var(--color-text-secondary, #6b7280)',
-            fontVariantNumeric: 'tabular-nums',
-          }}
-        >
-          launch · {psfFmt(rec.psfAtLaunch)}
-        </div>
-        {isApplied && <Badge color="positive">Applied to financial model</Badge>}
+        {isApplied && (
+          <Badge color="positive">Applied to financial model</Badge>
+        )}
       </div>
+
+      <p
+        style={{
+          margin: '18px 0 0',
+          fontSize: 15,
+          color: 'var(--color-text-primary, #111)',
+          lineHeight: 1.5,
+          fontWeight: 500,
+        }}
+      >
+        {thesis}
+      </p>
+
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gridTemplateColumns: showPwSeparately
+            ? 'repeat(auto-fit, minmax(180px, 1fr))'
+            : '1fr',
           gap: 14,
           marginTop: 18,
+          paddingTop: 16,
+          borderTop: '1px solid var(--color-border-hairline, #c8c8c5)',
         }}
       >
-        <Metric label="Margin at ask" value={pct(rec.expectedMarginPct)} marginColor={rec.expectedMarginPct} />
-        <Metric
-          label="Probability-weighted"
-          value={pct(rec.probWeightedMarginPct)}
-          marginColor={rec.probWeightedMarginPct}
-        />
+        <Metric label="Margin at ask" value={pct(askMargin)} marginColor={askMargin} />
+        {showPwSeparately && (
+          <Metric
+            label="Probability-weighted"
+            value={pct(pwMargin)}
+            marginColor={pwMargin}
+          />
+        )}
       </div>
-      <p
-        style={{
-          margin: '14px 0 0',
-          fontSize: 13,
-          color: 'var(--color-text-secondary, #6b7280)',
-          lineHeight: 1.5,
-          fontStyle: 'italic',
-        }}
-      >
-        “{thesis}”
-      </p>
     </Card>
   );
 }

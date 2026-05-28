@@ -225,6 +225,41 @@ function netAfterClosing(grossSale: number, cc: ClosingCostAssumptions): number 
   return Math.round(grossSale * (1 - cc.variablePct) - cc.fixedUsd);
 }
 
+/**
+ * Phase-aware framing instructions inserted into the brief prompt. The same
+ * project at different phases needs different IC emphasis.
+ */
+function framingForPhase(phase: ProjectPhase): string {
+  switch (phase) {
+    case 'prospect':
+      return [
+        'The project is still pre-acquisition. The brief should explicitly answer: "should we acquire at the proposed land price?"',
+        'Include an "acquisition price ceiling" recommendation in oneLineThesis or icFraming: the max land price at which base case clears 5% margin.',
+        'Reduction ladder is hypothetical here — frame it as "if we acquire and built, this is the launch + ladder we would commit to".',
+        'icFraming must include go / no-go recommendation.',
+      ].join(' ');
+    case 'precon':
+      return [
+        'Construction has not yet started. Brief should emphasize cost lock-in and design choices that drive the premium.',
+        'Sensitivity to build-cost overrun matters: call out at what point a $/SF overrun kills the 5% margin floor.',
+        'Reduction ladder is still 6–12 months away; treat it as planning guidance.',
+      ].join(' ');
+    case 'construction':
+      return [
+        'Build is in progress. Brief should focus on protecting the margin and preparing for listing launch.',
+        'Highlight any cost actuals vs budget if visible; if not, emphasize disciplined cost control.',
+        'Reduction ladder should anchor to expected listing date (typically 1–2 months after substantial completion).',
+      ].join(' ');
+    case 'sales':
+      return [
+        'Project is listed (or about to list). This brief is the playbook.',
+        'Reduction ladder is the most important section: Day 0 / 60 / 120 / 180 with specific dollar triggers and DOM-based criteria.',
+        'Outcome scenarios should be calibrated to actual market behavior over the next 6–12 months.',
+        'icFraming should explicitly address: what to do if the first 60 days produce no qualified showings.',
+      ].join(' ');
+  }
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // AI call — full-brief structured prompt
 // ────────────────────────────────────────────────────────────────────────────
@@ -249,34 +284,59 @@ function buildBriefPrompt(
           )
           .join('\n');
 
-  return `You are Juno's IC pricing analyst. Produce a Pricing Strategy Brief for the project below.
+  const phaseFraming = framingForPhase(facts.phase);
+
+  return `You are a senior investment committee analyst for Juno, a Hamptons / East End of Long Island residential developer. Produce an IC-grade pricing brief for the project below. Be honest, specific, and grounded in the comp evidence — IC framing is more valuable than optimism.
+
+== MARKET CONTEXT (use this as anchor knowledge for the East End market) ==
+The Hamptons and broader East End of Long Island is a high-end, seasonal, cash-dominated residential market. Key dynamics:
+- $4M–$8M is the buyer-selective mid-luxury zone; >$5M for non-WF inventory clears slowly (12–24 months DOM is common).
+- $/SF varies widely by sub-region: East Hampton Village + Sagaponack lead, Sag Harbor + Bridgehampton mid-tier, North Fork + Montauk lower band.
+- Waterfront and water-view properties trade at 30-60% premium vs inland.
+- New construction commands ~10–15% premium over comparable resales when design and brand are strong (think Kingshaus, Sean Murphy, Sandi Lefkowitz).
+- Cash buyers dominate at $4M+; mortgage rates have limited price-elasticity impact at this level.
+- The 30-yr mortgage rate is ~6.0–6.4% in 2026; cash dominance limits its impact at $4M+ price points.
+- A "stuck listing" (relisted 2+ times, sitting 18+ months) is a strong signal that the ask exceeds market clearing — do not anchor a launch price to it.
+- "Search-filter cliff" effects matter: $4.99M reaches a strictly wider buyer pool than $5.10M because of MLS / Zillow filter brackets.
 
 == PROJECT ==
 Name: ${facts.name}
 Address: ${facts.address}
-Sub-market: ${facts.subMarketLabel}
+${facts.googleMapsUrl ? `Maps: ${facts.googleMapsUrl}\n` : ''}Sub-market: ${facts.subMarketLabel}
 Above-grade SF: ${facts.villaSqftAg.toLocaleString()}
 Below-grade SF: ${facts.villaSqftBg.toLocaleString()}
-${facts.lotSizeAcres ? `Lot: ${facts.lotSizeAcres} acres\n` : ''}${facts.yearBuilt ? `Year built: ${facts.yearBuilt}\n` : ''}New construction: ${facts.isNewConstruction}
-Phase: ${facts.phase}
+${facts.lotSizeAcres ? `Lot: ${facts.lotSizeAcres} acres\n` : ''}${facts.yearBuilt ? `Year built: ${facts.yearBuilt}\n` : ''}Construction type: ${facts.isNewConstruction ? 'New construction (Juno build)' : 'Resale'}
+Current phase: ${facts.phase}
 
-== COST STACK ==
+== PHASE FRAMING ==
+${phaseFraming}
+
+== COST STACK (deterministic; use these as-is) ==
 Land cost: $${facts.landCostUsd.toLocaleString()}
 Build cost: $${facts.buildCostPerSqftUsd}/SF × ${facts.villaSqftAg.toLocaleString()} SF = $${(facts.buildCostPerSqftUsd * facts.villaSqftAg).toLocaleString()}
 Soft costs: $${facts.softCostsLumpSumUsd.toLocaleString()}
-Total dev cost: $${breakevens.totalDevCostUsd.toLocaleString()}
-Closing costs: ${(cc.variablePct * 100).toFixed(1)}% variable + $${cc.fixedUsd.toLocaleString()} fixed
+TOTAL DEV COST: $${breakevens.totalDevCostUsd.toLocaleString()}
+Closing costs at sale: ${(cc.variablePct * 100).toFixed(1)}% variable (agent + transfer tax) + $${cc.fixedUsd.toLocaleString()} fixed (attorney + proration + title/misc)
 
-== BREAKEVEN MATH (pre-computed; do not recompute) ==
+== BREAKEVEN MATH (pre-computed; do NOT recompute, use these in quickMath rows) ==
 Breakeven gross exit: $${breakevens.breakevenExitUsd.toLocaleString()} ($${breakevens.breakevenPsf}/SF)
 5% margin exit: $${breakevens.margin5ExitUsd.toLocaleString()}
 10% margin exit: $${breakevens.margin10ExitUsd.toLocaleString()}
 15% margin exit: $${breakevens.margin15ExitUsd.toLocaleString()}
 
-== COMP EVIDENCE ==
+== COMP EVIDENCE FROM RESEARCH ==
 ${compsLines('CLOSED COMPS', closedComps)}
 
 ${compsLines('ACTIVE LISTINGS (CEILING)', activeComps)}
+
+== HOW TO REASON ==
+1. Start from the comp evidence: median + range of closed $/SF is your defensible floor.
+2. Layer the project's design premium: ~10–15% above comp median for genuine NC + design pedigree.
+3. Stay below the stuck-ceiling: any listing that's been 18+ months at >breakeven is a warning sign.
+4. Respect the $5M cliff in MLS filters; if your defensible range straddles it, anchor below.
+5. Cross-check vs breakeven thresholds: launch ask must imply at least 5% margin to be defensible.
+6. Build the reduction ladder so Day 180 still sits ≥ breakeven; below that, walk away and re-launch next cycle.
+7. Weight scenarios honestly. If base case is breakeven, say so — better thin-margin truth than fantasy 15% margin.
 
 == TASK ==
 Produce a single JSON object. NO markdown, NO preamble, NO explanation text — ONLY a JSON object that exactly matches this shape:
@@ -381,40 +441,57 @@ function extractJson(text: string): string {
   return obj ? obj[0] : text;
 }
 
+/**
+ * Model fallback chain — matches comp-researcher.ts. Pinning to a specific
+ * model id breaks the moment Anthropic deprecates it; -latest aliases plus a
+ * candidate list make the engine self-healing across model upgrades.
+ */
+const MODEL_FALLBACK_CHAIN = [
+  'claude-sonnet-4-5',
+  'claude-3-7-sonnet-latest',
+  'claude-3-5-sonnet-latest',
+];
+
 async function callClaudeForBrief(
   apiKey: string,
   prompt: string
-): Promise<{ text: string; ok: boolean; status: number }> {
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 6000,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  });
+): Promise<{ text: string; ok: boolean; status: number; modelUsed: string | null }> {
+  let lastStatus = 0;
+  for (const model of MODEL_FALLBACK_CHAIN) {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 6000,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
 
-  if (!resp.ok) {
-    return { text: '', ok: false, status: resp.status };
+    if (resp.ok) {
+      const data = (await resp.json()) as {
+        content?: Array<{ type: string; text?: string }>;
+      };
+      const text =
+        data.content
+          ?.filter((c): c is { type: string; text: string } =>
+            c.type === 'text' && typeof c.text === 'string'
+          )
+          .map((c) => c.text)
+          .join('\n')
+          .trim() ?? '';
+      return { text, ok: true, status: resp.status, modelUsed: model };
+    }
+
+    lastStatus = resp.status;
+    if (resp.status === 401 || resp.status === 403) break;
+    if (resp.status !== 404) break;
   }
-
-  const data = (await resp.json()) as {
-    content?: Array<{ type: string; text?: string }>;
-  };
-  const text =
-    data.content
-      ?.filter((c): c is { type: string; text: string } =>
-        c.type === 'text' && typeof c.text === 'string'
-      )
-      .map((c) => c.text)
-      .join('\n')
-      .trim() ?? '';
-  return { text, ok: true, status: resp.status };
+  return { text: '', ok: false, status: lastStatus, modelUsed: null };
 }
 
 // ────────────────────────────────────────────────────────────────────────────
