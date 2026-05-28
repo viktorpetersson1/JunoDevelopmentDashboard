@@ -1,42 +1,27 @@
 /**
- * /pricing — Market Intelligence Dashboard (D-026).
+ * /pricing — Market Intelligence Dashboard (D-026 — unified layout).
  *
- * Replaces the prior "Exit Pricing Framework landing" (empty-state hub with
- * 3 big action cards + sub-cut taxonomy). The new surface treats `/pricing`
- * as a portfolio-wide pricing intelligence view:
+ * Layout (top to bottom):
+ *   1. Page header with action pills (Quick price · Comp library · Pick a project)
+ *   2. <MarketIntel /> — unified card: filter chips + refresh + KPIs + bar chart + recent comps
+ *   3. Active project recommendations — tile grid of every project's current brief
  *
- *   1. Compact action row (top-right)        — Quick price · Comp library · Pick a project
- *   2. Market Pulse (KPI strip, 90-day)      — avg PSF, median DOM, closed, active + YoY
- *   3. $/SF by sub-market (bar chart)        — median PSF per sub-cut, sorted desc
- *   4. Active project recommendations         — tile grid of all current pricing briefs
- *   5. Recent comp activity (last 10 closed)  — quick scan of just-closed sales
- *
- * Data sources:
- *   - atlas.comps (auto-saved from AI research + manual entries)
- *   - atlas.pricing_briefs (latest per project)
- *
- * Server Component. All sections degrade gracefully when the library is empty.
+ * The Server Component does one bulk fetch of dashboard comps (closed in
+ * window + prior-year window + active) and hands them to the Client Component
+ * which owns filter state.
  */
 
 import Link from 'next/link';
 import { DashboardShell } from '../_components/dashboard-shell';
 import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
 import { hasRole } from '@/lib/auth/requireRole';
-import {
-  getMarketKpis,
-  getPsfBySubCut,
-  getRecentClosedComps,
-  countComps,
-  type CompView,
-  type MarketKpis,
-  type SubCutPsf,
-} from '@/lib/repos/comps';
+import { countComps, getCompsForDashboard } from '@/lib/repos/comps';
 import { findMarketByKey } from '@/lib/repos/markets';
 import {
   listAllCurrentBriefs,
   type CurrentBriefForDashboard,
 } from '@/lib/repos/pricing-briefs';
-import { RefreshMarketButton } from './_components/refresh-market-button';
+import { MarketIntel } from './_components/market-intel';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -46,20 +31,12 @@ export default async function PricingDashboardPage() {
   const { profile, user } = await requireAuthOrRedirect('/pricing');
   const canEdit = hasRole(profile, ['super_admin', 'editor']);
 
-  const [market, kpis, psfBySubCut, recentComps, currentBriefs, totalComps] =
-    await Promise.all([
-      findMarketByKey('east_end_li'),
-      getMarketKpis(90),
-      getPsfBySubCut(90),
-      getRecentClosedComps(10),
-      listAllCurrentBriefs(),
-      countComps(false),
-    ]);
-
-  const subCutLabelMap = new Map<string, string>();
-  for (const sc of market?.subCuts ?? []) {
-    subCutLabelMap.set(sc.key, sc.label);
-  }
+  const [market, dashboardComps, currentBriefs, totalComps] = await Promise.all([
+    findMarketByKey('east_end_li'),
+    getCompsForDashboard(90),
+    listAllCurrentBriefs(),
+    countComps(false),
+  ]);
 
   const dashboardUser = {
     name: profile.displayName ?? profile.email ?? user.email ?? 'Juno',
@@ -70,13 +47,27 @@ export default async function PricingDashboardPage() {
     <DashboardShell activeHref="/pricing" user={dashboardUser}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <PageHeader canEdit={canEdit} />
-        <MarketPulse kpis={kpis} totalComps={totalComps} canEdit={canEdit} />
-        <PsfBySubCut rows={psfBySubCut} labelMap={subCutLabelMap} />
-        <ActiveBriefs briefs={currentBriefs} />
-        <RecentActivity comps={recentComps} labelMap={subCutLabelMap} />
+        <MarketIntel
+          canEdit={canEdit}
+          windowDays={dashboardComps.windowDays}
+          closedInWindow={dashboardComps.closedInWindow}
+          priorClosedInWindow={dashboardComps.priorClosedInWindow}
+          activeAll={dashboardComps.activeAll}
+          subCuts={market?.subCuts ?? []}
+          totalCompsInLibrary={totalComps}
+        />
+        <ActiveBriefs briefs={currentBriefs} subCutLabels={subCutLabelMap(market?.subCuts ?? [])} />
       </div>
     </DashboardShell>
   );
+}
+
+function subCutLabelMap(
+  subCuts: { key: string; label: string }[]
+): Map<string, string> {
+  const m = new Map<string, string>();
+  for (const sc of subCuts) m.set(sc.key, sc.label);
+  return m;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -172,256 +163,17 @@ function PageHeader({ canEdit }: { canEdit: boolean }) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Market Pulse — 4 KPI tiles (last 90 days) with YoY indicators
-// ────────────────────────────────────────────────────────────────────────────
-
-function MarketPulse({
-  kpis,
-  totalComps,
-  canEdit,
-}: {
-  kpis: MarketKpis;
-  totalComps: number;
-  canEdit: boolean;
-}) {
-  const psfDelta =
-    kpis.avgPsfUsd !== null && kpis.prior.avgPsfUsd !== null && kpis.prior.avgPsfUsd > 0
-      ? (kpis.avgPsfUsd - kpis.prior.avgPsfUsd) / kpis.prior.avgPsfUsd
-      : null;
-  const domDelta =
-    kpis.medianDomDays !== null &&
-    kpis.prior.medianDomDays !== null &&
-    kpis.prior.medianDomDays > 0
-      ? (kpis.medianDomDays - kpis.prior.medianDomDays) / kpis.prior.medianDomDays
-      : null;
-  const closedDelta =
-    kpis.prior.closedCount > 0
-      ? (kpis.closedCount - kpis.prior.closedCount) / kpis.prior.closedCount
-      : null;
-
-  return (
-    <Card>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'baseline',
-          justifyContent: 'space-between',
-          gap: 12,
-          flexWrap: 'wrap',
-          marginBottom: 12,
-        }}
-      >
-        <SectionHeader
-          label="Market pulse"
-          badge={`last ${kpis.windowDays} days · ${totalComps} comps in library`}
-        />
-        {canEdit && <RefreshMarketButton />}
-      </div>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-          gap: 12,
-        }}
-      >
-        <KpiTile
-          label="Avg $/SF"
-          value={kpis.avgPsfUsd !== null ? `$${kpis.avgPsfUsd.toLocaleString()}` : '—'}
-          deltaPct={psfDelta}
-          deltaTone="higher-better"
-          sub={kpis.avgPsfUsd === null ? 'no closed comps in window' : 'closed comps, weighted'}
-        />
-        <KpiTile
-          label="Median DOM"
-          value={kpis.medianDomDays !== null ? `${kpis.medianDomDays} d` : '—'}
-          deltaPct={domDelta}
-          deltaTone="lower-better"
-          sub={kpis.medianDomDays === null ? 'no DOM data yet' : 'days on market'}
-        />
-        <KpiTile
-          label="Closed sales"
-          value={kpis.closedCount.toLocaleString()}
-          deltaPct={closedDelta}
-          deltaTone="higher-better"
-          sub="in window"
-        />
-        <KpiTile
-          label="Active listings"
-          value={kpis.activeCount.toLocaleString()}
-          sub="currently on market"
-        />
-      </div>
-    </Card>
-  );
-}
-
-function KpiTile({
-  label,
-  value,
-  deltaPct,
-  deltaTone,
-  sub,
-}: {
-  label: string;
-  value: string;
-  deltaPct?: number | null;
-  deltaTone?: 'higher-better' | 'lower-better';
-  sub?: string;
-}) {
-  const hasDelta = deltaPct !== null && deltaPct !== undefined && Number.isFinite(deltaPct);
-  let deltaColor = 'var(--color-text-tertiary, #767b84)';
-  if (hasDelta && deltaTone) {
-    const positive = deltaPct! > 0;
-    const good =
-      (deltaTone === 'higher-better' && positive) ||
-      (deltaTone === 'lower-better' && !positive);
-    deltaColor = good
-      ? 'var(--color-positive, #15803d)'
-      : 'var(--color-negative, #b91c1c)';
-  }
-
-  return (
-    <div>
-      <div
-        style={{
-          fontSize: 10,
-          fontWeight: 600,
-          textTransform: 'uppercase',
-          letterSpacing: '0.06em',
-          color: 'var(--color-text-tertiary, #767b84)',
-        }}
-      >
-        {label}
-      </div>
-      <div
-        style={{
-          fontSize: 22,
-          fontWeight: 600,
-          marginTop: 4,
-          color: 'var(--color-text-primary, #111)',
-          fontVariantNumeric: 'tabular-nums',
-          lineHeight: 1.15,
-        }}
-      >
-        {value}
-      </div>
-      <div
-        style={{
-          marginTop: 4,
-          fontSize: 11,
-          color: 'var(--color-text-tertiary, #767b84)',
-          fontVariantNumeric: 'tabular-nums',
-        }}
-      >
-        {hasDelta && (
-          <span style={{ color: deltaColor, fontWeight: 600, marginRight: 6 }}>
-            {deltaPct! > 0 ? '▲' : deltaPct! < 0 ? '▼' : '·'}{' '}
-            {Math.abs(deltaPct! * 100).toFixed(1)}% YoY
-          </span>
-        )}
-        {sub && <span>{sub}</span>}
-      </div>
-    </div>
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────────────
-// $/SF by sub-market — horizontal bar chart
-// ────────────────────────────────────────────────────────────────────────────
-
-function PsfBySubCut({
-  rows,
-  labelMap,
-}: {
-  rows: SubCutPsf[];
-  labelMap: Map<string, string>;
-}) {
-  const maxPsf = Math.max(...rows.map((r) => r.medianPsfUsd ?? 0), 1);
-
-  return (
-    <Card>
-      <SectionHeader label="$/SF by sub-market" badge="median closed, last 90 d" />
-      {rows.length === 0 ? (
-        <EmptyHint copy="No closed comps in window — bar chart will populate as briefs auto-save AI-researched comps to the library." />
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {rows.map((r) => {
-            const label = labelMap.get(r.subCutKey) ?? r.subCutKey;
-            const widthPct = r.medianPsfUsd
-              ? Math.max(2, (r.medianPsfUsd / maxPsf) * 100)
-              : 0;
-            return (
-              <div
-                key={r.subCutKey}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'minmax(180px, 1fr) 3fr minmax(120px, auto)',
-                  gap: 12,
-                  alignItems: 'center',
-                  fontSize: 12,
-                }}
-              >
-                <span
-                  style={{
-                    color: 'var(--color-text-primary, #111)',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {label}
-                </span>
-                <div
-                  style={{
-                    position: 'relative',
-                    height: 18,
-                    background: 'var(--color-surface-base, #fff)',
-                    border: '1px solid var(--color-border-hairline, #c8c8c5)',
-                    borderRadius: 4,
-                    overflow: 'hidden',
-                  }}
-                >
-                  <div
-                    style={{
-                      height: '100%',
-                      width: `${widthPct}%`,
-                      background: 'var(--color-accent-base, #131313)',
-                      transition: 'width 200ms ease',
-                    }}
-                  />
-                </div>
-                <span
-                  style={{
-                    fontVariantNumeric: 'tabular-nums',
-                    color: 'var(--color-text-primary, #111)',
-                    fontWeight: 600,
-                    textAlign: 'right',
-                  }}
-                >
-                  ${r.medianPsfUsd?.toLocaleString()}{' '}
-                  <span
-                    style={{
-                      fontWeight: 400,
-                      color: 'var(--color-text-tertiary, #767b84)',
-                    }}
-                  >
-                    · {r.closedCount}
-                  </span>
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </Card>
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────────────
 // Active project recommendations — tile grid
 // ────────────────────────────────────────────────────────────────────────────
 
-function ActiveBriefs({ briefs }: { briefs: CurrentBriefForDashboard[] }) {
+function ActiveBriefs({
+  briefs,
+  subCutLabels,
+}: {
+  briefs: CurrentBriefForDashboard[];
+  subCutLabels: Map<string, string>;
+}) {
+  void subCutLabels;
   return (
     <Card>
       <SectionHeader
@@ -429,7 +181,17 @@ function ActiveBriefs({ briefs }: { briefs: CurrentBriefForDashboard[] }) {
         badge={`${briefs.length} ${briefs.length === 1 ? 'project' : 'projects'}`}
       />
       {briefs.length === 0 ? (
-        <EmptyHint copy="No project briefs yet. Open any project's Pricing tab and click Generate recommendation." />
+        <p
+          style={{
+            margin: 0,
+            fontSize: 12,
+            color: 'var(--color-text-tertiary, #767b84)',
+            lineHeight: 1.5,
+          }}
+        >
+          No project briefs yet. Open any project&apos;s Pricing tab and click Generate
+          recommendation.
+        </p>
       ) : (
         <div
           style={{
@@ -604,78 +366,7 @@ function StatusPip({
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Recent comp activity — last 10 closed comps
-// ────────────────────────────────────────────────────────────────────────────
-
-function RecentActivity({
-  comps,
-  labelMap,
-}: {
-  comps: CompView[];
-  labelMap: Map<string, string>;
-}) {
-  return (
-    <Card>
-      <SectionHeader label="Recent closed comps" badge={`last ${comps.length}`} />
-      {comps.length === 0 ? (
-        <EmptyHint copy="No closed comps in the library yet. Run a Quick Price or generate a project brief — AI-researched comps will auto-save here." />
-      ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-            <thead>
-              <tr
-                style={{
-                  borderBottom: '1px solid var(--color-border-hairline, #c8c8c5)',
-                }}
-              >
-                {['Date', 'Address', 'Sub-market', 'SF', 'Price', '$/SF'].map((h, i) => (
-                  <th key={h} style={thStyle(i >= 3 ? 'right' : 'left')}>
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {comps.map((c) => {
-                const subCutLabel = labelMap.get(c.subCutKey) ?? c.subCutKey;
-                return (
-                  <tr
-                    key={c.id}
-                    style={{
-                      borderBottom: '1px solid var(--color-border-hairline, #c8c8c5)',
-                    }}
-                  >
-                    <td style={tdStyle('left', { tertiary: true })}>
-                      {c.closingDate ?? '—'}
-                    </td>
-                    <td style={tdStyle()}>{c.address}</td>
-                    <td style={tdStyle('left', { tertiary: true })}>{subCutLabel}</td>
-                    <td style={tdStyle('right', { tabular: true })}>
-                      {c.agSqft.toLocaleString()}
-                    </td>
-                    <td style={tdStyle('right', { tabular: true })}>
-                      {c.salePriceCents !== null
-                        ? compactUsd(c.salePriceCents / 100)
-                        : '—'}
-                    </td>
-                    <td
-                      style={tdStyle('right', { tabular: true, strong: true })}
-                    >
-                      {c.psf ? `$${Math.round(c.psf).toLocaleString()}` : '—'}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </Card>
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────────────
-// Shared primitives
+// Shared primitives (only ones still used at the page level)
 // ────────────────────────────────────────────────────────────────────────────
 
 function Card({ children }: { children: React.ReactNode }) {
@@ -730,51 +421,8 @@ function SectionHeader({ label, badge }: { label: string; badge?: string }) {
   );
 }
 
-function EmptyHint({ copy }: { copy: string }) {
-  return (
-    <p
-      style={{
-        margin: 0,
-        fontSize: 12,
-        color: 'var(--color-text-tertiary, #767b84)',
-        lineHeight: 1.5,
-      }}
-    >
-      {copy}
-    </p>
-  );
-}
-
-function thStyle(align: 'left' | 'right'): React.CSSProperties {
-  return {
-    padding: '6px 10px',
-    textAlign: align,
-    fontSize: 10,
-    fontWeight: 600,
-    textTransform: 'uppercase',
-    letterSpacing: '0.06em',
-    color: 'var(--color-text-tertiary, #767b84)',
-    whiteSpace: 'nowrap',
-  };
-}
-function tdStyle(
-  align: 'left' | 'right' = 'left',
-  opts: { tabular?: boolean; strong?: boolean; tertiary?: boolean } = {}
-): React.CSSProperties {
-  return {
-    padding: '6px 10px',
-    textAlign: align,
-    color: opts.tertiary
-      ? 'var(--color-text-tertiary, #767b84)'
-      : 'var(--color-text-primary, #111)',
-    fontWeight: opts.strong ? 600 : 400,
-    fontVariantNumeric: opts.tabular ? 'tabular-nums' : undefined,
-    whiteSpace: 'nowrap',
-  };
-}
-
 // ────────────────────────────────────────────────────────────────────────────
-// Format helpers
+// Format helpers (used by BriefTile)
 // ────────────────────────────────────────────────────────────────────────────
 
 function compactUsd(n: number | null | undefined): string {

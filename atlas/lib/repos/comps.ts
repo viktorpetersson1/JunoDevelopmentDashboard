@@ -613,6 +613,73 @@ export async function getPsfBySubCut(windowDays = 90): Promise<SubCutPsf[]> {
     .sort((a, b) => (b.medianPsfUsd ?? 0) - (a.medianPsfUsd ?? 0));
 }
 
+/**
+ * D-026 (refresh): one-shot fetch for the /pricing dashboard. Returns raw
+ * comps for the current window + the same window one year prior + active
+ * listings, so a single Client Component can compute filtered KPIs / chart /
+ * feed without per-filter round-trips.
+ */
+export interface DashboardComps {
+  windowDays: number;
+  closedInWindow: CompView[];
+  priorClosedInWindow: CompView[];
+  activeAll: CompView[];
+}
+
+export async function getCompsForDashboard(
+  windowDays = 90
+): Promise<DashboardComps> {
+  const supabase = createSupabaseServerClient();
+  const start = daysAgo(windowDays);
+  const priorStart = daysAgo(windowDays + 365);
+  const priorEnd = daysAgo(365);
+
+  const closedQ = supabase
+    .schema('atlas')
+    .from('comps')
+    .select(SELECT_COLUMNS)
+    .eq('is_archived', false)
+    .eq('status', 'closed')
+    .gte('closing_date', start)
+    .order('closing_date', { ascending: false, nullsFirst: false });
+
+  const priorQ = supabase
+    .schema('atlas')
+    .from('comps')
+    .select(SELECT_COLUMNS)
+    .eq('is_archived', false)
+    .eq('status', 'closed')
+    .gte('closing_date', priorStart)
+    .lt('closing_date', priorEnd);
+
+  const activeQ = supabase
+    .schema('atlas')
+    .from('comps')
+    .select(SELECT_COLUMNS)
+    .eq('is_archived', false)
+    .in('status', ['active', 'pending']);
+
+  const [closedRes, priorRes, activeRes] = await Promise.all([
+    closedQ,
+    priorQ,
+    activeQ,
+  ]);
+
+  if (closedRes.error)
+    throw new Error(`getCompsForDashboard closed: ${closedRes.error.message}`);
+  if (priorRes.error)
+    throw new Error(`getCompsForDashboard prior: ${priorRes.error.message}`);
+  if (activeRes.error)
+    throw new Error(`getCompsForDashboard active: ${activeRes.error.message}`);
+
+  return {
+    windowDays,
+    closedInWindow: ((closedRes.data as unknown as CompRow[]) ?? []).map(toView),
+    priorClosedInWindow: ((priorRes.data as unknown as CompRow[]) ?? []).map(toView),
+    activeAll: ((activeRes.data as unknown as CompRow[]) ?? []).map(toView),
+  };
+}
+
 /** Last N closed comps across all sub-cuts (newest first). */
 export async function getRecentClosedComps(limit = 10): Promise<CompView[]> {
   const supabase = createSupabaseServerClient();
