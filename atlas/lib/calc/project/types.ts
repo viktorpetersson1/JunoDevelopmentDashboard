@@ -170,6 +170,10 @@ export interface Globals {
   tax_rate_pct?: number;
   tax_state_rate_pct?: number;
   loss_carryforward?: boolean;
+  // Closing-cost defaults (D-025a). Used by Pricing Strategy Brief to
+  // compute breakeven thresholds + margin math against gross sale.
+  closing_cost_variable_pct?: number;  // fraction of gross sale (commission + transfer tax)
+  closing_cost_fixed_usd?: number;     // attorney + tax proration + title/misc
   // ... other fields exist but aren't read by calcProject
 }
 

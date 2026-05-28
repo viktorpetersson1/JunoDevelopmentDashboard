@@ -18,7 +18,8 @@ import { SalesTab } from './_components/sales-tab';
 import { RisksTab } from './_components/risks-tab';
 import { ActivityTab } from './_components/activity-tab';
 import { InputsTab } from './_components/inputs-tab';
-import { PricingTab } from './_components/pricing-tab';
+import { PricingStrategyTab } from './_components/pricing-strategy-tab';
+import { findCurrentBrief, listBriefs } from '@/lib/repos/pricing-briefs';
 import { SnapshotBanner } from './_components/snapshot-banner';
 import { findCurrentProjectByKey, findCurrentProjectUuidByKey } from '@/lib/repos/project';
 import { findCapitalCallsByProject } from '@/lib/repos/capital-call';
@@ -30,19 +31,12 @@ import {
 import { findAuditForProject } from '@/lib/repos/audit-log';
 import { listActualsByCategory } from '@/lib/services/actuals';
 import { fetchAllProfiles, fetchCapTable } from '@/lib/repos/settings';
-import {
-  findRunBundle,
-  listRunsByProject,
-  type PricingRunBundleView,
-} from '@/lib/repos/pricing-framework';
-import { findMarketByKey } from '@/lib/repos/markets';
 import { enrichWithAppliedPricingRun } from '@/lib/services/project-with-pricing';
 import { runProject } from '@/lib/calc/project/runProject';
 import { BASELINE_GLOBALS, BASELINE_SCENARIO } from '@/lib/calc/baselines';
 import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
 import { hasRole } from '@/lib/auth/requireRole';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import type { ProjectPlotType } from '@/lib/db/schema/projects';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -175,69 +169,23 @@ export default async function ProjectDetailPage({
       tabContent = <InputsTab project={project} />;
       break;
     case 'pricing': {
+      // D-025a: replaced the bottoms-up L/B/H pricing-runs UX with a
+      // top-down Strategy Brief. Old PricingTab import + listRunsByProject
+      // are kept around in case we need to roll back; the new flow only
+      // reads from atlas.pricing_briefs.
       const pricingProjectUuid = await findCurrentProjectUuidByKey(params.id);
-      // Pull plot_types + applied_pricing_run_id straight from the row
-      // (calc-engine ProjectInput shape doesn't carry these — they're
-      // framework-specific extensions).
-      const supabase = createSupabaseServerClient();
-      let projectPlotTypes: ProjectPlotType[] | null = null;
-      let appliedRunId: string | null = null;
-      if (pricingProjectUuid) {
-        const { data: projRow } = await supabase
-          .schema('atlas')
-          .from('projects')
-          .select('plot_types, applied_pricing_run_id')
-          .eq('id', pricingProjectUuid)
-          .maybeSingle();
-        if (projRow) {
-          const row = projRow as {
-            plot_types: ProjectPlotType[] | null;
-            applied_pricing_run_id: string | null;
-          };
-          projectPlotTypes = row.plot_types;
-          appliedRunId = row.applied_pricing_run_id;
-        }
-      }
-
-      const allRuns = pricingProjectUuid
-        ? await listRunsByProject(pricingProjectUuid, { includeArchived: false })
-        : [];
-
-      const draftRun = allRuns.find((r) => r.status === 'draft') ?? null;
-      let draftBundle: PricingRunBundleView | null = null;
-      if (draftRun) draftBundle = await findRunBundle(draftRun.id);
-
-      let appliedBundle: PricingRunBundleView | null = null;
-      if (appliedRunId) appliedBundle = await findRunBundle(appliedRunId);
-
-      // D-016 commit 6: latest committed run for diff-banner. May be the
-      // applied one (banner hides), or newer (banner surfaces deltas vs
-      // applied). Sort matches listRunsByProject (newest first by created_at).
-      const latestCommittedRun = allRuns.find((r) => r.status === 'committed') ?? null;
-      let latestCommittedBundle: PricingRunBundleView | null = null;
-      if (latestCommittedRun) {
-        if (latestCommittedRun.id === appliedRunId && appliedBundle) {
-          // No diff to render, but pass the bundle anyway so the client has
-          // it for symmetry; the component itself decides to render or not.
-          latestCommittedBundle = appliedBundle;
-        } else {
-          latestCommittedBundle = await findRunBundle(latestCommittedRun.id);
-        }
-      }
-
-      const market = await findMarketByKey('east_end_li');
-      const subCuts = (market?.subCuts ?? []).map((s) => ({ key: s.key, label: s.label }));
+      const [currentBrief, briefHistory] = pricingProjectUuid
+        ? await Promise.all([
+            findCurrentBrief(pricingProjectUuid),
+            listBriefs(pricingProjectUuid),
+          ])
+        : [null, []];
 
       tabContent = (
-        <PricingTab
+        <PricingStrategyTab
           projectKey={params.id}
-          projectPlotTypes={projectPlotTypes}
-          appliedRunId={appliedRunId}
-          runs={allRuns}
-          draftBundle={draftBundle}
-          appliedBundle={appliedBundle}
-          latestCommittedBundle={latestCommittedBundle}
-          subCuts={subCuts}
+          currentBrief={currentBrief}
+          briefHistory={briefHistory}
           isEditor={hasRole(profile, ['super_admin', 'editor'])}
         />
       );

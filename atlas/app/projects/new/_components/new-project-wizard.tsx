@@ -153,7 +153,22 @@ export function NewProjectWizard() {
       const body = (await res.json()) as {
         data: { id: string; projectKey: string };
       };
-      router.push(`/projects/${body.data.projectKey}`);
+
+      // D-025a — auto-generate the Pricing Strategy Brief for the new project.
+      // Fire-and-forget with keepalive so the request survives the navigation
+      // below. The user lands on the project page; once the brief lands (~20s)
+      // they refresh (or the Pricing tab refetches on mount via Server Component).
+      // If this fails silently, the empty-state on the Pricing tab still works.
+      try {
+        void fetch(`/api/projects/${body.data.projectKey}/pricing-brief`, {
+          method: 'POST',
+          keepalive: true,
+        });
+      } catch {
+        // best-effort
+      }
+
+      router.push(`/projects/${body.data.projectKey}?tab=pricing`);
       router.refresh();
     });
   }

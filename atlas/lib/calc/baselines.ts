@@ -44,6 +44,11 @@ export const BASELINE_GLOBALS: Globals = {
   tax_rate_pct: 0.21,
   tax_state_rate_pct: 0.045,
   loss_carryforward: true,
+  // D-025a — closing-cost defaults (NY/Hamptons): 4.5% agent + 0.4% NY transfer
+  // = 4.9% variable; $10K attorney + $12K property-tax proration + $2.5K
+  // title/recording/misc = $24,500 fixed.
+  closing_cost_variable_pct: 0.049,
+  closing_cost_fixed_usd: 24_500,
   markets: [
     {
       id: 'hamptons',
