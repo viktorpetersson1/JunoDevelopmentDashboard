@@ -148,7 +148,7 @@ export function PricingStrategyTab({
   const hasError = !!currentBrief.generationError;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* Action Bar */}
       <ActionBar
         brief={currentBrief}
@@ -187,9 +187,11 @@ export function PricingStrategyTab({
       {/* The brief */}
       <BriefRenderer
         brief={currentBrief.brief}
-        meta={currentBrief}
         isApplied={isApplied}
         hasError={hasError}
+        isEditor={isEditor}
+        applying={applying}
+        onApply={() => handleApply(currentBrief.id)}
       />
     </div>
   );
@@ -301,107 +303,89 @@ function ActionBar({
   onGenerate: () => void;
   onApply: (id: string) => void;
 }) {
-  const isApplied = brief.status === 'applied';
+  // Apply button moved INTO the Recommendation hero card. This bar is just
+  // metadata + Refresh now — slim, no card border, no double row.
+  void applying;
+  void onApply;
+  void brief.status; // status badge dropped from this bar; lives in hero card instead
 
   return (
     <div
       style={{
-        background: 'var(--color-surface-raised, #fff)',
-        border: '1px solid var(--color-border-hairline, #c8c8c5)',
-        borderRadius: 14,
-        padding: '14px 18px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: 12,
         flexWrap: 'wrap',
+        padding: '0 2px 4px',
       }}
     >
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <strong style={{ fontSize: 14 }}>
-            Pricing recommendation v{brief.version}
-          </strong>
-          <StatusBadge status={brief.status} />
-          {brief.usedWebSearch ? (
-            <Badge color="positive">Live MLS data</Badge>
-          ) : (
-            <Badge color="warning">AI-estimated</Badge>
-          )}
-          {brief.dataGap && <Badge color="negative">Data gap</Badge>}
-        </div>
-        <div
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          flexWrap: 'wrap',
+          fontSize: 12,
+          color: 'var(--color-text-tertiary, #767b84)',
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        <span style={{ fontWeight: 600, color: 'var(--color-text-secondary, #6b7280)' }}>
+          v{brief.version}
+        </span>
+        <span>·</span>
+        <span>{date(brief.createdAt)}</span>
+        <span>·</span>
+        <span style={{ textTransform: 'capitalize' }}>{brief.phase}</span>
+        <span>·</span>
+        {brief.usedWebSearch ? (
+          <Badge color="positive">Live MLS</Badge>
+        ) : (
+          <Badge color="warning">AI-estimated</Badge>
+        )}
+        {brief.dataGap && <Badge color="negative">Data gap</Badge>}
+        {briefHistory.length > 1 && (
+          <>
+            <span>·</span>
+            <button
+              type="button"
+              onClick={onToggleHistory}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                color: 'var(--color-text-secondary, #6b7280)',
+                cursor: 'pointer',
+                fontSize: 12,
+                textDecoration: 'underline',
+              }}
+            >
+              {showHistory ? 'Hide' : 'Show'} history ({briefHistory.length})
+            </button>
+          </>
+        )}
+      </div>
+      {isEditor && (
+        <button
+          type="button"
+          onClick={onGenerate}
+          disabled={generating}
           style={{
             fontSize: 12,
-            color: 'var(--color-text-tertiary, #767b84)',
-            marginTop: 4,
+            fontWeight: 500,
+            padding: '6px 12px',
+            borderRadius: 8,
+            border: '1px solid var(--color-border-hairline, #c8c8c5)',
+            background: 'var(--color-surface-base, #fff)',
+            color: 'var(--color-text-primary, #111)',
+            cursor: generating ? 'wait' : 'pointer',
+            opacity: generating ? 0.6 : 1,
           }}
         >
-          Generated {date(brief.createdAt)} · Phase: {brief.phase} · {brief.compCount} comps
-          {briefHistory.length > 1 && (
-            <>
-              {' · '}
-              <button
-                type="button"
-                onClick={onToggleHistory}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  padding: 0,
-                  color: 'var(--color-text-secondary, #6b7280)',
-                  cursor: 'pointer',
-                  fontSize: 12,
-                  textDecoration: 'underline',
-                }}
-              >
-                {showHistory ? 'Hide' : 'Show'} history ({briefHistory.length})
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {isEditor && !isApplied && brief.recommendedPsfUsd && (
-          <button
-            type="button"
-            onClick={() => onApply(brief.id)}
-            disabled={applying}
-            style={{
-              fontSize: 13,
-              fontWeight: 600,
-              padding: '8px 16px',
-              borderRadius: 8,
-              border: 'none',
-              background: 'var(--color-accent-base, #131313)',
-              color: '#fff',
-              cursor: applying ? 'wait' : 'pointer',
-              opacity: applying ? 0.6 : 1,
-            }}
-          >
-            {applying ? 'Applying…' : 'Apply to project'}
-          </button>
-        )}
-        {isEditor && (
-          <button
-            type="button"
-            onClick={onGenerate}
-            disabled={generating}
-            style={{
-              fontSize: 13,
-              fontWeight: 500,
-              padding: '8px 16px',
-              borderRadius: 8,
-              border: '1px solid var(--color-border-hairline, #c8c8c5)',
-              background: 'var(--color-surface-base, #fff)',
-              color: 'var(--color-text-primary, #111)',
-              cursor: generating ? 'wait' : 'pointer',
-              opacity: generating ? 0.6 : 1,
-            }}
-          >
-            {generating ? 'Refreshing… (~20s)' : 'Refresh'}
-          </button>
-        )}
-      </div>
+          {generating ? 'Refreshing…' : 'Refresh'}
+        </button>
+      )}
     </div>
   );
 }
@@ -412,14 +396,18 @@ function ActionBar({
 
 function BriefRenderer({
   brief,
-  meta,
   isApplied,
   hasError,
+  isEditor,
+  applying,
+  onApply,
 }: {
   brief: StrategyBrief;
-  meta: PricingBriefView;
   isApplied: boolean;
   hasError: boolean;
+  isEditor: boolean;
+  applying: boolean;
+  onApply: () => void;
 }) {
   // Heuristic for "did the AI actually produce a usable recommendation?"
   // A fallback brief sets equal expected and prob-weighted margins to the
@@ -447,12 +435,15 @@ function BriefRenderer({
     hasUsableRecommendation && !!brief.finalRecommendation.icFraming;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {hasUsableRecommendation ? (
         <Recommendation
           rec={brief.recommendation}
           isApplied={isApplied}
           thesis={brief.recommendation.oneLineThesis}
+          isEditor={isEditor}
+          applying={applying}
+          onApply={onApply}
         />
       ) : (
         <FailedRecommendationCard />
@@ -474,8 +465,6 @@ function BriefRenderer({
       {hasRisks && <RisksSection risks={brief.risks} />}
       {hasWhy && <WhyThisNumber section={brief.whyThisNumber} />}
       {hasFinalRec && <FinalRecommendation section={brief.finalRecommendation} />}
-
-      <Footer meta={meta} />
     </div>
   );
 }
@@ -539,10 +528,16 @@ function Recommendation({
   rec,
   isApplied,
   thesis,
+  isEditor,
+  applying,
+  onApply,
 }: {
   rec: StrategyBrief['recommendation'];
   isApplied: boolean;
   thesis: string;
+  isEditor: boolean;
+  applying: boolean;
+  onApply: () => void;
 }) {
   // Only show probability-weighted as a separate metric if it materially
   // differs from margin-at-ask (avoids the duplicate "+8.7% / +8.7%" look).
@@ -609,23 +604,52 @@ function Recommendation({
 
       <div
         style={{
-          display: 'grid',
-          gridTemplateColumns: showPwSeparately
-            ? 'repeat(auto-fit, minmax(180px, 1fr))'
-            : '1fr',
-          gap: 14,
+          display: 'flex',
+          alignItems: 'flex-end',
+          gap: 24,
           marginTop: 18,
           paddingTop: 16,
           borderTop: '1px solid var(--color-border-hairline, #c8c8c5)',
+          flexWrap: 'wrap',
         }}
       >
-        <Metric label="Margin at ask" value={pct(askMargin)} marginColor={askMargin} />
-        {showPwSeparately && (
-          <Metric
-            label="Probability-weighted"
-            value={pct(pwMargin)}
-            marginColor={pwMargin}
-          />
+        <div
+          style={{
+            display: 'flex',
+            gap: 32,
+            flex: '1 1 auto',
+            flexWrap: 'wrap',
+          }}
+        >
+          <Metric label="Margin at ask" value={pct(askMargin)} marginColor={askMargin} />
+          {showPwSeparately && (
+            <Metric
+              label="Probability-weighted"
+              value={pct(pwMargin)}
+              marginColor={pwMargin}
+            />
+          )}
+        </div>
+        {isEditor && !isApplied && rec.psfAtLaunch > 0 && (
+          <button
+            type="button"
+            onClick={onApply}
+            disabled={applying}
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              padding: '10px 18px',
+              borderRadius: 8,
+              border: 'none',
+              background: 'var(--color-accent-base, #131313)',
+              color: '#fff',
+              cursor: applying ? 'wait' : 'pointer',
+              opacity: applying ? 0.6 : 1,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {applying ? 'Applying…' : 'Apply to project →'}
+          </button>
         )}
       </div>
     </Card>
@@ -641,25 +665,81 @@ function BreakevenThresholds({
 }) {
   return (
     <Card>
-      <SectionHeader label="Breakeven & margin thresholds" />
+      <SectionHeader label="Cost stack & breakeven" />
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-          gap: 12,
+          gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+          gap: 8,
+          fontVariantNumeric: 'tabular-nums',
         }}
       >
-        <Tile label="Total dev cost" value={usd(thresholds.totalDevCostUsd)} />
-        <Tile
-          label="Breakeven exit"
+        <InlineMetric label="Total dev cost" value={usd(thresholds.totalDevCostUsd)} />
+        <InlineMetric
+          label="Breakeven"
           value={usd(thresholds.breakevenExitUsd)}
-          hint={psfFmt(thresholds.breakevenPsf)}
+          sub={psfFmt(thresholds.breakevenPsf)}
         />
-        <Tile label="5% margin" value={usd(thresholds.margin5ExitUsd)} hint="bare minimum" />
-        <Tile label="10% margin" value={usd(thresholds.margin10ExitUsd)} hint="Juno floor" />
-        <Tile label="15% margin" value={usd(thresholds.margin15ExitUsd)} hint="stretch" />
+        <InlineMetric label="5% margin" value={usd(thresholds.margin5ExitUsd)} />
+        <InlineMetric label="10% margin" value={usd(thresholds.margin10ExitUsd)} strong />
+        <InlineMetric label="15% margin" value={usd(thresholds.margin15ExitUsd)} />
       </div>
     </Card>
+  );
+}
+
+/**
+ * Inline metric — quieter alternative to the bordered Tile. Used inside
+ * cards where multiple numbers sit side-by-side and adding borders to each
+ * would create nested-border noise.
+ */
+function InlineMetric({
+  label,
+  value,
+  sub,
+  strong,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  strong?: boolean;
+}) {
+  return (
+    <div>
+      <div
+        style={{
+          fontSize: 10,
+          fontWeight: 600,
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+          color: 'var(--color-text-tertiary, #767b84)',
+        }}
+      >
+        {label}
+      </div>
+      <div
+        style={{
+          fontSize: 15,
+          fontWeight: strong ? 600 : 500,
+          color: 'var(--color-text-primary, #111)',
+          fontVariantNumeric: 'tabular-nums',
+          marginTop: 2,
+        }}
+      >
+        {value}
+      </div>
+      {sub && (
+        <div
+          style={{
+            fontSize: 11,
+            color: 'var(--color-text-tertiary, #767b84)',
+            marginTop: 1,
+          }}
+        >
+          {sub}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -708,17 +788,25 @@ function QuickMath({ rows }: { rows: QuickMathRow[] }) {
 // ── Comp evidence ───────────────────────────────────────────────────────────
 
 function CompEvidence({ evidence }: { evidence: StrategyBrief['compEvidence'] }) {
+  // Suppress this card entirely when the engine returned nothing useful —
+  // a stub "research is temporarily unavailable" narrative + 0 comps adds
+  // visual weight with zero information.
+  const hasAnyComp = evidence.closedComps.length > 0 || evidence.activeComps.length > 0;
+  if (!hasAnyComp) return null;
+
+  const badgeBits: string[] = [];
+  if (evidence.closedComps.length > 0) badgeBits.push(`${evidence.closedComps.length} closed`);
+  if (evidence.activeComps.length > 0) badgeBits.push(`${evidence.activeComps.length} active`);
+  if (evidence.medianPsf) badgeBits.push(`median ${psfFmt(evidence.medianPsf)}`);
+
   return (
     <Card>
-      <SectionHeader
-        label="Comp evidence"
-        badge={`${evidence.closedComps.length} closed · ${evidence.activeComps.length} active`}
-      />
+      <SectionHeader label="Comp evidence" badge={badgeBits.join(' · ')} />
       {evidence.dataGap && (
         <div
           style={{
-            fontSize: 12,
-            padding: '6px 10px',
+            fontSize: 11,
+            padding: '4px 8px',
             background: 'var(--color-negative-soft, #fef2f2)',
             border: '1px solid #fca5a5',
             color: 'var(--color-negative, #b91c1c)',
@@ -727,23 +815,27 @@ function CompEvidence({ evidence }: { evidence: StrategyBrief['compEvidence'] })
             display: 'inline-block',
           }}
         >
-          ⚠ Data gap: fewer than 3 closed comps in this sub-cut
+          ⚠ Fewer than 3 closed comps in sub-cut — less reliable
         </div>
       )}
-      {evidence.medianPsf && evidence.rangePsf && (
-        <p style={{ fontSize: 12, color: 'var(--color-text-secondary, #6b7280)', margin: '0 0 12px' }}>
-          Median closed PSF:{' '}
-          <strong style={{ color: 'var(--color-text-primary, #111)' }}>{psfFmt(evidence.medianPsf)}</strong>{' '}
-          · Range: {psfFmt(evidence.rangePsf.low)} – {psfFmt(evidence.rangePsf.high)}
+      {evidence.narrativeSummary && (
+        <p
+          style={{
+            fontSize: 13,
+            color: 'var(--color-text-secondary, #6b7280)',
+            margin: '0 0 12px',
+            lineHeight: 1.6,
+          }}
+        >
+          {evidence.narrativeSummary}
         </p>
       )}
-      <p style={{ fontSize: 13, color: 'var(--color-text-secondary, #6b7280)', margin: '0 0 12px', lineHeight: 1.6 }}>
-        {evidence.narrativeSummary}
-      </p>
-      <CompTable label="Closed comps" comps={evidence.closedComps} />
+      {evidence.closedComps.length > 0 && (
+        <CompTable label="Closed" comps={evidence.closedComps} />
+      )}
       {evidence.activeComps.length > 0 && (
-        <div style={{ marginTop: 16 }}>
-          <CompTable label="Active listings (ceiling)" comps={evidence.activeComps} />
+        <div style={{ marginTop: evidence.closedComps.length > 0 ? 14 : 0 }}>
+          <CompTable label="Active (ceiling)" comps={evidence.activeComps} />
         </div>
       )}
     </Card>
@@ -760,15 +852,24 @@ function CompTable({ label, comps }: { label: string; comps: ResearchedComp[] })
   }
   return (
     <div>
-      <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-text-tertiary, #767b84)', marginBottom: 6 }}>
+      <div
+        style={{
+          fontSize: 10,
+          fontWeight: 600,
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+          color: 'var(--color-text-tertiary, #767b84)',
+          marginBottom: 4,
+        }}
+      >
         {label}
       </div>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--color-border-hairline, #c8c8c5)' }}>
-              {['Address', 'Sold / Listed', 'SF', 'Price', '$/SF', 'Source'].map((h, i) => (
-                <th key={h} style={thStyle(i >= 2 && i <= 4 ? 'right' : 'left')}>
+              {['Address', 'Date', 'SF', 'Price', '$/SF'].map((h, i) => (
+                <th key={h} style={thStyle(i >= 2 ? 'right' : 'left')}>
                   {h}
                 </th>
               ))}
@@ -777,28 +878,47 @@ function CompTable({ label, comps }: { label: string; comps: ResearchedComp[] })
           <tbody>
             {comps.map((c, i) => (
               <tr key={i} style={{ borderBottom: '1px solid var(--color-border-hairline, #c8c8c5)' }}>
-                <td style={tdStyle()}>
+                <td style={{ ...tdStyle(), paddingTop: 6, paddingBottom: 6 }}>
                   {c.sourceUrl ? (
                     <a
                       href={c.sourceUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       style={{ color: 'var(--color-text-primary, #111)', textDecoration: 'none' }}
+                      title={`Source: ${c.sourceName}`}
                     >
                       {c.address}
                     </a>
                   ) : (
-                    c.address
+                    <span title={`Source: ${c.sourceName}`}>{c.address}</span>
                   )}
                 </td>
-                <td style={tdStyle()}>{c.closingDate ?? 'active'}</td>
-                <td style={tdStyle('right', true)}>{c.agSqft.toLocaleString()}</td>
-                <td style={tdStyle('right', true)}>{usd(c.salePriceUsd)}</td>
-                <td style={{ ...tdStyle('right', true), fontWeight: 600 }}>{psfFmt(c.psf)}</td>
-                <td style={tdStyle()}>
-                  <span style={{ fontSize: 11, color: 'var(--color-text-tertiary, #767b84)' }}>
-                    {c.sourceName}
-                  </span>
+                <td
+                  style={{
+                    ...tdStyle(),
+                    paddingTop: 6,
+                    paddingBottom: 6,
+                    color: 'var(--color-text-tertiary, #767b84)',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {c.closingDate ?? 'active'}
+                </td>
+                <td style={{ ...tdStyle('right', true), paddingTop: 6, paddingBottom: 6 }}>
+                  {c.agSqft.toLocaleString()}
+                </td>
+                <td style={{ ...tdStyle('right', true), paddingTop: 6, paddingBottom: 6 }}>
+                  {usd(c.salePriceUsd, { compact: true })}
+                </td>
+                <td
+                  style={{
+                    ...tdStyle('right', true),
+                    paddingTop: 6,
+                    paddingBottom: 6,
+                    fontWeight: 600,
+                  }}
+                >
+                  {psfFmt(c.psf)}
                 </td>
               </tr>
             ))}
@@ -1167,24 +1287,6 @@ function BriefHistory({ briefs, currentId }: { briefs: PricingBriefView[]; curre
   );
 }
 
-// ── Footer ──────────────────────────────────────────────────────────────────
-
-function Footer({ meta }: { meta: PricingBriefView }) {
-  return (
-    <div
-      style={{
-        fontSize: 11,
-        color: 'var(--color-text-tertiary, #767b84)',
-        textAlign: 'center',
-        padding: '12px 0 8px',
-      }}
-    >
-      Generated by Juno Atlas Pricing Engine · {date(meta.createdAt)}
-      {meta.appliedAt && ` · Applied ${date(meta.appliedAt)}`}
-    </div>
-  );
-}
-
 // ────────────────────────────────────────────────────────────────────────────
 // Reusable primitives
 // ────────────────────────────────────────────────────────────────────────────
@@ -1201,10 +1303,10 @@ function Card({
       style={{
         background: 'var(--color-surface-raised, #fff)',
         border: accent
-          ? '2px solid var(--color-accent-base, #131313)'
+          ? '1.5px solid var(--color-accent-base, #131313)'
           : '1px solid var(--color-border-hairline, #c8c8c5)',
-        borderRadius: 14,
-        padding: 20,
+        borderRadius: 12,
+        padding: accent ? 20 : 16,
       }}
     >
       {children}
@@ -1214,22 +1316,32 @@ function Card({
 
 function SectionHeader({ label, badge }: { label: string; badge?: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-      <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary, #111)' }}>
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'baseline',
+        gap: 10,
+        marginBottom: 12,
+        flexWrap: 'wrap',
+      }}
+    >
+      <h2
+        style={{
+          margin: 0,
+          fontSize: 13,
+          fontWeight: 600,
+          color: 'var(--color-text-primary, #111)',
+        }}
+      >
         {label}
       </h2>
       {badge && (
         <span
           style={{
             fontSize: 11,
-            fontWeight: 600,
-            padding: '2px 7px',
-            borderRadius: 999,
-            background: 'var(--color-surface-base, #fff)',
-            border: '1px solid var(--color-border-hairline, #c8c8c5)',
+            fontWeight: 500,
             color: 'var(--color-text-tertiary, #767b84)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
+            fontVariantNumeric: 'tabular-nums',
           }}
         >
           {badge}
@@ -1251,31 +1363,6 @@ function SectionEyebrow({ label }: { label: string }) {
       }}
     >
       {label}
-    </div>
-  );
-}
-
-function Tile({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div
-      style={{
-        background: 'var(--color-surface-base, #fff)',
-        border: '1px solid var(--color-border-hairline, #c8c8c5)',
-        borderRadius: 8,
-        padding: 14,
-      }}
-    >
-      <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-text-tertiary, #767b84)' }}>
-        {label}
-      </div>
-      <div style={{ fontSize: 17, fontWeight: 600, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
-        {value}
-      </div>
-      {hint && (
-        <div style={{ fontSize: 11, color: 'var(--color-text-tertiary, #767b84)', marginTop: 2 }}>
-          {hint}
-        </div>
-      )}
     </div>
   );
 }
