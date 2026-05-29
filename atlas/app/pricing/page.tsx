@@ -33,7 +33,11 @@ export default async function PricingDashboardPage() {
 
   const [market, dashboardComps, currentBriefs, totalComps] = await Promise.all([
     findMarketByKey('east_end_li'),
-    getCompsForDashboard(90),
+    // 18-month window: AI training-data cutoff often means returned comps
+    // are 12-24 months old, and dropping them would empty the dashboard.
+    // The data range under the section header tells the user what's actually
+    // in the sample.
+    getCompsForDashboard(540),
     listAllCurrentBriefs(),
     countComps(false),
   ]);

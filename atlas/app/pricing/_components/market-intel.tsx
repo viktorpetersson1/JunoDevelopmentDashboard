@@ -15,6 +15,7 @@ import { useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { CompView } from '@/lib/repos/comps';
 import type { MarketSubCut } from '@/lib/db/schema/markets';
+import { JunoThinking } from '@/components/brand/JunoThinking';
 
 interface MarketIntelProps {
   canEdit: boolean;
@@ -81,6 +82,25 @@ function prettyLabel(key: string): string {
     .join(' ');
 }
 
+/**
+ * Honest data-range label. Shows the actual span of the closed-comp sample
+ * instead of "last N days", which is misleading when AI-returned comps are
+ * 12-24 months old (training data is rarely fresher than ~12 months back).
+ */
+function formatDataRange(oldest: string | null, newest: string | null): string {
+  if (!oldest || !newest) return 'No closed comps yet';
+  const fmt = (d: string) => {
+    const date = new Date(d + 'T00:00:00Z');
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'UTC',
+    });
+  };
+  if (oldest === newest) return `Comps from ${fmt(oldest)}`;
+  return `Comps from ${fmt(oldest)} – ${fmt(newest)}`;
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // Component
 // ────────────────────────────────────────────────────────────────────────────
@@ -89,13 +109,17 @@ const ALL_SUBCUTS = '__all__';
 
 export function MarketIntel({
   canEdit,
-  windowDays,
+  windowDays: _windowDays,
   closedInWindow,
   priorClosedInWindow,
   activeAll,
   subCuts,
   totalCompsInLibrary,
 }: MarketIntelProps) {
+  // Window is intentionally NOT displayed — the actual data-range label
+  // (formatDataRange) is honest; "last N days" can be misleading when AI
+  // returns older comps. Keep the prop in the API for future re-use.
+  void _windowDays;
   const router = useRouter();
   const [filter, setFilter] = useState<string>(ALL_SUBCUTS);
 
@@ -242,6 +266,17 @@ export function MarketIntel({
   const filterLabel =
     filter === ALL_SUBCUTS ? 'all sub-markets' : labelMap.get(filter) ?? filter;
 
+  // What's the actual date range of comps in the current filter? Communicates
+  // freshness honestly — a "last 18 months" window is useless if every comp
+  // is from 18 months ago.
+  const closingDates = closedFiltered
+    .map((c) => c.closingDate)
+    .filter((d): d is string => !!d)
+    .sort();
+  const oldestClosing = closingDates[0] ?? null;
+  const newestClosing = closingDates[closingDates.length - 1] ?? null;
+  const dataRangeLabel = formatDataRange(oldestClosing, newestClosing);
+
   return (
     <section style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       {/* Header row */}
@@ -274,7 +309,7 @@ export function MarketIntel({
               fontVariantNumeric: 'tabular-nums',
             }}
           >
-            last {windowDays} days · {totalCompsInLibrary} comps in library · viewing {filterLabel}
+            {dataRangeLabel} · {totalCompsInLibrary} comps in library · viewing {filterLabel}
           </p>
         </div>
 
@@ -320,10 +355,14 @@ export function MarketIntel({
                 type="button"
                 onClick={() => doRefresh()}
                 disabled={refreshing}
+                className={refreshing ? 'juno-pricing-pulse' : ''}
                 style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
                   fontSize: 12,
                   fontWeight: 500,
-                  padding: '6px 12px',
+                  padding: refreshing ? '4px 10px 4px 6px' : '6px 12px',
                   borderRadius: 8,
                   border: '1px solid var(--color-border-hairline, #c8c8c5)',
                   background: refreshing
@@ -333,7 +372,14 @@ export function MarketIntel({
                   cursor: refreshing ? 'wait' : 'pointer',
                 }}
               >
-                {refreshing ? 'Researching… (~30s)' : 'Refresh data'}
+                {refreshing ? (
+                  <>
+                    <JunoThinking size={18} />
+                    <span>Researching market… (~30s)</span>
+                  </>
+                ) : (
+                  'Refresh data'
+                )}
               </button>
               <button
                 type="button"

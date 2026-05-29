@@ -86,3 +86,28 @@
   color: var(--color-text-primary);
   position: relative;
 }
+
+/* Pricing dashboard refresh button pulse — paired with <JunoThinking /> when
+ * the long-running market-research action is in flight. Subtle background
+ * shimmer + border breath so the button reads as "alive, working." */
+.juno-pricing-pulse {
+  animation: juno-pricing-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes juno-pricing-pulse {
+  0%,
+  100% {
+    border-color: var(--color-border-hairline, #c8c8c5);
+    box-shadow: 0 0 0 0 rgba(19, 19, 19, 0);
+  }
+  50% {
+    border-color: var(--color-text-secondary, #6b7280);
+    box-shadow: 0 0 0 3px rgba(19, 19, 19, 0.06);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .juno-pricing-pulse {
+    animation: juno-mark-pulse 2.4s ease-in-out infinite;
+  }
+}
