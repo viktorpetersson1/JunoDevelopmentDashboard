@@ -17,6 +17,7 @@
  * silently skipped via atlas.comps partial unique indexes.
  */
 
+import { z } from 'zod';
 import type { NextRequest } from 'next/server';
 import { ok, badRequest } from '@/lib/api/response';
 import { withErrorBoundary } from '@/lib/api/handler';
@@ -41,7 +42,14 @@ export const runtime = 'edge';
 // requests, switch to a Supabase Edge Function or split into per-sub-cut
 // calls fired from the client in sequence.
 
-export const POST = withErrorBoundary(async (_req: NextRequest) => {
+const BodySchema = z
+  .object({
+    /** Optional — research a single custom sub-market (e.g., "Aspen, CO") instead of all known ones. */
+    customSubCutLabel: z.string().min(2).max(200).optional(),
+  })
+  .partial();
+
+export const POST = withErrorBoundary(async (req: NextRequest) => {
   const { user, profile } = await requireAuth();
   requireEditor(profile);
 
@@ -53,34 +61,51 @@ export const POST = withErrorBoundary(async (_req: NextRequest) => {
     );
   }
 
-  const market = await findMarketByKey('east_end_li');
-  if (!market || market.subCuts.length === 0) {
-    return badRequest(
-      'East End market is not configured — seed atlas.markets first.',
-      'MARKET_NOT_FOUND'
-    );
+  // Body is optional. If customSubCutLabel is set, research only that one
+  // sub-market and store it under a slugified sub_cut_key.
+  const raw = await req.json().catch(() => ({}));
+  const parsed = BodySchema.safeParse(raw);
+  const customLabel = parsed.success ? parsed.data.customSubCutLabel : undefined;
+
+  // Build the work list. Custom path = one entry; default = the East End taxonomy.
+  type WorkItem = { subCutKey: string; subCutLabel: string };
+  let workList: WorkItem[];
+  if (customLabel) {
+    workList = [{ subCutKey: slugifyForSubCut(customLabel), subCutLabel: customLabel }];
+  } else {
+    const market = await findMarketByKey('east_end_li');
+    if (!market || market.subCuts.length === 0) {
+      return badRequest(
+        'East End market is not configured — seed atlas.markets first.',
+        'MARKET_NOT_FOUND'
+      );
+    }
+    workList = market.subCuts.map((sc) => ({ subCutKey: sc.key, subCutLabel: sc.label }));
   }
 
   // Fan out — one Claude call per sub-cut, all in parallel.
   const results = await Promise.allSettled(
-    market.subCuts.map(async (sc) => {
+    workList.map(async (item) => {
       const output = await researchMarketActivity(
-        { subCutLabel: sc.label, windowMonths: 12, maxClosed: 8, maxActive: 4 },
+        { subCutLabel: item.subCutLabel, windowMonths: 12, maxClosed: 8, maxActive: 4 },
         apiKey
       );
-      return { subCutKey: sc.key, subCutLabel: sc.label, output };
+      return { subCutKey: item.subCutKey, subCutLabel: item.subCutLabel, output };
     })
   );
 
   // Bulk-save all returned comps. We don't await each save in turn — collect
   // everything then a single round-trip-per-sub-cut.
   let totalInserted = 0;
-  let totalSkipped = 0;
+  let totalSkippedDupes = 0;
+  let totalFailed = 0;
+  let firstError: string | null = null;
   const perSubCut: Array<{
     subCutKey: string;
     found: number;
     inserted: number;
-    skipped: number;
+    skippedDupes: number;
+    failed: number;
     usedWebSearch: boolean;
     narrative: string;
     error?: string;
@@ -92,7 +117,8 @@ export const POST = withErrorBoundary(async (_req: NextRequest) => {
         subCutKey: 'unknown',
         found: 0,
         inserted: 0,
-        skipped: 0,
+        skippedDupes: 0,
+        failed: 0,
         usedWebSearch: false,
         narrative: 'Sub-cut research failed.',
         error: r.reason instanceof Error ? r.reason.message : String(r.reason),
@@ -106,32 +132,40 @@ export const POST = withErrorBoundary(async (_req: NextRequest) => {
         subCutKey,
         found: 0,
         inserted: 0,
-        skipped: 0,
+        skippedDupes: 0,
+        failed: 0,
         usedWebSearch: output.usedWebSearch,
         narrative: output.narrativeSummary,
         ...(output.error ? { error: output.error } : {}),
       });
       continue;
     }
-    const { inserted, skipped } = await bulkUpsertCompsIgnoreDupes(inputs);
+    const { inserted, skippedDupes, failed, firstError: subFirstErr } =
+      await bulkUpsertCompsIgnoreDupes(inputs);
     totalInserted += inserted;
-    totalSkipped += skipped;
+    totalSkippedDupes += skippedDupes;
+    totalFailed += failed;
+    if (firstError === null && subFirstErr) firstError = subFirstErr;
     perSubCut.push({
       subCutKey,
       found: output.comps.length,
       inserted,
-      skipped,
+      skippedDupes,
+      failed,
       usedWebSearch: output.usedWebSearch,
       narrative: output.narrativeSummary,
       ...(output.error ? { error: output.error } : {}),
+      ...(subFirstErr ? { error: subFirstErr } : {}),
     });
   }
 
   return ok({
-    subCutsResearched: market.subCuts.length,
+    subCutsResearched: workList.length,
     totalCompsFound: perSubCut.reduce((sum, p) => sum + p.found, 0),
     totalInserted,
-    totalSkipped,
+    totalSkippedDupes,
+    totalFailed,
+    firstError,
     perSubCut,
     requestedBy: user.id,
   });
@@ -140,6 +174,21 @@ export const POST = withErrorBoundary(async (_req: NextRequest) => {
 // ────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Convert a free-form market label ("Aspen, CO") into a stable sub_cut_key
+ * slug ("aspen_co"). Used when the user researches an ad-hoc sub-market
+ * outside the predefined East End taxonomy.
+ */
+function slugifyForSubCut(label: string): string {
+  return label
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '') // strip diacritics
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 80) || 'custom';
+}
 
 function mapResearchedToCompInputs(
   output: CompResearchOutput,

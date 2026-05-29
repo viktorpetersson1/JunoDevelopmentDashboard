@@ -443,24 +443,31 @@ export async function countComps(includeArchived = false): Promise<number> {
  */
 export async function bulkUpsertCompsIgnoreDupes(
   inputs: NewCompInput[]
-): Promise<{ inserted: number; skipped: number }> {
-  if (inputs.length === 0) return { inserted: 0, skipped: 0 };
+): Promise<{ inserted: number; skippedDupes: number; failed: number; firstError: string | null }> {
+  if (inputs.length === 0) {
+    return { inserted: 0, skippedDupes: 0, failed: 0, firstError: null };
+  }
   let inserted = 0;
-  let skipped = 0;
+  let skippedDupes = 0;
+  let failed = 0;
+  let firstError: string | null = null;
   for (const input of inputs) {
     try {
       validateNewComp(input);
       await createComp(input);
       inserted++;
     } catch (e) {
-      // Unique-violation = duplicate. Anything else we suppress here too — the
-      // dashboard would rather be a few rows lighter than fail end-to-end on
-      // a malformed AI comp.
-      if (e instanceof CompDuplicateError) skipped++;
-      else skipped++;
+      if (e instanceof CompDuplicateError) {
+        skippedDupes++;
+      } else {
+        failed++;
+        if (firstError === null) {
+          firstError = e instanceof Error ? e.message : String(e);
+        }
+      }
     }
   }
-  return { inserted, skipped };
+  return { inserted, skippedDupes, failed, firstError };
 }
 
 // ────────────────────────────────────────────────────────────────────────────

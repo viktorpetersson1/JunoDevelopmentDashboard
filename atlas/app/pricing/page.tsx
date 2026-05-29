@@ -45,8 +45,10 @@ export default async function PricingDashboardPage() {
 
   return (
     <DashboardShell activeHref="/pricing" user={dashboardUser}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
         <PageHeader canEdit={canEdit} />
+        <ActiveBriefs briefs={currentBriefs} />
+        <Divider />
         <MarketIntel
           canEdit={canEdit}
           windowDays={dashboardComps.windowDays}
@@ -56,18 +58,9 @@ export default async function PricingDashboardPage() {
           subCuts={market?.subCuts ?? []}
           totalCompsInLibrary={totalComps}
         />
-        <ActiveBriefs briefs={currentBriefs} subCutLabels={subCutLabelMap(market?.subCuts ?? [])} />
       </div>
     </DashboardShell>
   );
-}
-
-function subCutLabelMap(
-  subCuts: { key: string; label: string }[]
-): Map<string, string> {
-  const m = new Map<string, string>();
-  for (const sc of subCuts) m.set(sc.key, sc.label);
-  return m;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -166,20 +159,38 @@ function PageHeader({ canEdit }: { canEdit: boolean }) {
 // Active project recommendations — tile grid
 // ────────────────────────────────────────────────────────────────────────────
 
-function ActiveBriefs({
-  briefs,
-  subCutLabels,
-}: {
-  briefs: CurrentBriefForDashboard[];
-  subCutLabels: Map<string, string>;
-}) {
-  void subCutLabels;
+function ActiveBriefs({ briefs }: { briefs: CurrentBriefForDashboard[] }) {
   return (
-    <Card>
-      <SectionHeader
-        label="Active project recommendations"
-        badge={`${briefs.length} ${briefs.length === 1 ? 'project' : 'projects'}`}
-      />
+    <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          gap: 10,
+          flexWrap: 'wrap',
+        }}
+      >
+        <h2
+          style={{
+            margin: 0,
+            fontSize: 17,
+            fontWeight: 600,
+            color: 'var(--color-text-primary, #111)',
+            letterSpacing: '-0.015em',
+          }}
+        >
+          Active project recommendations
+        </h2>
+        <span
+          style={{
+            fontSize: 12,
+            color: 'var(--color-text-tertiary, #767b84)',
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          {briefs.length} {briefs.length === 1 ? 'project' : 'projects'}
+        </span>
+      </div>
       {briefs.length === 0 ? (
         <p
           style={{
@@ -205,7 +216,16 @@ function ActiveBriefs({
           ))}
         </div>
       )}
-    </Card>
+    </section>
+  );
+}
+
+function Divider() {
+  return (
+    <div
+      aria-hidden
+      style={{ height: 1, background: 'var(--color-border-hairline, #c8c8c5)' }}
+    />
   );
 }
 
@@ -361,62 +381,6 @@ function StatusPip({
         aria-hidden
       />
       {label}
-    </div>
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────────────
-// Shared primitives (only ones still used at the page level)
-// ────────────────────────────────────────────────────────────────────────────
-
-function Card({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      style={{
-        background: 'var(--color-surface-raised, #fff)',
-        border: '1px solid var(--color-border-hairline, #c8c8c5)',
-        borderRadius: 12,
-        padding: 16,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-function SectionHeader({ label, badge }: { label: string; badge?: string }) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'baseline',
-        gap: 10,
-        marginBottom: 12,
-        flexWrap: 'wrap',
-      }}
-    >
-      <h2
-        style={{
-          margin: 0,
-          fontSize: 13,
-          fontWeight: 600,
-          color: 'var(--color-text-primary, #111)',
-        }}
-      >
-        {label}
-      </h2>
-      {badge && (
-        <span
-          style={{
-            fontSize: 11,
-            fontWeight: 500,
-            color: 'var(--color-text-tertiary, #767b84)',
-            fontVariantNumeric: 'tabular-nums',
-          }}
-        >
-          {badge}
-        </span>
-      )}
     </div>
   );
 }
