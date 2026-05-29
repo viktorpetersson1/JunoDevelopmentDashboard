@@ -63,6 +63,22 @@ function pctDelta(curr: number | null, prior: number | null): number | null {
   if (curr === null || prior === null || prior === 0) return null;
   return (curr - prior) / prior;
 }
+/**
+ * Only show a YoY indicator when BOTH periods have enough data for the
+ * comparison to be meaningful. Avoids the "▼ 100.0% YoY" alarmism when the
+ * current period happens to have zero comps because of an AI-data-recency
+ * gap that has nothing to do with the actual market.
+ */
+function meaningfulYoY(
+  delta: number | null,
+  currCount: number,
+  priorCount: number,
+  minCount = 3
+): number | null {
+  if (delta === null) return null;
+  if (currCount < minCount || priorCount < minCount) return null;
+  return delta;
+}
 function formatUsd(n: number | null | undefined, compact = false): string {
   if (n == null) return '—';
   if (compact && Math.abs(n) >= 1_000_000) {
@@ -233,9 +249,22 @@ export function MarketIntel({
     [closedFiltered, activeFiltered]
   );
   const prior = useMemo(() => computeKpis(priorFiltered, []), [priorFiltered]);
-  const deltaPsf = pctDelta(current.avgPsf, prior.avgPsf);
-  const deltaDom = pctDelta(current.medianDom, prior.medianDom);
-  const deltaClosed = pctDelta(current.closedCount, prior.closedCount);
+  // Suppress YoY chips when either period is too thin — meaningless and alarmist.
+  const deltaPsf = meaningfulYoY(
+    pctDelta(current.avgPsf, prior.avgPsf),
+    current.closedCount,
+    prior.closedCount
+  );
+  const deltaDom = meaningfulYoY(
+    pctDelta(current.medianDom, prior.medianDom),
+    current.closedCount,
+    prior.closedCount
+  );
+  const deltaClosed = meaningfulYoY(
+    pctDelta(current.closedCount, prior.closedCount),
+    current.closedCount,
+    prior.closedCount
+  );
 
   // Bar chart data — always portfolio-wide
   const psfBySubCut = useMemo(() => {

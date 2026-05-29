@@ -33,11 +33,14 @@ export default async function PricingDashboardPage() {
 
   const [market, dashboardComps, currentBriefs, totalComps] = await Promise.all([
     findMarketByKey('east_end_li'),
-    // 18-month window: AI training-data cutoff often means returned comps
-    // are 12-24 months old, and dropping them would empty the dashboard.
-    // The data range under the section header tells the user what's actually
-    // in the sample.
-    getCompsForDashboard(540),
+    // 5-year window. The system date can run well ahead of Claude's training
+    // cutoff (1-2 years of gap is common), so AI-returned comps tend to be
+    // 12-24 months old. A 5-year window is wide enough to capture everything
+    // Claude can produce today while still bounding the sample so YoY math
+    // (current N years vs prior N years) remains meaningful. The honest
+    // "Comps from MMM YYYY – MMM YYYY" label under the section header tells
+    // the user exactly what they are looking at.
+    getCompsForDashboard(1825),
     listAllCurrentBriefs(),
     countComps(false),
   ]);
