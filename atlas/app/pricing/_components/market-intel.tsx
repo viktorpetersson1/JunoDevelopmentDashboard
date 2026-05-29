@@ -29,6 +29,10 @@ interface MarketIntelProps {
 
 interface KpiBucket {
   avgPsf: number | null;
+  /** Min closed $/SF in the bucket — paired with avgPsf for the range hint. */
+  lowPsf: number | null;
+  /** Max closed $/SF in the bucket — paired with avgPsf for the range hint. */
+  highPsf: number | null;
   medianDom: number | null;
   closedCount: number;
   activeCount: number;
@@ -54,6 +58,8 @@ function computeKpis(closed: CompView[], active: CompView[]): KpiBucket {
   const doms = closed.map((c) => c.domDays).filter((n): n is number => n != null && n >= 0);
   return {
     avgPsf: psfs.length > 0 ? Math.round(avg(psfs) ?? 0) : null,
+    lowPsf: psfs.length > 0 ? Math.round(Math.min(...psfs)) : null,
+    highPsf: psfs.length > 0 ? Math.round(Math.max(...psfs)) : null,
     medianDom: doms.length > 0 ? Math.round(median(doms) ?? 0) : null,
     closedCount: closed.length,
     activeCount: active.length,
@@ -516,7 +522,13 @@ export function MarketIntel({
           value={current.avgPsf !== null ? `$${current.avgPsf.toLocaleString()}` : '—'}
           delta={deltaPsf}
           tone="higher-better"
-          sub={current.avgPsf === null ? 'no closed comps' : 'closed in window'}
+          sub={
+            current.avgPsf === null
+              ? 'no closed comps'
+              : current.lowPsf !== null && current.highPsf !== null && current.lowPsf !== current.highPsf
+                ? `range $${current.lowPsf.toLocaleString()} – $${current.highPsf.toLocaleString()}`
+                : 'closed in window'
+          }
         />
         <KpiTile
           label="Median DOM"
