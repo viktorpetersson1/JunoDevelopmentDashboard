@@ -94,18 +94,14 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
     })
   );
 
-  // Bulk-save all returned comps. We don't await each save in turn — collect
-  // everything then a single round-trip-per-sub-cut.
-  let totalInserted = 0;
-  let totalSkippedDupes = 0;
-  let totalFailed = 0;
-  let firstError: string | null = null;
+  // Collect ALL comps from ALL sub-cuts into one buffer, then a single
+  // batch insert. Per-sub-cut DB calls used to hit Cloudflare Workers'
+  // 50-subrequest-per-invocation cap with ~9 AI + ~91 inserts. This
+  // collapses 91 round-trips into 1.
+  const allInputs: NewCompInput[] = [];
   const perSubCut: Array<{
     subCutKey: string;
     found: number;
-    inserted: number;
-    skippedDupes: number;
-    failed: number;
     usedWebSearch: boolean;
     narrative: string;
     error?: string;
@@ -116,9 +112,6 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
       perSubCut.push({
         subCutKey: 'unknown',
         found: 0,
-        inserted: 0,
-        skippedDupes: 0,
-        failed: 0,
         usedWebSearch: false,
         narrative: 'Sub-cut research failed.',
         error: r.reason instanceof Error ? r.reason.message : String(r.reason),
@@ -127,37 +120,19 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
     }
     const { subCutKey, output } = r.value;
     const inputs = mapResearchedToCompInputs(output, subCutKey);
-    if (inputs.length === 0) {
-      perSubCut.push({
-        subCutKey,
-        found: 0,
-        inserted: 0,
-        skippedDupes: 0,
-        failed: 0,
-        usedWebSearch: output.usedWebSearch,
-        narrative: output.narrativeSummary,
-        ...(output.error ? { error: output.error } : {}),
-      });
-      continue;
-    }
-    const { inserted, skippedDupes, failed, firstError: subFirstErr } =
-      await bulkUpsertCompsIgnoreDupes(inputs);
-    totalInserted += inserted;
-    totalSkippedDupes += skippedDupes;
-    totalFailed += failed;
-    if (firstError === null && subFirstErr) firstError = subFirstErr;
+    allInputs.push(...inputs);
     perSubCut.push({
       subCutKey,
       found: output.comps.length,
-      inserted,
-      skippedDupes,
-      failed,
       usedWebSearch: output.usedWebSearch,
       narrative: output.narrativeSummary,
       ...(output.error ? { error: output.error } : {}),
-      ...(subFirstErr ? { error: subFirstErr } : {}),
     });
   }
+
+  // One round-trip for everything.
+  const { inserted: totalInserted, skippedDupes: totalSkippedDupes, failed: totalFailed, firstError } =
+    await bulkUpsertCompsIgnoreDupes(allInputs);
 
   return ok({
     subCutsResearched: workList.length,

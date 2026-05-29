@@ -441,33 +441,86 @@ export async function countComps(includeArchived = false): Promise<number> {
  * indexes (address+closing_date for closed, address for active) prevent
  * duplicate entries on subsequent runs.
  */
+/**
+ * Single-round-trip batch upsert. Replaces a loop of 1-row inserts (which
+ * hit Cloudflare Workers' 50-subrequest-per-invocation cap whenever the AI
+ * returned >40 comps). Now: validate locally, then one PostgREST request
+ * with `Prefer: resolution=ignore-duplicates` translating to a server-side
+ * `ON CONFLICT DO NOTHING`.
+ *
+ * Returns:
+ *   inserted     — rows that actually landed in atlas.comps
+ *   skippedDupes — rows that PostgreSQL skipped due to a unique violation
+ *                  (existing address / closing_date hit)
+ *   failed       — rows we rejected client-side via validateNewComp +
+ *                  rows the batch insert refused (e.g. CHECK constraint
+ *                  violation); when failed > 0, firstError is the message
+ */
 export async function bulkUpsertCompsIgnoreDupes(
   inputs: NewCompInput[]
 ): Promise<{ inserted: number; skippedDupes: number; failed: number; firstError: string | null }> {
   if (inputs.length === 0) {
     return { inserted: 0, skippedDupes: 0, failed: 0, firstError: null };
   }
-  let inserted = 0;
-  let skippedDupes = 0;
-  let failed = 0;
+
+  // 1. Local validation — drop malformed inputs before the round-trip.
+  const valid: NewCompInput[] = [];
+  let invalid = 0;
   let firstError: string | null = null;
   for (const input of inputs) {
     try {
       validateNewComp(input);
-      await createComp(input);
-      inserted++;
+      valid.push(input);
     } catch (e) {
-      if (e instanceof CompDuplicateError) {
-        skippedDupes++;
-      } else {
-        failed++;
-        if (firstError === null) {
-          firstError = e instanceof Error ? e.message : String(e);
-        }
-      }
+      invalid++;
+      if (firstError === null) firstError = e instanceof Error ? e.message : String(e);
     }
   }
-  return { inserted, skippedDupes, failed, firstError };
+  if (valid.length === 0) {
+    return { inserted: 0, skippedDupes: 0, failed: invalid, firstError };
+  }
+
+  // 2. Single round-trip batch upsert.
+  const supabase = createSupabaseServerClient();
+  const rows = valid.map((input) => ({
+    address: input.address.trim(),
+    latitude: input.latitude ?? null,
+    longitude: input.longitude ?? null,
+    sub_cut_key: input.subCutKey,
+    waterfront_type: input.waterfrontType ?? null,
+    is_nc: input.isNc,
+    status: input.status,
+    closing_date: input.closingDate ?? null,
+    sale_price_cents: input.salePriceCents ?? null,
+    ag_sqft: input.agSqft,
+    lot_size_acres: input.lotSizeAcres ?? null,
+    year_built: input.yearBuilt ?? null,
+    dom_days: input.domDays ?? null,
+    broker: input.broker ?? null,
+    source_url: input.sourceUrl ?? null,
+    source: input.source ?? 'manual',
+    notes: input.notes ?? null,
+    created_by: input.createdBy ?? null,
+  }));
+
+  const { data, error } = await supabase
+    .schema('atlas')
+    .from('comps')
+    .upsert(rows, { ignoreDuplicates: true })
+    .select('id');
+
+  if (error) {
+    return {
+      inserted: 0,
+      skippedDupes: 0,
+      failed: invalid + valid.length,
+      firstError: firstError ?? error.message,
+    };
+  }
+
+  const inserted = (data ?? []).length;
+  const skippedDupes = valid.length - inserted;
+  return { inserted, skippedDupes, failed: invalid, firstError };
 }
 
 // ────────────────────────────────────────────────────────────────────────────
