@@ -70,6 +70,9 @@ interface FormState {
   tax_state_rate_pct: string;
   loss_carryforward: 'on' | 'off' | 'baseline';
   include_sold_projects: 'on' | 'off' | 'baseline';
+  target_starts_per_year: string;
+  target_sells_per_year: string;
+  velocity_plan_years: string;
 }
 
 function formFromGlobals(g: Globals): FormState {
@@ -100,6 +103,9 @@ function formFromGlobals(g: Globals): FormState {
     tax_state_rate_pct: String(g.tax_state_rate_pct ?? 0),
     loss_carryforward: (g.loss_carryforward ?? true) ? 'on' : 'off',
     include_sold_projects: g.include_sold_projects ? 'on' : 'off',
+    target_starts_per_year: String(g.target_starts_per_year ?? 4),
+    target_sells_per_year: String(g.target_sells_per_year ?? 4),
+    velocity_plan_years: String(g.velocity_plan_years ?? 3),
   };
 }
 
@@ -338,6 +344,23 @@ export function GeneralTab({
             />
           </Field>
         </Grid>
+      </Section>
+
+      <Section title="Velocity plan">
+        <Grid>
+          <Field label="Starts per year (target)">
+            <NumberInput value={form.target_starts_per_year} onChange={(v) => update('target_starts_per_year', v)} step="1" disabled={!canEdit} />
+          </Field>
+          <Field label="Sells per year (target)">
+            <NumberInput value={form.target_sells_per_year} onChange={(v) => update('target_sells_per_year', v)} step="1" disabled={!canEdit} />
+          </Field>
+          <Field label="Plan window (years)">
+            <NumberInput value={form.velocity_plan_years} onChange={(v) => update('velocity_plan_years', v)} step="1" disabled={!canEdit} />
+          </Field>
+        </Grid>
+        <p style={{ margin: '8px 0 0 0', fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+          Drives the Pipeline workspace goal tracker. Defaults: 4 starts &amp; 4 sells per year over a 3-year window.
+        </p>
       </Section>
 
       <Section title="OPEX">
@@ -656,5 +679,8 @@ function buildPayload(form: FormState): Record<string, unknown> {
     tax_state_rate_pct: num(form.tax_state_rate_pct),
     loss_carryforward: boolFrom(form.loss_carryforward),
     include_sold_projects: boolFrom(form.include_sold_projects),
+    target_starts_per_year: int(form.target_starts_per_year),
+    target_sells_per_year: int(form.target_sells_per_year),
+    velocity_plan_years: int(form.velocity_plan_years),
   };
 }
