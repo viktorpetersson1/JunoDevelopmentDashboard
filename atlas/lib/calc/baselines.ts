@@ -49,6 +49,10 @@ export const BASELINE_GLOBALS: Globals = {
   // title/recording/misc = $24,500 fixed.
   closing_cost_variable_pct: 0.049,
   closing_cost_fixed_usd: 24_500,
+  // D-027 — velocity plan: 4 starts + 4 sells per year over a 3-year window.
+  target_starts_per_year: 4,
+  target_sells_per_year: 4,
+  velocity_plan_years: 3,
   markets: [
     {
       id: 'hamptons',

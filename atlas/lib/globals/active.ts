@@ -126,6 +126,9 @@ function mergeOverBaseline(row: GlobalsRow): Globals {
       'closing_cost_variable_pct'
     ),
     closing_cost_fixed_usd: numOrDefault(row.closing_cost_fixed_usd, 'closing_cost_fixed_usd'),
+    target_starts_per_year: numOrDefault(row.target_starts_per_year, 'target_starts_per_year'),
+    target_sells_per_year: numOrDefault(row.target_sells_per_year, 'target_sells_per_year'),
+    velocity_plan_years: numOrDefault(row.velocity_plan_years, 'velocity_plan_years'),
     // V4.11c — markets: null OR empty array = fall back to baseline. An
     // editor-saved [] is treated as "I want zero markets" (degenerate but
     // explicit), distinguished from null ("use defaults").
@@ -166,6 +169,9 @@ function hasAnyOverride(row: GlobalsRow): boolean {
     row.include_sold_projects != null ||
     row.closing_cost_variable_pct != null ||
     row.closing_cost_fixed_usd != null ||
+    row.target_starts_per_year != null ||
+    row.target_sells_per_year != null ||
+    row.velocity_plan_years != null ||
     row.markets != null
   );
 }

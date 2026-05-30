@@ -60,6 +60,10 @@ const PatchSchema = z.object({
   // D-025a — closing-cost defaults
   closing_cost_variable_pct: z.number().min(0).max(0.5).nullable().optional(),
   closing_cost_fixed_usd: z.number().min(0).max(1_000_000).nullable().optional(),
+  // D-027 — velocity plan goal
+  target_starts_per_year: z.number().int().min(0).max(100).nullable().optional(),
+  target_sells_per_year: z.number().int().min(0).max(100).nullable().optional(),
+  velocity_plan_years: z.number().int().min(1).max(10).nullable().optional(),
   /** V4.11c — markets jsonb. null = revert to baseline; [] = explicitly empty. */
   markets: z.array(MarketSchema).max(40).nullable().optional(),
 });

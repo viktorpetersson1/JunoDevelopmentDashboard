@@ -55,6 +55,10 @@ export interface GlobalsRow {
   // D-025a — closing-cost defaults for Pricing Strategy Brief.
   closing_cost_variable_pct: number | string | null;
   closing_cost_fixed_usd: number | string | null;
+  // D-027 — velocity plan goal.
+  target_starts_per_year: number | null;
+  target_sells_per_year: number | null;
+  velocity_plan_years: number | null;
   markets: MarketRow[] | null;
   updated_by: string | null;
   updated_at: string;
@@ -90,12 +94,15 @@ export interface GlobalsPatch {
   include_sold_projects?: boolean | null;
   closing_cost_variable_pct?: number | null;
   closing_cost_fixed_usd?: number | null;
+  target_starts_per_year?: number | null;
+  target_sells_per_year?: number | null;
+  velocity_plan_years?: number | null;
   /** null = fall back to baseline markets; empty array = explicitly no markets. */
   markets?: MarketRow[] | null;
 }
 
 const ROW_SELECT =
-  'id, interest_rate_apr, ltc_pct, ltc_land_pct, contingency_pct, default_build_cost_per_sqft, default_kingshaus_cost_per_sqft, target_margin, default_program_months, model_start, horizon_months, capitalize_interest, financing_fees_per_project_usd, build_cost_curve, build_cost_realization_pct, risk_safe_ltc_pct, risk_sales_delay_grace_months, risk_cost_overrun_ratio, risk_equity_cluster_pctile, risk_sale_downside_haircut, annual_opex_usd, opex_growth_rate, apply_tax, tax_rate_pct, tax_state_rate_pct, loss_carryforward, include_sold_projects, closing_cost_variable_pct, closing_cost_fixed_usd, markets, updated_by, updated_at';
+  'id, interest_rate_apr, ltc_pct, ltc_land_pct, contingency_pct, default_build_cost_per_sqft, default_kingshaus_cost_per_sqft, target_margin, default_program_months, model_start, horizon_months, capitalize_interest, financing_fees_per_project_usd, build_cost_curve, build_cost_realization_pct, risk_safe_ltc_pct, risk_sales_delay_grace_months, risk_cost_overrun_ratio, risk_equity_cluster_pctile, risk_sale_downside_haircut, annual_opex_usd, opex_growth_rate, apply_tax, tax_rate_pct, tax_state_rate_pct, loss_carryforward, include_sold_projects, closing_cost_variable_pct, closing_cost_fixed_usd, target_starts_per_year, target_sells_per_year, velocity_plan_years, markets, updated_by, updated_at';
 
 export async function fetchGlobalsRow(): Promise<GlobalsRow | null> {
   const supabase = createSupabaseServerClient();

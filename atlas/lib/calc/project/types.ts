@@ -174,6 +174,11 @@ export interface Globals {
   // compute breakeven thresholds + margin math against gross sale.
   closing_cost_variable_pct?: number;  // fraction of gross sale (commission + transfer tax)
   closing_cost_fixed_usd?: number;     // attorney + tax proration + title/misc
+  // Velocity plan (D-027). Read by the /pipeline workspace to track
+  // starts/sells per year vs. goal. Not read by calcProject.
+  target_starts_per_year?: number;
+  target_sells_per_year?: number;
+  velocity_plan_years?: number;
   // ... other fields exist but aren't read by calcProject
 }
 
