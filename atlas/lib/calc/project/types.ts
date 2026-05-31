@@ -10,6 +10,12 @@
  * (atlas/tests/fixtures/vanilla-snapshots/*.json) can be byte-asserted.
  */
 
+import type {
+  WaterfrontType,
+  ViewPremium,
+  TownProximity,
+} from '@/lib/pricing/location-factors';
+
 export type BuildCostCurve = 'linear' | 'front_loaded' | 's_curve';
 
 /** Soft-cost breakdown (all keys optional; engine sums what's present). */
@@ -42,6 +48,14 @@ export interface ProjectInput {
   asset_type?: string;
   status?: string;
   stage?: string;
+
+  // Location factors (D-025b) — metadata; not consumed by the calc engine,
+  // but threaded to the AI comp researcher + strategy brief for comp matching.
+  waterfront_type?: WaterfrontType | null;
+  lot_size_acres?: number | null;
+  year_built?: number | null;
+  view_premium?: ViewPremium | null;
+  town_proximity?: TownProximity | null;
 
   // Program (modern fields)
   purchase_date?: string;

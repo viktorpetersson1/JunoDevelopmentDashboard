@@ -10,6 +10,11 @@
  */
 import { fromCents } from '@/lib/utils/money';
 import type { ProjectInput, SoftCostsBreakdown, BuildCostCurve } from '@/lib/calc/project/types';
+import {
+  coerceWaterfrontType,
+  coerceViewPremium,
+  coerceTownProximity,
+} from '@/lib/pricing/location-factors';
 
 /** Shape of one row from `select(...).from('projects')`. Mirrors atlas.projects columns. */
 export interface ProjectRow {
@@ -28,6 +33,13 @@ export interface ProjectRow {
   asset_type: string;
   status: string;
   stage: string;
+
+  // Location factors (D-025b)
+  waterfront_type: string | null;
+  lot_size_acres: string | number | null;
+  year_built: number | null;
+  view_premium: string | null;
+  town_proximity: string | null;
 
   purchase_date: string | null;
   sourcing_months: number;
@@ -114,6 +126,15 @@ export function projectRowToInput(row: ProjectRow): ProjectInput {
     asset_type: row.asset_type,
     status: row.status,
     stage: row.stage,
+
+    // Location factors (D-025b) — coerce text columns to the typed unions;
+    // lot_size_acres is numeric (supabase-js may return it as a string).
+    waterfront_type: coerceWaterfrontType(row.waterfront_type),
+    lot_size_acres:
+      row.lot_size_acres == null ? null : Number(row.lot_size_acres),
+    year_built: row.year_built ?? null,
+    view_premium: coerceViewPremium(row.view_premium),
+    town_proximity: coerceTownProximity(row.town_proximity),
 
     purchase_date: row.purchase_date ?? undefined,
     sourcing_months: row.sourcing_months,

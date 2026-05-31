@@ -98,6 +98,13 @@ export async function createProject(
     status: parsed.status,
     stage: parsed.stage,
 
+    // Location factors (D-025b)
+    waterfront_type: parsed.waterfront_type ?? null,
+    lot_size_acres: parsed.lot_size_acres ?? null,
+    year_built: parsed.year_built ?? null,
+    view_premium: parsed.view_premium ?? null,
+    town_proximity: parsed.town_proximity ?? null,
+
     purchase_date: parsed.purchase_date,
     sourcing_months: parsed.sourcing_months,
     permitting_preconstruction_months: parsed.permitting_preconstruction_months,

@@ -9,6 +9,11 @@
 
 import { formatMoney } from '@/lib/utils/money';
 import type { ProjectInput } from '@/lib/calc/project/types';
+import {
+  waterfrontLabel,
+  viewPremiumLabel,
+  townProximityLabel,
+} from '@/lib/pricing/location-factors';
 
 interface KV {
   label: string;
@@ -45,6 +50,33 @@ export function InputsTab({ project }: { project: ProjectInput }) {
     { label: 'Asset type', value: fmtStr(project.asset_type) },
     { label: 'Status', value: fmtStr(project.status) },
     { label: 'Stage', value: fmtStr(project.stage) },
+  ];
+
+  const hasLocationFactor =
+    project.waterfront_type != null ||
+    project.view_premium != null ||
+    project.town_proximity != null ||
+    project.lot_size_acres != null ||
+    project.year_built != null;
+
+  const location: KV[] = [
+    {
+      label: 'Waterfront',
+      value: project.waterfront_type ? waterfrontLabel(project.waterfront_type) : '—',
+    },
+    {
+      label: 'Water view',
+      value: project.view_premium ? viewPremiumLabel(project.view_premium) : '—',
+    },
+    {
+      label: 'Town proximity',
+      value: project.town_proximity ? townProximityLabel(project.town_proximity) : '—',
+    },
+    { label: 'Lot size', value: fmtNum(project.lot_size_acres, ' acres') },
+    {
+      label: 'Year built',
+      value: project.year_built != null ? String(project.year_built) : '—',
+    },
   ];
 
   const program: KV[] = [
@@ -133,6 +165,7 @@ export function InputsTab({ project }: { project: ProjectInput }) {
         }}
       >
         <Card title="Identity" rows={identity} />
+        {hasLocationFactor && <Card title="Location & site" rows={location} />}
         <Card title="Program" rows={program} />
         <Card title="Costs" rows={costs} />
         <Card title="Financing" rows={financing} />

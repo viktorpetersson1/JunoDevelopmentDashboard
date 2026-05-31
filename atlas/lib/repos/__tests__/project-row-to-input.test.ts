@@ -15,6 +15,11 @@ const BASE_ROW: ProjectRow = {
   asset_type: 'spec_home',
   status: 'committed',
   stage: 'pre_construction',
+  waterfront_type: null,
+  lot_size_acres: null,
+  year_built: null,
+  view_premium: null,
+  town_proximity: null,
   purchase_date: '2026-03',
   sourcing_months: 0,
   permitting_preconstruction_months: 3,
@@ -112,5 +117,36 @@ describe('projectRowToInput', () => {
     const input = projectRowToInput(BASE_ROW);
     expect(input.id).toBe('p2');
     expect(input.id).not.toBe(BASE_ROW.id);
+  });
+
+  // D-025b — location factors
+  it('maps location factors through (and coerces numeric lot size)', () => {
+    const row: ProjectRow = {
+      ...BASE_ROW,
+      waterfront_type: 'bayfront',
+      lot_size_acres: '1.25', // supabase-js returns numeric as a string
+      year_built: 2024,
+      view_premium: 'full',
+      town_proximity: 'walkable',
+    };
+    const input = projectRowToInput(row);
+    expect(input.waterfront_type).toBe('bayfront');
+    expect(input.lot_size_acres).toBe(1.25);
+    expect(input.year_built).toBe(2024);
+    expect(input.view_premium).toBe('full');
+    expect(input.town_proximity).toBe('walkable');
+  });
+
+  it('coerces unknown location-factor strings to null', () => {
+    const row: ProjectRow = {
+      ...BASE_ROW,
+      waterfront_type: 'oceanfront', // not a valid enum value
+      view_premium: 'spectacular',
+      town_proximity: 'downtown',
+    };
+    const input = projectRowToInput(row);
+    expect(input.waterfront_type).toBeNull();
+    expect(input.view_premium).toBeNull();
+    expect(input.town_proximity).toBeNull();
   });
 });

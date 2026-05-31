@@ -9,6 +9,11 @@
  */
 
 import { z } from 'zod';
+import {
+  WATERFRONT_TYPES,
+  VIEW_PREMIUM_TYPES,
+  TOWN_PROXIMITY_TYPES,
+} from '@/lib/pricing/location-factors';
 
 export const CreateProjectSchema = z.object({
   // Identity
@@ -24,6 +29,13 @@ export const CreateProjectSchema = z.object({
   stage: z
     .enum(['sourcing', 'pre_construction', 'construction', 'sales', 'sold', 'archived'])
     .default('sourcing'),
+
+  // Location factors (D-025b) — all optional; drive AI comp matching + brief.
+  waterfront_type: z.enum(WATERFRONT_TYPES).optional().nullable(),
+  view_premium: z.enum(VIEW_PREMIUM_TYPES).optional().nullable(),
+  town_proximity: z.enum(TOWN_PROXIMITY_TYPES).optional().nullable(),
+  lot_size_acres: z.number().nonnegative().max(1000).optional().nullable(),
+  year_built: z.number().int().min(1800).max(2100).optional().nullable(),
 
   // Program (YYYY-MM)
   purchase_date: z.string().regex(/^\d{4}-\d{2}$/, 'purchase_date must be YYYY-MM'),
