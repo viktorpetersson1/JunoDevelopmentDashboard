@@ -39,6 +39,11 @@ const INITIAL: CreateProjectInput = {
   asset_type: 'villa',
   status: 'pipeline',
   stage: 'sourcing',
+  waterfront_type: null,
+  view_premium: null,
+  town_proximity: null,
+  lot_size_acres: null,
+  year_built: null,
   purchase_date: new Date().toISOString().slice(0, 7),
   villa_sqft_ag: 0,
   villa_sqft_bg: 0,
@@ -52,7 +57,7 @@ const INITIAL: CreateProjectInput = {
 };
 
 const STEPS = [
-  { id: 1, label: 'Basics', fields: ['name', 'address', 'market_id', 'asset_type', 'purchase_date'] },
+  { id: 1, label: 'Basics', fields: ['name', 'address', 'market_id', 'asset_type', 'purchase_date', 'waterfront_type', 'view_premium', 'town_proximity', 'lot_size_acres', 'year_built'] },
   { id: 2, label: 'Financials', fields: ['villa_sqft_ag', 'villa_sqft_bg', 'land_cost_usd', 'build_cost_per_sqft', 'soft_costs_lump_sum'] },
   { id: 3, label: 'Timeline', fields: ['sourcing_months', 'permitting_preconstruction_months', 'construction_months', 'sales_months'] },
   { id: 4, label: 'Review', fields: [] as string[] },

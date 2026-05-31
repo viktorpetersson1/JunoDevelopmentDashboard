@@ -2,6 +2,11 @@
 
 import { Field } from './field';
 import type { CreateProjectInput } from '@/lib/services/project-schema';
+import {
+  WATERFRONT_OPTIONS,
+  VIEW_PREMIUM_OPTIONS,
+  TOWN_PROXIMITY_OPTIONS,
+} from '@/lib/pricing/location-factors';
 
 const MARKET_OPTIONS = [
   { value: 'default', label: 'Unspecified' },
@@ -118,6 +123,82 @@ export function StepBasics({
           options={STATUS_OPTIONS}
         />
       </div>
+
+      <div
+        style={{
+          fontSize: 11,
+          fontWeight: 600,
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+          color: 'var(--color-text-tertiary)',
+          marginTop: 4,
+        }}
+      >
+        Location factors
+      </div>
+      <p style={{ margin: '-8px 0 0 0', fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+        Optional, but the single biggest pricing-quality lever — they let the AI match
+        like-for-like comps (a bayfront lot vs an inland one).
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+        <Field
+          label="Waterfront"
+          name="waterfront_type"
+          kind="select"
+          value={form.waterfront_type ?? ''}
+          onChange={(v) =>
+            update('waterfront_type', (v as CreateProjectInput['waterfront_type']) ?? null)
+          }
+          options={WATERFRONT_OPTIONS}
+          hint="Largest $/SF driver."
+        />
+        <Field
+          label="Water view"
+          name="view_premium"
+          kind="select"
+          value={form.view_premium ?? ''}
+          onChange={(v) =>
+            update('view_premium', (v as CreateProjectInput['view_premium']) ?? null)
+          }
+          options={VIEW_PREMIUM_OPTIONS}
+        />
+        <Field
+          label="Town proximity"
+          name="town_proximity"
+          kind="select"
+          value={form.town_proximity ?? ''}
+          onChange={(v) =>
+            update('town_proximity', (v as CreateProjectInput['town_proximity']) ?? null)
+          }
+          options={TOWN_PROXIMITY_OPTIONS}
+        />
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <Field
+          label="Lot size"
+          name="lot_size_acres"
+          kind="number"
+          value={form.lot_size_acres ?? null}
+          onChange={(v) => update('lot_size_acres', v === null ? null : Number(v))}
+          min={0}
+          step={0.01}
+          suffix="acres"
+          error={errors('lot_size_acres')}
+        />
+        <Field
+          label="Year built"
+          name="year_built"
+          kind="integer"
+          value={form.year_built ?? null}
+          onChange={(v) => update('year_built', v === null ? null : Number(v))}
+          min={1800}
+          max={2100}
+          placeholder="e.g. 2026"
+          hint="Expected completion for new builds."
+          error={errors('year_built')}
+        />
+      </div>
+
       <Field
         label="Purchase month"
         name="purchase_date"
