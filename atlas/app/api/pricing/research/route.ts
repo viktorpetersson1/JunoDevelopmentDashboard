@@ -31,6 +31,7 @@ import {
 } from '@/lib/pricing/comp-researcher';
 import { BASELINE_GLOBALS } from '@/lib/calc/baselines';
 import { bulkUpsertCompsIgnoreDupes, type NewCompInput } from '@/lib/repos/comps';
+import { WATERFRONT_TYPES } from '@/lib/pricing/location-factors';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -49,6 +50,7 @@ const RequestSchema = z.object({
   agSqft: z.number().int().positive().max(50_000),
   lotSizeAcres: z.number().nonnegative().max(1000).nullable().optional(),
   yearBuilt: z.number().int().min(1800).max(2100).nullable().optional(),
+  waterfrontType: z.enum(WATERFRONT_TYPES).nullable().optional(),
   isNc: z.boolean(),
   compWindowMonths: z.number().int().min(6).max(60).optional(),
   /** Optional land cost for the margin model (Stage 4). */
@@ -233,6 +235,7 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
     agSqft,
     lotSizeAcres,
     yearBuilt,
+    waterfrontType,
     isNc,
     compWindowMonths,
     landCostUsd,
@@ -247,7 +250,7 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
   }
 
   const research: CompResearchOutput = await researchComps(
-    { address, subCutLabel, agSqft, lotSizeAcres, yearBuilt, isNc, compWindowMonths },
+    { address, subCutLabel, agSqft, lotSizeAcres, yearBuilt, waterfrontType, isNc, compWindowMonths },
     apiKey
   );
 
@@ -257,6 +260,7 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
     .map((c) => ({
       address: c.address,
       subCutKey,
+      waterfrontType: c.waterfrontType ?? null,
       isNc: c.isNewConstruction,
       status: c.status,
       closingDate: c.closingDate,

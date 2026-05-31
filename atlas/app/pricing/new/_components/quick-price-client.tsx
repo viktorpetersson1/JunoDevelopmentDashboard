@@ -18,6 +18,7 @@ import { useState, useCallback } from 'react';
 import type { MarketSubCut } from '@/lib/db/schema/markets';
 import type { PricingAnalysis } from '@/app/api/pricing/research/route';
 import type { CompResearchOutput, ResearchedComp } from '@/lib/pricing/comp-researcher';
+import { WATERFRONT_OPTIONS, type WaterfrontType } from '@/lib/pricing/location-factors';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Types
@@ -804,6 +805,7 @@ export function QuickPriceClient({
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
   const [subCutKey, setSubCutKey] = useState(subCuts[0]?.key ?? '');
+  const [waterfrontType, setWaterfrontType] = useState<string>('');
   const [agSqft, setAgSqft] = useState('');
   const [lotSizeAcres, setLotSizeAcres] = useState('');
   const [yearBuilt, setYearBuilt] = useState('');
@@ -876,6 +878,7 @@ export function QuickPriceClient({
         agSqft: parseInt(agSqft, 10),
         lotSizeAcres: lotSizeAcres ? parseFloat(lotSizeAcres) : null,
         yearBuilt: yearBuilt ? parseInt(yearBuilt, 10) : null,
+        waterfrontType: waterfrontType ? (waterfrontType as WaterfrontType) : null,
         isNc,
         landCostUsd: landCostUsd ? parseFloat(landCostUsd) : null,
       };
@@ -899,7 +902,7 @@ export function QuickPriceClient({
     } finally {
       setResearching(false);
     }
-  }, [address, lat, lng, subCutKey, subCuts, agSqft, lotSizeAcres, yearBuilt, isNc, landCostUsd]);
+  }, [address, lat, lng, subCutKey, subCuts, agSqft, lotSizeAcres, yearBuilt, waterfrontType, isNc, landCostUsd]);
 
   // ── Save comps ─────────────────────────────────────────────────────────
   const handleSaveComps = useCallback(async () => {
@@ -914,6 +917,7 @@ export function QuickPriceClient({
           body: JSON.stringify({
             address: comp.address,
             subCutKey,
+            waterfrontType: comp.waterfrontType,
             isNc: comp.isNewConstruction,
             status: comp.status,
             closingDate: comp.closingDate,
@@ -1088,6 +1092,22 @@ export function QuickPriceClient({
               {subCuts.length === 0 && (
                 <option value="">No sub-cuts configured</option>
               )}
+            </select>
+          </div>
+
+          {/* Waterfront — dominant PSF driver; steers comp matching */}
+          <div>
+            <label style={labelStyle}>Waterfront</label>
+            <select
+              value={waterfrontType}
+              onChange={(e) => setWaterfrontType(e.target.value)}
+              style={{ ...inputStyle, cursor: 'pointer' }}
+            >
+              {WATERFRONT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
             </select>
           </div>
 

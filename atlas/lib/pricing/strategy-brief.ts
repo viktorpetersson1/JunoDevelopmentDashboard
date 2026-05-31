@@ -19,6 +19,13 @@
  */
 
 import { researchComps, type ResearchedComp } from './comp-researcher';
+import {
+  subjectLocationLines,
+  LOCATION_PROMPT_GUIDANCE,
+  type WaterfrontType,
+  type ViewPremium,
+  type TownProximity,
+} from './location-factors';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Inputs
@@ -45,6 +52,10 @@ export interface ProjectFactsForBrief {
   closingCostsOverrideUsd: number | null;
   yearBuilt: number | null;
   lotSizeAcres: number | null;
+  // Location factors (D-025b)
+  waterfrontType: WaterfrontType | null;
+  viewPremium: ViewPremium | null;
+  townProximity: TownProximity | null;
   phase: ProjectPhase;
 }
 
@@ -406,6 +417,13 @@ function buildBriefPrompt(
           .join('\n');
 
   const phaseFraming = framingForPhase(facts.phase);
+  const locationLines = subjectLocationLines({
+    waterfrontType: facts.waterfrontType,
+    viewPremium: facts.viewPremium,
+    townProximity: facts.townProximity,
+    lotSizeAcres: facts.lotSizeAcres,
+    yearBuilt: facts.yearBuilt,
+  });
 
   return `You are a senior investment committee analyst for Juno, a Hamptons / East End of Long Island residential developer. Produce an IC-grade pricing brief for the project below. Be honest, specific, and grounded in the comp evidence — IC framing is more valuable than optimism.
 
@@ -426,8 +444,11 @@ Address: ${facts.address}
 ${facts.googleMapsUrl ? `Maps: ${facts.googleMapsUrl}\n` : ''}Sub-market: ${facts.subMarketLabel}
 Above-grade SF: ${facts.villaSqftAg.toLocaleString()}
 Below-grade SF: ${facts.villaSqftBg.toLocaleString()}
-${facts.lotSizeAcres ? `Lot: ${facts.lotSizeAcres} acres\n` : ''}${facts.yearBuilt ? `Year built: ${facts.yearBuilt}\n` : ''}Construction type: ${facts.isNewConstruction ? 'New construction (Juno build)' : 'Resale'}
+${locationLines ? locationLines + '\n' : ''}Construction type: ${facts.isNewConstruction ? 'New construction (Juno build)' : 'Resale'}
 Current phase: ${facts.phase}
+
+== LOCATION FACTORS ==
+${LOCATION_PROMPT_GUIDANCE}
 
 == PHASE FRAMING ==
 ${phaseFraming}
@@ -451,7 +472,7 @@ ${compsLines('CLOSED COMPS', closedComps)}
 ${compsLines('ACTIVE LISTINGS (CEILING)', activeComps)}
 
 == HOW TO REASON ==
-1. Start from the comp evidence: median + range of closed $/SF is your defensible floor.
+1. Start from the comp evidence, but FIRST filter to the subject's waterfront class (see LOCATION FACTORS). Use the SAME-class closed $/SF median + range as your defensible floor; use off-class comps only after adjusting their $/SF toward the subject's class, and never let a higher-class (e.g. bayfront) comp inflate an inland subject's median.
 2. Layer the project's design premium: ~10–15% above comp median for genuine NC + design pedigree.
 3. Stay below the stuck-ceiling: any listing that's been 18+ months at >breakeven is a warning sign.
 4. Respect the $5M cliff in MLS filters; if your defensible range straddles it, anchor below.
@@ -635,6 +656,9 @@ export async function generateStrategyBrief(
       agSqft: facts.villaSqftAg,
       lotSizeAcres: facts.lotSizeAcres,
       yearBuilt: facts.yearBuilt,
+      waterfrontType: facts.waterfrontType,
+      viewPremium: facts.viewPremium,
+      townProximity: facts.townProximity,
       isNc: facts.isNewConstruction,
       compWindowMonths: 18,
     },

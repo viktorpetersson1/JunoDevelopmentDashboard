@@ -102,8 +102,12 @@ export const POST = withErrorBoundary(async (_req: NextRequest, ctx: RouteContex
     buildCostPerSqftUsd,
     softCostsLumpSumUsd: project.soft_costs_lump_sum ?? 0,
     closingCostsOverrideUsd: project.closing_costs_usd ?? null,
-    yearBuilt: null, // not on project row today; AI will infer from address/year
-    lotSizeAcres: null,
+    // D-025b — location factors now live on the project row.
+    yearBuilt: project.year_built ?? null,
+    lotSizeAcres: project.lot_size_acres ?? null,
+    waterfrontType: project.waterfront_type ?? null,
+    viewPremium: project.view_premium ?? null,
+    townProximity: project.town_proximity ?? null,
     phase,
   };
 
@@ -126,6 +130,7 @@ export const POST = withErrorBoundary(async (_req: NextRequest, ctx: RouteContex
     .map((c) => ({
       address: c.address,
       subCutKey,
+      waterfrontType: c.waterfrontType ?? null,
       isNc: c.isNewConstruction,
       status: c.status,
       closingDate: c.closingDate,

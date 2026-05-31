@@ -13,6 +13,15 @@
  * users know they need to verify with live MLS data before committing.
  */
 
+import {
+  coerceWaterfrontType,
+  subjectLocationLines,
+  LOCATION_PROMPT_GUIDANCE,
+  type WaterfrontType,
+  type ViewPremium,
+  type TownProximity,
+} from './location-factors';
+
 // ────────────────────────────────────────────────────────────────────────────
 // Types
 // ────────────────────────────────────────────────────────────────────────────
@@ -26,6 +35,11 @@ export interface CompResearchInput {
   lotSizeAcres?: number | null;
   yearBuilt?: number | null;
   isNc: boolean;
+  // ── Location factors (D-025b) — subject's profile so the model matches
+  //    like-for-like and doesn't let an off-class comp set the median. ──
+  waterfrontType?: WaterfrontType | null;
+  viewPremium?: ViewPremium | null;
+  townProximity?: TownProximity | null;
   /** Lookback window in months. Default 18. */
   compWindowMonths?: number;
 }
@@ -38,6 +52,8 @@ export interface ResearchedComp {
   status: 'closed' | 'active';
   yearBuilt: number | null;
   lotSizeAcres: number | null;
+  /** D-025b: waterfront class as classified by the model (null if unknown). */
+  waterfrontType: WaterfrontType | null;
   isNewConstruction: boolean;
   /** Days on market (listing → contract/closing). Null when unknown. */
   domDays: number | null;
@@ -64,16 +80,27 @@ export interface CompResearchOutput {
 
 function buildPrompt(input: CompResearchInput, knowledgeOnly: boolean): string {
   const window = input.compWindowMonths ?? 18;
+  const locationLines = subjectLocationLines({
+    waterfrontType: input.waterfrontType,
+    viewPremium: input.viewPremium,
+    townProximity: input.townProximity,
+    lotSizeAcres: input.lotSizeAcres,
+    yearBuilt: input.yearBuilt,
+  });
   const desc = [
     `Address: ${input.address}`,
     `Sub-market: ${input.subCutLabel} (East End of Long Island, NY)`,
     `Above-grade sq ft: ${input.agSqft.toLocaleString()} SF`,
-    input.lotSizeAcres ? `Lot size: ${input.lotSizeAcres} acres` : null,
-    input.yearBuilt ? `Year built: ${input.yearBuilt}` : null,
+    locationLines || null,
     `Property type: ${input.isNc ? 'New construction (recently built)' : 'Resale (existing home)'}`,
   ]
     .filter(Boolean)
     .join('\n');
+
+  // D-025b — waterfront is the dominant PSF driver; steer the model hard.
+  const waterfrontCriterion = input.waterfrontType
+    ? `0. WATERFRONT CLASS (HIGHEST PRIORITY): the subject is "${input.waterfrontType}". Strongly prefer comps in the SAME waterfront class. If you include a different-class comp for context, set its "waterfront_type" honestly, flag it as off-class in "notes", and do NOT let it set the median or the headline $/SF.`
+    : `0. WATERFRONT CLASS: the subject's waterfront class is not provided — infer it from the address where possible. Classify every comp's "waterfront_type" and assume inland if no water access is evident.`;
 
   const searchInstruction = knowledgeOnly
     ? `Use your knowledge of the Hamptons / East End real estate market. Mark all comps with confidence: "estimated" since this is not from live MLS data. Prefer the most recent comps you have credible knowledge of. If you have NO credible specific comps for this sub-market, return an empty comps array rather than fabricating addresses.`
@@ -84,11 +111,14 @@ function buildPrompt(input: CompResearchInput, knowledgeOnly: boolean): string {
 SUBJECT PROPERTY:
 ${desc}
 
+${LOCATION_PROMPT_GUIDANCE}
+
 TASK: Find comparable residential sales to support exit pricing analysis.
 
 ${searchInstruction}
 
 SEARCH CRITERIA:
+${waterfrontCriterion}
 1. CLOSED sales in ${input.subCutLabel} within the last ${window} months — highest priority.
 2. ACTIVE/PENDING listings in ${input.subCutLabel} — these set the price ceiling.
 3. Size range: within ±35% of ${input.agSqft.toLocaleString()} SF.
@@ -96,6 +126,7 @@ SEARCH CRITERIA:
 5. Minimum 3 closed comps; include 1–3 active listings as ceiling indicators.
 
 CLASSIFICATION:
+- waterfront_type: classify each comp as one of sound_front_bluff | bayfront | inlet | inland (use "inland" when there is no water access).
 - New construction: built 2020 or later, OR listing explicitly says "new construction" / "newly built".
 - Resale: all other sales.
 
@@ -110,6 +141,7 @@ Return ONLY a valid JSON object — no markdown fences, no explanation text outs
       "status": "closed",
       "year_built": 2023,
       "lot_size_acres": 1.2,
+      "waterfront_type": "bayfront",
       "is_new_construction": true,
       "dom_days": 87,
       "source_url": "https://www.zillow.com/homedetails/...",
@@ -127,6 +159,7 @@ RULES:
 - psf = sale_price_usd / ag_sqft (always provide this field).
 - closing_date must be YYYY-MM-DD or null.
 - status must be "closed" or "active".
+- waterfront_type must be one of: sound_front_bluff, bayfront, inlet, inland (best inference; "inland" if unsure).
 - dom_days = days on market (listing → contract/closing). If you can find or estimate it, provide an integer; otherwise null.
 - Sort output: closed comps first (newest first), then active listings.
 - If you cannot find 3+ real comps, include best-knowledge estimates with confidence: "estimated".
@@ -171,6 +204,7 @@ function parseResponse(raw: string, usedWebSearch: boolean): CompResearchOutput 
           status: (c.status === 'active' ? 'active' : 'closed') as 'closed' | 'active',
           yearBuilt: c.year_built ? Number(c.year_built) : null,
           lotSizeAcres: c.lot_size_acres ? Number(c.lot_size_acres) : null,
+          waterfrontType: coerceWaterfrontType(c.waterfront_type),
           isNewConstruction: Boolean(c.is_new_construction),
           domDays:
             c.dom_days !== undefined && c.dom_days !== null
@@ -357,6 +391,7 @@ Return ONLY a valid JSON object — no markdown fences, no explanation:
       "status": "closed",
       "year_built": 2023,
       "lot_size_acres": 1.2,
+      "waterfront_type": "bayfront",
       "is_new_construction": true,
       "dom_days": 87,
       "source_url": "https://www.zillow.com/homedetails/...",
@@ -374,6 +409,7 @@ RULES:
 - psf = sale_price_usd / ag_sqft (always provide this).
 - closing_date must be YYYY-MM-DD or null.
 - status must be "closed" or "active".
+- waterfront_type must be one of: sound_front_bluff, bayfront, inlet, inland (classify each comp; "inland" if no water access).
 - dom_days = days on market (integer or null).
 - If you have no credible data for ${input.subCutLabel}, return comps: [] with a clear narrative_summary explaining why.
 - Output ONLY the JSON object. No markdown fences. No commentary.`;

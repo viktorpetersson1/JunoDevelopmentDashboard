@@ -174,6 +174,7 @@ function mapResearchedToCompInputs(
     .map((c) => ({
       address: c.address,
       subCutKey,
+      waterfrontType: c.waterfrontType ?? null,
       isNc: c.isNewConstruction,
       status: c.status,
       closingDate: c.closingDate,
