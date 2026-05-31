@@ -1,11 +1,15 @@
 'use client';
 
+import { useState } from 'react';
 import { Field } from './field';
 import type { CreateProjectInput } from '@/lib/services/project-schema';
 import {
   WATERFRONT_OPTIONS,
   VIEW_PREMIUM_OPTIONS,
   TOWN_PROXIMITY_OPTIONS,
+  type WaterfrontType,
+  type ViewPremium,
+  type TownProximity,
 } from '@/lib/pricing/location-factors';
 
 const MARKET_OPTIONS = [
@@ -37,6 +41,18 @@ const STATUS_OPTIONS = [
   { value: 'committed', label: 'Committed' },
 ];
 
+/** Shape returned by POST /api/pricing/classify-location → { classification }. */
+interface DetectResult {
+  waterfrontType: WaterfrontType | null;
+  viewPremium: ViewPremium | null;
+  townProximity: TownProximity | null;
+  lotSizeAcres: number | null;
+  yearBuilt: number | null;
+  confidence: 'high' | 'medium' | 'low';
+  reasoning: string;
+  usedWebSearch: boolean;
+}
+
 export function StepBasics({
   form,
   update,
@@ -46,6 +62,64 @@ export function StepBasics({
   update: <K extends keyof CreateProjectInput>(key: K, value: CreateProjectInput[K]) => void;
   errors: (k: keyof CreateProjectInput) => string | undefined;
 }) {
+  const [detecting, setDetecting] = useState(false);
+  const [detectMsg, setDetectMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+
+  async function handleDetect() {
+    if (!form.address?.trim() || detecting) return;
+    setDetecting(true);
+    setDetectMsg(null);
+    try {
+      const marketLabel = MARKET_OPTIONS.find((m) => m.value === form.market_id)?.label ?? null;
+      const res = await fetch('/api/pricing/classify-location', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address: form.address.trim(),
+          googleMapsUrl: form.google_maps_url || null,
+          subMarketLabel: marketLabel,
+        }),
+      });
+      const json = (await res.json().catch(() => null)) as
+        | { data?: { classification?: DetectResult }; error?: { message: string } }
+        | null;
+      if (!res.ok || !json?.data?.classification) {
+        setDetectMsg({ kind: 'err', text: json?.error?.message ?? `Detect failed (HTTP ${res.status})` });
+        return;
+      }
+      const c = json.data.classification;
+      if (c.waterfrontType) update('waterfront_type', c.waterfrontType);
+      if (c.viewPremium) update('view_premium', c.viewPremium);
+      if (c.townProximity) update('town_proximity', c.townProximity);
+      if (c.lotSizeAcres != null) update('lot_size_acres', c.lotSizeAcres);
+      if (c.yearBuilt != null) update('year_built', c.yearBuilt);
+      const filledCount = [
+        c.waterfrontType,
+        c.viewPremium,
+        c.townProximity,
+        c.lotSizeAcres,
+        c.yearBuilt,
+      ].filter((v) => v != null).length;
+      if (filledCount === 0) {
+        setDetectMsg({
+          kind: 'err',
+          text: `Couldn't determine location factors${c.reasoning ? ` — ${c.reasoning}` : ''}.`,
+        });
+      } else {
+        setDetectMsg({
+          kind: 'ok',
+          text: `${c.confidence} confidence${c.usedWebSearch ? ' · web search' : ''}${
+            c.reasoning ? ` — ${c.reasoning}` : ''
+          } Review and adjust below.`,
+        });
+      }
+    } catch {
+      setDetectMsg({ kind: 'err', text: 'Network error — try again.' });
+    } finally {
+      setDetecting(false);
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <Field
@@ -126,20 +200,63 @@ export function StepBasics({
 
       <div
         style={{
-          fontSize: 11,
-          fontWeight: 600,
-          textTransform: 'uppercase',
-          letterSpacing: '0.06em',
-          color: 'var(--color-text-tertiary)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
           marginTop: 4,
         }}
       >
-        Location factors
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
+            color: 'var(--color-text-tertiary)',
+          }}
+        >
+          Location factors
+        </span>
+        <button
+          type="button"
+          onClick={handleDetect}
+          disabled={!form.address?.trim() || detecting}
+          title={!form.address?.trim() ? 'Enter an address first' : 'Auto-detect from the address via AI'}
+          style={{
+            fontSize: 12,
+            fontWeight: 500,
+            padding: '5px 12px',
+            borderRadius: 8,
+            border: '1px solid var(--color-border-hairline)',
+            background: 'var(--color-surface-base)',
+            color: 'var(--color-text-primary)',
+            cursor: !form.address?.trim() || detecting ? 'not-allowed' : 'pointer',
+            opacity: !form.address?.trim() || detecting ? 0.55 : 1,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {detecting ? 'Detecting…' : '✨ Detect from address'}
+        </button>
       </div>
       <p style={{ margin: '-8px 0 0 0', fontSize: 11, color: 'var(--color-text-tertiary)' }}>
         Optional, but the single biggest pricing-quality lever — they let the AI match
-        like-for-like comps (a bayfront lot vs an inland one).
+        like-for-like comps (a bayfront lot vs an inland one). Enter the address above, then
+        Detect to auto-fill — or set them by hand.
       </p>
+      {detectMsg && (
+        <p
+          role={detectMsg.kind === 'err' ? 'alert' : 'status'}
+          style={{
+            margin: '-4px 0 0 0',
+            fontSize: 11,
+            lineHeight: 1.5,
+            color: detectMsg.kind === 'err' ? 'var(--color-negative, #dc2626)' : 'var(--color-positive, #16a34a)',
+          }}
+        >
+          {detectMsg.text}
+        </p>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
         <Field
           label="Waterfront"

@@ -12,6 +12,11 @@
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { ProjectInput } from '@/lib/calc/project/types';
+import type {
+  WaterfrontType,
+  ViewPremium,
+  TownProximity,
+} from '@/lib/pricing/location-factors';
 import { projectRowToInput, type ProjectRow } from './project-row-to-input';
 
 const SELECT_COLUMNS = [
@@ -176,6 +181,44 @@ export async function findCurrentProjectUuidByKey(
     .maybeSingle();
   if (error) throw new Error(`findCurrentProjectUuidByKey: ${error.message}`);
   return ((data as { id: string } | null)?.id) ?? null;
+}
+
+export interface ProjectLocationFactorsPatch {
+  waterfrontType?: WaterfrontType | null;
+  viewPremium?: ViewPremium | null;
+  townProximity?: TownProximity | null;
+  lotSizeAcres?: number | null;
+  yearBuilt?: number | null;
+}
+
+/**
+ * In-place enrichment of the current project row's location factors (D-025b
+ * auto-detect). Only the keys present in `patch` are written, so a caller can
+ * fill blanks without clobbering human-set values. No version bump — this is
+ * metadata enrichment, not a user edit. No-op when `patch` is empty.
+ */
+export async function updateProjectLocationFactors(
+  projectUuid: string,
+  patch: ProjectLocationFactorsPatch
+): Promise<void> {
+  const update: Record<string, unknown> = {};
+  if (patch.waterfrontType !== undefined) update.waterfront_type = patch.waterfrontType;
+  if (patch.viewPremium !== undefined) update.view_premium = patch.viewPremium;
+  if (patch.townProximity !== undefined) update.town_proximity = patch.townProximity;
+  if (patch.lotSizeAcres !== undefined) update.lot_size_acres = patch.lotSizeAcres;
+  if (patch.yearBuilt !== undefined) update.year_built = patch.yearBuilt;
+  if (Object.keys(update).length === 0) return;
+  update.updated_at = new Date().toISOString();
+
+  const supabase = createSupabaseServerClient();
+  const { error } = await supabase
+    .schema('atlas')
+    .from('projects')
+    .update(update)
+    .eq('id', projectUuid)
+    .eq('is_current', true)
+    .eq('is_archived', false);
+  if (error) throw new Error(`updateProjectLocationFactors: ${error.message}`);
 }
 
 /**

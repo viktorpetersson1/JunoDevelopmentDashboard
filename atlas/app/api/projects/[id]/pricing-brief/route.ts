@@ -17,9 +17,12 @@ import { requireEditor } from '@/lib/auth/requireRole';
 import {
   findCurrentProjectByKey,
   findCurrentProjectUuidByKey,
+  updateProjectLocationFactors,
+  type ProjectLocationFactorsPatch,
 } from '@/lib/repos/project';
 import { listBriefs, insertBrief } from '@/lib/repos/pricing-briefs';
 import { bulkUpsertCompsIgnoreDupes, type NewCompInput } from '@/lib/repos/comps';
+import { classifyLocation } from '@/lib/pricing/location-classifier';
 import { getActiveGlobals } from '@/lib/globals/active';
 import {
   generateStrategyBrief,
@@ -87,6 +90,60 @@ export const POST = withErrorBoundary(async (_req: NextRequest, ctx: RouteContex
   const phase = stageToPhase(project.stage);
   const isNc = isNewConstructionForPhase(phase, project.stage);
 
+  // D-025b auto-detect — if the project has an address but no waterfront
+  // class yet, classify its location factors from the address and use them
+  // for this brief. Medium/high-confidence results are persisted back to the
+  // project (fill-blanks only); low-confidence ones enrich this brief but are
+  // NOT locked in, so a later run (or a human edit) can still refine them.
+  const loc = {
+    waterfrontType: project.waterfront_type ?? null,
+    viewPremium: project.view_premium ?? null,
+    townProximity: project.town_proximity ?? null,
+    lotSizeAcres: project.lot_size_acres ?? null,
+    yearBuilt: project.year_built ?? null,
+  };
+  if (!loc.waterfrontType && project.address) {
+    try {
+      const c = await classifyLocation(
+        {
+          address: project.address,
+          googleMapsUrl: project.google_maps_url ?? null,
+          subMarketLabel,
+        },
+        apiKey
+      );
+      const persistOk = c.confidence === 'high' || c.confidence === 'medium';
+      const patch: ProjectLocationFactorsPatch = {};
+      if (!loc.waterfrontType && c.waterfrontType) {
+        loc.waterfrontType = c.waterfrontType;
+        if (persistOk) patch.waterfrontType = c.waterfrontType;
+      }
+      if (!loc.viewPremium && c.viewPremium) {
+        loc.viewPremium = c.viewPremium;
+        if (persistOk) patch.viewPremium = c.viewPremium;
+      }
+      if (!loc.townProximity && c.townProximity) {
+        loc.townProximity = c.townProximity;
+        if (persistOk) patch.townProximity = c.townProximity;
+      }
+      if (loc.lotSizeAcres == null && c.lotSizeAcres != null) {
+        loc.lotSizeAcres = c.lotSizeAcres;
+        if (persistOk) patch.lotSizeAcres = c.lotSizeAcres;
+      }
+      if (loc.yearBuilt == null && c.yearBuilt != null) {
+        loc.yearBuilt = c.yearBuilt;
+        if (persistOk) patch.yearBuilt = c.yearBuilt;
+      }
+      if (Object.keys(patch).length > 0) {
+        await updateProjectLocationFactors(uuid, patch).catch(() => {
+          // best-effort enrichment — never fail the brief on a persist error
+        });
+      }
+    } catch {
+      // best-effort — brief proceeds with whatever factors already exist
+    }
+  }
+
   const facts: ProjectFactsForBrief = {
     projectId: uuid,
     projectKey: ctx.params.id,
@@ -102,12 +159,12 @@ export const POST = withErrorBoundary(async (_req: NextRequest, ctx: RouteContex
     buildCostPerSqftUsd,
     softCostsLumpSumUsd: project.soft_costs_lump_sum ?? 0,
     closingCostsOverrideUsd: project.closing_costs_usd ?? null,
-    // D-025b — location factors now live on the project row.
-    yearBuilt: project.year_built ?? null,
-    lotSizeAcres: project.lot_size_acres ?? null,
-    waterfrontType: project.waterfront_type ?? null,
-    viewPremium: project.view_premium ?? null,
-    townProximity: project.town_proximity ?? null,
+    // D-025b — location factors from the project row, enriched by auto-detect.
+    yearBuilt: loc.yearBuilt,
+    lotSizeAcres: loc.lotSizeAcres,
+    waterfrontType: loc.waterfrontType,
+    viewPremium: loc.viewPremium,
+    townProximity: loc.townProximity,
     phase,
   };
 
