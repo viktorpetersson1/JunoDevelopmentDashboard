@@ -4,6 +4,7 @@ import {
   text,
   integer,
   bigint,
+  numeric,
   boolean,
   jsonb,
   timestamp,
@@ -44,6 +45,17 @@ export const projects = atlas.table(
     assetType: text('asset_type').notNull(),
     status: text('status').notNull(),
     stage: text('stage').notNull(),
+
+    // ── Location factors (D-025b) — drive AI comp matching + pricing brief ─
+    /** sound_front_bluff | bayfront | inlet | inland. Mirrors comps.waterfront_type. */
+    waterfrontType: text('waterfront_type'),
+    lotSizeAcres: numeric('lot_size_acres'),
+    /** (Expected) year built / completion. */
+    yearBuilt: integer('year_built'),
+    /** none | partial | full — water/feature view strength. Project-only. */
+    viewPremium: text('view_premium'),
+    /** walkable | short_drive | remote — proximity to village. Project-only. */
+    townProximity: text('town_proximity'),
 
     // ── Program ──────────────────────────────────────────────────────────
     /** YYYY-MM (month-only is sufficient for the cash-flow grid). */

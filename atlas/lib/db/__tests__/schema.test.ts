@@ -235,4 +235,14 @@ describe('atlas db schema', () => {
     expect(cols).toContain('plotTypes');
     expect(cols).toContain('appliedPricingRunId');
   });
+
+  // D-025b — location factors
+  it('atlas.projects gains location factors (waterfront/lot/year/view/town)', () => {
+    const cols = Object.keys(projects);
+    expect(cols).toContain('waterfrontType');
+    expect(cols).toContain('lotSizeAcres');
+    expect(cols).toContain('yearBuilt');
+    expect(cols).toContain('viewPremium');
+    expect(cols).toContain('townProximity');
+  });
 });
