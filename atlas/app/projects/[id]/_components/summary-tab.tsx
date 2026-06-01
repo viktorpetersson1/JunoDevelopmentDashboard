@@ -1,169 +1,237 @@
 /**
- * Project Detail — Summary tab content. Server-renderable (no client state).
+ * Project Detail — Summary tab (V5.2 T093.2 redesign).
  *
- * Renders the 6 KPI hero tiles per `design-system/INVENTORY.md §7`:
- *   Dev cost, Sale value, Profit, Margin, IRR, MOIC
+ * Server-renderable (no client state — the owner-earnings disclosure uses a
+ * native <details>). Replaces the old 6-KPI strip + Sources/Uses tables with:
  *
- * Plus Sources vs Uses tables.
+ *   1. HERO P&L — the canonical 9-line P&L (lib/finance/project-pnl.ts) with a
+ *      PLANNED column and an ACTUAL-TO-DATE column (— until cost entries land),
+ *      plus a thin Margin / IRR / MOIC row.
+ *   2. OWNER EARNINGS — NPAT split by cap-table share (admin-only; collapsed).
+ *   3. PROJECT CASH FLOW — existing chart (T094 redoes it).
+ *   4. SCHEDULE — start / sale.
+ *
+ * Closing costs render as a MEMO line that does NOT reduce NPBT/NPAT (D-030).
  */
 
-import { KPIStrip } from '@/components/data/KPIStrip';
-import { KPITile } from '@/components/data/KPITile';
+import type { CSSProperties, ReactNode } from 'react';
 import { formatMoney } from '@/lib/utils/money';
 import type { ProjectResult } from '@/lib/calc/project/types';
+import type { ProjectPnL, OwnerEarningRow } from '@/lib/finance/project-pnl';
 import { CashFlowChart } from './cash-flow-chart';
 
-export function SummaryTab({ result }: { result: ProjectResult }) {
-  const k = result.kpis;
+const card: CSSProperties = {
+  background: 'var(--color-surface-raised)',
+  border: '1px solid var(--color-border-hairline)',
+  borderRadius: 14,
+  padding: 24,
+};
 
+const sectionLabel: CSSProperties = {
+  fontSize: 11,
+  textTransform: 'uppercase',
+  letterSpacing: '0.08em',
+  color: 'var(--color-text-tertiary)',
+  margin: 0,
+  marginBottom: 16,
+};
+
+const money = (usd: number) => formatMoney(usd * 100, { compact: true, precision: 2 });
+
+export function SummaryTab({
+  result,
+  pnl,
+  ownerEarnings,
+}: {
+  result: ProjectResult;
+  pnl: ProjectPnL;
+  /** null = the viewing role can't see the per-owner split. */
+  ownerEarnings: OwnerEarningRow[] | null;
+}) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <KPIStrip columns={6}>
-        <KPITile
-          label="Dev cost"
-          value={formatMoney(k.total_dev_cost * 100, { compact: true, precision: 2 })}
-          hint="land + build + soft"
-        />
-        <KPITile
-          label="Sale value"
-          value={formatMoney(k.total_sales * 100, { compact: true, precision: 2 })}
-          hint={`@ $${Math.round(k.sale_price_per_sqft).toLocaleString()}/sqft`}
-        />
-        <KPITile
-          label="Profit"
-          value={formatMoney(k.gross_profit * 100, { compact: true, precision: 2 })}
-          delta={{
-            value: `${(k.profit_margin_pct * 100).toFixed(1)}%`,
-            direction: k.gross_profit >= 0 ? 'up' : 'down',
-          }}
-        />
-        <KPITile label="Margin" value={`${(k.profit_margin_pct * 100).toFixed(1)}%`} />
-        <KPITile
-          label="IRR"
-          value={k.irr_annual !== null ? `${(k.irr_annual * 100).toFixed(1)}%` : '—'}
-          hint="annualized"
-        />
-        <KPITile label="MOIC" value={`${k.moic.toFixed(2)}×`} hint="equity multiple" />
-      </KPIStrip>
-
+      <PnlHero pnl={pnl} />
+      {ownerEarnings && <OwnerEarnings rows={ownerEarnings} npat={pnl.net_profit_after_tax_usd} />}
       <CashFlowChart monthly={result.monthly} />
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1.55fr 1fr',
-          gap: 24,
-        }}
-      >
-        <SourcesUsesCard result={result} />
-        <RailMeta result={result} />
-      </div>
+      <ScheduleCard result={result} />
     </div>
   );
 }
 
-function SourcesUsesCard({ result }: { result: ProjectResult }) {
-  const k = result.kpis;
+// ── Hero P&L ────────────────────────────────────────────────────────────────
+
+interface PnlLine {
+  label: string;
+  usd: number;
+  kind: 'revenue' | 'cost' | 'subtotal' | 'total';
+}
+
+function PnlHero({ pnl }: { pnl: ProjectPnL }) {
+  const lines: PnlLine[] = [
+    { label: 'Gross revenue', usd: pnl.gross_revenue_usd, kind: 'revenue' },
+    { label: '− Land', usd: pnl.land_usd, kind: 'cost' },
+    { label: '− Hard construction', usd: pnl.hard_construction_usd, kind: 'cost' },
+    { label: '− Soft costs', usd: pnl.soft_costs_usd, kind: 'cost' },
+    { label: '− Superstructure', usd: pnl.superstructure_usd, kind: 'cost' },
+    { label: '− Financing cost', usd: pnl.financing_cost_usd, kind: 'cost' },
+    { label: 'Net profit before tax', usd: pnl.net_profit_before_tax_usd, kind: 'subtotal' },
+    { label: `− Tax (${pnl.tax_rate_pct}%)`, usd: pnl.tax_usd, kind: 'cost' },
+    { label: 'Net profit after tax', usd: pnl.net_profit_after_tax_usd, kind: 'total' },
+  ];
+
   return (
-    <section
-      style={{
-        background: 'var(--color-surface-raised)',
-        border: '1px solid var(--color-border-hairline)',
-        borderRadius: 14,
-        padding: 24,
-      }}
-    >
-      <h2
+    <section style={card}>
+      <div
         style={{
-          fontSize: 16,
-          fontWeight: 600,
-          margin: 0,
-          marginBottom: 16,
-          color: 'var(--color-text-primary)',
+          display: 'grid',
+          gridTemplateColumns: '1fr auto auto',
+          columnGap: 32,
+          alignItems: 'baseline',
         }}
       >
-        Sources &amp; uses
-      </h2>
+        <div />
+        <ColHead>Planned</ColHead>
+        <ColHead>Actual to date</ColHead>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
-        <div>
-          <h3
-            style={{
-              fontSize: 11,
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              color: 'var(--color-text-tertiary)',
-              margin: 0,
-              marginBottom: 8,
-            }}
-          >
-            Sources
-          </h3>
-          <KV label="Senior debt (peak)" value={formatMoney(k.peak_debt * 100, { precision: 0 })} />
-          <KV
-            label="Equity / LOC (peak)"
-            value={formatMoney(k.peak_equity * 100, { precision: 0 })}
-          />
-          <KV
-            label="Gross sale proceeds"
-            value={formatMoney(k.total_sales * 100, { precision: 0 })}
-            bold
-          />
-        </div>
-        <div>
-          <h3
-            style={{
-              fontSize: 11,
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              color: 'var(--color-text-tertiary)',
-              margin: 0,
-              marginBottom: 8,
-            }}
-          >
-            Uses
-          </h3>
-          <KV label="Dev cost" value={formatMoney(k.total_dev_cost * 100, { precision: 0 })} />
-          <KV
-            label="Financing cost"
-            value={formatMoney(k.total_interest * 100, { precision: 0 })}
-          />
-          <KV label="Net profit" value={formatMoney(k.gross_profit * 100, { precision: 0 })} bold />
-        </div>
+        {lines.map((line) => (
+          <PnlRow key={line.label} line={line} />
+        ))}
+      </div>
+
+      {/* Closing costs — MEMO only; not deducted from profit (D-030). */}
+      {pnl.closing_costs_memo_usd > 0 && (
+        <p
+          style={{
+            margin: '12px 0 0',
+            fontSize: 12,
+            color: 'var(--color-text-tertiary)',
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          Closing costs {money(pnl.closing_costs_memo_usd)} (memo — informational; not yet modelled
+          in profit)
+        </p>
+      )}
+
+      <div
+        style={{
+          display: 'flex',
+          gap: 24,
+          marginTop: 20,
+          paddingTop: 16,
+          borderTop: '1px solid var(--color-border-subtle)',
+          fontSize: 13,
+          color: 'var(--color-text-secondary)',
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        <Metric label="Margin" value={`${(pnl.npat_margin_pct * 100).toFixed(1)}%`} />
+        <Metric
+          label="IRR"
+          value={pnl.irr_annual !== null ? `${(pnl.irr_annual * 100).toFixed(1)}%` : '—'}
+        />
+        <Metric label="MOIC" value={`${pnl.moic.toFixed(2)}×`} />
       </div>
     </section>
   );
 }
 
-function RailMeta({ result }: { result: ProjectResult }) {
+function ColHead({ children }: { children: ReactNode }) {
   return (
-    <aside
+    <div
       style={{
-        background: 'var(--color-surface-raised)',
-        border: '1px solid var(--color-border-hairline)',
-        borderRadius: 14,
-        padding: 24,
+        fontSize: 10,
+        textTransform: 'uppercase',
+        letterSpacing: '0.08em',
+        color: 'var(--color-text-tertiary)',
+        textAlign: 'right',
+        paddingBottom: 8,
       }}
     >
-      <h3
+      {children}
+    </div>
+  );
+}
+
+function PnlRow({ line }: { line: PnlLine }) {
+  const emphatic = line.kind === 'subtotal' || line.kind === 'total';
+  const isTotal = line.kind === 'total';
+  const labelColor =
+    line.kind === 'cost' ? 'var(--color-text-secondary)' : 'var(--color-text-primary)';
+  const rowStyle: CSSProperties = {
+    fontSize: isTotal ? 16 : 14,
+    fontWeight: emphatic ? 700 : 400,
+    padding: '7px 0',
+    fontVariantNumeric: 'tabular-nums',
+    ...(emphatic
+      ? { borderTop: '1px solid var(--color-border-subtle)', marginTop: 2, paddingTop: 9 }
+      : {}),
+  };
+  return (
+    <>
+      <div style={{ ...rowStyle, color: labelColor }}>{line.label}</div>
+      <div style={{ ...rowStyle, textAlign: 'right', color: 'var(--color-text-primary)' }}>
+        {money(line.usd)}
+      </div>
+      <div style={{ ...rowStyle, textAlign: 'right', color: 'var(--color-text-tertiary)' }}>—</div>
+    </>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <span>
+      <span style={{ color: 'var(--color-text-tertiary)' }}>{label} </span>
+      <span style={{ color: 'var(--color-text-primary)', fontWeight: 700 }}>{value}</span>
+    </span>
+  );
+}
+
+// ── Owner earnings (admin-only, collapsed) ──────────────────────────────────
+
+function OwnerEarnings({ rows, npat }: { rows: OwnerEarningRow[]; npat: number }) {
+  const totalBps = rows.reduce((s, r) => s + r.shareBps, 0);
+  return (
+    <details style={card}>
+      <summary
         style={{
+          cursor: 'pointer',
           fontSize: 11,
           textTransform: 'uppercase',
           letterSpacing: '0.08em',
           color: 'var(--color-text-tertiary)',
-          margin: 0,
-          marginBottom: 16,
+          listStyle: 'none',
         }}
       >
-        Schedule
-      </h3>
-      <KV label="Start" value={result.start_date ?? '—'} />
-      <KV label="Sale" value={result.sale_date ?? '—'} />
+        Owner earnings · {money(npat)} NPAT
+      </summary>
+      <div style={{ marginTop: 16 }}>
+        {rows.map((r) => (
+          <Row
+            key={r.key}
+            label={`${r.displayName} · ${(r.shareBps / 100).toFixed(1)}%`}
+            value={money(r.earnings_usd)}
+          />
+        ))}
+        <Row label={`Total · ${(totalBps / 100).toFixed(1)}%`} value={money(npat)} bold />
+      </div>
+    </details>
+  );
+}
+
+// ── Schedule ────────────────────────────────────────────────────────────────
+
+function ScheduleCard({ result }: { result: ProjectResult }) {
+  return (
+    <aside style={card}>
+      <h3 style={sectionLabel}>Schedule</h3>
+      <Row label="Start" value={result.start_date ?? '—'} />
+      <Row label="Sale" value={result.sale_date ?? '—'} />
     </aside>
   );
 }
 
-function KV({ label, value, bold = false }: { label: string; value: string; bold?: boolean }) {
+function Row({ label, value, bold = false }: { label: string; value: string; bold?: boolean }) {
   return (
     <div
       style={{
@@ -178,7 +246,7 @@ function KV({ label, value, bold = false }: { label: string; value: string; bold
       <span
         style={{
           fontVariantNumeric: 'tabular-nums',
-          fontWeight: bold ? 600 : 400,
+          fontWeight: bold ? 700 : 400,
           color: 'var(--color-text-primary)',
         }}
       >

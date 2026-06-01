@@ -33,6 +33,7 @@ import { listActualsByCategory } from '@/lib/services/actuals';
 import { fetchAllProfiles, fetchCapTable } from '@/lib/repos/settings';
 import { enrichWithAppliedPricingRun } from '@/lib/services/project-with-pricing';
 import { runProject } from '@/lib/calc/project/runProject';
+import { buildProjectPnL, allocateOwnerEarnings } from '@/lib/finance/project-pnl';
 import { BASELINE_GLOBALS, BASELINE_SCENARIO } from '@/lib/calc/baselines';
 import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
 import { hasRole } from '@/lib/auth/requireRole';
@@ -72,9 +73,28 @@ export default async function ProjectDetailPage({
   // T060 + T069 ingest paths.
   let tabContent: ReactNode;
   switch (tab) {
-    case 'summary':
-      tabContent = <SummaryTab result={result} />;
+    case 'summary': {
+      // V5.2 T093.2 — 9-line P&L (per-project tax + closing memo) + owner
+      // earnings split. The per-owner breakdown is sensitive (D-011), so it's
+      // admin-only — same gate as the cap table on the Capital tab.
+      const pnl = buildProjectPnL(result, {
+        taxRatePct: enrichedProject.tax_rate_pct,
+        closingCostsUsd: enrichedProject.closing_costs_usd,
+      });
+      const canSeeOwnerSplit = hasRole(profile, ['super_admin', 'editor']);
+      const ownerEarnings = canSeeOwnerSplit
+        ? allocateOwnerEarnings(
+            pnl.net_profit_after_tax_usd,
+            (await fetchCapTable()).map((c) => ({
+              key: c.ownerKey,
+              displayName: c.displayName,
+              shareBps: c.shareBps,
+            }))
+          )
+        : null;
+      tabContent = <SummaryTab result={result} pnl={pnl} ownerEarnings={ownerEarnings} />;
       break;
+    }
     case 'timeline':
       tabContent = <TimelineTab project={project} result={result} />;
       break;
