@@ -69,6 +69,8 @@ export interface ProjectRow {
   sale_price_override_cents: number | null;
   sale_price_per_sqft_override_cents: number | null;
   target_margin_bps: number | null;
+  /** V5.2 T093.3 — per-project tax rate, bps (2500 = 25%). */
+  tax_rate_bps: number;
 
   listing_date: string | null;
   under_contract_date: string | null;
@@ -170,6 +172,7 @@ export function projectRowToInput(row: ProjectRow): ProjectInput {
         ? null
         : fromCents(row.sale_price_per_sqft_override_cents),
     target_margin: fromBps(row.target_margin_bps),
+    tax_rate_pct: row.tax_rate_bps / 100,
 
     listing_date: row.listing_date,
     under_contract_date: row.under_contract_date,

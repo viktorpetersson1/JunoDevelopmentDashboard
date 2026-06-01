@@ -53,6 +53,11 @@ export const BASELINE_GLOBALS: Globals = {
   target_starts_per_year: 4,
   target_sells_per_year: 4,
   velocity_plan_years: 3,
+  // V5.2 T093.7 — rollout trigger. target + overhead NULL until Viktor sets
+  // them (BLOCKED-ON-VIKTOR); a new start needs ~18 months to reach NPAT.
+  target_annual_npat_usd: null,
+  fixed_overhead_annual_usd: null,
+  project_time_to_npat_months: 18,
   markets: [
     {
       id: 'hamptons',

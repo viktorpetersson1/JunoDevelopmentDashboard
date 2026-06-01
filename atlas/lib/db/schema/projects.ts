@@ -102,6 +102,10 @@ export const projects = atlas.table(
       mode: 'number',
     }),
     targetMarginBps: integer('target_margin_bps'),
+    /** V5.2 T093.3 — per-project effective tax rate, basis points (2500 = 25%).
+     *  Presentation-only: the 9-line P&L applies it; engine global tax (D-023)
+     *  is unchanged. */
+    taxRateBps: integer('tax_rate_bps').notNull().default(2500),
 
     // ── Sales lifecycle ──────────────────────────────────────────────────
     /** YYYY-MM-DD strings (date-only sufficient). */

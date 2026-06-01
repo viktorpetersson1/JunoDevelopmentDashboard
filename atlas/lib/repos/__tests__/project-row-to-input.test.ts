@@ -44,6 +44,7 @@ const BASE_ROW: ProjectRow = {
   sale_price_override_cents: 800_989_300, // $8,009,893
   sale_price_per_sqft_override_cents: null,
   target_margin_bps: null,
+  tax_rate_bps: 2500, // 25%
   listing_date: null,
   under_contract_date: null,
   closing_date: null,
@@ -72,6 +73,7 @@ describe('projectRowToInput', () => {
     expect(input.interest_rate_apr).toBe(0.1);
     expect(input.origination_fee_pct).toBe(0.01);
     expect(input.exit_fee_pct).toBe(0.005);
+    expect(input.tax_rate_pct).toBe(25); // 2500 bps → 25%
   });
 
   it('null cents stays null after conversion', () => {

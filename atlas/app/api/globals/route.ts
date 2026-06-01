@@ -68,6 +68,10 @@ const PatchSchema = z.object({
   target_starts_per_year: z.number().int().min(0).max(100).nullable().optional(),
   target_sells_per_year: z.number().int().min(0).max(100).nullable().optional(),
   velocity_plan_years: z.number().int().min(1).max(10).nullable().optional(),
+  // V5.2 T093.7 — rollout trigger
+  target_annual_npat_usd: z.number().min(0).max(1_000_000_000).nullable().optional(),
+  fixed_overhead_annual_usd: z.number().min(0).max(1_000_000_000).nullable().optional(),
+  project_time_to_npat_months: z.number().int().min(1).max(120).nullable().optional(),
   /** V4.11c — markets jsonb. null = revert to baseline; [] = explicitly empty. */
   markets: z.array(MarketSchema).max(40).nullable().optional(),
 });

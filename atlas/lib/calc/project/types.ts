@@ -90,6 +90,10 @@ export interface ProjectInput {
   sale_price_per_sqft_override?: number | null;
   target_margin?: number | null;
 
+  /** V5.2 T093.3 — per-project effective tax rate (%, e.g. 25). Presentation-only:
+   *  read by buildProjectPnL; NOT read by calcProject. */
+  tax_rate_pct?: number | null;
+
   // ── Exit Pricing Framework v1 (D-016) ──────────────────────────────────
   /**
    * Per-plot-type exit prices. When present and non-empty, OVERRIDES the
@@ -196,6 +200,11 @@ export interface Globals {
   target_starts_per_year?: number;
   target_sells_per_year?: number;
   velocity_plan_years?: number;
+  // Rollout Profitability Trigger (V5.2 T093.7). Read by lib/finance/rollout-trigger.ts,
+  // NOT by calcProject. target + overhead NULL = unconfigured (BLOCKED-ON-VIKTOR).
+  target_annual_npat_usd?: number | null;
+  fixed_overhead_annual_usd?: number | null;
+  project_time_to_npat_months?: number;
   // ... other fields exist but aren't read by calcProject
 }
 

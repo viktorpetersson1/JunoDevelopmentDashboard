@@ -126,6 +126,17 @@ function mergeOverBaseline(row: GlobalsRow): Globals {
     target_starts_per_year: numOrDefault(row.target_starts_per_year, 'target_starts_per_year'),
     target_sells_per_year: numOrDefault(row.target_sells_per_year, 'target_sells_per_year'),
     velocity_plan_years: numOrDefault(row.velocity_plan_years, 'velocity_plan_years'),
+    // V5.2 T093.7 — rollout trigger. target + overhead are nullable (null =
+    // unconfigured), so they bypass numOrDefault (whose null baseline would
+    // always win); time-to-NPAT has a real numeric default.
+    target_annual_npat_usd:
+      row.target_annual_npat_usd == null ? null : Number(row.target_annual_npat_usd),
+    fixed_overhead_annual_usd:
+      row.fixed_overhead_annual_usd == null ? null : Number(row.fixed_overhead_annual_usd),
+    project_time_to_npat_months: numOrDefault(
+      row.project_time_to_npat_months,
+      'project_time_to_npat_months'
+    ),
     // V4.11c — markets: null OR empty array = fall back to baseline. An
     // editor-saved [] is treated as "I want zero markets" (degenerate but
     // explicit), distinguished from null ("use defaults").
@@ -166,6 +177,9 @@ function hasAnyOverride(row: GlobalsRow): boolean {
     row.target_starts_per_year != null ||
     row.target_sells_per_year != null ||
     row.velocity_plan_years != null ||
+    row.target_annual_npat_usd != null ||
+    row.fixed_overhead_annual_usd != null ||
+    row.project_time_to_npat_months != null ||
     row.markets != null
   );
 }

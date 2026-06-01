@@ -58,6 +58,7 @@ const SELECT_COLUMNS = [
   'sale_price_override_cents',
   'sale_price_per_sqft_override_cents',
   'target_margin_bps',
+  'tax_rate_bps',
   'listing_date',
   'under_contract_date',
   'closing_date',
