@@ -171,12 +171,12 @@ async function callAnthropic(
   prompt: string,
   useWebSearch: boolean
 ): Promise<{ text: string; ok: boolean; status: number }> {
+  // D-026(b) fix: web search is GA — no anthropic-beta header.
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'x-api-key': apiKey,
     'anthropic-version': '2023-06-01',
   };
-  if (useWebSearch) headers['anthropic-beta'] = 'web-search-2025-02-14';
 
   let lastStatus = 0;
   for (const model of MODEL_FALLBACK_CHAIN) {
@@ -186,8 +186,20 @@ async function callAnthropic(
       messages: [{ role: 'user', content: prompt }],
     };
     if (useWebSearch) {
-      body.tools = [{ type: 'web_search_20250305', name: 'web_search' }];
-      body.tool_choice = { type: 'auto' };
+      body.tools = [
+        {
+          type: 'web_search_20250305',
+          name: 'web_search',
+          // Tight cap — classifying one parcel rarely needs >2 searches.
+          max_uses: 3,
+          user_location: {
+            type: 'approximate',
+            country: 'US',
+            region: 'New York',
+            timezone: 'America/New_York',
+          },
+        },
+      ];
     }
 
     const resp = await fetch('https://api.anthropic.com/v1/messages', {

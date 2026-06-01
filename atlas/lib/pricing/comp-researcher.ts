@@ -285,14 +285,15 @@ async function callAnthropic(
 ): Promise<{ text: string; ok: boolean; status: number; modelUsed: string | null }> {
   const { maxTokens = 4096, useWebSearch = false } = options;
 
+  // D-026(b) fix: web search is GA — NO anthropic-beta header. Sending the
+  // old `web-search-2025-02-14` beta header 400'd every call, which our
+  // 400-handler silently dropped to knowledge-only fallback (so every
+  // brief / comp insert was stale 2024 training data, not live MLS).
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'x-api-key': apiKey,
     'anthropic-version': '2023-06-01',
   };
-  if (useWebSearch) {
-    headers['anthropic-beta'] = 'web-search-2025-02-14';
-  }
 
   let lastStatus = 0;
   for (const model of MODEL_FALLBACK_CHAIN) {
@@ -302,8 +303,27 @@ async function callAnthropic(
       messages,
     };
     if (useWebSearch) {
-      body.tools = [{ type: 'web_search_20250305', name: 'web_search' }];
-      body.tool_choice = { type: 'auto' };
+      body.tools = [
+        {
+          type: 'web_search_20250305',
+          name: 'web_search',
+          // Cost cap: $10/1000 searches. Comp research may do 3-4
+          // parallel queries (closed vs active across multiple sites);
+          // 5 is enough headroom without blowing the budget.
+          max_uses: 5,
+          // East End is hyper-local; NY localization sharpens results
+          // (Zillow / Realtor surface different listings by region).
+          user_location: {
+            type: 'approximate',
+            country: 'US',
+            region: 'New York',
+            timezone: 'America/New_York',
+          },
+        },
+      ];
+      // tool_choice intentionally omitted — auto is the default for
+      // server tools; setting it explicitly is not in any current docs
+      // example and adds nothing.
     }
 
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
