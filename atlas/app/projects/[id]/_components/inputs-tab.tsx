@@ -123,6 +123,10 @@ export function InputsTab({ project }: { project: ProjectInput }) {
     { label: 'Interest reserve', value: fmtMoney(project.interest_reserve_usd) },
     { label: 'Servicing fee', value: fmtMoney(project.loan_servicing_fee_usd) },
     { label: 'Closing costs', value: fmtMoney(project.closing_costs_usd) },
+    {
+      label: 'Tax rate',
+      value: project.tax_rate_pct != null ? `${project.tax_rate_pct}%` : '25%',
+    },
   ];
 
   const revenue: KV[] = [
