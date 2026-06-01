@@ -79,11 +79,20 @@ export function PricingStrategyTab({
   currentBrief,
   briefHistory,
   isEditor,
+  hasAddress,
 }: {
   projectKey: string;
   currentBrief: PricingBriefView | null;
   briefHistory: PricingBriefView[];
   isEditor: boolean;
+  /**
+   * T090 — true when the project has a real street address. When false the
+   * pricing AI features (brief generation, comp research, location auto-
+   * detect) are non-functional, so the tab short-circuits to an "address
+   * required" empty state instead of letting users click Generate and hit
+   * a 400.
+   */
+  hasAddress: boolean;
 }) {
   const router = useRouter();
   const [generating, startGenerating] = useTransition();
@@ -136,6 +145,15 @@ export function PricingStrategyTab({
     },
     [projectKey, router]
   );
+
+  // ── Address-missing state (T090) ─────────────────────────────────────────
+  // The pricing AI features depend on a real street address — geocoding,
+  // AI comp research, and the location classifier all fail (or return
+  // garbage) without one. Short-circuit to a friendly explanation rather
+  // than letting Generate fire and 400.
+  if (!hasAddress) {
+    return <AddressRequiredEmptyState projectKey={projectKey} isEditor={isEditor} />;
+  }
 
   // ── Empty state ──────────────────────────────────────────────────────────
   if (!currentBrief) {
@@ -199,6 +217,73 @@ export function PricingStrategyTab({
         applying={applying}
         onApply={() => handleApply(currentBrief.id)}
       />
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// T090 — Address-required state
+// ────────────────────────────────────────────────────────────────────────────
+
+function AddressRequiredEmptyState({
+  projectKey,
+  isEditor,
+}: {
+  projectKey: string;
+  isEditor: boolean;
+}) {
+  return (
+    <div
+      style={{
+        background: 'var(--color-surface-raised, #fff)',
+        border: '1px solid var(--color-border-hairline, #c8c8c5)',
+        borderRadius: 14,
+        padding: 32,
+        textAlign: 'center',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 14,
+        alignItems: 'center',
+      }}
+    >
+      <div>
+        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>
+          Site address required
+        </h3>
+        <p
+          style={{
+            margin: '6px 0 0',
+            fontSize: 13,
+            color: 'var(--color-text-secondary, #6b7280)',
+            maxWidth: 520,
+          }}
+        >
+          The pricing recommendation depends on a real street address —
+          comp research, location auto-detect, and the strategy brief all
+          need somewhere to anchor the analysis. Add an address in the
+          Inputs tab to activate this tab.
+        </p>
+      </div>
+      {isEditor ? (
+        <a
+          href={`/projects/${projectKey}?tab=inputs`}
+          style={{
+            fontSize: 14,
+            fontWeight: 600,
+            padding: '12px 24px',
+            borderRadius: 10,
+            background: 'var(--color-accent-base, #131313)',
+            color: '#fff',
+            textDecoration: 'none',
+          }}
+        >
+          Go to Inputs →
+        </a>
+      ) : (
+        <p style={{ fontSize: 12, color: 'var(--color-text-tertiary, #767b84)' }}>
+          An editor needs to assign a site address to this project.
+        </p>
+      )}
     </div>
   );
 }

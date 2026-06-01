@@ -213,8 +213,8 @@ export const BASELINE_PROJECTS = [
   {
     id: "p2",
     name: "84 SBR (Project 2)",
-    address: "84 Springs Beach Road", google_maps_url: null,
-    entity_spv: "Juno SPV 2 LLC", market: "south_hampton", asset_type: "spec_home",
+    address: "84 Sunset Beach Road, Sag Harbor, NY 11963", google_maps_url: null,
+    entity_spv: "Juno SPV 2 LLC", market: "sag_harbor", asset_type: "spec_home",
     status: "committed", stage: "pre_construction",
     purchase_date: "2026-03",
     sourcing_months: 0, permitting_preconstruction_months: 3, construction_months: 9, sales_months: 1,
@@ -237,7 +237,7 @@ export const BASELINE_PROJECTS = [
   {
     id: "p3",
     name: "Project 3 - TBC",
-    address: "Site to be confirmed", google_maps_url: null,
+    address: null, google_maps_url: null,
     entity_spv: null, market: "hamptons", asset_type: "spec_home",
     status: "pipeline", stage: "sourcing",
     purchase_date: "2026-09",
@@ -273,7 +273,7 @@ export const BASELINE_PROJECTS = [
   {
     id: "p5",
     name: "Project 5",
-    address: "TBC", google_maps_url: null,
+    address: null, google_maps_url: null,
     entity_spv: null, market: "hamptons", asset_type: "spec_home",
     status: "pipeline", stage: "sourcing",
     purchase_date: "2027-03",
@@ -291,7 +291,7 @@ export const BASELINE_PROJECTS = [
   {
     id: "p6",
     name: "Project 6",
-    address: "TBC", google_maps_url: null,
+    address: null, google_maps_url: null,
     entity_spv: null, market: "hamptons", asset_type: "spec_home",
     status: "pipeline", stage: "sourcing",
     purchase_date: "2027-08",
@@ -307,7 +307,7 @@ export const BASELINE_PROJECTS = [
     _excel_total_cost_per_sqft: 986,
   },
   {
-    id: "p7", name: "Project 7", address: "TBC", google_maps_url: null,
+    id: "p7", name: "Project 7", address: null, google_maps_url: null,
     entity_spv: null, market: "hamptons", asset_type: "spec_home",
     status: "pipeline", stage: "sourcing",
     purchase_date: "2027-12",
@@ -320,7 +320,7 @@ export const BASELINE_PROJECTS = [
     _excel_sale_price: 6775393, _excel_total_cost_per_sqft: 986,
   },
   {
-    id: "p8", name: "Project 8", address: "TBC", google_maps_url: null,
+    id: "p8", name: "Project 8", address: null, google_maps_url: null,
     entity_spv: null, market: "hamptons", asset_type: "spec_home",
     status: "pipeline", stage: "sourcing",
     purchase_date: "2028-03",
@@ -333,7 +333,7 @@ export const BASELINE_PROJECTS = [
     _excel_sale_price: 6775393, _excel_total_cost_per_sqft: 986,
   },
   {
-    id: "p9", name: "Project 9", address: "TBC", google_maps_url: null,
+    id: "p9", name: "Project 9", address: null, google_maps_url: null,
     entity_spv: null, market: "hamptons", asset_type: "spec_home",
     status: "pipeline", stage: "sourcing",
     purchase_date: "2028-06",
@@ -346,7 +346,7 @@ export const BASELINE_PROJECTS = [
     _excel_sale_price: 6775393, _excel_total_cost_per_sqft: 986,
   },
   {
-    id: "p10", name: "Project 10", address: "TBC", google_maps_url: null,
+    id: "p10", name: "Project 10", address: null, google_maps_url: null,
     entity_spv: null, market: "hamptons", asset_type: "spec_home",
     status: "pipeline", stage: "sourcing",
     purchase_date: "2028-09",
@@ -359,7 +359,7 @@ export const BASELINE_PROJECTS = [
     _excel_sale_price: 6775393, _excel_total_cost_per_sqft: 986,
   },
   {
-    id: "p11", name: "Project 11", address: "TBC", google_maps_url: null,
+    id: "p11", name: "Project 11", address: null, google_maps_url: null,
     entity_spv: null, market: "hamptons", asset_type: "spec_home",
     status: "pipeline", stage: "sourcing",
     purchase_date: "2028-12",

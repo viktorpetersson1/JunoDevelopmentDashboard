@@ -187,6 +187,7 @@ export default async function ProjectDetailPage({
           currentBrief={currentBrief}
           briefHistory={briefHistory}
           isEditor={hasRole(profile, ['super_admin', 'editor'])}
+          hasAddress={Boolean(project.address && project.address.trim() && project.address.trim().toUpperCase() !== 'TBC')}
         />
       );
       break;

@@ -69,7 +69,17 @@ export const POST = withErrorBoundary(async (_req: NextRequest, ctx: RouteContex
   const uuid = await findCurrentProjectUuidByKey(ctx.params.id);
   if (!uuid) return notFound(`Project "${ctx.params.id}" not found`, 'PROJECT_NOT_FOUND');
 
-  if (!project.address || !project.villa_sqft_ag || project.villa_sqft_ag <= 0) {
+  // T090 — reject placeholder strings (TBC / "Site to be confirmed" / empty)
+  // as well as null/missing. Belt-and-suspenders against stray seed data
+  // that the 0023 migration didn't catch (e.g. a fresh seed run against a
+  // misconfigured environment).
+  const addrTrimmed = project.address?.trim() ?? '';
+  const addrUpper = addrTrimmed.toUpperCase();
+  const isPlaceholder =
+    addrTrimmed === '' ||
+    addrUpper === 'TBC' ||
+    addrTrimmed.toLowerCase().startsWith('site to be confirmed');
+  if (isPlaceholder || !project.villa_sqft_ag || project.villa_sqft_ag <= 0) {
     return badRequest(
       'Project needs an address + above-grade SF before a brief can be generated.',
       'PROJECT_MISSING_FIELDS'
@@ -154,7 +164,10 @@ export const POST = withErrorBoundary(async (_req: NextRequest, ctx: RouteContex
     projectId: uuid,
     projectKey: ctx.params.id,
     name: project.name,
-    address: project.address,
+    // addrTrimmed is guaranteed non-empty here (the isPlaceholder guard
+    // above would have returned 400 otherwise) — TS just can't narrow
+    // through the boolean derived above. Safe-cast to string.
+    address: addrTrimmed,
     googleMapsUrl: project.google_maps_url ?? null,
     marketId: project.market ?? 'default',
     subMarketLabel,
