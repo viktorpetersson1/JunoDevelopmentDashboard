@@ -1,7 +1,7 @@
 {
   "ci": {
     "collect": {
-      "startServerCommand": "pnpm exec next start -p 3001",
+      "startServerCommand": "cd atlas && pnpm exec next start -p 3001",
       "url": ["http://localhost:3001/sign-in"],
       "numberOfRuns": 3,
       "startServerReadyPattern": "Ready in",
