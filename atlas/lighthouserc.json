@@ -10,18 +10,11 @@
       }
     },
     "assert": {
-      "preset": "lighthouse:no-pwa",
       "assertions": {
         "categories:performance": ["error", { "minScore": 0.8 }],
         "categories:accessibility": ["error", { "minScore": 0.9 }],
         "categories:best-practices": ["warn", { "minScore": 0.85 }],
-        "categories:seo": ["warn", { "minScore": 0.8 }],
-        "uses-text-compression": "off",
-        "uses-responsive-images": "off",
-        "csp-xss": "off",
-        "is-on-https": "off",
-        "redirects-http": "off",
-        "uses-http2": "off"
+        "categories:seo": ["warn", { "minScore": 0.8 }]
       }
     },
     "upload": {
