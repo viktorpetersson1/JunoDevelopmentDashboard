@@ -352,7 +352,7 @@ export function GeneralTab({
               disabled={!canEdit}
             />
           </Field>
-          <Field label="Default Kingshaus $/sqft">
+          <Field label="Default Superstructure $/sqft">
             <NumberInput
               value={form.default_kingshaus_cost_per_sqft}
               onChange={(v) => update('default_kingshaus_cost_per_sqft', v)}

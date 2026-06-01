@@ -104,7 +104,7 @@ export function InputsTab({ project }: { project: ProjectInput }) {
           : 'default',
     },
     {
-      label: 'Kingshaus $/sqft',
+      label: 'Superstructure $/sqft',
       value:
         project.kingshaus_cost_per_sqft != null
           ? `$${project.kingshaus_cost_per_sqft.toLocaleString()}`

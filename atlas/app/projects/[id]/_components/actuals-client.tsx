@@ -19,7 +19,7 @@ const CATEGORY_LABELS: Record<ActualsCategory, string> = {
   land: 'Land',
   build: 'Build',
   soft: 'Soft costs',
-  kingshaus: 'Kingshaus',
+  kingshaus: 'Superstructure',
   financing: 'Financing',
   other: 'Other',
 };
