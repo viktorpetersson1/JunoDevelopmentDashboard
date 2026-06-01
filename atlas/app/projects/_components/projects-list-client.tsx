@@ -20,6 +20,7 @@ import { FilterChip } from '@/components/ui/FilterChip';
 import { Button } from '@/components/ui/Button';
 import { DashboardShell } from '@/app/_components/dashboard-shell';
 import { formatMoney } from '@/lib/utils/money';
+import { getCommitmentTier, type CommitmentTier } from '@/lib/projects/commitment-tier';
 import type { SidebarUser } from '@/components/layout';
 
 export interface ProjectRowVM {
@@ -45,19 +46,6 @@ const STAGE_FILTERS: { id: string; label: string }[] = [
 
 function prettyStage(stage: string): string {
   return stage.replaceAll('_', ' ');
-}
-
-function statusTone(status: string): 'positive' | 'info' | 'neutral' | 'warning' {
-  switch (status) {
-    case 'committed':
-      return 'positive';
-    case 'pipeline':
-      return 'info';
-    case 'archived':
-      return 'neutral';
-    default:
-      return 'warning';
-  }
 }
 
 function marginTone(margin: number): string {
@@ -92,9 +80,9 @@ export function ProjectsListClient({
     // Sort: committed projects first, then by total sales descending. Pipeline
     // placeholders sink to the bottom so the eye lands on real deals first.
     return [...r].sort((a, b) => {
-      const aIsActive = a.status === 'committed' ? 1 : 0;
-      const bIsActive = b.status === 'committed' ? 1 : 0;
-      if (aIsActive !== bIsActive) return bIsActive - aIsActive;
+      const aCommitted = getCommitmentTier(a) === 'committed' ? 1 : 0;
+      const bCommitted = getCommitmentTier(b) === 'committed' ? 1 : 0;
+      if (aCommitted !== bCommitted) return bCommitted - aCommitted;
       return b.total_sales - a.total_sales;
     });
   }, [initialRows, stageFilter, query]);
@@ -226,8 +214,8 @@ export function ProjectsListClient({
 // ────────────────────────────────────────────────────────────────────────────
 
 function ProjectTile({ project, onClick }: { project: ProjectRowVM; onClick: () => void }) {
-  const isPipeline = project.status === 'pipeline';
-  const tone = statusTone(project.status);
+  const tier = getCommitmentTier(project);
+  const isProspect = tier === 'prospect';
 
   return (
     <button
@@ -236,10 +224,13 @@ function ProjectTile({ project, onClick }: { project: ProjectRowVM; onClick: () 
       style={{
         textAlign: 'left',
         cursor: 'pointer',
-        background: isPipeline
+        opacity: isProspect ? 0.85 : 1,
+        background: isProspect
           ? 'var(--color-surface-sunken, #fafaf8)'
           : 'var(--color-surface-raised, #fff)',
-        border: '1px solid var(--color-border-hairline, #c8c8c5)',
+        border: isProspect
+          ? '1px dashed var(--color-border-hairline, #c8c8c5)'
+          : '1px solid var(--color-border-strong, #9a9a97)',
         borderRadius: 12,
         padding: 16,
         display: 'flex',
@@ -270,7 +261,7 @@ function ProjectTile({ project, onClick }: { project: ProjectRowVM; onClick: () 
             style={{
               fontSize: 14,
               fontWeight: 600,
-              color: isPipeline
+              color: isProspect
                 ? 'var(--color-text-secondary, #6b7280)'
                 : 'var(--color-text-primary, #111)',
               lineHeight: 1.3,
@@ -309,15 +300,7 @@ function ProjectTile({ project, onClick }: { project: ProjectRowVM; onClick: () 
           color: 'var(--color-text-tertiary, #767b84)',
         }}
       >
-        <StatusDot tone={tone} />
-        <span
-          style={{
-            textTransform: 'capitalize',
-            color: 'var(--color-text-secondary, #6b7280)',
-          }}
-        >
-          {project.status}
-        </span>
+        <TierBadge tier={tier} />
         {project.market && project.market !== 'default' && (
           <>
             <span>·</span>
@@ -350,7 +333,7 @@ function ProjectTile({ project, onClick }: { project: ProjectRowVM; onClick: () 
                 })
               : '—'
           }
-          muted={isPipeline}
+          muted={isProspect}
         />
         <TileMetric
           label="Profit"
@@ -362,13 +345,13 @@ function ProjectTile({ project, onClick }: { project: ProjectRowVM; onClick: () 
                 })
               : '—'
           }
-          muted={isPipeline}
+          muted={isProspect}
         />
         <TileMetric
           label="Margin"
           value={`${(project.margin_pct * 100).toFixed(1)}%`}
           color={marginTone(project.margin_pct)}
-          muted={isPipeline}
+          muted={isProspect}
         />
       </div>
     </button>
@@ -397,26 +380,29 @@ function StageBadge({ stage }: { stage: string }) {
   );
 }
 
-function StatusDot({ tone }: { tone: 'positive' | 'info' | 'neutral' | 'warning' }) {
-  const color =
-    tone === 'positive'
-      ? 'var(--color-positive, #15803d)'
-      : tone === 'info'
-        ? 'var(--color-accent-blue, #4f6fff)'
-        : tone === 'warning'
-          ? 'var(--color-warning, #a16207)'
-          : 'var(--color-text-quaternary, #b0b5bc)';
+function TierBadge({ tier }: { tier: CommitmentTier }) {
+  const committed = tier === 'committed';
   return (
     <span
       style={{
-        display: 'inline-block',
-        width: 6,
-        height: 6,
+        fontSize: 10,
+        fontWeight: 700,
+        padding: '2px 8px',
         borderRadius: 999,
-        background: color,
+        textTransform: 'uppercase',
+        letterSpacing: '0.05em',
+        whiteSpace: 'nowrap',
+        background: committed
+          ? 'var(--color-success-bg, #dcfce7)'
+          : 'var(--color-amber-bg, #fef3c7)',
+        color: committed ? 'var(--color-success-fg, #15803d)' : 'var(--color-amber-fg, #a16207)',
+        border: `1px solid ${
+          committed ? 'var(--color-success-border, #bbf7d0)' : 'var(--color-amber-border, #fde68a)'
+        }`,
       }}
-      aria-hidden
-    />
+    >
+      {committed ? 'Committed' : 'Prospect'}
+    </span>
   );
 }
 
