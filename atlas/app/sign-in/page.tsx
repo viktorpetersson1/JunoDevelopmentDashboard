@@ -42,7 +42,9 @@ export default function SignInPage({
 
           <SignInForm redirectTo={redirectTo} initialError={errorParam} />
 
-          <p className="mt-6 text-center text-xs text-text-tertiary">
+          {/* text-text-secondary (#6b7280, 4.83:1 on #fff) instead of tertiary
+              (#767b84, ~4.26:1) to satisfy WCAG AA 4.5:1 at text-xs (12px). */}
+          <p className="mt-6 text-center text-xs text-text-secondary">
             Need an account? Ask a Juno admin to invite you.
           </p>
         </div>
