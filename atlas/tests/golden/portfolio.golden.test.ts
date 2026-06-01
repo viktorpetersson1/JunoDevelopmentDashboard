@@ -6,11 +6,13 @@
  * the new TS `aggregatePortfolio()`, and asserts every ported field
  * matches within 0.5% relative / $1 absolute tolerance.
  *
- * Skipped fields (deferred — see aggregate.ts header):
- *   - `outputs.waterfall` (computeWaterfall — Owner Waterfall screen W4)
+ * Skipped fields (still deferred — see aggregate.ts header):
+ *   - `outputs.waterfall` (computeWaterfall — wired by /waterfall page out-of-band)
  *   - `outputs.hypothetical_lp` (hypotheticalLpAnalysis)
- *   - `outputs.kpis.contingency` (per-project contingency aggregation)
- *   - `outputs.kpis.sales_metrics` (per-project sales-pace aggregation)
+ *
+ * Ported as of T092 (1 Jun 2026):
+ *   - `outputs.kpis.contingency` — per-project contingency aggregation
+ *   - `outputs.kpis.sales_metrics` — per-project sales-pace aggregation
  *
  * Tolerance reasoning matches `project.golden.test.ts`: identical math in
  * spirit, 0.5%/$1 buffer for float-summation reorder drift.
@@ -249,5 +251,41 @@ describe('aggregatePortfolio vs vanilla engine (golden)', () => {
     expect(result.by_project.length).toBe(fx.inputs.project_ids.length);
     const ids = result.by_project.map((p) => p.project_id);
     expect(ids).toEqual(fx.inputs.project_ids);
+  });
+
+  // T092 (D-013) — contingency rollup, ported from engine.js:567-582.
+  it('kpis.contingency matches vanilla within tolerance', () => {
+    const c = result.kpis.contingency;
+    const v = fx.outputs.kpis.contingency;
+    expectClose(c.budget_usd, v.budget_usd, 'kpis.contingency.budget_usd');
+    expectClose(c.used_usd, v.used_usd, 'kpis.contingency.used_usd');
+    expectClose(c.remaining_usd, v.remaining_usd, 'kpis.contingency.remaining_usd');
+    expectClose(c.burn_pct, v.burn_pct, 'kpis.contingency.burn_pct');
+  });
+
+  // T092 (D-013) — sales-cycle rollup, ported from engine.js:584-599.
+  // Baseline today has zero closed projects, so avg_* are all null —
+  // null-vs-null is trivially passing; real coverage of the math waits on
+  // a synthetic fixture with a closed project (deferred to T092 follow-up).
+  it('kpis.sales_metrics matches vanilla within tolerance', () => {
+    const s = result.kpis.sales_metrics;
+    const v = fx.outputs.kpis.sales_metrics;
+    expect(s.sold_count).toBe(v.sold_count);
+    expectClose(
+      s.total_actual_sales,
+      v.total_actual_sales,
+      'kpis.sales_metrics.total_actual_sales'
+    );
+    expectClose(s.avg_dom, v.avg_dom, 'kpis.sales_metrics.avg_dom');
+    expectClose(
+      s.avg_listing_to_close,
+      v.avg_listing_to_close,
+      'kpis.sales_metrics.avg_listing_to_close'
+    );
+    expectClose(
+      s.avg_price_to_listing_ratio,
+      v.avg_price_to_listing_ratio,
+      'kpis.sales_metrics.avg_price_to_listing_ratio'
+    );
   });
 });

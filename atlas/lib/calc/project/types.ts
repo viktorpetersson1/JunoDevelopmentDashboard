@@ -112,6 +112,13 @@ export interface ProjectInput {
   // Build curve override
   build_cost_curve?: BuildCostCurve | null;
 
+  /**
+   * T092 (D-013) — contingency drawdown for the live project. Vanilla reads
+   * this when rolling up portfolio-level `kpis.contingency.used_usd`.
+   * Optional; defaults to 0 when missing (BASELINE_PROJECTS doesn't set it).
+   */
+  contingency_used_usd?: number | null;
+
   // Excel benchmark (legacy reference; not used by engine)
   _excel_sale_price?: number;
   _excel_total_cost_per_sqft?: number;

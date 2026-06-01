@@ -8,11 +8,16 @@
  * Pure function. Match target: 0.5% relative / $1 absolute vs the vanilla
  * fixture at `atlas/tests/fixtures/vanilla-snapshots/portfolio.json`.
  *
+ * **Ported (T092 — 1 Jun 2026):** `kpis.contingency` and `kpis.sales_metrics`
+ * are now computed inline (vanilla parity, engine.js:567-599).
+ *
  * **Not yet ported:** the `waterfall` and `hypothetical_lp` fields the
  * vanilla aggregator computes. Those depend on `computeWaterfall` (engine.js
  * line 1163, used by Owner Waterfall screen W4) and
- * `hypotheticalLpAnalysis` (line 1240). Surfaces shipped so far don't need
- * them; deferred to a follow-up.
+ * `hypotheticalLpAnalysis` (line 1240). The TS modules exist in
+ * `lib/calc/waterfall/compute.ts` (shipped V4.4 sprint) but aren't wired
+ * through the aggregator — `/waterfall` page calls them out-of-band today.
+ * Wiring + the `investors` arg threading is the remainder of T092.
  */
 
 import { buildTimeline, parseYM } from '@/lib/utils/dates';
@@ -404,6 +409,60 @@ export function aggregatePortfolio(
         ? (port.debt_balance![maxDebtIdx] ?? 0) / peakEquityCommitted
         : 0,
     active_project_count: active.length,
+    // T092 (D-013) — vanilla parity. Faithful port of engine.js:567-582.
+    // Budget = contingency_pct × (build + Kingshaus) per active project.
+    contingency: (() => {
+      const cpct = globals.contingency_pct ?? 0.05;
+      const budget = active.reduce((sum, p) => {
+        const sqft = p.villa_sqft || 0;
+        const eff = (p.build_cost_per_sqft ?? globals.default_build_cost_per_sqft) * sqft;
+        const king = (p.kingshaus_cost_per_sqft ?? globals.default_kingshaus_cost_per_sqft) * sqft;
+        return sum + (eff + king) * cpct;
+      }, 0);
+      const used = active.reduce((sum, p) => sum + (p.contingency_used_usd ?? 0), 0);
+      return {
+        budget_usd: budget,
+        used_usd: used,
+        remaining_usd: Math.max(0, budget - used),
+        burn_pct: budget > 0 ? used / budget : 0,
+      };
+    })(),
+    // T092 (D-013) — vanilla parity. Faithful port of engine.js:584-599.
+    // Rollup over ALL projects (not just `active`) that have listing+closing
+    // dates set. avg_* are null when no project qualifies.
+    sales_metrics: (() => {
+      const sold = projects.filter((p) => p.closing_date && p.listing_date);
+      const totalActualSales = projects.reduce((a, p) => a + (p.actual_sale_price_usd ?? 0), 0);
+      if (sold.length === 0) {
+        return {
+          sold_count: 0,
+          avg_dom: null,
+          avg_listing_to_close: null,
+          avg_price_to_listing_ratio: null,
+          total_actual_sales: totalActualSales,
+        };
+      }
+      const days = (a: string, b: string): number =>
+        Math.round((new Date(b).getTime() - new Date(a).getTime()) / (24 * 3600 * 1000));
+      const dom = sold.map((p) =>
+        p.under_contract_date
+          ? days(p.listing_date!, p.under_contract_date)
+          : days(p.listing_date!, p.closing_date!)
+      );
+      const ltc = sold.map((p) => days(p.listing_date!, p.closing_date!));
+      const priceRatio = sold
+        .filter((p) => p.listing_price_usd && p.actual_sale_price_usd)
+        .map((p) => p.actual_sale_price_usd! / p.listing_price_usd!);
+      const avg = (arr: number[]): number | null =>
+        arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+      return {
+        sold_count: sold.length,
+        avg_dom: avg(dom),
+        avg_listing_to_close: avg(ltc),
+        avg_price_to_listing_ratio: avg(priceRatio),
+        total_actual_sales: totalActualSales,
+      };
+    })(),
   };
 
   return {

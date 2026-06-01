@@ -105,6 +105,29 @@ export interface PortfolioKpis {
   payback_months: number | null;
   debt_to_equity_peak: number;
   active_project_count: number;
+  /**
+   * T092 (D-013) — vanilla parity. Contingency budget = contingency_pct of
+   * hard costs (build + Kingshaus) across active projects; used = sum of
+   * per-project contingency_used_usd (0 in baseline today).
+   */
+  contingency: {
+    budget_usd: number;
+    used_usd: number;
+    remaining_usd: number;
+    burn_pct: number;
+  };
+  /**
+   * T092 (D-013) — vanilla parity. Closing-cycle rollup over projects that
+   * have BOTH listing_date AND closing_date set. avg_* are null when no
+   * project qualifies (baseline today — nothing has closed yet).
+   */
+  sales_metrics: {
+    sold_count: number;
+    avg_dom: number | null;
+    avg_listing_to_close: number | null;
+    avg_price_to_listing_ratio: number | null;
+    total_actual_sales: number;
+  };
 }
 
 export interface PortfolioResult {
