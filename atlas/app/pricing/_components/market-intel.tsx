@@ -26,6 +26,10 @@ interface MarketIntelProps {
   activeAll: CompView[];
   subCuts: MarketSubCut[];
   totalCompsInLibrary: number;
+  /** T100.2 — newest closed comp is older than the staleness threshold. */
+  isStale: boolean;
+  /** YYYY-MM-DD of the freshest closed comp (for the banner copy). */
+  newestClosedDate: string | null;
 }
 
 interface KpiBucket {
@@ -138,6 +142,8 @@ export function MarketIntel({
   activeAll,
   subCuts,
   totalCompsInLibrary,
+  isStale,
+  newestClosedDate,
 }: MarketIntelProps) {
   // Window is intentionally NOT displayed — the actual data-range label
   // (formatDataRange) is honest; "last N days" can be misleading when AI
@@ -505,6 +511,56 @@ export function MarketIntel({
         >
           {feedback}
         </p>
+      )}
+
+      {/* T100.2 — staleness banner (newest comp older than the 180d threshold). */}
+      {isStale && newestClosedDate && (
+        <div
+          role="alert"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            flexWrap: 'wrap',
+            padding: '10px 14px',
+            borderRadius: 8,
+            background: 'var(--color-amber-bg, #fef3c7)',
+            border: '1px solid var(--color-amber-border, #fde68a)',
+            color: 'var(--color-amber-fg, #a16207)',
+            fontSize: 12,
+          }}
+        >
+          <span>
+            ⚠ Market data may be stale — the newest closed comp is from{' '}
+            {new Date(newestClosedDate + 'T00:00:00Z').toLocaleDateString('en-US', {
+              month: 'short',
+              year: 'numeric',
+              timeZone: 'UTC',
+            })}
+            . Recommendations may underweight recent market movement.
+          </span>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => doRefresh()}
+              disabled={refreshing}
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                padding: '6px 12px',
+                borderRadius: 8,
+                border: '1px solid var(--color-amber-border, #fde68a)',
+                background: 'var(--color-surface-base, #fff)',
+                color: 'var(--color-amber-fg, #a16207)',
+                cursor: refreshing ? 'wait' : 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {refreshing ? 'Refreshing…' : 'Refresh data now'}
+            </button>
+          )}
+        </div>
       )}
 
       {/* KPI strip */}

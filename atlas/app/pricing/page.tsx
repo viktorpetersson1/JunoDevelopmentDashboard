@@ -42,6 +42,22 @@ export default async function PricingDashboardPage() {
     countComps(false),
   ]);
 
+  // T100.2 — staleness: how old is the freshest closed comp? Computed
+  // server-side (the page is force-dynamic) so the banner doesn't flicker on
+  // hydrate. 180-day threshold per the V5.2 spec.
+  const STALE_AFTER_DAYS = 180;
+  const closedDates = dashboardComps.closedInWindow
+    .map((c) => c.closingDate)
+    .filter((d): d is string => !!d)
+    .sort();
+  const newestClosedDate = closedDates.length
+    ? (closedDates[closedDates.length - 1] ?? null)
+    : null;
+  const stalenessDays = newestClosedDate
+    ? Math.floor((Date.now() - new Date(newestClosedDate + 'T00:00:00Z').getTime()) / 86_400_000)
+    : null;
+  const isStale = stalenessDays !== null && stalenessDays > STALE_AFTER_DAYS;
+
   const dashboardUser = {
     name: profile.displayName ?? profile.email ?? user.email ?? 'Juno',
     email: profile.email ?? user.email ?? '',
@@ -61,6 +77,8 @@ export default async function PricingDashboardPage() {
           activeAll={dashboardComps.activeAll}
           subCuts={market?.subCuts ?? []}
           totalCompsInLibrary={totalComps}
+          isStale={isStale}
+          newestClosedDate={newestClosedDate}
         />
       </div>
     </DashboardShell>
