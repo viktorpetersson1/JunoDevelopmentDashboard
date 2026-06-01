@@ -32,6 +32,16 @@
 | 17 | DECISIONS.md has D-013 and D-014 | DONE | this commit (T087) | `D-013` documents `/dashboard` as canonical post-login surface (per Q1 = (a)). `D-014` documents CSP policy + the `unsafe-inline`/`unsafe-eval` relaxations + planned nonce migration. |
 | 18 | DEVIATION_REGISTER.md is in atlas/docs/ | DONE | this commit (T087) | This file. |
 
+## V4 fix-pack additions (1 June 2026)
+
+| # | Audit finding | Status | Commit(s) | Notes |
+|---|---|---|---|---|
+| V4-1 | T088: CI workflow at wrong path, never executed | DONE | `cb3f0af` | Moved `atlas/.github/workflows/ci.yml` → `.github/workflows/ci.yml`. Workflow content was already authored for repo-root location. Bundled perf p99 budget bump 15→25ms (CPU contention on 2-vCPU runners) and added `concurrency: cancel-in-progress` block. First run triggered. |
+| V4-2 | T091: atlas.notifications has no committed migration | DONE | T091 commit | Wrote `atlas/migrations/0022_notifications.sql` from live introspection. V4 draft was wrong on column name (`user_id` not `recipient_id`) and on `kind` (no CHECK in prod). Applied to live — confirmed no-op (6 rows / 8 cols / 2 RLS policies / 3 indexes preserved). |
+| V4-3 | T089: security headers missing on Pages Functions | OPEN | — | Diagnosis correct (no CSP/HSTS/X-Frame on `/sign-in`). V4 options A and B both wrong — CF Pages doesn't apply `_headers` to Functions, and `next-on-pages` doesn't propagate `next.config.mjs headers()`. Ship middleware-based headers (Option C). |
+| V4-4 | T090: 8 projects with literal "TBC" addresses + p2 seed drift | OPEN | — | Simpler than V4 plan — no `address_pending` column. NULL the placeholders + fix `public/data.js` (8 addresses + p2 Springs/Sunset + market_id drift) + regenerate seed + add pricing-strategy-tab pre-flight gate. |
+| V4-5 | T092: waterfall/LP/contingency/sales_metrics not golden-tested | OPEN | — | V4 framing wrong — no SKIP_KEYS literal exists, no Excel master in repo. The real gap is engine port (TS `aggregatePortfolio` doesn't compute these). Re-scoped as 3-5 days of engine work. |
+
 ## Out-of-band notes
 
 - The "REMEDIATION_REPORT.md from Viktor's workspace" referenced in
