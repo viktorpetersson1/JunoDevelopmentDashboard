@@ -214,9 +214,7 @@ function computePercentiles(
   // Loss probability — only meaningful when the outcome can go negative
   // (profit / IRR). For other outcomes it's trivially 0.
   const losses =
-    meta.key === 'profit_before_tax' ||
-    meta.key === 'profit_after_tax' ||
-    meta.key === 'irr_annual'
+    meta.key === 'profit_before_tax' || meta.key === 'profit_after_tax' || meta.key === 'irr_annual'
       ? values.filter((v) => v < 0).length
       : 0;
   return {

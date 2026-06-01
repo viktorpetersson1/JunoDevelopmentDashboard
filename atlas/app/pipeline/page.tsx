@@ -15,11 +15,7 @@
 
 import { DashboardShell } from '../_components/dashboard-shell';
 import { PipelineBoard, type StageGroup } from './_components/pipeline-board';
-import {
-  GoalTracker,
-  InFlight,
-  CandidateFunnel,
-} from './_components/velocity-sections';
+import { GoalTracker, InFlight, CandidateFunnel } from './_components/velocity-sections';
 import { findManyProjects } from '@/lib/repos/project';
 import { runProject } from '@/lib/calc/project/runProject';
 import { BASELINE_GLOBALS, BASELINE_SCENARIO } from '@/lib/calc/baselines';
@@ -158,10 +154,7 @@ export default async function PipelinePage() {
 
 function Divider() {
   return (
-    <div
-      aria-hidden
-      style={{ height: 1, background: 'var(--color-border-hairline, #c8c8c5)' }}
-    />
+    <div aria-hidden style={{ height: 1, background: 'var(--color-border-hairline, #c8c8c5)' }} />
   );
 }
 

@@ -84,12 +84,8 @@ export default async function ProjectDetailPage({
       // owner-scoped calls + cap table for the create-call modal.
       const projectUuid = await findCurrentProjectUuidByKey(params.id);
       const isAdmin = hasRole(profile, ['super_admin', 'editor']);
-      const ownerId = isAdmin
-        ? undefined
-        : await resolveOwnerIdForUser(profile.email);
-      const calls = projectUuid
-        ? await findCapitalCallsByProject(projectUuid, { ownerId })
-        : [];
+      const ownerId = isAdmin ? undefined : await resolveOwnerIdForUser(profile.email);
+      const calls = projectUuid ? await findCapitalCallsByProject(projectUuid, { ownerId }) : [];
       const capTable = isAdmin ? await fetchCapTable() : [];
       tabContent = (
         <CapitalTab
@@ -175,10 +171,7 @@ export default async function ProjectDetailPage({
       // reads from atlas.pricing_briefs.
       const pricingProjectUuid = await findCurrentProjectUuidByKey(params.id);
       const [currentBrief, briefHistory] = pricingProjectUuid
-        ? await Promise.all([
-            findCurrentBrief(pricingProjectUuid),
-            listBriefs(pricingProjectUuid),
-          ])
+        ? await Promise.all([findCurrentBrief(pricingProjectUuid), listBriefs(pricingProjectUuid)])
         : [null, []];
 
       tabContent = (
@@ -187,7 +180,11 @@ export default async function ProjectDetailPage({
           currentBrief={currentBrief}
           briefHistory={briefHistory}
           isEditor={hasRole(profile, ['super_admin', 'editor'])}
-          hasAddress={Boolean(project.address && project.address.trim() && project.address.trim().toUpperCase() !== 'TBC')}
+          hasAddress={Boolean(
+            project.address &&
+              project.address.trim() &&
+              project.address.trim().toUpperCase() !== 'TBC'
+          )}
         />
       );
       break;
@@ -219,11 +216,7 @@ export default async function ProjectDetailPage({
   }
 
   return (
-    <ProjectDetailClient
-      user={dashboardUser}
-      projectName={project.name}
-      projectSubtitle={subtitle}
-    >
+    <ProjectDetailClient user={dashboardUser} projectName={project.name} projectSubtitle={subtitle}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <SnapshotBanner
           projectKey={params.id}
@@ -269,8 +262,8 @@ function UnknownTabPlaceholder({ tab }: { tab: string }) {
       }}
     >
       <p style={{ margin: 0, fontSize: 14 }}>
-        Unknown tab <code>{tab}</code>. Try Summary, Inputs, Timeline,
-        Capital, Actuals, Sales, Risks, or Activity.
+        Unknown tab <code>{tab}</code>. Try Summary, Inputs, Timeline, Capital, Actuals, Sales,
+        Risks, or Activity.
       </p>
     </div>
   );

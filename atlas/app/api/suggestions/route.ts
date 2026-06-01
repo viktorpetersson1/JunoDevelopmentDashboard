@@ -123,8 +123,7 @@ async function resolveOrgId(): Promise<string> {
   if (cachedOrgId) return cachedOrgId;
   const supabase = createSupabaseServerClient();
   const { data } = await supabase.schema('atlas').from('orgs').select('id').limit(1).single();
-  const id =
-    (data as { id: string } | null)?.id ?? '00000000-0000-0000-0000-000000000000';
+  const id = (data as { id: string } | null)?.id ?? '00000000-0000-0000-0000-000000000000';
   cachedOrgId = id;
   return id;
 }

@@ -18,7 +18,11 @@ test.describe('J5: capital calls (auth gate)', () => {
 
   test('unauthenticated POST /api/capital-calls returns 401', async ({ request }) => {
     const res = await request.post('/api/capital-calls', {
-      data: { projectId: '00000000-0000-0000-0000-000000000000', totalAmountCents: 100_000_00, split: 'cap_table' },
+      data: {
+        projectId: '00000000-0000-0000-0000-000000000000',
+        totalAmountCents: 100_000_00,
+        split: 'cap_table',
+      },
     });
     expect(res.status()).toBe(401);
   });

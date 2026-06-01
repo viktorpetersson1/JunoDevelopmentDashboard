@@ -52,7 +52,12 @@ export async function getActiveScenario(): Promise<{
     if (!saved) {
       // Stale cookie — fall back to base. The next API call will detect
       // the absence and the picker can re-prompt.
-      return { scenario: BASELINE_SCENARIO, isBase: true, activeId: null, displayName: 'Base case' };
+      return {
+        scenario: BASELINE_SCENARIO,
+        isBase: true,
+        activeId: null,
+        displayName: 'Base case',
+      };
     }
     return {
       scenario: viewToCalcScenario(saved),

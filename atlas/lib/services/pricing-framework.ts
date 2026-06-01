@@ -188,7 +188,8 @@ export async function createDraftRun(input: CreateDraftRunInput): Promise<Pricin
 
   // 2. Window defaults: today minus N months.
   const today = new Date();
-  const start = input.compWindow?.startDate ?? ymd(monthsBack(today, market.defaultCompWindowMonths));
+  const start =
+    input.compWindow?.startDate ?? ymd(monthsBack(today, market.defaultCompWindowMonths));
   const end = input.compWindow?.endDate ?? ymd(today);
 
   // 3. Pull comps once (deduped across plot types' shared sub-cuts).
@@ -229,8 +230,10 @@ export async function createDraftRun(input: CreateDraftRunInput): Promise<Pricin
   const plotRows: InsertPlotOutputRow[] = input.plotTypes.map((p) => {
     const anchor = strongestByCut.get(p.subCutKey);
     const suggestedBase = anchor?.snapshotPsf ?? null;
-    const suggestedLow = suggestedBase !== null ? Math.round(suggestedBase * 0.9 * 100) / 100 : null;
-    const suggestedHigh = suggestedBase !== null ? Math.round(suggestedBase * 1.1 * 100) / 100 : null;
+    const suggestedLow =
+      suggestedBase !== null ? Math.round(suggestedBase * 0.9 * 100) / 100 : null;
+    const suggestedHigh =
+      suggestedBase !== null ? Math.round(suggestedBase * 1.1 * 100) / 100 : null;
     return {
       pricingRunId: runId,
       plotTypeKey: p.key,
@@ -350,10 +353,7 @@ export async function editDraftHeader(
  * Reconciliation table is opaque — the caller (UI) can build whatever JSON
  * structure it wants; we store it as-is and surface it in the history view.
  */
-export async function commitRun(
-  input: CommitRunInput,
-  user: User
-): Promise<PricingRunBundleView> {
+export async function commitRun(input: CommitRunInput, user: User): Promise<PricingRunBundleView> {
   const bundle = await findRunBundle(input.runId);
   if (!bundle) throw new PricingRunValidationError(`Run ${input.runId} not found`);
   if (bundle.run.status !== 'draft') {
@@ -439,7 +439,8 @@ export async function commitRun(
         lowPremiumPct: premiumPct(submission.lowPsf, lowAnchorPsf),
         basePremiumPct: premiumPct(submission.basePsf, baseAnchorPsf),
         highPremiumPct: premiumPct(submission.highPsf, highAnchorPsf),
-        lowDerivation: lowAnchorPsf > 0 ? ('anchored' as PlotDerivation) : ('manual' as PlotDerivation),
+        lowDerivation:
+          lowAnchorPsf > 0 ? ('anchored' as PlotDerivation) : ('manual' as PlotDerivation),
         baseDerivation:
           baseAnchorPsf > 0 ? ('anchored' as PlotDerivation) : ('manual' as PlotDerivation),
         highDerivation:
@@ -579,7 +580,7 @@ export function confidenceForPlotOutput(input: ConfidenceInput): PlotConfidence 
 
 function premiumPct(psf: number, anchorPsf: number): number | null {
   if (!anchorPsf || anchorPsf <= 0) return null;
-  return Number(((psf - anchorPsf) / anchorPsf * 100).toFixed(4));
+  return Number((((psf - anchorPsf) / anchorPsf) * 100).toFixed(4));
 }
 
 function validatePlotSubmission(
@@ -591,9 +592,7 @@ function validatePlotSubmission(
     throw new PricingRunValidationError(`plot ${plot.plotTypeKey}: basePsf must be > 0`);
   }
   if (submission.lowPsf <= 0 || submission.highPsf <= 0) {
-    throw new PricingRunValidationError(
-      `plot ${plot.plotTypeKey}: lowPsf/highPsf must be > 0`
-    );
+    throw new PricingRunValidationError(`plot ${plot.plotTypeKey}: lowPsf/highPsf must be > 0`);
   }
   if (!(submission.lowPsf <= submission.basePsf && submission.basePsf <= submission.highPsf)) {
     throw new PricingRunValidationError(
@@ -697,14 +696,10 @@ function buildCompSnapshotRows(
   return rows;
 }
 
-function dataGapForPool(
-  snapshots: PricingRunComparableView[],
-  subCutKey: string
-): boolean {
+function dataGapForPool(snapshots: PricingRunComparableView[], subCutKey: string): boolean {
   return (
-    snapshots.filter(
-      (s) => s.snapshotStatus === 'closed' && s.snapshotSubCutKey === subCutKey
-    ).length < 3
+    snapshots.filter((s) => s.snapshotStatus === 'closed' && s.snapshotSubCutKey === subCutKey)
+      .length < 3
   );
 }
 
@@ -751,9 +746,7 @@ export async function getCompForDraft(compId: string): Promise<CompView | null> 
 }
 
 /** Re-list comparables (used by the draft editor's "refresh comp pool" button). */
-export async function listSnapshotsForRun(
-  runId: string
-): Promise<PricingRunComparableView[]> {
+export async function listSnapshotsForRun(runId: string): Promise<PricingRunComparableView[]> {
   return listComparablesForRun(runId);
 }
 

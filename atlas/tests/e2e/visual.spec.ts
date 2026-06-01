@@ -65,9 +65,7 @@ test.describe('atlas visual baselines (auth required — skipped pre-T076)', () 
     });
   });
 
-  test('surface 06 — project detail timeline /projects/p2?tab=timeline', async ({
-    page,
-  }) => {
+  test('surface 06 — project detail timeline /projects/p2?tab=timeline', async ({ page }) => {
     await page.goto('/projects/p2?tab=timeline');
     await page.waitForLoadState('networkidle');
     await expect(page).toHaveScreenshot('surface-06-project-timeline.png', {

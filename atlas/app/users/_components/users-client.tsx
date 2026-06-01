@@ -50,9 +50,9 @@ export function UsersClient({
         body: JSON.stringify({ role: newRole }),
       });
       if (!res.ok) {
-        const json = (await res.json().catch(() => null)) as
-          | { error?: { code: string; message: string } }
-          | null;
+        const json = (await res.json().catch(() => null)) as {
+          error?: { code: string; message: string };
+        } | null;
         setRowError((p) => ({
           ...p,
           [userId]: json?.error?.message ?? `HTTP ${res.status}`,
@@ -67,7 +67,9 @@ export function UsersClient({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <header>
-        <h1 style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}>
+        <h1
+          style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}
+        >
           Users
         </h1>
         <p style={{ margin: '4px 0 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
@@ -147,12 +149,18 @@ export function UsersClient({
                         ))}
                       </select>
                       {err && (
-                        <span style={{ fontSize: 11, color: 'var(--color-negative, #b91c1c)' }} role="alert">
+                        <span
+                          style={{ fontSize: 11, color: 'var(--color-negative, #b91c1c)' }}
+                          role="alert"
+                        >
                           {err}
                         </span>
                       )}
                       {ok && !err && (
-                        <span style={{ fontSize: 11, color: 'var(--color-positive, #15803d)' }} role="status">
+                        <span
+                          style={{ fontSize: 11, color: 'var(--color-positive, #15803d)' }}
+                          role="status"
+                        >
                           Updated.
                         </span>
                       )}

@@ -125,9 +125,7 @@ function AuditSection({
             <AuditEntry
               key={e.id}
               entry={e}
-              userName={
-                e.userId ? userDisplayNames[e.userId] ?? e.userId.slice(0, 8) : 'system'
-              }
+              userName={e.userId ? (userDisplayNames[e.userId] ?? e.userId.slice(0, 8)) : 'system'}
               isLast={i === entries.length - 1}
             />
           ))}
@@ -142,8 +140,8 @@ function AuditSection({
             fontSize: 13,
           }}
         >
-          No activity recorded yet. Mutations on this project — capital
-          calls, snapshots, edits — appear here.
+          No activity recorded yet. Mutations on this project — capital calls, snapshots, edits —
+          appear here.
         </p>
       )}
     </section>
@@ -196,7 +194,14 @@ function AuditEntry({
         {categoryLabel}
       </span>
       <div>
-        <div style={{ color: 'var(--color-text-primary)', display: 'flex', gap: 6, alignItems: 'baseline' }}>
+        <div
+          style={{
+            color: 'var(--color-text-primary)',
+            display: 'flex',
+            gap: 6,
+            alignItems: 'baseline',
+          }}
+        >
           <strong style={{ fontWeight: 600 }}>{userName}</strong>
           <span style={{ color: 'var(--color-text-secondary)' }}>{entry.action}</span>
           {entry.resourceId && (

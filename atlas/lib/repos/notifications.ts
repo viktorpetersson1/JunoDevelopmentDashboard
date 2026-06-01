@@ -108,13 +108,16 @@ export interface InsertNotificationRow {
 export async function insertNotification(row: InsertNotificationRow): Promise<void> {
   try {
     const supabase = createSupabaseServiceRoleClient();
-    await supabase.schema('atlas').from('notifications').insert({
-      user_id: row.userId,
-      kind: row.kind,
-      title: row.title,
-      body: row.body ?? null,
-      href: row.href ?? null,
-    });
+    await supabase
+      .schema('atlas')
+      .from('notifications')
+      .insert({
+        user_id: row.userId,
+        kind: row.kind,
+        title: row.title,
+        body: row.body ?? null,
+        href: row.href ?? null,
+      });
   } catch {
     // best-effort
   }

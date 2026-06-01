@@ -114,9 +114,7 @@ export function ScenarioOverlayChart({
             width={56}
           />
           <Tooltip
-            formatter={(v: number | string) =>
-              typeof v === 'number' ? compact(v) : String(v)
-            }
+            formatter={(v: number | string) => (typeof v === 'number' ? compact(v) : String(v))}
             labelStyle={{ color: 'var(--color-text-primary)', fontSize: 12 }}
             contentStyle={{
               background: 'var(--color-surface-base)',

@@ -1,11 +1,4 @@
-import {
-  uuid,
-  text,
-  integer,
-  boolean,
-  jsonb,
-  timestamp,
-} from 'drizzle-orm/pg-core';
+import { uuid, text, integer, boolean, jsonb, timestamp } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { atlas } from './atlas-schema';
 
@@ -46,7 +39,9 @@ export const markets = atlas.table('markets', {
   riderThresholdPct: integer('rider_threshold_pct').notNull().default(15),
   stretchThresholdPct: integer('stretch_threshold_pct').notNull().default(30),
   /** Opaque sub-cut taxonomy — see file header. */
-  subCuts: jsonb('sub_cuts').notNull().default(sql`'[]'::jsonb`),
+  subCuts: jsonb('sub_cuts')
+    .notNull()
+    .default(sql`'[]'::jsonb`),
   /** Reserved for v2 cross-market migration thesis ("Manhattan buyers
    * migrating to North Fork"). v1 leaves empty. */
   referenceMarketIds: uuid('reference_market_ids')

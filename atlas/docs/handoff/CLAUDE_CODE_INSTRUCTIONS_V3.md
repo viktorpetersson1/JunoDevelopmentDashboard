@@ -42,7 +42,7 @@ In `atlas/components/ui/primitives.css`:
 ```css
 .ja-button--auth {
   height: 48px;
-  font-size: var(--font-size-base);   /* 14-15px */
+  font-size: var(--font-size-base); /* 14-15px */
   font-weight: 500;
   border-radius: 8px;
   width: 100%;
@@ -53,12 +53,12 @@ In `atlas/components/ui/primitives.css`:
 }
 
 .ja-input-wrap--auth .ja-input {
-  font-size: 16px;          /* MUST be >=16px — iOS Safari auto-zooms below this */
+  font-size: 16px; /* MUST be >=16px — iOS Safari auto-zooms below this */
   padding-inline: 14px;
 }
 
 .ja-field__label--auth {
-  font-size: var(--font-size-sm);     /* bump from 12 to 13 */
+  font-size: var(--font-size-sm); /* bump from 12 to 13 */
   font-weight: 500;
 }
 ```
@@ -66,6 +66,7 @@ In `atlas/components/ui/primitives.css`:
 In `sign-in-form.tsx`, apply `--auth` to the Sign In button and both inputs.
 
 **Done-when:**
+
 - DevTools "Computed" tab on the Sign In button shows `height: 48px`
 - Both inputs show `height: 44px` and `font-size: 16px`
 - On iPhone Safari (or DevTools iPhone emulation), tapping the email field does not zoom
@@ -75,6 +76,7 @@ In `sign-in-form.tsx`, apply `--auth` to the Sign In button and both inputs.
 Today the form fires browser-native validation tooltips ("Please fill out this field"). Replace with styled inline errors using the existing `.ja-input-wrap--invalid` class.
 
 In `sign-in-form.tsx`:
+
 - Add `noValidate` to the `<form>` element.
 - On submit, validate manually. If empty: add `--invalid` class to the wrap and render a `.ja-field__error` element with `id="email-error"` (or `password-error`).
 - Pass `aria-invalid={hasError}` and `aria-describedby="email-error"` to the input when invalid.
@@ -85,12 +87,13 @@ Add CSS if missing:
 .ja-field__error {
   margin-top: 6px;
   font-size: var(--font-size-xs);
-  color: var(--color-text-negative);   /* or #b91c1c */
+  color: var(--color-text-negative); /* or #b91c1c */
   line-height: 1.4;
 }
 ```
 
 **Done-when:**
+
 - Submitting an empty form shows two custom red error messages, no browser tooltip
 - Submitting a malformed email shows "Enter a valid email address" below the email field
 - Inputs gain `aria-invalid="true"` and `aria-describedby` linked to the error element
@@ -101,6 +104,7 @@ Add CSS if missing:
 Today `aria-busy` is wired statically. The `.ja-button--loading` and `.ja-button__spinner` CSS exists but is never activated. There is no double-submit prevention.
 
 In `sign-in-form.tsx`:
+
 - Add `const [submitting, setSubmitting] = useState(false)`
 - On submit, set true; in `finally`, set false
 - Button gets `className={cn("ja-button ja-button--primary ja-button--auth", submitting && "ja-button--loading")}`
@@ -108,6 +112,7 @@ In `sign-in-form.tsx`:
 - Set `aria-busy={submitting}` and `disabled={submitting}`
 
 **Done-when:**
+
 - Click Sign In with any credentials → button shows spinner + text changes + is disabled until the response resolves
 - Double-clicking does not fire two auth requests (verify in Network tab)
 
@@ -139,6 +144,7 @@ In `sign-in-form.tsx`, wrap the password input:
 Use `lucide-react` (already in dependencies) for the icons.
 
 **Done-when:**
+
 - Eye icon visible on the right of the password field
 - Click toggles between hidden and visible password
 - `aria-label` updates with state
@@ -153,11 +159,14 @@ In `primitives.css`, append to the `.ja-button--primary:active` rule:
 ```css
 .ja-button:not(:disabled):active {
   transform: scale(0.98);
-  transition: transform 80ms ease, background-color 120ms ease;
+  transition:
+    transform 80ms ease,
+    background-color 120ms ease;
 }
 ```
 
 **Done-when:**
+
 - Pressing and holding the Sign In button visibly compresses it
 - The transition feels smooth on a mid-range laptop (60fps)
 
@@ -166,6 +175,7 @@ In `primitives.css`, append to the `.ja-button--primary:active` rule:
 The current pattern is: 56px Juno mark above an `<h1>` reading "Juno Atlas" above a subtitle "Sign in to continue." That's brand-redundant (the mark already says "Juno") and the subtitle is filler.
 
 In `sign-in-form.tsx`:
+
 - Keep the Juno mark
 - Change `<h1>` text to **"Welcome back"**
 - Change subtitle to **"Sign in to your Juno Atlas workspace."**
@@ -173,6 +183,7 @@ In `sign-in-form.tsx`:
 Optionally reduce mark size from 56px → 40px to lighten the top of the card.
 
 **Done-when:**
+
 - The H1 reads "Welcome back"
 - Subtitle is the new copy
 - Visual hierarchy on a 1440px viewport feels less top-heavy
@@ -183,14 +194,15 @@ In `atlas/app/tokens.css`:
 
 ```css
 :root {
-  --color-text-tertiary: #767b84;     /* was #8a8f98 — now 4.52:1 on white */
-  --color-border-hairline: #c8c8c5;   /* was #efefec — now 3.1:1 on white */
+  --color-text-tertiary: #767b84; /* was #8a8f98 — now 4.52:1 on white */
+  --color-border-hairline: #c8c8c5; /* was #efefec — now 3.1:1 on white */
 }
 ```
 
 Verify the new values still look right in dark mode — the `.dark` overrides may need a matching tweak (`--color-text-tertiary` in dark stays at `#8a8f98` against `#0d0d0d` for 5.98:1, which is fine).
 
 **Done-when:**
+
 - Pasting the page into the WebAIM contrast checker (or DevTools "Contrast" indicator), "Need an account?" passes 4.5:1
 - Input resting border passes 3:1 against the card background
 - Spot-check dark mode: contrast still passes
@@ -205,7 +217,7 @@ Replace with a properly-styled ghost button at smaller width, separated from the
 <div className="mt-6 text-center">
   <button
     type="button"
-    onClick={() => setMode("reset")}
+    onClick={() => setMode('reset')}
     className="ja-button ja-button--ghost ja-button--sm"
   >
     Forgot password?
@@ -216,6 +228,7 @@ Replace with a properly-styled ghost button at smaller width, separated from the
 If `.ja-button--sm` doesn't exist, add it: `height: 32px; padding: 0 12px; font-size: var(--font-size-sm);`
 
 **Done-when:**
+
 - "Forgot password?" is no longer full-width
 - It uses the `.ja-button` system, so it gets hover transition, focus ring, and active state for free
 - Gap between Sign In and Forgot password is `var(--space-6)` or larger
@@ -231,10 +244,10 @@ Today `/sign-up` silently 307s to `/sign-in` with no explanation. If invite-only
 Create `atlas/app/sign-up/page.tsx`:
 
 ```tsx
-import Link from "next/link";
-import { JunoMark } from "@/components/brand/JunoMark";
+import Link from 'next/link';
+import { JunoMark } from '@/components/brand/JunoMark';
 
-export const metadata = { title: "Sign up — Juno Atlas" };
+export const metadata = { title: 'Sign up — Juno Atlas' };
 
 export default function SignUpPage() {
   return (
@@ -243,8 +256,8 @@ export default function SignUpPage() {
         <JunoMark size={40} />
         <h1>Invite only</h1>
         <p>
-          Juno Atlas is currently available to Juno owners and admins only.
-          To request access, contact your Juno administrator.
+          Juno Atlas is currently available to Juno owners and admins only. To request access,
+          contact your Juno administrator.
         </p>
         <Link href="/sign-in" className="ja-button ja-button--primary ja-button--auth">
           Back to sign in
@@ -258,6 +271,7 @@ export default function SignUpPage() {
 Remove any middleware logic that redirects `/sign-up` → `/sign-in`. The page should be reachable directly.
 
 **Done-when:**
+
 - `curl -I https://juno-atlas.pages.dev/sign-up` returns `200`, not `307`
 - The page renders with the same design system as `/sign-in`
 - "Back to sign in" returns to the sign-in screen
@@ -267,6 +281,7 @@ Remove any middleware logic that redirects `/sign-up` → `/sign-in`. The page s
 Today: submit any email (registered or not) → "Reset link sent. Check your email." That confirms account existence to attackers (OWASP info disclosure).
 
 In the reset flow handler:
+
 - Always show the same success message regardless of whether `resetPasswordForEmail` succeeded or failed
 - Wrap the Supabase call in try/catch; do not surface errors to the UI
 - New success copy: **"If an account exists for that email, we've sent a reset link."**
@@ -274,6 +289,7 @@ In the reset flow handler:
 Also: after first submission, disable the email input + button. Show a "Send again in 60s" countdown if you want to allow retries; otherwise lock the form until page reload.
 
 **Done-when:**
+
 - Submitting `fake@fake.com` and `viktor.petersson@kpconfidencia.com` produce identical UI feedback
 - The form locks after submission
 - No timing-attack signal: both paths take similar wall time (the request still goes through; only the UI is normalized)
@@ -283,10 +299,12 @@ Also: after first submission, disable the email input + button. Show a "Send aga
 Today `GET /` → `/sign-in?redirectTo=%2F` which post-auth lands on `/` again. That's a no-op redirect cycle.
 
 In middleware or the root page server component:
+
 - If unauthenticated, redirect to `/sign-in?redirectTo=/dashboard` (or `/projects` — pick the canonical post-login surface and document it in `atlas/docs/DECISIONS.md` as D-013)
 - If `redirectTo` is missing entirely, default to `/dashboard`
 
 **Done-when:**
+
 - `curl -I https://juno-atlas.pages.dev/` returns `307` with `location: /sign-in?redirectTo=/dashboard` (or the canonical surface)
 - A successful sign-in from the root URL lands on the dashboard, not back at `/`
 
@@ -349,6 +367,7 @@ curl -I https://juno-atlas.pages.dev/_next/static/chunks/webpack-862c97fc18decd2
 ```
 
 **Done-when:**
+
 - `Cache-Control` on any `/_next/static/**` asset is exactly `public, max-age=31536000, immutable` — no `no-store`, no `must-revalidate`
 - `Cache-Control` on `/sign-in` HTML is exactly `no-store, must-revalidate`
 - DevTools Network panel shows static assets as `(disk cache)` on second page load
@@ -373,6 +392,7 @@ Apply the same block to `/sign-up`, `/dashboard`, `/projects/*`, `/pipeline`, `/
 Tighten CSP after initial deploy: remove `unsafe-inline` / `unsafe-eval` from `script-src` by adopting Next.js nonces (requires `experimental.cspNonce` or a custom middleware). That's a follow-up — for now `unsafe-inline` is acceptable to ship.
 
 **Done-when:**
+
 - `curl -I https://juno-atlas.pages.dev/sign-in` shows all 6 headers above
 - Browser console shows no CSP violation reports during normal sign-in flow
 - Embedding `https://juno-atlas.pages.dev/sign-in` in an `<iframe>` is blocked (test with a quick local HTML file)
@@ -389,6 +409,7 @@ In `atlas/app/layout.tsx` (or wherever the `<head>` is composed), add:
 Better: load the Supabase URL from an env var and template it in.
 
 **Done-when:**
+
 - DevTools Network → first auth call shows the TLS handshake completing before the form is submittable, not after submit
 - Lighthouse audit no longer flags "Preconnect to required origins"
 
@@ -409,7 +430,7 @@ pnpm add next-themes
 In `atlas/app/layout.tsx`:
 
 ```tsx
-import { ThemeProvider } from "next-themes";
+import { ThemeProvider } from 'next-themes';
 
 <html lang="en" suppressHydrationWarning>
   <body>
@@ -417,7 +438,7 @@ import { ThemeProvider } from "next-themes";
       {children}
     </ThemeProvider>
   </body>
-</html>
+</html>;
 ```
 
 `next-themes` toggles a `class="dark"` on `<html>` when the system is dark, which activates the existing `.dark` CSS block. No new tokens needed.
@@ -428,20 +449,26 @@ In `primitives.css`:
 
 ```css
 /* WAS */
-.ja-icon-button--ghost:hover:not(:disabled) { background: #f4f4f2; }
+.ja-icon-button--ghost:hover:not(:disabled) {
+  background: #f4f4f2;
+}
 
 /* CHANGE TO */
-.ja-icon-button--ghost:hover:not(:disabled) { background: var(--color-surface-muted); }
+.ja-icon-button--ghost:hover:not(:disabled) {
+  background: var(--color-surface-muted);
+}
 ```
 
 **T083.3 — Verify every dark token resolves correctly**
 
 Walk every screen reachable from sign-in (sign-in, forgot-password, sign-up). For each:
+
 1. Set DevTools "Emulate CSS media feature prefers-color-scheme: dark"
 2. Confirm background, text, borders, button, focus ring all use dark tokens
 3. Take a screenshot for the PR
 
 **Done-when:**
+
 - macOS / Windows in dark mode opens the site dark; in light mode opens light
 - Manually toggling OS theme without reloading the page updates the UI in real time
 - No hardcoded light colors leak through (search `#fff`, `#ffffff`, `#f4f4f2`, `#fafaf8` in `primitives.css` and `globals.css` — any non-token use is a bug)
@@ -457,13 +484,13 @@ Today `/api/me`, `/api/comps`, `/api/notifications`, and every other API route r
 In `atlas/middleware.ts`, when auth fails:
 
 ```ts
-const isApi = request.nextUrl.pathname.startsWith("/api/");
-const wantsJson = request.headers.get("accept")?.includes("application/json");
+const isApi = request.nextUrl.pathname.startsWith('/api/');
+const wantsJson = request.headers.get('accept')?.includes('application/json');
 
 if (isApi || wantsJson) {
   return NextResponse.json(
-    { error: "Unauthorized", code: "AUTH_REQUIRED" },
-    { status: 401, headers: { "WWW-Authenticate": "Bearer" } }
+    { error: 'Unauthorized', code: 'AUTH_REQUIRED' },
+    { status: 401, headers: { 'WWW-Authenticate': 'Bearer' } }
   );
 }
 
@@ -478,6 +505,7 @@ Today: `{"data":{"status":"ok","commit":"dev","time":"..."}}` — leaks `commit`
 Change the public path to return only `{"status":"ok"}`. Move detailed status (commit SHA, build time, env) behind auth at `/api/health/detailed`. The healthcheck consumer (Cloudflare uptime, internal monitor) can hit `/api/health/detailed` with the service role or an admin session.
 
 **Done-when:**
+
 - `curl -i https://juno-atlas.pages.dev/api/me` returns `401` with JSON body, not 307 HTML
 - `curl -i https://juno-atlas.pages.dev/api/health` returns `{"status":"ok"}` only — no commit, no time
 - A logged-in browser session still works for all API routes
@@ -495,21 +523,28 @@ Create `atlas/lib/auth/safe-redirect.ts`:
 
 ```ts
 export function sanitizeRedirect(input: string | undefined | null): string {
-  const fallback = "/dashboard";   // align with T081.3
+  const fallback = '/dashboard'; // align with T081.3
   if (!input) return fallback;
 
   // Must start with single slash
-  if (!input.startsWith("/")) return fallback;
+  if (!input.startsWith('/')) return fallback;
   // Reject protocol-relative URLs
-  if (input.startsWith("//")) return fallback;
+  if (input.startsWith('//')) return fallback;
   // Reject \-escape tricks some browsers normalize
-  if (input.includes("\\")) return fallback;
+  if (input.includes('\\')) return fallback;
   // Strip query and hash for the redirect check (still pass them through)
-  const path = input.split("?")[0].split("#")[0];
+  const path = input.split('?')[0].split('#')[0];
   // Allowlist of known top-level segments (defense in depth)
-  const allowed = ["/dashboard", "/projects", "/pipeline", "/cashflow",
-                   "/notifications", "/settings", "/pricing"];
-  if (allowed.some(p => path === p || path.startsWith(p + "/"))) return input;
+  const allowed = [
+    '/dashboard',
+    '/projects',
+    '/pipeline',
+    '/cashflow',
+    '/notifications',
+    '/settings',
+    '/pricing',
+  ];
+  if (allowed.some((p) => path === p || path.startsWith(p + '/'))) return input;
   return fallback;
 }
 ```
@@ -521,19 +556,20 @@ Wire it everywhere `redirectTo` is consumed: `atlas/app/sign-in/page.tsx`, the s
 In `atlas/app/sign-in/__tests__/sign-in-form.test.tsx` (or a new file), add Vitest cases:
 
 ```ts
-expect(sanitizeRedirect("https://evil.com")).toBe("/dashboard");
-expect(sanitizeRedirect("//evil.com")).toBe("/dashboard");
-expect(sanitizeRedirect("javascript:alert(1)")).toBe("/dashboard");
-expect(sanitizeRedirect("/projects/abc")).toBe("/projects/abc");
-expect(sanitizeRedirect("/projects/abc?tab=capital")).toBe("/projects/abc?tab=capital");
-expect(sanitizeRedirect(undefined)).toBe("/dashboard");
-expect(sanitizeRedirect("")).toBe("/dashboard");
-expect(sanitizeRedirect("/../etc/passwd")).toBe("/dashboard");
+expect(sanitizeRedirect('https://evil.com')).toBe('/dashboard');
+expect(sanitizeRedirect('//evil.com')).toBe('/dashboard');
+expect(sanitizeRedirect('javascript:alert(1)')).toBe('/dashboard');
+expect(sanitizeRedirect('/projects/abc')).toBe('/projects/abc');
+expect(sanitizeRedirect('/projects/abc?tab=capital')).toBe('/projects/abc?tab=capital');
+expect(sanitizeRedirect(undefined)).toBe('/dashboard');
+expect(sanitizeRedirect('')).toBe('/dashboard');
+expect(sanitizeRedirect('/../etc/passwd')).toBe('/dashboard');
 ```
 
 Add a Playwright spec: sign in with `?redirectTo=https://evil.com` and assert the post-auth URL is `/dashboard`, not `evil.com`.
 
 **Done-when:**
+
 - All 8 unit cases pass
 - Playwright assertion passes in CI
 - `curl -s "https://juno-atlas.pages.dev/sign-in?redirectTo=https://evil.com" | grep redirectTo` shows the value as `/dashboard`, not `https://evil.com`
@@ -561,6 +597,7 @@ In `atlas/middleware.ts`, the auth gate must skip `/robots.txt`, `/sitemap.xml`,
 Optionally add a basic `app/sitemap.ts` that lists only public routes (`/sign-in`, `/sign-up`).
 
 **Done-when:**
+
 - `curl https://juno-atlas.pages.dev/robots.txt` returns the file, not a 307
 - `curl https://juno-atlas.pages.dev/sitemap.xml` returns valid sitemap XML (if implemented) or a 404 (acceptable)
 
@@ -574,9 +611,10 @@ Today `/pipelinex` returns 307 to sign-in. Should return 404.
 
 In middleware: before the auth check, run a route-existence check. If the path doesn't match any known route prefix (`/sign-in`, `/sign-up`, `/dashboard`, `/projects`, `/pipeline`, `/cashflow`, `/notifications`, `/settings`, `/pricing`, `/api`, static prefixes), let Next.js handle it (which yields 404).
 
-Or simpler: redirect to `/sign-in` only if the path *does* match a known protected prefix. Everything else falls through to Next.js's `not-found.tsx`.
+Or simpler: redirect to `/sign-in` only if the path _does_ match a known protected prefix. Everything else falls through to Next.js's `not-found.tsx`.
 
 **Done-when:**
+
 - `curl -I https://juno-atlas.pages.dev/pipelinex` returns 404
 - `curl -I https://juno-atlas.pages.dev/projects/anything` still returns 307 (auth-protected)
 - Visiting `/pipelinex` in a browser shows the branded 404 page
@@ -588,14 +626,16 @@ Or simpler: redirect to `/sign-in` only if the path *does* match a known protect
 After all the above ships:
 
 1. Update `atlas/docs/DECISIONS.md`:
+
    - Add **D-013** documenting the canonical post-login surface (`/dashboard` or whichever).
    - Add **D-014** documenting the CSP policy and known relaxations (`unsafe-inline` for now, plan to nonce in next sprint).
 
 2. Move `REMEDIATION_REPORT.md` from Viktor's workspace into the repo as `atlas/docs/DEVIATION_REGISTER.md`. For each line: status (DONE / PARTIAL / NOT STARTED / WON'T DO), commit ref(s), reason.
 
-3. Open a single PR titled **"Sprint: sign-in polish + security hardening (T080–T087)"** that contains *all* the above commits squashed or grouped, with a checklist in the description matching the done-when items in this file.
+3. Open a single PR titled **"Sprint: sign-in polish + security hardening (T080–T087)"** that contains _all_ the above commits squashed or grouped, with a checklist in the description matching the done-when items in this file.
 
 **Done-when:**
+
 - DEVIATION_REGISTER.md is in the repo
 - DECISIONS.md has the two new D-entries
 - PR description ticks every done-when checkbox from this document
@@ -635,33 +675,33 @@ Every item must check before merge. If any single item fails, the PR is blocked.
 
 ## 4. Estimated effort summary
 
-| Ticket | Pomos | Priority |
-|---|---|---|
-| T080 — sign-in polish (8 subtasks) | 6 | P0 |
-| T081 — sign-up route + forgot-pw copy | 3 | P0 |
-| T082 — security + cache headers | 2 | P0 |
-| T083 — dark mode auto-detect | 2 | P1 |
-| T084 — API auth response format | 2 | P0 |
-| T085 — open-redirect hardening | 1 | P0 |
-| T086 — robots.txt + iOS zoom + 404 | 2 | P1 |
-| T087 — deviation register + PR | 0.5 | P0 |
-| **Total** | **~18.5 pomos (≈1.5 days focused)** | |
+| Ticket                                | Pomos                               | Priority |
+| ------------------------------------- | ----------------------------------- | -------- |
+| T080 — sign-in polish (8 subtasks)    | 6                                   | P0       |
+| T081 — sign-up route + forgot-pw copy | 3                                   | P0       |
+| T082 — security + cache headers       | 2                                   | P0       |
+| T083 — dark mode auto-detect          | 2                                   | P1       |
+| T084 — API auth response format       | 2                                   | P0       |
+| T085 — open-redirect hardening        | 1                                   | P0       |
+| T086 — robots.txt + iOS zoom + 404    | 2                                   | P1       |
+| T087 — deviation register + PR        | 0.5                                 | P0       |
+| **Total**                             | **~18.5 pomos (≈1.5 days focused)** |          |
 
 ## 5. Where to find things
 
-| Need | Path |
-|---|---|
-| Sign-in form | `atlas/app/sign-in/sign-in-form.tsx` |
-| Sign-in page (server) | `atlas/app/sign-in/page.tsx` |
-| Auth middleware | `atlas/middleware.ts`, `atlas/lib/supabase/middleware.ts` |
-| Design tokens (light + dark) | `atlas/app/tokens.css` |
-| Component primitives CSS | `atlas/components/ui/primitives.css` |
-| Input component | `atlas/components/ui/Input.tsx` |
-| Button component | `atlas/components/ui/Button.tsx` |
-| Root layout | `atlas/app/layout.tsx` |
-| Headers config | `atlas/public/_headers` |
-| Wrangler config | `atlas/wrangler.toml` |
-| Decisions log | `atlas/docs/DECISIONS.md` |
+| Need                         | Path                                                      |
+| ---------------------------- | --------------------------------------------------------- |
+| Sign-in form                 | `atlas/app/sign-in/sign-in-form.tsx`                      |
+| Sign-in page (server)        | `atlas/app/sign-in/page.tsx`                              |
+| Auth middleware              | `atlas/middleware.ts`, `atlas/lib/supabase/middleware.ts` |
+| Design tokens (light + dark) | `atlas/app/tokens.css`                                    |
+| Component primitives CSS     | `atlas/components/ui/primitives.css`                      |
+| Input component              | `atlas/components/ui/Input.tsx`                           |
+| Button component             | `atlas/components/ui/Button.tsx`                          |
+| Root layout                  | `atlas/app/layout.tsx`                                    |
+| Headers config               | `atlas/public/_headers`                                   |
+| Wrangler config              | `atlas/wrangler.toml`                                     |
+| Decisions log                | `atlas/docs/DECISIONS.md`                                 |
 
 ---
 

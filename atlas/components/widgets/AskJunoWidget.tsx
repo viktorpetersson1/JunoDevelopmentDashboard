@@ -113,9 +113,7 @@ export function AskJunoWidget() {
       });
 
       if (!res.ok) {
-        const detail = await res
-          .json()
-          .catch(() => ({ error: { message: `HTTP ${res.status}` } }));
+        const detail = await res.json().catch(() => ({ error: { message: `HTTP ${res.status}` } }));
         const errText =
           (detail as { error?: { message?: string } })?.error?.message ??
           `Request failed (HTTP ${res.status}).`;
@@ -133,10 +131,7 @@ export function AskJunoWidget() {
             ? 'Your suggestion has been queued for review.'
             : 'Sent — admin will review.'
           : '(empty response)');
-      setMessages((m) => [
-        ...m,
-        { role: 'assistant', text: reply, ts: Date.now() },
-      ]);
+      setMessages((m) => [...m, { role: 'assistant', text: reply, ts: Date.now() }]);
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : 'Network error.';
       setMessages((m) => [
@@ -240,9 +235,7 @@ export function AskJunoWidget() {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <JunoMark size={20} ariaLabel="Juno" />
-            <strong style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>
-              Ask Juno
-            </strong>
+            <strong style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Ask Juno</strong>
           </div>
           <button
             type="button"
@@ -257,7 +250,14 @@ export function AskJunoWidget() {
               display: 'inline-flex',
             }}
           >
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
               <path d="M5 5l10 10M15 5L5 15" strokeLinecap="round" />
             </svg>
           </button>
@@ -288,9 +288,7 @@ export function AskJunoWidget() {
                 fontWeight: 500,
                 border: 'none',
                 borderBottom:
-                  mode === m
-                    ? '2px solid var(--color-text-primary)'
-                    : '2px solid transparent',
+                  mode === m ? '2px solid var(--color-text-primary)' : '2px solid transparent',
                 background: 'transparent',
                 color: mode === m ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)',
                 cursor: 'pointer',
@@ -314,9 +312,7 @@ export function AskJunoWidget() {
             background: 'var(--color-surface-sunken, #fafaf8)',
           }}
         >
-          {messages.length === 0 && (
-            <EmptyState mode={mode} pathname={pathname} />
-          )}
+          {messages.length === 0 && <EmptyState mode={mode} pathname={pathname} />}
           {messages.map((m, i) => (
             <MessageRow key={i} message={m} />
           ))}
@@ -410,7 +406,16 @@ function EmptyState({ mode, pathname }: { mode: Mode; pathname: string }) {
           ? 'Ask Juno anything about your portfolio.'
           : 'Suggest a change — an admin will review before it lands.'}
       </p>
-      <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <ul
+        style={{
+          listStyle: 'none',
+          padding: 0,
+          margin: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+        }}
+      >
         {nudges.map((n, i) => (
           <li key={i}>
             <button

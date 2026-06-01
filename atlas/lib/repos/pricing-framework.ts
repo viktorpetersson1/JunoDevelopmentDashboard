@@ -311,9 +311,7 @@ export async function listRunsByProject(
   return ((data as unknown as PricingRunRow[]) ?? []).map(toRunView);
 }
 
-export async function findLatestCommittedRun(
-  projectId: string
-): Promise<PricingRunView | null> {
+export async function findLatestCommittedRun(projectId: string): Promise<PricingRunView | null> {
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .schema('atlas')
@@ -328,9 +326,7 @@ export async function findLatestCommittedRun(
   return data ? toRunView(data as unknown as PricingRunRow) : null;
 }
 
-export async function listPlotOutputsForRun(
-  runId: string
-): Promise<PricingRunPlotOutputView[]> {
+export async function listPlotOutputsForRun(runId: string): Promise<PricingRunPlotOutputView[]> {
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .schema('atlas')
@@ -342,9 +338,7 @@ export async function listPlotOutputsForRun(
   return ((data as unknown as PlotOutputRow[]) ?? []).map(toPlotOutputView);
 }
 
-export async function listComparablesForRun(
-  runId: string
-): Promise<PricingRunComparableView[]> {
+export async function listComparablesForRun(runId: string): Promise<PricingRunComparableView[]> {
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .schema('atlas')
@@ -562,9 +556,7 @@ export async function replaceDraftComparables(
   const run = await findRunById(runId);
   if (!run) throw new Error(`replaceDraftComparables: run ${runId} not found`);
   if (run.status !== 'draft') {
-    throw new Error(
-      `replaceDraftComparables: run ${runId} is ${run.status}, refusing to mutate`
-    );
+    throw new Error(`replaceDraftComparables: run ${runId} is ${run.status}, refusing to mutate`);
   }
   // Plot outputs reference snapshot ids; clear those FKs first to be safe.
   await supabase
@@ -715,10 +707,7 @@ export async function updatePlotOutput(
 // Project FK update — applied_pricing_run_id
 // ────────────────────────────────────────────────────────────────────────────
 
-export async function setProjectAppliedRun(
-  projectId: string,
-  runId: string | null
-): Promise<void> {
+export async function setProjectAppliedRun(projectId: string, runId: string | null): Promise<void> {
   const supabase = createSupabaseServerClient();
   const { error } = await supabase
     .schema('atlas')

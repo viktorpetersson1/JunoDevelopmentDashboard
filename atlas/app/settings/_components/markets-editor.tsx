@@ -82,7 +82,9 @@ export function MarketsEditor({ initialMarkets, isBaselineMarkets, canEdit }: Pr
     });
     const blankIds = cleaned.filter((m) => !m.id || m.id.trim() === '');
     if (blankIds.length > 0) {
-      setError('Every market needs a non-empty id (use lowercase + underscore, e.g. east_hampton).');
+      setError(
+        'Every market needs a non-empty id (use lowercase + underscore, e.g. east_hampton).'
+      );
       return;
     }
     const dupes = new Set<string>();
@@ -150,9 +152,26 @@ export function MarketsEditor({ initialMarkets, isBaselineMarkets, canEdit }: Pr
         padding: 16,
       }}
     >
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+      <header
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          gap: 12,
+          flexWrap: 'wrap',
+        }}
+      >
         <div>
-          <h3 style={{ margin: 0, fontSize: 12, fontWeight: 600, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          <h3
+            style={{
+              margin: 0,
+              fontSize: 12,
+              fontWeight: 600,
+              color: 'var(--color-text-tertiary)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+            }}
+          >
             Markets
           </h3>
           <p style={{ margin: '4px 0 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>
@@ -242,7 +261,9 @@ export function MarketsEditor({ initialMarkets, isBaselineMarkets, canEdit }: Pr
                       type="number"
                       step={0.01}
                       value={r.sale_price_multiplier ?? 1}
-                      onChange={(e) => update(r._key, { sale_price_multiplier: Number(e.target.value) })}
+                      onChange={(e) =>
+                        update(r._key, { sale_price_multiplier: Number(e.target.value) })
+                      }
                       disabled={!canEdit}
                       style={{ ...inputStyle, width: 80, textAlign: 'right' }}
                     />
@@ -252,7 +273,9 @@ export function MarketsEditor({ initialMarkets, isBaselineMarkets, canEdit }: Pr
                       type="number"
                       step={0.01}
                       value={r.build_cost_multiplier ?? 1}
-                      onChange={(e) => update(r._key, { build_cost_multiplier: Number(e.target.value) })}
+                      onChange={(e) =>
+                        update(r._key, { build_cost_multiplier: Number(e.target.value) })
+                      }
                       disabled={!canEdit}
                       style={{ ...inputStyle, width: 80, textAlign: 'right' }}
                     />
@@ -260,7 +283,11 @@ export function MarketsEditor({ initialMarkets, isBaselineMarkets, canEdit }: Pr
                   <td style={td()}>
                     <select
                       value={r.demand_outlook ?? 'stable'}
-                      onChange={(e) => update(r._key, { demand_outlook: e.target.value as MarketRow['demand_outlook'] })}
+                      onChange={(e) =>
+                        update(r._key, {
+                          demand_outlook: e.target.value as MarketRow['demand_outlook'],
+                        })
+                      }
                       disabled={!canEdit}
                       style={{ ...inputStyle, width: 110 }}
                     >
@@ -298,7 +325,15 @@ export function MarketsEditor({ initialMarkets, isBaselineMarkets, canEdit }: Pr
   );
 }
 
-function PrimaryButton({ children, onClick, disabled }: { children: React.ReactNode; onClick: () => void; disabled?: boolean }) {
+function PrimaryButton({
+  children,
+  onClick,
+  disabled,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
   return (
     <button
       type="button"
@@ -321,7 +356,15 @@ function PrimaryButton({ children, onClick, disabled }: { children: React.ReactN
   );
 }
 
-function SecondaryButton({ children, onClick, disabled }: { children: React.ReactNode; onClick: () => void; disabled?: boolean }) {
+function SecondaryButton({
+  children,
+  onClick,
+  disabled,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
   return (
     <button
       type="button"

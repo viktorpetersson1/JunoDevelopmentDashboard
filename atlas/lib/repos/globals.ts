@@ -123,18 +123,12 @@ export async function fetchGlobalsRow(): Promise<GlobalsRow | null> {
  * `clearAll` removes the row entirely (revert to baseline). Useful for
  * a future "Reset to defaults" button.
  */
-export async function upsertGlobals(
-  patch: GlobalsPatch,
-  updatedBy: string
-): Promise<GlobalsRow> {
+export async function upsertGlobals(patch: GlobalsPatch, updatedBy: string): Promise<GlobalsRow> {
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .schema('atlas')
     .from('globals')
-    .upsert(
-      { id: SINGLETON_GLOBALS_ID, ...patch, updated_by: updatedBy },
-      { onConflict: 'id' }
-    )
+    .upsert({ id: SINGLETON_GLOBALS_ID, ...patch, updated_by: updatedBy }, { onConflict: 'id' })
     .select(ROW_SELECT)
     .single();
   if (error || !data) throw new Error(`upsertGlobals: ${error?.message ?? 'no row'}`);

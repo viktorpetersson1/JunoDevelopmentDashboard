@@ -60,9 +60,7 @@ export function RecordPaymentForm({
         }),
       });
       if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as
-          | { error?: { message: string } }
-          | null;
+        const body = (await res.json().catch(() => null)) as { error?: { message: string } } | null;
         setError(body?.error?.message ?? `Save failed (HTTP ${res.status})`);
         return;
       }
@@ -81,20 +79,47 @@ export function RecordPaymentForm({
         borderRadius: 8,
       }}
     >
-      <header style={{ marginBottom: 8, fontSize: 12, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+      <header
+        style={{
+          marginBottom: 8,
+          fontSize: 12,
+          fontWeight: 600,
+          color: 'var(--color-text-primary)',
+        }}
+      >
         Record payment from {share.ownerName} ·{' '}
         <span style={{ fontWeight: 400, color: 'var(--color-text-tertiary)' }}>
           remaining {formatMoney(remainingCents, { precision: 2 })}
         </span>
       </header>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
-        <Input label="Amount (USD)" type="number" value={amountDollars} onChange={setAmountDollars} />
+        <Input
+          label="Amount (USD)"
+          type="number"
+          value={amountDollars}
+          onChange={setAmountDollars}
+        />
         <Input label="Received" type="date" value={receivedDate} onChange={setReceivedDate} />
-        <Input label="Method" type="text" value={method} onChange={setMethod} placeholder="wire / check" />
-        <Input label="Reference" type="text" value={reference} onChange={setReference} placeholder="bank ref #" />
+        <Input
+          label="Method"
+          type="text"
+          value={method}
+          onChange={setMethod}
+          placeholder="wire / check"
+        />
+        <Input
+          label="Reference"
+          type="text"
+          value={reference}
+          onChange={setReference}
+          placeholder="bank ref #"
+        />
       </div>
       {error && (
-        <p role="alert" style={{ margin: '8px 0 0 0', fontSize: 11, color: 'var(--color-negative, #dc2626)' }}>
+        <p
+          role="alert"
+          style={{ margin: '8px 0 0 0', fontSize: 11, color: 'var(--color-negative, #dc2626)' }}
+        >
           {error}
         </p>
       )}
@@ -102,7 +127,13 @@ export function RecordPaymentForm({
         <Button variant="ghost" size="sm" onClick={onClose}>
           Cancel
         </Button>
-        <Button variant="primary" size="sm" onClick={submit} loading={isSubmitting} disabled={!valid}>
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={submit}
+          loading={isSubmitting}
+          disabled={!valid}
+        >
           Record payment
         </Button>
       </footer>
@@ -124,7 +155,15 @@ function Input({
   placeholder?: string;
 }) {
   return (
-    <label style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+    <label
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2,
+        fontSize: 11,
+        color: 'var(--color-text-tertiary)',
+      }}
+    >
       {label}
       <input
         type={type}

@@ -10,10 +10,7 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { toCents } from '@/lib/utils/money';
 import type { User } from '@supabase/supabase-js';
-import {
-  CreateProjectSchema,
-  type CreateProjectInput,
-} from './project-schema';
+import { CreateProjectSchema, type CreateProjectInput } from './project-schema';
 
 // Re-export so existing imports of CreateProjectSchema / CreateProjectInput
 // from '@/lib/services/project' still resolve.

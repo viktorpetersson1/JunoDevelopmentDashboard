@@ -145,7 +145,10 @@ export function parseLocationClassification(
       lotSizeAcres:
         lot != null && Number.isFinite(Number(lot)) && Number(lot) >= 0 ? Number(lot) : null,
       yearBuilt:
-        year != null && Number.isFinite(Number(year)) && Number(year) >= 1800 && Number(year) <= 2100
+        year != null &&
+        Number.isFinite(Number(year)) &&
+        Number(year) >= 1800 &&
+        Number(year) <= 2100
           ? Math.round(Number(year))
           : null,
       confidence: conf === 'high' || conf === 'medium' ? conf : 'low',
@@ -212,7 +215,10 @@ async function callAnthropic(
       const data = (await resp.json()) as { content?: Array<{ type: string; text?: string }> };
       const text =
         data.content
-          ?.filter((c): c is { type: string; text: string } => c.type === 'text' && typeof c.text === 'string')
+          ?.filter(
+            (c): c is { type: string; text: string } =>
+              c.type === 'text' && typeof c.text === 'string'
+          )
           .map((c) => c.text)
           .join('\n')
           .trim() ?? '';
@@ -258,11 +264,13 @@ export async function classifyLocation(
   // 2. Web-search attempt.
   try {
     const { text, ok, status } = await callAnthropic(apiKey, prompt, true);
-    if (ok && text.trim()) return parseLocationClassification(text, { usedWebSearch: true, geocodedCity: city });
+    if (ok && text.trim())
+      return parseLocationClassification(text, { usedWebSearch: true, geocodedCity: city });
     // 400 = beta unavailable → fall through to knowledge-only; other errors → stop.
     if (status !== 400 && status !== 0) {
       const { text: t2, ok: ok2 } = await callAnthropic(apiKey, prompt, false);
-      if (ok2 && t2.trim()) return parseLocationClassification(t2, { usedWebSearch: false, geocodedCity: city });
+      if (ok2 && t2.trim())
+        return parseLocationClassification(t2, { usedWebSearch: false, geocodedCity: city });
       return {
         waterfrontType: null,
         viewPremium: null,
@@ -283,7 +291,8 @@ export async function classifyLocation(
   // 3. Knowledge-only fallback.
   try {
     const { text, ok, status } = await callAnthropic(apiKey, prompt, false);
-    if (ok && text.trim()) return parseLocationClassification(text, { usedWebSearch: false, geocodedCity: city });
+    if (ok && text.trim())
+      return parseLocationClassification(text, { usedWebSearch: false, geocodedCity: city });
     return {
       waterfrontType: null,
       viewPremium: null,

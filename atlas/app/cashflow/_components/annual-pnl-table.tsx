@@ -125,8 +125,7 @@ export function AnnualPnLTable({ annual, effectiveTaxRate }: Props) {
                         textAlign: 'right',
                         fontVariantNumeric: 'tabular-nums',
                         fontWeight: line.bold ? 600 : 400,
-                        color:
-                          v === 0 ? 'var(--color-text-tertiary)' : 'var(--color-text-primary)',
+                        color: v === 0 ? 'var(--color-text-tertiary)' : 'var(--color-text-primary)',
                         borderBottom: '1px solid var(--color-border-subtle)',
                       }}
                     >

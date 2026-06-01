@@ -43,12 +43,14 @@ export default async function SuggestionsPage() {
     <DashboardShell activeHref="/suggestions" user={dashboardUser}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
         <header>
-          <h1 style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}>
+          <h1
+            style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}
+          >
             Suggestions
           </h1>
           <p style={{ margin: '4px 0 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
-            Queue of change suggestions submitted via the Ask Juno widget. Review, approve, reject, or
-            mark applied. Editor and super-admin only.
+            Queue of change suggestions submitted via the Ask Juno widget. Review, approve, reject,
+            or mark applied. Editor and super-admin only.
           </p>
         </header>
 

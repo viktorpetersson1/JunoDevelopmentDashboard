@@ -63,8 +63,7 @@ export function applyConstructionCosts(
   for (let i = 1; i < program - 1; i++) {
     const idx = startIdx + i;
     if (idx >= 0 && idx < N) {
-      out.kingshaus[idx] =
-        (out.kingshaus[idx] ?? 0) + kingshausTotal * (kingWeights[i - 1] ?? 0);
+      out.kingshaus[idx] = (out.kingshaus[idx] ?? 0) + kingshausTotal * (kingWeights[i - 1] ?? 0);
     }
   }
 

@@ -19,12 +19,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 /** Mirrors the atlas.comps.waterfront_type CHECK constraint. */
-export const WATERFRONT_TYPES = [
-  'sound_front_bluff',
-  'bayfront',
-  'inlet',
-  'inland',
-] as const;
+export const WATERFRONT_TYPES = ['sound_front_bluff', 'bayfront', 'inlet', 'inland'] as const;
 export type WaterfrontType = (typeof WATERFRONT_TYPES)[number];
 
 /** Strength of the water/feature view, independent of physical frontage. */
@@ -131,7 +126,8 @@ export interface LocationProfile {
  */
 export function subjectLocationLines(p: LocationProfile): string {
   const lines: string[] = [];
-  if (p.waterfrontType) lines.push(`Waterfront: ${WATERFRONT_LABELS[p.waterfrontType]} (\`${p.waterfrontType}\`)`);
+  if (p.waterfrontType)
+    lines.push(`Waterfront: ${WATERFRONT_LABELS[p.waterfrontType]} (\`${p.waterfrontType}\`)`);
   if (p.viewPremium) lines.push(`Water view: ${VIEW_PREMIUM_LABELS[p.viewPremium]}`);
   if (p.townProximity) lines.push(`Town proximity: ${TOWN_PROXIMITY_LABELS[p.townProximity]}`);
   if (p.lotSizeAcres != null) lines.push(`Lot size: ${p.lotSizeAcres} acres`);
@@ -142,7 +138,11 @@ export function subjectLocationLines(p: LocationProfile): string {
 /** True when at least one location factor is known. */
 export function hasAnyLocationFactor(p: LocationProfile): boolean {
   return Boolean(
-    p.waterfrontType || p.viewPremium || p.townProximity || p.lotSizeAcres != null || p.yearBuilt != null
+    p.waterfrontType ||
+      p.viewPremium ||
+      p.townProximity ||
+      p.lotSizeAcres != null ||
+      p.yearBuilt != null
   );
 }
 

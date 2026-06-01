@@ -28,8 +28,8 @@ export function StepFinancials({
           color: 'var(--color-text-tertiary)',
         }}
       >
-        Sizing + costs. Anything you leave blank uses BASELINE_GLOBALS — most
-        cost-per-sqft + financing fields fill themselves.
+        Sizing + costs. Anything you leave blank uses BASELINE_GLOBALS — most cost-per-sqft +
+        financing fields fill themselves.
       </p>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -127,15 +127,7 @@ export function StepFinancials({
   );
 }
 
-function Summary({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-}) {
+function Summary({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <span
@@ -158,9 +150,7 @@ function Summary({
       >
         {value}
       </span>
-      {hint && (
-        <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{hint}</span>
-      )}
+      {hint && <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{hint}</span>}
     </div>
   );
 }

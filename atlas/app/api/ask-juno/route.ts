@@ -66,9 +66,7 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
     });
   }
 
-  const contextPrefix = pathname
-    ? `Context: the user is currently viewing ${pathname}.\n\n`
-    : '';
+  const contextPrefix = pathname ? `Context: the user is currently viewing ${pathname}.\n\n` : '';
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {

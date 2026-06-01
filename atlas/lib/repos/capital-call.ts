@@ -140,7 +140,9 @@ export async function findCapitalCallsByProject(
   let sharesQ = supabase
     .schema('atlas')
     .from('capital_call_owner_shares')
-    .select('id, capital_call_id, owner_id, share_bps_at_issuance, share_amount_cents, status, notes')
+    .select(
+      'id, capital_call_id, owner_id, share_bps_at_issuance, share_amount_cents, status, notes'
+    )
     .in('capital_call_id', callIds);
   if (opts.ownerId) sharesQ = sharesQ.eq('owner_id', opts.ownerId);
 

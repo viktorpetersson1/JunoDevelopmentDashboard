@@ -88,10 +88,7 @@ export const pricingRuns = atlas.table(
       t.projectId,
       t.version
     ),
-    projectIdx: index('atlas_pricing_runs_project_idx').on(
-      t.projectId,
-      sql`${t.createdAt} DESC`
-    ),
+    projectIdx: index('atlas_pricing_runs_project_idx').on(t.projectId, sql`${t.createdAt} DESC`),
     statusIdx: index('atlas_pricing_runs_status_idx').on(t.status),
   })
 );
@@ -217,9 +214,10 @@ export const pricingRunPlotOutputs = atlas.table(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
-    runPlotTypeUnique: uniqueIndex(
-      'atlas_pricing_run_plot_outputs_run_plot_unique'
-    ).on(t.pricingRunId, t.plotTypeKey),
+    runPlotTypeUnique: uniqueIndex('atlas_pricing_run_plot_outputs_run_plot_unique').on(
+      t.pricingRunId,
+      t.plotTypeKey
+    ),
     runIdx: index('atlas_pricing_plot_outputs_run_idx').on(t.pricingRunId),
   })
 );

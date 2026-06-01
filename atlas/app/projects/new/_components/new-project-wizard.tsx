@@ -20,10 +20,7 @@ import { StepBasics } from './step-basics';
 import { StepFinancials } from './step-financials';
 import { StepTimeline } from './step-timeline';
 import { StepReview } from './step-review';
-import {
-  CreateProjectSchema,
-  type CreateProjectInput,
-} from '@/lib/services/project-schema';
+import { CreateProjectSchema, type CreateProjectInput } from '@/lib/services/project-schema';
 
 /**
  * Default values for any unfilled field. Sourced from BASELINE_GLOBALS
@@ -57,9 +54,43 @@ const INITIAL: CreateProjectInput = {
 };
 
 const STEPS = [
-  { id: 1, label: 'Basics', fields: ['name', 'address', 'market_id', 'asset_type', 'purchase_date', 'waterfront_type', 'view_premium', 'town_proximity', 'lot_size_acres', 'year_built'] },
-  { id: 2, label: 'Financials', fields: ['villa_sqft_ag', 'villa_sqft_bg', 'land_cost_usd', 'build_cost_per_sqft', 'soft_costs_lump_sum'] },
-  { id: 3, label: 'Timeline', fields: ['sourcing_months', 'permitting_preconstruction_months', 'construction_months', 'sales_months'] },
+  {
+    id: 1,
+    label: 'Basics',
+    fields: [
+      'name',
+      'address',
+      'market_id',
+      'asset_type',
+      'purchase_date',
+      'waterfront_type',
+      'view_premium',
+      'town_proximity',
+      'lot_size_acres',
+      'year_built',
+    ],
+  },
+  {
+    id: 2,
+    label: 'Financials',
+    fields: [
+      'villa_sqft_ag',
+      'villa_sqft_bg',
+      'land_cost_usd',
+      'build_cost_per_sqft',
+      'soft_costs_lump_sum',
+    ],
+  },
+  {
+    id: 3,
+    label: 'Timeline',
+    fields: [
+      'sourcing_months',
+      'permitting_preconstruction_months',
+      'construction_months',
+      'sales_months',
+    ],
+  },
   { id: 4, label: 'Review', fields: [] as string[] },
 ] as const;
 
@@ -68,7 +99,8 @@ export function NewProjectWizard() {
   const pathname = usePathname();
   const params = useSearchParams();
   const stepFromUrl = Number.parseInt(params.get('step') ?? '1', 10);
-  const initialStep = Number.isInteger(stepFromUrl) && stepFromUrl >= 1 && stepFromUrl <= 4 ? stepFromUrl : 1;
+  const initialStep =
+    Number.isInteger(stepFromUrl) && stepFromUrl >= 1 && stepFromUrl <= 4 ? stepFromUrl : 1;
 
   const [step, setStep] = useState<number>(initialStep);
   const [form, setForm] = useState<CreateProjectInput>(INITIAL);
@@ -146,12 +178,10 @@ export function NewProjectWizard() {
       });
 
       if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as
-          | { error?: { code: string; message: string } }
-          | null;
-        setServerError(
-          body?.error?.message ?? `Create failed (HTTP ${res.status})`
-        );
+        const body = (await res.json().catch(() => null)) as {
+          error?: { code: string; message: string };
+        } | null;
+        setServerError(body?.error?.message ?? `Create failed (HTTP ${res.status})`);
         return;
       }
 
@@ -259,12 +289,7 @@ export function NewProjectWizard() {
             Next
           </Button>
         ) : (
-          <Button
-            type="button"
-            variant="primary"
-            onClick={handleSubmit}
-            loading={isSubmitting}
-          >
+          <Button type="button" variant="primary" onClick={handleSubmit} loading={isSubmitting}>
             Create project
           </Button>
         )}
@@ -273,13 +298,7 @@ export function NewProjectWizard() {
   );
 }
 
-function StepIndicator({
-  step,
-  steps,
-}: {
-  step: number;
-  steps: typeof STEPS;
-}) {
+function StepIndicator({ step, steps }: { step: number; steps: typeof STEPS }) {
   return (
     <ol
       style={{
@@ -291,8 +310,7 @@ function StepIndicator({
       }}
     >
       {steps.map((s) => {
-        const state =
-          s.id === step ? 'active' : s.id < step ? 'done' : 'todo';
+        const state = s.id === step ? 'active' : s.id < step ? 'done' : 'todo';
         const bg =
           state === 'active'
             ? 'var(--color-accent-base, #131313)'

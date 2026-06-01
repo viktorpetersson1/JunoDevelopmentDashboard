@@ -33,9 +33,7 @@ import type {
  * Mirrors vanilla `equityCashFlowFromCalls` (engine.js ~line 1077) — kept
  * local so the waterfall module is self-contained.
  */
-export function equityCashFlowFromCalls(
-  monthly: WaterfallMonthlySeries
-): number[] {
+export function equityCashFlowFromCalls(monthly: WaterfallMonthlySeries): number[] {
   const N = monthly.equity_called.length;
   const cf = new Array<number>(N);
   for (let i = 0; i < N; i++) {
@@ -83,8 +81,7 @@ export function computeWaterfall(
     const tier = distributionWaterfall(cf, inv);
     // Per-investor effective tax rate. If absent, falls back to portfolio
     // (federal + state combined). Tax already as fractions, never bps.
-    const portfolioTaxRate =
-      (globals.tax_rate_pct ?? 0) + (globals.tax_state_rate_pct ?? 0);
+    const portfolioTaxRate = (globals.tax_rate_pct ?? 0) + (globals.tax_state_rate_pct ?? 0);
     const invTaxRate = inv.tax_rate_pct ?? portfolioTaxRate;
     return { inv, cf, share, inFlow, outFlow, monthlyRate, annualRate, tier, invTaxRate };
   });
@@ -92,10 +89,7 @@ export function computeWaterfall(
   // Aggregate sponsor promote across all non-sponsor LPs (catch-up + carry).
   const sponsorPromote = base
     .filter((x) => !x.inv.is_sponsor)
-    .reduce(
-      (a, x) => a + (x.tier.tier3a_gp_catchup || 0) + (x.tier.tier4_to_sponsor || 0),
-      0
-    );
+    .reduce((a, x) => a + (x.tier.tier3a_gp_catchup || 0) + (x.tier.tier4_to_sponsor || 0), 0);
 
   // Second pass: compose the per-investor row including after-tax fields.
   return base.map((x) => {
@@ -103,9 +97,7 @@ export function computeWaterfall(
     const isSponsor = !!inv.is_sponsor;
     // Sponsor's net = their pro-rata distribution + the promote they pulled
     // from every other LP. Non-sponsor's net = post-waterfall tier sum.
-    const netDistribution = isSponsor
-      ? outFlow + sponsorPromote
-      : tier.net_to_investor;
+    const netDistribution = isSponsor ? outFlow + sponsorPromote : tier.net_to_investor;
     const netGain = netDistribution - inFlow;
     const netMoic = inFlow > 0 ? netDistribution / inFlow : 0;
     // Tax: applied to net gain (above-cost portion only). Losses give no refund.
@@ -151,8 +143,7 @@ export function computeWaterfall(
       preferred_return_pct: inv.preferred_return_pct ?? 0,
       hurdle_pct: inv.hurdle_pct ?? 0,
       carry_pct: inv.carry_pct ?? 0,
-      pref_cleared:
-        annualRate != null && annualRate >= (inv.preferred_return_pct ?? 0),
+      pref_cleared: annualRate != null && annualRate >= (inv.preferred_return_pct ?? 0),
       hurdle_cleared: annualRate != null && annualRate >= (inv.hurdle_pct ?? 0),
       promote_received_from_lps: isSponsor ? sponsorPromote : 0,
       promote_paid_to_sponsor: !isSponsor

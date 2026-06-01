@@ -10,8 +10,7 @@ import type { PortfolioMonthlySeries } from '@/lib/calc/portfolio/types';
 export function LocStatusCard({ monthly }: { monthly: PortfolioMonthlySeries }) {
   const cfg = monthly.kpc_loc_config;
   const peakPct = monthly.loc_peak_drawn_pct;
-  const utilization =
-    peakPct >= 0.85 ? 'critical' : peakPct >= 0.6 ? 'elevated' : 'comfortable';
+  const utilization = peakPct >= 0.85 ? 'critical' : peakPct >= 0.6 ? 'elevated' : 'comfortable';
 
   const utilColor =
     utilization === 'critical'
@@ -61,11 +60,7 @@ export function LocStatusCard({ monthly }: { monthly: PortfolioMonthlySeries }) 
           value={formatMoney(monthly.loc_peak_balance * 100, { compact: true, precision: 2 })}
           accent
         />
-        <KV
-          label="Peak utilization"
-          value={`${(peakPct * 100).toFixed(1)}%`}
-          color={utilColor}
-        />
+        <KV label="Peak utilization" value={`${(peakPct * 100).toFixed(1)}%`} color={utilColor} />
         <KV
           label="Total interest"
           value={formatMoney(monthly.loc_total_interest * 100, { compact: true, precision: 2 })}
@@ -99,8 +94,8 @@ export function LocStatusCard({ monthly }: { monthly: PortfolioMonthlySeries }) 
           margin: '16px 0 0 0',
         }}
       >
-        Capitalize interest: {cfg.capitalize_interest ? 'yes' : 'no'} ·{' '}
-        Seniority: {cfg.seniority ?? '—'}
+        Capitalize interest: {cfg.capitalize_interest ? 'yes' : 'no'} · Seniority:{' '}
+        {cfg.seniority ?? '—'}
       </p>
     </aside>
   );

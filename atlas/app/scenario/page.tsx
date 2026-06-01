@@ -131,7 +131,11 @@ export default async function ScenarioPage() {
   return (
     <DashboardShell activeHref="/scenario" user={dashboardUser}>
       <ScenarioClient
-        projects={projects.map((p) => ({ id: p.id, name: p.name, startDate: p.start_date ?? null }))}
+        projects={projects.map((p) => ({
+          id: p.id,
+          name: p.name,
+          startDate: p.start_date ?? null,
+        }))}
         savedScenarios={saved}
         baseScenario={BASELINE_SCENARIO}
         baseKpis={{

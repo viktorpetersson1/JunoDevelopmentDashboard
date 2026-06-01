@@ -31,10 +31,7 @@ export function applySoftCosts(
   startIdx: number
 ): SoftCostsResult {
   const breakdownSum = project.soft_costs
-    ? Object.values(project.soft_costs).reduce<number>(
-        (a, b) => a + (Number(b) || 0),
-        0
-      )
+    ? Object.values(project.soft_costs).reduce<number>((a, b) => a + (Number(b) || 0), 0)
     : 0;
   const softTotal = -(breakdownSum > 0 ? breakdownSum : (project.soft_costs_lump_sum ?? 0));
 

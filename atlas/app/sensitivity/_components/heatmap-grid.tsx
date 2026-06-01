@@ -32,7 +32,11 @@ const compact = (n: number): string => {
 };
 
 const full = (n: number): string =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
+  new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  }).format(n);
 
 /**
  * Map a profit value to a CSS color on a red-yellow-green diverging scale.
@@ -153,20 +157,57 @@ export function HeatmapGrid({ report }: Props) {
           })}
         </tbody>
       </table>
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10, marginTop: 12, fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: 10,
+          marginTop: 12,
+          fontSize: 11,
+          color: 'var(--color-text-tertiary)',
+        }}
+      >
         <span>Profit (pre-tax):</span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ display: 'inline-block', width: 14, height: 14, borderRadius: 3, background: colorFor(minPbt, minPbt, maxPbt), border: '1px solid var(--color-border-hairline)' }} />
+          <span
+            style={{
+              display: 'inline-block',
+              width: 14,
+              height: 14,
+              borderRadius: 3,
+              background: colorFor(minPbt, minPbt, maxPbt),
+              border: '1px solid var(--color-border-hairline)',
+            }}
+          />
           {compact(minPbt)}
         </span>
         <span>→</span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ display: 'inline-block', width: 14, height: 14, borderRadius: 3, background: colorFor(basePbt, minPbt, maxPbt), border: '1px solid var(--color-border-hairline)' }} />
+          <span
+            style={{
+              display: 'inline-block',
+              width: 14,
+              height: 14,
+              borderRadius: 3,
+              background: colorFor(basePbt, minPbt, maxPbt),
+              border: '1px solid var(--color-border-hairline)',
+            }}
+          />
           {compact(basePbt)} (base)
         </span>
         <span>→</span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ display: 'inline-block', width: 14, height: 14, borderRadius: 3, background: colorFor(maxPbt, minPbt, maxPbt), border: '1px solid var(--color-border-hairline)' }} />
+          <span
+            style={{
+              display: 'inline-block',
+              width: 14,
+              height: 14,
+              borderRadius: 3,
+              background: colorFor(maxPbt, minPbt, maxPbt),
+              border: '1px solid var(--color-border-hairline)',
+            }}
+          />
           {compact(maxPbt)}
         </span>
       </div>

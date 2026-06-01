@@ -191,9 +191,7 @@ export function buildPortfolioRiskReport(input: RiskEngineInput): PortfolioRiskR
       high: findings.filter((f) => f.severity === 'high').length,
       medium: findings.filter((f) => f.severity === 'medium').length,
       low: findings.filter((f) => f.severity === 'low').length,
-      activeCategories: CATEGORIES.filter(
-        (c) => findings.some((f) => f.category === c.id)
-      ).length,
+      activeCategories: CATEGORIES.filter((c) => findings.some((f) => f.category === c.id)).length,
       capitalFindings: findings.filter(
         (f) => f.category === 'equity_cluster' || f.category === 'funding_gap'
       ).length,
@@ -219,8 +217,7 @@ function salesDelayFindings(
     if (planned >= asOfYm) continue;
     const monthsLate = monthsBetween(planned, asOfYm);
     if (monthsLate <= thresholds.salesDelayGraceMonths) continue;
-    const severity: RiskSeverity =
-      monthsLate >= 6 ? 'high' : monthsLate >= 3 ? 'medium' : 'low';
+    const severity: RiskSeverity = monthsLate >= 6 ? 'high' : monthsLate >= 3 ? 'medium' : 'low';
     findings.push({
       id: `sales_delay:${project.id}`,
       category: 'sales_delay',
@@ -229,7 +226,8 @@ function salesDelayFindings(
       scopeKind: 'project',
       scopeId: project.id,
       scopeLabel: project.name,
-      financialImpactUsd: -monthsLate * (result.kpis.total_interest / Math.max(1, project.program_months ?? 12)),
+      financialImpactUsd:
+        -monthsLate * (result.kpis.total_interest / Math.max(1, project.program_months ?? 12)),
       trigger: `Planned sale date ${planned} is ${monthsLate} month${monthsLate === 1 ? '' : 's'} behind the current period (${asOfYm}).`,
       timingImpact: `${monthsLate} month slippage projected; interest carry grows with the lag.`,
       mitigation:
@@ -239,10 +237,7 @@ function salesDelayFindings(
   return findings;
 }
 
-function saleDownsideFindings(
-  input: RiskEngineInput,
-  thresholds: RiskThresholds
-): RiskFinding[] {
+function saleDownsideFindings(input: RiskEngineInput, thresholds: RiskThresholds): RiskFinding[] {
   const findings: RiskFinding[] = [];
   for (const { project, result } of input.projects) {
     if (project.status === 'sold') continue;
@@ -273,10 +268,7 @@ function saleDownsideFindings(
   return findings;
 }
 
-function costOverrunFindings(
-  input: RiskEngineInput,
-  thresholds: RiskThresholds
-): RiskFinding[] {
+function costOverrunFindings(input: RiskEngineInput, thresholds: RiskThresholds): RiskFinding[] {
   const findings: RiskFinding[] = [];
   for (const { project, result, actualsCents } of input.projects) {
     if (actualsCents == null) continue;
@@ -286,8 +278,7 @@ function costOverrunFindings(
     const ratio = actualsUsd / forecast;
     if (ratio < thresholds.costOverrunRatio) continue;
     const overrunUsd = actualsUsd - forecast;
-    const severity: RiskSeverity =
-      ratio >= 1.2 ? 'high' : ratio >= 1.1 ? 'medium' : 'low';
+    const severity: RiskSeverity = ratio >= 1.2 ? 'high' : ratio >= 1.1 ? 'medium' : 'low';
     findings.push({
       id: `cost_overrun:${project.id}`,
       category: 'cost_overrun',
@@ -306,16 +297,12 @@ function costOverrunFindings(
   return findings;
 }
 
-function lenderFindings(
-  input: RiskEngineInput,
-  thresholds: RiskThresholds
-): RiskFinding[] {
+function lenderFindings(input: RiskEngineInput, thresholds: RiskThresholds): RiskFinding[] {
   const findings: RiskFinding[] = [];
   for (const { project } of input.projects) {
     const ltc = project.senior_ltv_pct ?? project.ltc_pct ?? 0;
     if (ltc <= thresholds.safeLtcPct) continue;
-    const severity: RiskSeverity =
-      ltc >= 0.95 ? 'high' : ltc >= 0.9 ? 'medium' : 'low';
+    const severity: RiskSeverity = ltc >= 0.95 ? 'high' : ltc >= 0.9 ? 'medium' : 'low';
     findings.push({
       id: `lender:${project.id}`,
       category: 'lender',
@@ -334,10 +321,7 @@ function lenderFindings(
   return findings;
 }
 
-function equityClusterFindings(
-  input: RiskEngineInput,
-  thresholds: RiskThresholds
-): RiskFinding[] {
+function equityClusterFindings(input: RiskEngineInput, thresholds: RiskThresholds): RiskFinding[] {
   const m = input.portfolio.monthly;
   if (!m.equity_called || m.equity_called.length === 0) return [];
   // Find months in the top (1 - equityClusterPctile) of equity_called magnitude.
@@ -377,8 +361,7 @@ function fundingGapFindings(input: RiskEngineInput): RiskFinding[] {
   const m = input.portfolio.monthly;
   if ((m.cap_breach_months ?? 0) === 0) return [];
   const gap = m.true_equity_total_drawn;
-  const severity: RiskSeverity =
-    gap >= 5_000_000 ? 'high' : gap >= 1_000_000 ? 'medium' : 'low';
+  const severity: RiskSeverity = gap >= 5_000_000 ? 'high' : gap >= 1_000_000 ? 'medium' : 'low';
   return [
     {
       id: 'funding_gap:portfolio',

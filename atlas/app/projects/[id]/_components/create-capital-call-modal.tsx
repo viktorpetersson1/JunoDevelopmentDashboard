@@ -77,7 +77,8 @@ export function CreateCapitalCallModal({
   }, [totalCents, capTable]);
 
   // Active shares is whichever mode is selected.
-  const activeShares: DraftShare[] = splitMode === 'cap_table' ? capTableShares : (manualShares ?? capTableShares);
+  const activeShares: DraftShare[] =
+    splitMode === 'cap_table' ? capTableShares : (manualShares ?? capTableShares);
   const shareSumCents = activeShares.reduce((s, r) => s + r.amountCents, 0);
   const sumOk = totalCents > 0 && shareSumCents === totalCents;
 
@@ -101,7 +102,9 @@ export function CreateCapitalCallModal({
 
   function handleSubmit() {
     if (!sumOk) {
-      setError(`Shares must sum to total ($${(totalCents / 100).toFixed(2)}); got $${(shareSumCents / 100).toFixed(2)}`);
+      setError(
+        `Shares must sum to total ($${(totalCents / 100).toFixed(2)}); got $${(shareSumCents / 100).toFixed(2)}`
+      );
       return;
     }
     setError(null);
@@ -132,9 +135,9 @@ export function CreateCapitalCallModal({
         body: JSON.stringify(body),
       });
       if (!res.ok) {
-        const errBody = (await res.json().catch(() => null)) as
-          | { error?: { message: string } }
-          | null;
+        const errBody = (await res.json().catch(() => null)) as {
+          error?: { message: string };
+        } | null;
         setError(errBody?.error?.message ?? `Create failed (HTTP ${res.status})`);
         return;
       }
@@ -193,12 +196,7 @@ export function CreateCapitalCallModal({
               placeholder="e.g. 500000"
               required
             />
-            <LabeledInput
-              label="Due date"
-              type="date"
-              value={dueDate}
-              onChange={setDueDate}
-            />
+            <LabeledInput label="Due date" type="date" value={dueDate} onChange={setDueDate} />
             <label
               style={{
                 display: 'flex',
@@ -229,8 +227,24 @@ export function CreateCapitalCallModal({
           />
 
           <section>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
-              <h3 style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'baseline',
+                marginBottom: 8,
+              }}
+            >
+              <h3
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: 'var(--color-text-secondary)',
+                  margin: 0,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                }}
+              >
                 Split
               </h3>
               <div style={{ display: 'flex', gap: 4 }}>
@@ -276,7 +290,15 @@ export function CreateCapitalCallModal({
                 ))}
                 {activeShares.length === 0 && (
                   <tr>
-                    <td colSpan={3} style={{ padding: '16px 0', textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: 12 }}>
+                    <td
+                      colSpan={3}
+                      style={{
+                        padding: '16px 0',
+                        textAlign: 'center',
+                        color: 'var(--color-text-tertiary)',
+                        fontSize: 12,
+                      }}
+                    >
                       Enter a total to preview the split
                     </td>
                   </tr>
@@ -285,7 +307,13 @@ export function CreateCapitalCallModal({
               {activeShares.length > 0 && (
                 <tfoot>
                   <tr>
-                    <td style={{ padding: '8px 0', fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+                    <td
+                      style={{
+                        padding: '8px 0',
+                        fontSize: 12,
+                        color: 'var(--color-text-tertiary)',
+                      }}
+                    >
                       Sum
                     </td>
                     <td />
@@ -296,7 +324,9 @@ export function CreateCapitalCallModal({
                         fontSize: 13,
                         fontVariantNumeric: 'tabular-nums',
                         fontWeight: 600,
-                        color: sumOk ? 'var(--color-positive, #16a34a)' : 'var(--color-negative, #dc2626)',
+                        color: sumOk
+                          ? 'var(--color-positive, #16a34a)'
+                          : 'var(--color-negative, #dc2626)',
                       }}
                     >
                       {formatMoney(shareSumCents, { precision: 0 })}
@@ -318,7 +348,15 @@ export function CreateCapitalCallModal({
             </p>
           )}
 
-          <footer style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 8, borderTop: '1px solid var(--color-border-subtle)' }}>
+          <footer
+            style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: 8,
+              paddingTop: 8,
+              borderTop: '1px solid var(--color-border-subtle)',
+            }}
+          >
             <Button variant="secondary" onClick={onClose}>
               Cancel
             </Button>
@@ -394,7 +432,15 @@ function LabeledInput({
   );
 }
 
-function SplitToggleButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function SplitToggleButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
   return (
     <button
       type="button"

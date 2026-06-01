@@ -99,7 +99,7 @@ export const POST = withErrorBoundary(async (_req: NextRequest, ctx: RouteContex
 
   // Build the facts payload.
   const buildCostPerSqftUsd =
-    (project.build_cost_per_sqft ?? globals.default_build_cost_per_sqft) ?? 470;
+    project.build_cost_per_sqft ?? globals.default_build_cost_per_sqft ?? 470;
 
   const subMarketLabel = prettifyMarketId(project.market ?? 'default');
 
@@ -278,9 +278,7 @@ function libraryCompToResearched(c: CompView): ResearchedComp {
     domDays: c.domDays,
     sourceUrl: c.sourceUrl,
     sourceName:
-      c.provenance === 'verified'
-        ? 'Juno library (verified)'
-        : 'Juno library (AI · live)',
+      c.provenance === 'verified' ? 'Juno library (verified)' : 'Juno library (AI · live)',
     psf,
     // ai_live comps came from live web search → 'confirmed'. verified
     // (human-entered) is by definition the strongest signal — also 'confirmed'.

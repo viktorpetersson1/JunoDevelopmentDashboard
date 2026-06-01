@@ -120,11 +120,7 @@ export async function updateScenario(
 
 export async function deleteScenario(id: string): Promise<void> {
   const supabase = createSupabaseServerClient();
-  const { error } = await supabase
-    .schema('atlas')
-    .from('scenarios')
-    .delete()
-    .eq('id', id);
+  const { error } = await supabase.schema('atlas').from('scenarios').delete().eq('id', id);
   if (error) throw new Error(`deleteScenario: ${error.message}`);
 }
 
@@ -156,8 +152,7 @@ function normalize(row: ScenarioRow): ScenarioView {
     // Numeric columns sometimes come back as strings via PostgREST — coerce.
     build_cost_multiplier: Number(row.build_cost_multiplier),
     sale_price_multiplier: Number(row.sale_price_multiplier),
-    margin_override:
-      row.margin_override == null ? null : Number(row.margin_override),
+    margin_override: row.margin_override == null ? null : Number(row.margin_override),
     timing_shift_months: row.timing_shift_months,
     excluded_project_ids: row.excluded_project_ids ?? [],
     createdBy: row.created_by,

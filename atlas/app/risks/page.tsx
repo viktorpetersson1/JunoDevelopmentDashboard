@@ -51,8 +51,17 @@ export default async function RisksCenterPage() {
   const { totals, categories, findings } = report;
 
   // KPI strip per INVENTORY §21.
-  const kpis: Array<{ label: string; value: string; hint?: string; tone?: 'negative' | 'neutral' }> = [
-    { label: 'Total findings', value: String(totals.total), hint: totals.total === 0 ? 'all clear' : 'across the portfolio' },
+  const kpis: Array<{
+    label: string;
+    value: string;
+    hint?: string;
+    tone?: 'negative' | 'neutral';
+  }> = [
+    {
+      label: 'Total findings',
+      value: String(totals.total),
+      hint: totals.total === 0 ? 'all clear' : 'across the portfolio',
+    },
     {
       label: 'High severity',
       value: String(totals.high),
@@ -61,8 +70,16 @@ export default async function RisksCenterPage() {
     },
     { label: 'Medium severity', value: String(totals.medium), hint: 'monitor + plan' },
     { label: 'Low severity', value: String(totals.low), hint: 'watchlist' },
-    { label: 'Active categories', value: `${totals.activeCategories}/6`, hint: '6 categories total' },
-    { label: 'Capital findings', value: String(totals.capitalFindings), hint: 'equity cluster + funding gap' },
+    {
+      label: 'Active categories',
+      value: `${totals.activeCategories}/6`,
+      hint: '6 categories total',
+    },
+    {
+      label: 'Capital findings',
+      value: String(totals.capitalFindings),
+      hint: 'equity cluster + funding gap',
+    },
   ];
 
   // Severity-grouped buckets so the cards land in the right order
@@ -84,11 +101,14 @@ export default async function RisksCenterPage() {
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
         <header>
-          <h1 style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}>
+          <h1
+            style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}
+          >
             Risks
           </h1>
           <p style={{ margin: '4px 0 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
-            Portfolio-wide risk findings — six categories, severity-ranked, with mitigation playbooks.
+            Portfolio-wide risk findings — six categories, severity-ranked, with mitigation
+            playbooks.
           </p>
         </header>
 
@@ -127,16 +147,27 @@ export default async function RisksCenterPage() {
             padding: 20,
           }}
         >
-          <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+          <h2
+            style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}
+          >
             Active findings ({findings.length})
           </h2>
           {findings.length === 0 ? (
             <p style={{ margin: '12px 0 0 0', fontSize: 13, color: 'var(--color-text-tertiary)' }}>
-              No active findings — the portfolio is within thresholds today. As projects move through
-              their lifecycle, this list will populate.
+              No active findings — the portfolio is within thresholds today. As projects move
+              through their lifecycle, this list will populate.
             </p>
           ) : (
-            <ul style={{ listStyle: 'none', padding: 0, margin: '12px 0 0 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <ul
+              style={{
+                listStyle: 'none',
+                padding: 0,
+                margin: '12px 0 0 0',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+              }}
+            >
               {sorted.map((f) => (
                 <li key={f.id}>
                   <FindingCard finding={f} />
@@ -189,14 +220,19 @@ function KpiTile({
         style={{
           fontSize: 22,
           fontWeight: 600,
-          color: tone === 'negative' ? 'var(--color-negative, #dc2626)' : 'var(--color-text-primary)',
+          color:
+            tone === 'negative' ? 'var(--color-negative, #dc2626)' : 'var(--color-text-primary)',
           marginTop: 6,
           fontVariantNumeric: 'tabular-nums',
         }}
       >
         {value}
       </div>
-      {hint && <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', marginTop: 4 }}>{hint}</div>}
+      {hint && (
+        <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', marginTop: 4 }}>
+          {hint}
+        </div>
+      )}
     </div>
   );
 }
@@ -238,7 +274,14 @@ function CategoryCard({
           {count}
         </span>
       </div>
-      <p style={{ margin: '6px 0 0 0', fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.4 }}>
+      <p
+        style={{
+          margin: '6px 0 0 0',
+          fontSize: 12,
+          color: 'var(--color-text-secondary)',
+          lineHeight: 1.4,
+        }}
+      >
         {description}
       </p>
     </div>
@@ -270,7 +313,15 @@ function FindingCard({ finding: f }: { finding: RiskFinding }) {
       }}
     >
       {/* Header row */}
-      <header style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+      <header
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          justifyContent: 'space-between',
+          gap: 8,
+          flexWrap: 'wrap',
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
           <span
             style={{
@@ -286,7 +337,9 @@ function FindingCard({ finding: f }: { finding: RiskFinding }) {
           >
             {f.severity}
           </span>
-          <strong style={{ fontSize: 13, color: 'var(--color-text-primary)' }}>{f.categoryLabel}</strong>
+          <strong style={{ fontSize: 13, color: 'var(--color-text-primary)' }}>
+            {f.categoryLabel}
+          </strong>
           <span style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>·</span>
           {f.scopeKind === 'project' && f.scopeId ? (
             <a
@@ -301,14 +354,19 @@ function FindingCard({ finding: f }: { finding: RiskFinding }) {
               {f.scopeLabel}
             </a>
           ) : (
-            <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{f.scopeLabel}</span>
+            <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
+              {f.scopeLabel}
+            </span>
           )}
         </div>
         <span
           style={{
             fontSize: 13,
             fontWeight: 600,
-            color: f.financialImpactUsd < 0 ? 'var(--color-negative, #b91c1c)' : 'var(--color-positive, #15803d)',
+            color:
+              f.financialImpactUsd < 0
+                ? 'var(--color-negative, #b91c1c)'
+                : 'var(--color-positive, #15803d)',
             fontVariantNumeric: 'tabular-nums',
           }}
           title="Estimated financial impact"
@@ -321,11 +379,20 @@ function FindingCard({ finding: f }: { finding: RiskFinding }) {
         <strong style={{ color: 'var(--color-text-secondary)' }}>Trigger:</strong> {f.trigger}
       </p>
       {f.timingImpact && (
-        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.45 }}>
+        <p
+          style={{
+            margin: 0,
+            fontSize: 12,
+            color: 'var(--color-text-secondary)',
+            lineHeight: 1.45,
+          }}
+        >
           <strong style={{ color: 'var(--color-text-tertiary)' }}>Timing:</strong> {f.timingImpact}
         </p>
       )}
-      <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.45 }}>
+      <p
+        style={{ margin: 0, fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.45 }}
+      >
         <strong style={{ color: 'var(--color-text-tertiary)' }}>Mitigation:</strong> {f.mitigation}
       </p>
     </article>

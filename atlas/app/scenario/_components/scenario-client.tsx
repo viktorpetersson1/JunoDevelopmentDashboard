@@ -178,7 +178,9 @@ export function ScenarioClient({
         }),
       });
       if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+        const body = (await res.json().catch(() => null)) as {
+          error?: { message?: string };
+        } | null;
         throw new Error(body?.error?.message ?? `${res.status} ${res.statusText}`);
       }
       const body = (await res.json()) as { kpis: KpiBag };
@@ -331,7 +333,13 @@ export function ScenarioClient({
 
   // Effect-on-KPIs comparison.
   const comparison = useMemo(() => {
-    const out: Array<{ key: keyof KpiBag; label: string; base: number; active: number; delta: number }> = [];
+    const out: Array<{
+      key: keyof KpiBag;
+      label: string;
+      base: number;
+      active: number;
+      delta: number;
+    }> = [];
     (Object.keys(KPI_LABELS) as Array<keyof KpiBag>).forEach((key) => {
       const base = baseKpis[key];
       const active = activeKpis[key];
@@ -398,13 +406,24 @@ export function ScenarioClient({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+      <header
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          flexWrap: 'wrap',
+          gap: 12,
+        }}
+      >
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}>
+          <h1
+            style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}
+          >
             Scenarios
           </h1>
           <p style={{ margin: '4px 0 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
-            What-if analysis on the portfolio model. Tweak the inputs, hit Apply to see KPIs, Save to keep.
+            What-if analysis on the portfolio model. Tweak the inputs, hit Apply to see KPIs, Save
+            to keep.
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -445,9 +464,20 @@ export function ScenarioClient({
           gap: 12,
         }}
       >
-        <KpiTile label="Active" value={form.name || 'Base case'} hint={isBaseCase ? 'unchanged' : 'modified'} />
-        <KpiTile label="Class" value={CLASS_OPTIONS.find((c) => c.value === form.class)?.label ?? form.class} />
-        <KpiTile label="Saved" value={String(saved.length)} hint={`${saved.filter((s) => s.locked).length} locked`} />
+        <KpiTile
+          label="Active"
+          value={form.name || 'Base case'}
+          hint={isBaseCase ? 'unchanged' : 'modified'}
+        />
+        <KpiTile
+          label="Class"
+          value={CLASS_OPTIONS.find((c) => c.value === form.class)?.label ?? form.class}
+        />
+        <KpiTile
+          label="Saved"
+          value={String(saved.length)}
+          hint={`${saved.filter((s) => s.locked).length} locked`}
+        />
         <KpiTile
           label="Excluded"
           value={String(form.excluded_project_ids.length)}
@@ -458,7 +488,11 @@ export function ScenarioClient({
       {/* Active scenario form */}
       <Section
         title="Active scenario — inputs"
-        subtitle={form.locked ? '🔒 Locked — unlock first to edit other fields' : 'Apply to preview KPIs without saving'}
+        subtitle={
+          form.locked
+            ? '🔒 Locked — unlock first to edit other fields'
+            : 'Apply to preview KPIs without saving'
+        }
       >
         <div
           style={{
@@ -546,7 +580,15 @@ export function ScenarioClient({
             />
           </Field>
           <Field label="Locked as decision">
-            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-primary)' }}>
+            <label
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                fontSize: 13,
+                color: 'var(--color-text-primary)',
+              }}
+            >
               <input
                 type="checkbox"
                 checked={form.locked}
@@ -582,13 +624,22 @@ export function ScenarioClient({
       </Section>
 
       {/* Project exclusions */}
-      <Section title="Project exclusions" subtitle={`${form.excluded_project_ids.length} / ${projects.length} excluded from this run`}>
+      <Section
+        title="Project exclusions"
+        subtitle={`${form.excluded_project_ids.length} / ${projects.length} excluded from this run`}
+      >
         {projects.length === 0 ? (
           <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-tertiary)' }}>
             No projects in the model yet.
           </p>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 8 }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+              gap: 8,
+            }}
+          >
             {projects.map((p) => {
               const excluded = form.excluded_project_ids.includes(p.id);
               return (
@@ -601,7 +652,9 @@ export function ScenarioClient({
                     padding: '8px 12px',
                     border: '1px solid var(--color-border-hairline)',
                     borderRadius: 8,
-                    background: excluded ? 'var(--color-surface-sunken, #f7f7f7)' : 'var(--color-surface-base)',
+                    background: excluded
+                      ? 'var(--color-surface-sunken, #f7f7f7)'
+                      : 'var(--color-surface-base)',
                     cursor: form.locked ? 'not-allowed' : 'pointer',
                     fontSize: 13,
                     opacity: form.locked ? 0.6 : 1,
@@ -614,11 +667,20 @@ export function ScenarioClient({
                     disabled={form.locked}
                   />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div
+                      style={{
+                        color: 'var(--color-text-primary)',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
                       {p.name}
                     </div>
                     {p.startDate && (
-                      <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{p.startDate}</div>
+                      <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+                        {p.startDate}
+                      </div>
                     )}
                   </div>
                 </label>
@@ -629,7 +691,10 @@ export function ScenarioClient({
       </Section>
 
       {/* Effect on KPIs */}
-      <Section title="Effect on KPIs" subtitle="Comparison vs base case — hit Apply above to refresh">
+      <Section
+        title="Effect on KPIs"
+        subtitle="Comparison vs base case — hit Apply above to refresh"
+      >
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--color-border-hairline)' }}>
@@ -652,8 +717,8 @@ export function ScenarioClient({
                       c.delta === 0
                         ? 'var(--color-text-tertiary)'
                         : (isProfitFavoring(c.key) ? c.delta > 0 : c.delta < 0)
-                        ? 'var(--color-positive, #15803d)'
-                        : 'var(--color-negative, #dc2626)',
+                          ? 'var(--color-positive, #15803d)'
+                          : 'var(--color-negative, #dc2626)',
                   }}
                 >
                   {c.delta === 0 ? '—' : `${c.delta > 0 ? '+' : ''}${formatKpi(c.key, c.delta)}`}
@@ -666,7 +731,10 @@ export function ScenarioClient({
 
       {/* Variance drivers */}
       {varianceDrivers.length > 0 && (
-        <Section title="Variance drivers" subtitle="Which knobs differ from the base case in this scenario">
+        <Section
+          title="Variance drivers"
+          subtitle="Which knobs differ from the base case in this scenario"
+        >
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--color-border-hairline)' }}>
@@ -692,7 +760,10 @@ export function ScenarioClient({
 
       {/* Saved scenarios */}
       {saved.length > 0 && (
-        <Section title="Saved scenarios" subtitle="Click a row to load. Locked rows freeze for board / capital-call reference.">
+        <Section
+          title="Saved scenarios"
+          subtitle="Click a row to load. Locked rows freeze for board / capital-call reference."
+        >
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
@@ -733,12 +804,20 @@ export function ScenarioClient({
                         </button>
                       </td>
                       <td style={td()}>
-                        <span style={chip()}>{CLASS_OPTIONS.find((c) => c.value === s.class)?.label ?? s.class}</span>
+                        <span style={chip()}>
+                          {CLASS_OPTIONS.find((c) => c.value === s.class)?.label ?? s.class}
+                        </span>
                       </td>
-                      <td style={td('right')}>{s.interest_rate_delta_bps > 0 ? '+' : ''}{s.interest_rate_delta_bps} bps</td>
+                      <td style={td('right')}>
+                        {s.interest_rate_delta_bps > 0 ? '+' : ''}
+                        {s.interest_rate_delta_bps} bps
+                      </td>
                       <td style={td('right')}>×{s.build_cost_multiplier.toFixed(2)}</td>
                       <td style={td('right')}>×{s.sale_price_multiplier.toFixed(2)}</td>
-                      <td style={td('right')}>{s.timing_shift_months > 0 ? '+' : ''}{s.timing_shift_months} mo</td>
+                      <td style={td('right')}>
+                        {s.timing_shift_months > 0 ? '+' : ''}
+                        {s.timing_shift_months} mo
+                      </td>
                       <td style={td('right')}>{s.locked ? '🔒' : '—'}</td>
                       <td style={td('right')}>
                         <button
@@ -835,14 +914,24 @@ export function ScenarioClient({
                           fontSize: 11,
                           fontWeight: form.loadedId === s.id ? 700 : 600,
                           letterSpacing: '0.04em',
-                          color: form.loadedId === s.id ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)',
+                          color:
+                            form.loadedId === s.id
+                              ? 'var(--color-text-primary)'
+                              : 'var(--color-text-tertiary)',
                         }}
                         title={`Load "${s.name}" into the editor`}
                       >
                         {s.name}
                         {s.locked && ' 🔒'}
                       </button>
-                      <div style={{ marginTop: 4, fontSize: 10, fontWeight: 400, color: 'var(--color-text-tertiary)' }}>
+                      <div
+                        style={{
+                          marginTop: 4,
+                          fontSize: 10,
+                          fontWeight: 400,
+                          color: 'var(--color-text-tertiary)',
+                        }}
+                      >
                         {CLASS_OPTIONS.find((c) => c.value === s.class)?.label ?? s.class}
                       </div>
                     </th>
@@ -850,16 +939,56 @@ export function ScenarioClient({
                 </tr>
               </thead>
               <tbody>
-                <ComparisonRow label="Total profit (pre-tax)" baseVal={baseKpis.total_profit_before_tax} kind="usd" cells={savedKpis.map((s) => s.kpis.total_profit_before_tax)} />
-                <ComparisonRow label="Total sales" baseVal={baseKpis.total_sales} kind="usd" cells={savedKpis.map((s) => s.kpis.total_sales)} />
-                <ComparisonRow label="Peak equity" baseVal={baseKpis.peak_equity_required} kind="usd-cost" cells={savedKpis.map((s) => s.kpis.peak_equity_required)} />
-                <ComparisonRow label="Max debt" baseVal={baseKpis.max_debt_outstanding} kind="usd-cost" cells={savedKpis.map((s) => s.kpis.max_debt_outstanding)} />
-                <ComparisonRow label="Total interest" baseVal={baseKpis.total_interest} kind="usd-cost" cells={savedKpis.map((s) => s.kpis.total_interest)} />
-                <ComparisonRow label="Gross MOIC" baseVal={baseKpis.moic_gross} kind="moic" cells={savedKpis.map((s) => s.kpis.moic_gross)} />
+                <ComparisonRow
+                  label="Total profit (pre-tax)"
+                  baseVal={baseKpis.total_profit_before_tax}
+                  kind="usd"
+                  cells={savedKpis.map((s) => s.kpis.total_profit_before_tax)}
+                />
+                <ComparisonRow
+                  label="Total sales"
+                  baseVal={baseKpis.total_sales}
+                  kind="usd"
+                  cells={savedKpis.map((s) => s.kpis.total_sales)}
+                />
+                <ComparisonRow
+                  label="Peak equity"
+                  baseVal={baseKpis.peak_equity_required}
+                  kind="usd-cost"
+                  cells={savedKpis.map((s) => s.kpis.peak_equity_required)}
+                />
+                <ComparisonRow
+                  label="Max debt"
+                  baseVal={baseKpis.max_debt_outstanding}
+                  kind="usd-cost"
+                  cells={savedKpis.map((s) => s.kpis.max_debt_outstanding)}
+                />
+                <ComparisonRow
+                  label="Total interest"
+                  baseVal={baseKpis.total_interest}
+                  kind="usd-cost"
+                  cells={savedKpis.map((s) => s.kpis.total_interest)}
+                />
+                <ComparisonRow
+                  label="Gross MOIC"
+                  baseVal={baseKpis.moic_gross}
+                  kind="moic"
+                  cells={savedKpis.map((s) => s.kpis.moic_gross)}
+                />
                 {baseExtendedKpis && (
                   <>
-                    <ComparisonRow label="Portfolio IRR" baseVal={baseExtendedKpis.irr_annual} kind="pct" cells={savedKpis.map((s) => s.kpis.irr_annual)} />
-                    <ComparisonRow label="Payback" baseVal={baseExtendedKpis.payback_months} kind="months" cells={savedKpis.map((s) => s.kpis.payback_months)} />
+                    <ComparisonRow
+                      label="Portfolio IRR"
+                      baseVal={baseExtendedKpis.irr_annual}
+                      kind="pct"
+                      cells={savedKpis.map((s) => s.kpis.irr_annual)}
+                    />
+                    <ComparisonRow
+                      label="Payback"
+                      baseVal={baseExtendedKpis.payback_months}
+                      kind="months"
+                      cells={savedKpis.map((s) => s.kpis.payback_months)}
+                    />
                   </>
                 )}
               </tbody>
@@ -892,7 +1021,11 @@ function AnnualPlTable({
   scenarios,
 }: {
   baseAnnual: Record<string, { sales: number; profit_before_tax: number }>;
-  scenarios: Array<{ id: string; name: string; annual: Record<string, { sales: number; profit_before_tax: number }> }>;
+  scenarios: Array<{
+    id: string;
+    name: string;
+    annual: Record<string, { sales: number; profit_before_tax: number }>;
+  }>;
 }) {
   // Build the FY union — different scenarios may have different fiscal
   // years if timing_shift_months pushes them across boundaries.
@@ -976,7 +1109,13 @@ function AnnualRow({
   const avgDelta =
     cells.length > 0 ? cells.reduce((a, b) => a + (b - baseVal), 0) / cells.length : 0;
   return (
-    <tr style={{ borderTop: firstInGroup ? '2px solid var(--color-border-strong)' : '1px solid var(--color-border-hairline)' }}>
+    <tr
+      style={{
+        borderTop: firstInGroup
+          ? '2px solid var(--color-border-strong)'
+          : '1px solid var(--color-border-hairline)',
+      }}
+    >
       <td
         style={{
           ...comparisonTd(),
@@ -996,8 +1135,8 @@ function AnnualRow({
           delta === 0
             ? 'var(--color-text-primary)'
             : delta > 0
-            ? 'var(--color-positive, #15803d)'
-            : 'var(--color-negative, #dc2626)';
+              ? 'var(--color-positive, #15803d)'
+              : 'var(--color-negative, #dc2626)';
         return (
           <td key={i} style={{ ...comparisonTd('right'), color }}>
             {fmtCell(v, 'usd')}
@@ -1008,7 +1147,12 @@ function AnnualRow({
         style={{
           ...comparisonTd('right'),
           fontWeight: 500,
-          color: avgDelta === 0 ? 'var(--color-text-tertiary)' : avgDelta > 0 ? 'var(--color-positive, #15803d)' : 'var(--color-negative, #dc2626)',
+          color:
+            avgDelta === 0
+              ? 'var(--color-text-tertiary)'
+              : avgDelta > 0
+                ? 'var(--color-positive, #15803d)'
+                : 'var(--color-negative, #dc2626)',
         }}
       >
         {avgDelta === 0 ? '—' : `${avgDelta > 0 ? '+' : ''}${fmtCell(avgDelta, 'usd')}`}
@@ -1020,7 +1164,10 @@ function AnnualRow({
 // ─── Subcomponents ──────────────────────────────────────────────────────────
 
 /** Format value per metric kind. Returns "—" for null/undefined. */
-function fmtCell(value: number | null | undefined, kind: 'usd' | 'usd-cost' | 'moic' | 'pct' | 'months'): string {
+function fmtCell(
+  value: number | null | undefined,
+  kind: 'usd' | 'usd-cost' | 'moic' | 'pct' | 'months'
+): string {
   if (value == null || !Number.isFinite(value)) return '—';
   if (kind === 'moic') return `${value.toFixed(2)}×`;
   if (kind === 'pct') return `${(value * 100).toFixed(1)}%`;
@@ -1053,15 +1200,17 @@ function ComparisonRow({
   return (
     <tr style={{ borderBottom: '1px solid var(--color-border-hairline)' }}>
       <td style={comparisonTd()}>{label}</td>
-      <td style={{ ...comparisonTd('right'), color: 'var(--color-text-secondary)' }}>{fmtCell(baseVal ?? null, kind)}</td>
+      <td style={{ ...comparisonTd('right'), color: 'var(--color-text-secondary)' }}>
+        {fmtCell(baseVal ?? null, kind)}
+      </td>
       {cells.map((v, i) => {
         const delta = v != null && baseVal != null ? v - baseVal : null;
         const color =
           delta == null || delta === 0
             ? 'var(--color-text-primary)'
             : (favorPositive ? delta > 0 : delta < 0)
-            ? 'var(--color-positive, #15803d)'
-            : 'var(--color-negative, #dc2626)';
+              ? 'var(--color-positive, #15803d)'
+              : 'var(--color-negative, #dc2626)';
         return (
           <td key={i} style={{ ...comparisonTd('right'), color }}>
             {fmtCell(v ?? null, kind)}
@@ -1099,7 +1248,9 @@ function Section({
       }}
     >
       <header style={{ marginBottom: 12 }}>
-        <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+        <h2
+          style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}
+        >
           {title}
         </h2>
         {subtitle && (
@@ -1145,7 +1296,9 @@ function KpiTile({ label, value, hint }: { label: string; value: string; hint?: 
         {value}
       </div>
       {hint && (
-        <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', marginTop: 4 }}>{hint}</div>
+        <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', marginTop: 4 }}>
+          {hint}
+        </div>
       )}
     </div>
   );
@@ -1154,7 +1307,15 @@ function KpiTile({ label, value, hint }: { label: string; value: string; hint?: 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+      <label
+        style={{
+          fontSize: 11,
+          fontWeight: 600,
+          color: 'var(--color-text-tertiary)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.04em',
+        }}
+      >
         {label}
       </label>
       {children}

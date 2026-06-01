@@ -161,7 +161,8 @@ export function GeneralTab({
 
   const resetToBaseline = async () => {
     if (!canEdit) return;
-    if (!confirm('Reset every global to the baseline defaults? This drops every saved override.')) return;
+    if (!confirm('Reset every global to the baseline defaults? This drops every saved override.'))
+      return;
     setBusy('reset');
     setError(null);
     try {
@@ -170,7 +171,11 @@ export function GeneralTab({
         const e = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
         throw new Error(e?.error?.message ?? `${res.status} ${res.statusText}`);
       }
-      const body = (await res.json()) as { globals: Globals; isBaseline: boolean; updatedAt: string | null };
+      const body = (await res.json()) as {
+        globals: Globals;
+        isBaseline: boolean;
+        updatedAt: string | null;
+      };
       setForm(formFromGlobals(body.globals));
       setIsBaseline(body.isBaseline);
       setUpdatedAt(body.updatedAt);
@@ -188,7 +193,9 @@ export function GeneralTab({
         role="status"
         style={{
           padding: '12px 16px',
-          background: isBaseline ? 'var(--color-surface-raised)' : 'var(--color-accent-lime, #ddec65)',
+          background: isBaseline
+            ? 'var(--color-surface-raised)'
+            : 'var(--color-accent-lime, #ddec65)',
           border: '1px solid var(--color-border-hairline)',
           borderLeft: `3px solid ${isBaseline ? 'var(--color-border-strong)' : 'var(--color-accent-base, #131313)'}`,
           borderRadius: 10,
@@ -203,12 +210,22 @@ export function GeneralTab({
           <strong
             style={{
               fontSize: 13,
-              color: isBaseline ? 'var(--color-text-primary)' : 'var(--color-text-on-lime, #0d0d0d)',
+              color: isBaseline
+                ? 'var(--color-text-primary)'
+                : 'var(--color-text-on-lime, #0d0d0d)',
             }}
           >
             {isBaseline ? 'Using baseline defaults' : 'Custom overrides active'}
           </strong>
-          <p style={{ margin: '4px 0 0 0', fontSize: 12, color: isBaseline ? 'var(--color-text-secondary)' : 'var(--color-text-on-lime, #0d0d0d)' }}>
+          <p
+            style={{
+              margin: '4px 0 0 0',
+              fontSize: 12,
+              color: isBaseline
+                ? 'var(--color-text-secondary)'
+                : 'var(--color-text-on-lime, #0d0d0d)',
+            }}
+          >
             {isBaseline
               ? 'Every portfolio page is running off the constants in lib/calc/baselines.ts.'
               : `Last updated ${updatedAt ? new Date(updatedAt).toLocaleString() : 'recently'}. Resetting reverts every field.`}
@@ -264,22 +281,52 @@ export function GeneralTab({
       <Section title="Financial assumptions">
         <Grid>
           <Field label="Interest rate (APR, fraction)">
-            <NumberInput value={form.interest_rate_apr} onChange={(v) => update('interest_rate_apr', v)} step="0.001" disabled={!canEdit} />
+            <NumberInput
+              value={form.interest_rate_apr}
+              onChange={(v) => update('interest_rate_apr', v)}
+              step="0.001"
+              disabled={!canEdit}
+            />
           </Field>
           <Field label="LTC (build / soft)">
-            <NumberInput value={form.ltc_pct} onChange={(v) => update('ltc_pct', v)} step="0.01" disabled={!canEdit} />
+            <NumberInput
+              value={form.ltc_pct}
+              onChange={(v) => update('ltc_pct', v)}
+              step="0.01"
+              disabled={!canEdit}
+            />
           </Field>
           <Field label="LTC (land)">
-            <NumberInput value={form.ltc_land_pct} onChange={(v) => update('ltc_land_pct', v)} step="0.01" disabled={!canEdit} />
+            <NumberInput
+              value={form.ltc_land_pct}
+              onChange={(v) => update('ltc_land_pct', v)}
+              step="0.01"
+              disabled={!canEdit}
+            />
           </Field>
           <Field label="Contingency %">
-            <NumberInput value={form.contingency_pct} onChange={(v) => update('contingency_pct', v)} step="0.005" disabled={!canEdit} />
+            <NumberInput
+              value={form.contingency_pct}
+              onChange={(v) => update('contingency_pct', v)}
+              step="0.005"
+              disabled={!canEdit}
+            />
           </Field>
           <Field label="Target margin">
-            <NumberInput value={form.target_margin} onChange={(v) => update('target_margin', v)} step="0.01" disabled={!canEdit} />
+            <NumberInput
+              value={form.target_margin}
+              onChange={(v) => update('target_margin', v)}
+              step="0.01"
+              disabled={!canEdit}
+            />
           </Field>
           <Field label="Financing fees / project (USD)">
-            <NumberInput value={form.financing_fees_per_project_usd} onChange={(v) => update('financing_fees_per_project_usd', v)} step="1000" disabled={!canEdit} />
+            <NumberInput
+              value={form.financing_fees_per_project_usd}
+              onChange={(v) => update('financing_fees_per_project_usd', v)}
+              step="1000"
+              disabled={!canEdit}
+            />
           </Field>
           <Field label="Capitalize interest">
             <SelectInput
@@ -298,10 +345,20 @@ export function GeneralTab({
       <Section title="Build cost defaults">
         <Grid>
           <Field label="Default build $/sqft">
-            <NumberInput value={form.default_build_cost_per_sqft} onChange={(v) => update('default_build_cost_per_sqft', v)} step="10" disabled={!canEdit} />
+            <NumberInput
+              value={form.default_build_cost_per_sqft}
+              onChange={(v) => update('default_build_cost_per_sqft', v)}
+              step="10"
+              disabled={!canEdit}
+            />
           </Field>
           <Field label="Default Kingshaus $/sqft">
-            <NumberInput value={form.default_kingshaus_cost_per_sqft} onChange={(v) => update('default_kingshaus_cost_per_sqft', v)} step="10" disabled={!canEdit} />
+            <NumberInput
+              value={form.default_kingshaus_cost_per_sqft}
+              onChange={(v) => update('default_kingshaus_cost_per_sqft', v)}
+              step="10"
+              disabled={!canEdit}
+            />
           </Field>
           <Field label="Build cost curve">
             <SelectInput
@@ -316,7 +373,12 @@ export function GeneralTab({
             />
           </Field>
           <Field label="Build cost realization %">
-            <NumberInput value={form.build_cost_realization_pct} onChange={(v) => update('build_cost_realization_pct', v)} step="0.05" disabled={!canEdit} />
+            <NumberInput
+              value={form.build_cost_realization_pct}
+              onChange={(v) => update('build_cost_realization_pct', v)}
+              step="0.05"
+              disabled={!canEdit}
+            />
           </Field>
         </Grid>
       </Section>
@@ -324,18 +386,35 @@ export function GeneralTab({
       <Section title="Schedule + horizon">
         <Grid>
           <Field label="Default program months">
-            <NumberInput value={form.default_program_months} onChange={(v) => update('default_program_months', v)} step="1" disabled={!canEdit} />
+            <NumberInput
+              value={form.default_program_months}
+              onChange={(v) => update('default_program_months', v)}
+              step="1"
+              disabled={!canEdit}
+            />
           </Field>
           <Field label="Model start (YYYY-MM)">
-            <TextInput value={form.model_start} onChange={(v) => update('model_start', v)} disabled={!canEdit} placeholder="2026-01" />
+            <TextInput
+              value={form.model_start}
+              onChange={(v) => update('model_start', v)}
+              disabled={!canEdit}
+              placeholder="2026-01"
+            />
           </Field>
           <Field label="Horizon (months)">
-            <NumberInput value={form.horizon_months} onChange={(v) => update('horizon_months', v)} step="1" disabled={!canEdit} />
+            <NumberInput
+              value={form.horizon_months}
+              onChange={(v) => update('horizon_months', v)}
+              step="1"
+              disabled={!canEdit}
+            />
           </Field>
           <Field label="Include sold projects in roll-up">
             <SelectInput
               value={form.include_sold_projects}
-              onChange={(v) => update('include_sold_projects', v as FormState['include_sold_projects'])}
+              onChange={(v) =>
+                update('include_sold_projects', v as FormState['include_sold_projects'])
+              }
               options={[
                 { value: 'on', label: 'Yes' },
                 { value: 'off', label: 'No' },
@@ -349,27 +428,53 @@ export function GeneralTab({
       <Section title="Velocity plan">
         <Grid>
           <Field label="Starts per year (target)">
-            <NumberInput value={form.target_starts_per_year} onChange={(v) => update('target_starts_per_year', v)} step="1" disabled={!canEdit} />
+            <NumberInput
+              value={form.target_starts_per_year}
+              onChange={(v) => update('target_starts_per_year', v)}
+              step="1"
+              disabled={!canEdit}
+            />
           </Field>
           <Field label="Sells per year (target)">
-            <NumberInput value={form.target_sells_per_year} onChange={(v) => update('target_sells_per_year', v)} step="1" disabled={!canEdit} />
+            <NumberInput
+              value={form.target_sells_per_year}
+              onChange={(v) => update('target_sells_per_year', v)}
+              step="1"
+              disabled={!canEdit}
+            />
           </Field>
           <Field label="Plan window (years)">
-            <NumberInput value={form.velocity_plan_years} onChange={(v) => update('velocity_plan_years', v)} step="1" disabled={!canEdit} />
+            <NumberInput
+              value={form.velocity_plan_years}
+              onChange={(v) => update('velocity_plan_years', v)}
+              step="1"
+              disabled={!canEdit}
+            />
           </Field>
         </Grid>
         <p style={{ margin: '8px 0 0 0', fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-          Drives the Pipeline workspace goal tracker. Defaults: 4 starts &amp; 4 sells per year over a 3-year window.
+          Drives the Pipeline workspace goal tracker. Defaults: 4 starts &amp; 4 sells per year over
+          a 3-year window.
         </p>
       </Section>
 
       <Section title="OPEX">
         <Grid>
           <Field label="Annual OPEX (USD)">
-            <NumberInput value={form.annual_opex_usd} onChange={(v) => update('annual_opex_usd', v)} step="10000" disabled={!canEdit} />
+            <NumberInput
+              value={form.annual_opex_usd}
+              onChange={(v) => update('annual_opex_usd', v)}
+              step="10000"
+              disabled={!canEdit}
+            />
           </Field>
           <Field label="OPEX growth rate (fraction)">
-            <NumberInput value={form.opex_growth_rate} onChange={(v) => update('opex_growth_rate', v)} step="0.01" disabled={!canEdit} />
+            <NumberInput
+              value={form.opex_growth_rate}
+              onChange={(v) => update('opex_growth_rate', v)}
+              step="0.01"
+              disabled={!canEdit}
+            />
           </Field>
         </Grid>
         <p style={{ margin: '8px 0 0 0', fontSize: 11, color: 'var(--color-text-tertiary)' }}>
@@ -391,10 +496,20 @@ export function GeneralTab({
             />
           </Field>
           <Field label="Federal tax rate (fraction)">
-            <NumberInput value={form.tax_rate_pct} onChange={(v) => update('tax_rate_pct', v)} step="0.01" disabled={!canEdit} />
+            <NumberInput
+              value={form.tax_rate_pct}
+              onChange={(v) => update('tax_rate_pct', v)}
+              step="0.01"
+              disabled={!canEdit}
+            />
           </Field>
           <Field label="State tax rate (fraction)">
-            <NumberInput value={form.tax_state_rate_pct} onChange={(v) => update('tax_state_rate_pct', v)} step="0.005" disabled={!canEdit} />
+            <NumberInput
+              value={form.tax_state_rate_pct}
+              onChange={(v) => update('tax_state_rate_pct', v)}
+              step="0.005"
+              disabled={!canEdit}
+            />
           </Field>
           <Field label="NOL carryforward">
             <SelectInput
@@ -409,26 +524,52 @@ export function GeneralTab({
           </Field>
         </Grid>
         <p style={{ margin: '8px 0 0 0', fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-          Effective rate = federal + state. NOL carryforward offsets taxable profit with prior-year net losses.
+          Effective rate = federal + state. NOL carryforward offsets taxable profit with prior-year
+          net losses.
         </p>
       </Section>
 
       <Section title="Risk thresholds">
         <Grid>
           <Field label="Safe LTC ceiling">
-            <NumberInput value={form.risk_safe_ltc_pct} onChange={(v) => update('risk_safe_ltc_pct', v)} step="0.01" disabled={!canEdit} />
+            <NumberInput
+              value={form.risk_safe_ltc_pct}
+              onChange={(v) => update('risk_safe_ltc_pct', v)}
+              step="0.01"
+              disabled={!canEdit}
+            />
           </Field>
           <Field label="Sales delay grace (months)">
-            <NumberInput value={form.risk_sales_delay_grace_months} onChange={(v) => update('risk_sales_delay_grace_months', v)} step="1" disabled={!canEdit} />
+            <NumberInput
+              value={form.risk_sales_delay_grace_months}
+              onChange={(v) => update('risk_sales_delay_grace_months', v)}
+              step="1"
+              disabled={!canEdit}
+            />
           </Field>
           <Field label="Cost overrun ratio">
-            <NumberInput value={form.risk_cost_overrun_ratio} onChange={(v) => update('risk_cost_overrun_ratio', v)} step="0.01" disabled={!canEdit} />
+            <NumberInput
+              value={form.risk_cost_overrun_ratio}
+              onChange={(v) => update('risk_cost_overrun_ratio', v)}
+              step="0.01"
+              disabled={!canEdit}
+            />
           </Field>
           <Field label="Equity cluster pctile">
-            <NumberInput value={form.risk_equity_cluster_pctile} onChange={(v) => update('risk_equity_cluster_pctile', v)} step="0.05" disabled={!canEdit} />
+            <NumberInput
+              value={form.risk_equity_cluster_pctile}
+              onChange={(v) => update('risk_equity_cluster_pctile', v)}
+              step="0.05"
+              disabled={!canEdit}
+            />
           </Field>
           <Field label="Sale downside haircut">
-            <NumberInput value={form.risk_sale_downside_haircut} onChange={(v) => update('risk_sale_downside_haircut', v)} step="0.05" disabled={!canEdit} />
+            <NumberInput
+              value={form.risk_sale_downside_haircut}
+              onChange={(v) => update('risk_sale_downside_haircut', v)}
+              step="0.05"
+              disabled={!canEdit}
+            />
           </Field>
         </Grid>
         <p style={{ margin: '8px 0 0 0', fontSize: 11, color: 'var(--color-text-tertiary)' }}>
@@ -463,7 +604,16 @@ function Section({ title, children }: { title: string; children: React.ReactNode
         padding: 16,
       }}
     >
-      <h3 style={{ margin: 0, fontSize: 12, fontWeight: 600, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+      <h3
+        style={{
+          margin: 0,
+          fontSize: 12,
+          fontWeight: 600,
+          color: 'var(--color-text-tertiary)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.04em',
+        }}
+      >
         {title}
       </h3>
       <div style={{ marginTop: 12 }}>{children}</div>
@@ -488,7 +638,15 @@ function Grid({ children }: { children: React.ReactNode }) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+      <label
+        style={{
+          fontSize: 11,
+          fontWeight: 600,
+          color: 'var(--color-text-tertiary)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.04em',
+        }}
+      >
         {label}
       </label>
       {children}
@@ -554,7 +712,12 @@ function SelectInput({
   disabled?: boolean;
 }) {
   return (
-    <select value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} style={inputStyle}>
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
+      style={inputStyle}
+    >
       {options.map((o) => (
         <option key={o.value} value={o.value}>
           {o.label}

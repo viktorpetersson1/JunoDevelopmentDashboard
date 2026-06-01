@@ -125,7 +125,16 @@ function PipelineColumn({ group }: { group: StageGroup }) {
       </header>
 
       {group.cards.length > 0 ? (
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <ul
+          style={{
+            listStyle: 'none',
+            padding: 0,
+            margin: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6,
+          }}
+        >
           {group.cards.map((c) => (
             <li key={c.id}>
               <PipelineCardLink card={c} />
@@ -150,8 +159,7 @@ function PipelineColumn({ group }: { group: StageGroup }) {
 }
 
 function PipelineCardLink({ card }: { card: PipelineCard }) {
-  const subtitle =
-    card.address ?? (card.market && card.market !== 'default' ? card.market : '—');
+  const subtitle = card.address ?? (card.market && card.market !== 'default' ? card.market : '—');
   return (
     <Link
       href={`/projects/${card.id}`}

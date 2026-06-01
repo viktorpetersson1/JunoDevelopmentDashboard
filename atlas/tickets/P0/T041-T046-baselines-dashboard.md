@@ -7,6 +7,7 @@ Single TS module mirroring `public/data.js::BASELINE_GLOBALS` + `BASELINE_SCENAR
 Why not a `/api/globals` route? RSC reads constants directly via import. An endpoint is added when the client needs to switch scenarios (W1.8).
 
 **Files**
+
 - `atlas/lib/calc/baselines.ts` — `BASELINE_GLOBALS`, `BASELINE_SCENARIO` exports
 - `atlas/lib/calc/__tests__/baselines.test.ts` — 3 drift-detector tests
 
@@ -32,10 +33,12 @@ Why not a `/api/globals` route? RSC reads constants directly via import. An endp
 Right rail shows the 8 most-recent projects with name → link to `/projects/[id]` (which lands in T048).
 
 **Files**
+
 - `atlas/app/page.tsx` — Server Component (replaces T003-revisit smoke page)
 - `atlas/app/_components/dashboard-shell.tsx` — `'use client'` wrapper owning scenario state for AppShell's `onScenarioChange`
 
 **Deferred**
+
 - **Cash flow chart**: Recharts wiring deferred to T046.1. Body slot shows a placeholder EmptyState explaining KPIs are live but the chart is pending.
 - **Functional scenario switcher**: switcher updates local state but doesn't re-fetch (KPIs always base-case). W1.8 wires scenario-driven recompute.
 - **Pixel diff vs 01_index.png**: deferred to T051 visual baselines.

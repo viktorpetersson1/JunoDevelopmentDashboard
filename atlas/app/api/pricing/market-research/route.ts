@@ -24,14 +24,8 @@ import { withErrorBoundary } from '@/lib/api/handler';
 import { requireAuth } from '@/lib/auth/requireAuth';
 import { requireEditor } from '@/lib/auth/requireRole';
 import { findMarketByKey } from '@/lib/repos/markets';
-import {
-  bulkUpsertCompsIgnoreDupes,
-  type NewCompInput,
-} from '@/lib/repos/comps';
-import {
-  researchMarketActivity,
-  type CompResearchOutput,
-} from '@/lib/pricing/comp-researcher';
+import { bulkUpsertCompsIgnoreDupes, type NewCompInput } from '@/lib/repos/comps';
+import { researchMarketActivity, type CompResearchOutput } from '@/lib/pricing/comp-researcher';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -131,8 +125,12 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
   }
 
   // One round-trip for everything.
-  const { inserted: totalInserted, skippedDupes: totalSkippedDupes, failed: totalFailed, firstError } =
-    await bulkUpsertCompsIgnoreDupes(allInputs);
+  const {
+    inserted: totalInserted,
+    skippedDupes: totalSkippedDupes,
+    failed: totalFailed,
+    firstError,
+  } = await bulkUpsertCompsIgnoreDupes(allInputs);
 
   return ok({
     subCutsResearched: workList.length,
@@ -156,19 +154,18 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
  * outside the predefined East End taxonomy.
  */
 function slugifyForSubCut(label: string): string {
-  return label
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '') // strip diacritics
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .slice(0, 80) || 'custom';
+  return (
+    label
+      .toLowerCase()
+      .normalize('NFKD')
+      .replace(/[̀-ͯ]/g, '') // strip diacritics
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .slice(0, 80) || 'custom'
+  );
 }
 
-function mapResearchedToCompInputs(
-  output: CompResearchOutput,
-  subCutKey: string
-): NewCompInput[] {
+function mapResearchedToCompInputs(output: CompResearchOutput, subCutKey: string): NewCompInput[] {
   return output.comps
     .filter((c) => c.address && c.agSqft > 0 && c.salePriceUsd > 0)
     .map((c) => ({

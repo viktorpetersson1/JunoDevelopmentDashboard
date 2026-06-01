@@ -37,11 +37,7 @@ function baseProject(): ProjectInput {
 describe('applySoftCosts', () => {
   it('uses lump sum when no breakdown is set', () => {
     const out = blankSeries(36);
-    const r = applySoftCosts(
-      out,
-      { ...baseProject(), soft_costs_lump_sum: 500_000 },
-      3
-    );
+    const r = applySoftCosts(out, { ...baseProject(), soft_costs_lump_sum: 500_000 }, 3);
     expect(r.softTotal).toBe(-500_000);
     expect(out.soft_cost[3]).toBe(-500_000);
   });

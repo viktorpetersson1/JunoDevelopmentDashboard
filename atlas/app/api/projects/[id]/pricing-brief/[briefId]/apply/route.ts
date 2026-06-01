@@ -16,9 +16,7 @@ import { ok, badRequest, notFound } from '@/lib/api/response';
 import { withErrorBoundary } from '@/lib/api/handler';
 import { requireAuth } from '@/lib/auth/requireAuth';
 import { requireEditor } from '@/lib/auth/requireRole';
-import {
-  findCurrentProjectUuidByKey,
-} from '@/lib/repos/project';
+import { findCurrentProjectUuidByKey } from '@/lib/repos/project';
 import { findBriefById, markBriefApplied } from '@/lib/repos/pricing-briefs';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -47,10 +45,7 @@ export const POST = withErrorBoundary(async (_req: NextRequest, ctx: RouteContex
     return badRequest('Brief does not belong to this project.', 'BRIEF_PROJECT_MISMATCH');
   }
   if (brief.recommendedPsfUsd === null || brief.recommendedPsfUsd <= 0) {
-    return badRequest(
-      'Brief has no usable recommended PSF — cannot apply.',
-      'BRIEF_NO_PSF'
-    );
+    return badRequest('Brief has no usable recommended PSF — cannot apply.', 'BRIEF_NO_PSF');
   }
 
   // 1. Mark applied (also supersedes previously-applied brief).

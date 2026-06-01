@@ -11,10 +11,7 @@ import { ok, badRequest } from '@/lib/api/response';
 import { withErrorBoundary } from '@/lib/api/handler';
 import { requireAuth } from '@/lib/auth/requireAuth';
 import { requireSuperAdmin } from '@/lib/auth/requireRole';
-import {
-  approveSnapshot,
-  SnapshotValidationError,
-} from '@/lib/services/approval-snapshot';
+import { approveSnapshot, SnapshotValidationError } from '@/lib/services/approval-snapshot';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;

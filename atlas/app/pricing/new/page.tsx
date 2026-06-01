@@ -32,9 +32,7 @@ export default async function PricingNewPage() {
     <DashboardShell activeHref="/pricing" user={dashboardUser}>
       <QuickPriceClient
         subCuts={market?.subCuts ?? []}
-        canEdit={
-          profile.role === 'super_admin' || profile.role === 'editor'
-        }
+        canEdit={profile.role === 'super_admin' || profile.role === 'editor'}
       />
     </DashboardShell>
   );

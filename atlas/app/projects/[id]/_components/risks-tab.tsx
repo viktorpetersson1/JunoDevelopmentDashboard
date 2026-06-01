@@ -126,9 +126,7 @@ export function RisksTab({
     {
       label: 'IRR (annual)',
       status:
-        k.irr_annual === null
-          ? 'warn'
-          : statusFor(irrAnnual, THRESHOLDS.irr_annual_min, 'min'),
+        k.irr_annual === null ? 'warn' : statusFor(irrAnnual, THRESHOLDS.irr_annual_min, 'min'),
       actual: k.irr_annual === null ? '—' : `${(irrAnnual * 100).toFixed(1)}%`,
       threshold: `≥ ${(THRESHOLDS.irr_annual_min * 100).toFixed(0)}%`,
       note: k.irr_annual === null ? 'Insufficient cash flow signal' : 'Annualized IRR',

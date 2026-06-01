@@ -173,9 +173,9 @@ export function CompForm({
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
-        const json = (await res.json().catch(() => null)) as
-          | { error?: { code: string; message: string } }
-          | null;
+        const json = (await res.json().catch(() => null)) as {
+          error?: { code: string; message: string };
+        } | null;
         setServerError(json?.error?.message ?? `${mode} failed (HTTP ${res.status})`);
         return;
       }
@@ -186,14 +186,18 @@ export function CompForm({
 
   async function handleArchive() {
     if (!initial) return;
-    if (!confirm('Archive this comp? It will disappear from the library; existing pricing-run snapshots are unaffected.')) {
+    if (
+      !confirm(
+        'Archive this comp? It will disappear from the library; existing pricing-run snapshots are unaffected.'
+      )
+    ) {
       return;
     }
     const res = await fetch(`/api/comps/${initial.id}`, { method: 'DELETE' });
     if (!res.ok) {
-      const json = (await res.json().catch(() => null)) as
-        | { error?: { code: string; message: string } }
-        | null;
+      const json = (await res.json().catch(() => null)) as {
+        error?: { code: string; message: string };
+      } | null;
       setServerError(json?.error?.message ?? `Archive failed (HTTP ${res.status})`);
       return;
     }
@@ -261,7 +265,11 @@ export function CompForm({
           onChange={(v) => update('address', String(v ?? ''))}
           required
           error={errors.address}
-          hint={mode === 'edit' ? 'Address is immutable; archive + recreate to fix typos.' : 'e.g. 1140 Park Ave, Mattituck NY'}
+          hint={
+            mode === 'edit'
+              ? 'Address is immutable; archive + recreate to fix typos.'
+              : 'e.g. 1140 Park Ave, Mattituck NY'
+          }
         />
         <Field
           label="Sub-cut"

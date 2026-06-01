@@ -241,9 +241,7 @@ export function MarketIntel({
 
   // Apply filter
   const closedFiltered =
-    filter === ALL_SUBCUTS
-      ? closedInWindow
-      : closedInWindow.filter((c) => c.subCutKey === filter);
+    filter === ALL_SUBCUTS ? closedInWindow : closedInWindow.filter((c) => c.subCutKey === filter);
   const activeFiltered =
     filter === ALL_SUBCUTS ? activeAll : activeAll.filter((c) => c.subCutKey === filter);
   const priorFiltered =
@@ -299,8 +297,7 @@ export function MarketIntel({
   }, [allSubCuts]);
 
   const recentFeed = closedFiltered.slice(0, 10);
-  const filterLabel =
-    filter === ALL_SUBCUTS ? 'all sub-markets' : labelMap.get(filter) ?? filter;
+  const filterLabel = filter === ALL_SUBCUTS ? 'all sub-markets' : (labelMap.get(filter) ?? filter);
 
   // What's the actual date range of comps in the current filter? Communicates
   // freshness honestly — a "last 18 months" window is useless if every comp
@@ -526,7 +523,9 @@ export function MarketIntel({
           sub={
             current.avgPsf === null
               ? 'no closed comps'
-              : current.lowPsf !== null && current.highPsf !== null && current.lowPsf !== current.highPsf
+              : current.lowPsf !== null &&
+                  current.highPsf !== null &&
+                  current.lowPsf !== current.highPsf
                 ? `range $${current.lowPsf.toLocaleString()} – $${current.highPsf.toLocaleString()}`
                 : 'closed in window'
           }
@@ -706,9 +705,7 @@ export function MarketIntel({
                     <td style={tdStyle('left', { tertiary: true })}>
                       {labelMap.get(c.subCutKey) ?? prettyLabel(c.subCutKey)}
                     </td>
-                    <td style={tdStyle('right', { tabular: true })}>
-                      {c.agSqft.toLocaleString()}
-                    </td>
+                    <td style={tdStyle('right', { tabular: true })}>{c.agSqft.toLocaleString()}</td>
                     <td style={tdStyle('right', { tabular: true })}>
                       {c.salePriceCents !== null ? formatUsd(c.salePriceCents / 100, true) : '—'}
                     </td>
@@ -747,11 +744,8 @@ function KpiTile({
   let deltaColor = 'var(--color-text-tertiary, #767b84)';
   if (hasDelta && tone) {
     const positive = delta! > 0;
-    const good =
-      (tone === 'higher-better' && positive) || (tone === 'lower-better' && !positive);
-    deltaColor = good
-      ? 'var(--color-positive, #15803d)'
-      : 'var(--color-negative, #b91c1c)';
+    const good = (tone === 'higher-better' && positive) || (tone === 'lower-better' && !positive);
+    deltaColor = good ? 'var(--color-positive, #15803d)' : 'var(--color-negative, #b91c1c)';
   }
   return (
     <div>
@@ -822,9 +816,7 @@ function SubHeader({ label, hint }: { label: string; hint: string | null }) {
         {label}
       </h3>
       {hint && (
-        <span style={{ fontSize: 11, color: 'var(--color-text-tertiary, #767b84)' }}>
-          {hint}
-        </span>
+        <span style={{ fontSize: 11, color: 'var(--color-text-tertiary, #767b84)' }}>{hint}</span>
       )}
     </div>
   );

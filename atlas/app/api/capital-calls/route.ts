@@ -18,10 +18,7 @@ import { requireAuth } from '@/lib/auth/requireAuth';
 import { hasRole, requireEditor } from '@/lib/auth/requireRole';
 import { findCapitalCallsByProject } from '@/lib/repos/capital-call';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import {
-  createCapitalCall,
-  CapitalCallValidationError,
-} from '@/lib/services/capital-call';
+import { createCapitalCall, CapitalCallValidationError } from '@/lib/services/capital-call';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -98,8 +95,16 @@ const CreateBodySchema = z.object({
   totalAmountCents: z.number().int().positive(),
   split: z.union([z.literal('cap_table'), ManualSplitSchema]),
   issue: z.boolean().optional(),
-  issuedDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
-  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  issuedDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional()
+    .nullable(),
+  dueDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional()
+    .nullable(),
   notes: z.string().max(1000).optional().nullable(),
 });
 
@@ -156,10 +161,7 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
 // the atlas schema migrations. Created lazily on first use.
 // ────────────────────────────────────────────────────────────────────────────
 
-async function replayIdempotent(
-  key: string,
-  userId: string
-): Promise<Response | null> {
+async function replayIdempotent(key: string, userId: string): Promise<Response | null> {
   try {
     const supabase = createSupabaseServerClient();
     const { data, error } = await supabase
@@ -183,16 +185,10 @@ async function replayIdempotent(
   }
 }
 
-async function storeIdempotent(
-  key: string,
-  userId: string,
-  result: unknown
-): Promise<void> {
+async function storeIdempotent(key: string, userId: string, result: unknown): Promise<void> {
   try {
     const supabase = createSupabaseServerClient();
-    await supabase
-      .from('atlas_idempotency')
-      .insert({ key, user_id: userId, result_json: result });
+    await supabase.from('atlas_idempotency').insert({ key, user_id: userId, result_json: result });
   } catch {
     // Best-effort; missing table OK on first run.
   }

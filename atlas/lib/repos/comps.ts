@@ -21,11 +21,7 @@
  */
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import type {
-  CompStatus,
-  CompWaterfrontType,
-  CompSource,
-} from '@/lib/db/schema/comps';
+import type { CompStatus, CompWaterfrontType, CompSource } from '@/lib/db/schema/comps';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Types
@@ -108,7 +104,11 @@ function num(v: string | number | null | undefined): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function computePsf(salePriceCents: number | null, agSqft: number, status: CompStatus): number | null {
+function computePsf(
+  salePriceCents: number | null,
+  agSqft: number,
+  status: CompStatus
+): number | null {
   if (status !== 'closed') return null;
   if (!salePriceCents || !agSqft) return null;
   return salePriceCents / 100 / agSqft;
@@ -395,11 +395,7 @@ export async function listComps(filter: ListCompsFilter = {}): Promise<CompView[
   if (filter.status && filter.status !== 'any') q = q.eq('status', filter.status);
   if (filter.isNc !== undefined) q = q.eq('is_nc', filter.isNc);
   if (filter.limit) q = q.limit(filter.limit);
-  if (filter.offset)
-    q = q.range(
-      filter.offset,
-      filter.offset + (filter.limit ?? 50) - 1
-    );
+  if (filter.offset) q = q.range(filter.offset, filter.offset + (filter.limit ?? 50) - 1);
   const { data, error } = await q;
   if (error) throw new Error(`listComps: ${error.message}`);
   return ((data as unknown as CompRow[]) ?? []).map(toView);
@@ -521,10 +517,7 @@ export async function findAnchorComps(q: AnchorCompsQuery): Promise<CompView[]> 
 /** Quick library count for the global /pricing/comps header chip. */
 export async function countComps(includeArchived = false): Promise<number> {
   const supabase = createSupabaseServerClient();
-  let q = supabase
-    .schema('atlas')
-    .from('comps')
-    .select('id', { count: 'exact', head: true });
+  let q = supabase.schema('atlas').from('comps').select('id', { count: 'exact', head: true });
   if (!includeArchived) q = q.eq('is_archived', false);
   const { count, error } = await q;
   if (error) throw new Error(`countComps: ${error.message}`);
@@ -709,16 +702,12 @@ export async function getMarketKpis(windowDays = 90): Promise<MarketKpis> {
   const closedRows = (closedRes.data ?? []) as unknown as CompRow[];
   const priorRows = (priorRes.data ?? []) as unknown as CompRow[];
 
-  const closedPsfs = closedRows
-    .map(compToPsf)
-    .filter((n): n is number => n != null && n > 0);
+  const closedPsfs = closedRows.map(compToPsf).filter((n): n is number => n != null && n > 0);
   const closedDoms = closedRows
     .map((r) => r.dom_days)
     .filter((n): n is number => n != null && n >= 0);
 
-  const priorPsfs = priorRows
-    .map(compToPsf)
-    .filter((n): n is number => n != null && n > 0);
+  const priorPsfs = priorRows.map(compToPsf).filter((n): n is number => n != null && n > 0);
   const priorDoms = priorRows
     .map((r) => r.dom_days)
     .filter((n): n is number => n != null && n >= 0);
@@ -789,9 +778,7 @@ export interface DashboardComps {
   activeAll: CompView[];
 }
 
-export async function getCompsForDashboard(
-  windowDays = 90
-): Promise<DashboardComps> {
+export async function getCompsForDashboard(windowDays = 90): Promise<DashboardComps> {
   const supabase = createSupabaseServerClient();
   const start = daysAgo(windowDays);
   const priorStart = daysAgo(windowDays + 365);
@@ -822,18 +809,11 @@ export async function getCompsForDashboard(
     .eq('is_archived', false)
     .in('status', ['active', 'pending']);
 
-  const [closedRes, priorRes, activeRes] = await Promise.all([
-    closedQ,
-    priorQ,
-    activeQ,
-  ]);
+  const [closedRes, priorRes, activeRes] = await Promise.all([closedQ, priorQ, activeQ]);
 
-  if (closedRes.error)
-    throw new Error(`getCompsForDashboard closed: ${closedRes.error.message}`);
-  if (priorRes.error)
-    throw new Error(`getCompsForDashboard prior: ${priorRes.error.message}`);
-  if (activeRes.error)
-    throw new Error(`getCompsForDashboard active: ${activeRes.error.message}`);
+  if (closedRes.error) throw new Error(`getCompsForDashboard closed: ${closedRes.error.message}`);
+  if (priorRes.error) throw new Error(`getCompsForDashboard prior: ${priorRes.error.message}`);
+  if (activeRes.error) throw new Error(`getCompsForDashboard active: ${activeRes.error.message}`);
 
   return {
     windowDays,

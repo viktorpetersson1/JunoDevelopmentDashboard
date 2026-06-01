@@ -137,7 +137,9 @@ export default async function WaterfallPage() {
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
         <header>
-          <h1 style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}>
+          <h1
+            style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}
+          >
             Owner waterfall
           </h1>
           <p style={{ margin: '4px 0 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
@@ -169,7 +171,10 @@ export default async function WaterfallPage() {
         </section>
 
         {/* Equity timeline */}
-        <Section title="Equity timeline" subtitle="Cumulative deployed vs returned across the model horizon">
+        <Section
+          title="Equity timeline"
+          subtitle="Cumulative deployed vs returned across the model horizon"
+        >
           <EquityTimelineChart monthly={portfolio.monthly} />
         </Section>
 
@@ -245,7 +250,9 @@ function Section({
       }}
     >
       <header style={{ marginBottom: 12 }}>
-        <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+        <h2
+          style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}
+        >
           {title}
         </h2>
         {subtitle && (
@@ -298,7 +305,8 @@ function KpiTile({
         style={{
           fontSize: 22,
           fontWeight: 600,
-          color: tone === 'negative' ? 'var(--color-negative, #dc2626)' : 'var(--color-text-primary)',
+          color:
+            tone === 'negative' ? 'var(--color-negative, #dc2626)' : 'var(--color-text-primary)',
           marginTop: 6,
           fontVariantNumeric: 'tabular-nums',
         }}
@@ -306,7 +314,9 @@ function KpiTile({
         {value}
       </div>
       {hint && (
-        <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', marginTop: 4 }}>{hint}</div>
+        <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', marginTop: 4 }}>
+          {hint}
+        </div>
       )}
     </div>
   );
@@ -324,7 +334,9 @@ function EmptyState({ title, body }: { title: string; body: string }) {
       }}
     >
       <strong style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>{title}</strong>
-      <p style={{ margin: '6px 0 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>{body}</p>
+      <p style={{ margin: '6px 0 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
+        {body}
+      </p>
     </div>
   );
 }
@@ -354,10 +366,11 @@ function ByProjectTable({ rows }: { rows: ByProjectRow[] }) {
       if (d > 0 && firstCall < 0) firstCall = i;
       if (ret > 0) lastReturn = i;
     }
-    const holdMonths = firstCall >= 0 && lastReturn >= 0 ? Math.max(1, lastReturn - firstCall) : null;
+    const holdMonths =
+      firstCall >= 0 && lastReturn >= 0 ? Math.max(1, lastReturn - firstCall) : null;
     const moic = equityIn > 0 ? equityReturned / equityIn : 0;
-    const firstCallDate = firstCall >= 0 ? m.dates[firstCall] ?? null : null;
-    const lastReturnDate = lastReturn >= 0 ? m.dates[lastReturn] ?? null : null;
+    const firstCallDate = firstCall >= 0 ? (m.dates[firstCall] ?? null) : null;
+    const lastReturnDate = lastReturn >= 0 ? (m.dates[lastReturn] ?? null) : null;
     return {
       ...r,
       equityIn,
@@ -387,18 +400,31 @@ function ByProjectTable({ rows }: { rows: ByProjectRow[] }) {
         </thead>
         <tbody>
           {enriched.map((r) => (
-            <tr key={r.project_id} style={{ borderBottom: '1px solid var(--color-border-hairline)' }}>
+            <tr
+              key={r.project_id}
+              style={{ borderBottom: '1px solid var(--color-border-hairline)' }}
+            >
               <td style={td()}>{r.project_name}</td>
-              <td style={td('right')}>{formatMoney(r.equityIn * 100, { compact: true, precision: 2 })}</td>
+              <td style={td('right')}>
+                {formatMoney(r.equityIn * 100, { compact: true, precision: 2 })}
+              </td>
               <td style={td('right')}>{r.firstCallDate ?? '—'}</td>
-              <td style={td('right')}>{formatMoney(r.equityReturned * 100, { compact: true, precision: 2 })}</td>
+              <td style={td('right')}>
+                {formatMoney(r.equityReturned * 100, { compact: true, precision: 2 })}
+              </td>
               <td style={td('right')}>{r.lastReturnDate ?? '—'}</td>
               <td style={td('right')}>{r.holdMonths != null ? `${r.holdMonths} mo` : '—'}</td>
               <td style={td('right')}>{r.moic.toFixed(2)}×</td>
               <td style={td('right')}>
                 {r.kpis.irr_annual != null ? `${(r.kpis.irr_annual * 100).toFixed(1)}%` : '—'}
               </td>
-              <td style={{ ...td('right'), color: r.gain < 0 ? 'var(--color-negative, #dc2626)' : 'var(--color-text-primary)' }}>
+              <td
+                style={{
+                  ...td('right'),
+                  color:
+                    r.gain < 0 ? 'var(--color-negative, #dc2626)' : 'var(--color-text-primary)',
+                }}
+              >
                 {formatMoney(r.gain * 100, { compact: true, precision: 2 })}
               </td>
             </tr>
@@ -454,17 +480,24 @@ function InvestorTable({ rows }: { rows: InvestorWaterfallResult[] }) {
                   )}
                 </td>
                 <td style={td('right')}>{(r.share * 100).toFixed(1)}%</td>
-                <td style={td('right')}>{formatMoney(r.equity_in * 100, { compact: true, precision: 2 })}</td>
-                <td style={td('right')}>{formatMoney(r.equity_out_gross * 100, { compact: true, precision: 2 })}</td>
+                <td style={td('right')}>
+                  {formatMoney(r.equity_in * 100, { compact: true, precision: 2 })}
+                </td>
+                <td style={td('right')}>
+                  {formatMoney(r.equity_out_gross * 100, { compact: true, precision: 2 })}
+                </td>
                 <td
                   style={{
                     ...td('right'),
-                    color: promote < 0 ? 'var(--color-negative, #dc2626)' : 'var(--color-text-primary)',
+                    color:
+                      promote < 0 ? 'var(--color-negative, #dc2626)' : 'var(--color-text-primary)',
                   }}
                 >
                   {formatMoney(promote * 100, { compact: true, precision: 2 })}
                 </td>
-                <td style={td('right')}>{formatMoney(r.net_distribution * 100, { compact: true, precision: 2 })}</td>
+                <td style={td('right')}>
+                  {formatMoney(r.net_distribution * 100, { compact: true, precision: 2 })}
+                </td>
                 <td style={td('right')}>{r.moic.toFixed(2)}×</td>
                 <td style={td('right')}>
                   {r.irr_annual != null ? `${(r.irr_annual * 100).toFixed(1)}%` : '—'}
@@ -473,11 +506,14 @@ function InvestorTable({ rows }: { rows: InvestorWaterfallResult[] }) {
                   <span
                     style={{
                       fontSize: 11,
-                      color: r.pref_cleared ? 'var(--color-positive, #15803d)' : 'var(--color-text-tertiary)',
+                      color: r.pref_cleared
+                        ? 'var(--color-positive, #15803d)'
+                        : 'var(--color-text-tertiary)',
                     }}
                     title={`Pref ${(r.preferred_return_pct * 100).toFixed(0)}% / Hurdle ${(r.hurdle_pct * 100).toFixed(0)}%`}
                   >
-                    {r.pref_cleared ? '✓ pref' : '· pref'} {r.hurdle_cleared ? '✓ hurdle' : '· hurdle'}
+                    {r.pref_cleared ? '✓ pref' : '· pref'}{' '}
+                    {r.hurdle_cleared ? '✓ hurdle' : '· hurdle'}
                   </span>
                 </td>
               </tr>
@@ -510,12 +546,27 @@ function TiersTable({ rows }: { rows: InvestorWaterfallResult[] }) {
             <tr key={r.id} style={{ borderBottom: '1px solid var(--color-border-hairline)' }}>
               <td style={td()}>{r.name}</td>
               <td style={td('right')}>{r.tiers.holdMonths} mo</td>
-              <td style={td('right')}>{formatMoney(r.tiers.tier1_return_of_capital * 100, { compact: true, precision: 2 })}</td>
-              <td style={td('right')}>{formatMoney(r.tiers.tier2_pref_return * 100, { compact: true, precision: 2 })}</td>
-              <td style={td('right')}>{formatMoney(r.tiers.tier3a_gp_catchup * 100, { compact: true, precision: 2 })}</td>
-              <td style={td('right')}>{formatMoney(r.tiers.tier3b_to_hurdle * 100, { compact: true, precision: 2 })}</td>
-              <td style={td('right')}>{formatMoney(r.tiers.tier4_to_investor * 100, { compact: true, precision: 2 })}</td>
-              <td style={td('right')}>{formatMoney(r.tiers.tier4_to_sponsor * 100, { compact: true, precision: 2 })}</td>
+              <td style={td('right')}>
+                {formatMoney(r.tiers.tier1_return_of_capital * 100, {
+                  compact: true,
+                  precision: 2,
+                })}
+              </td>
+              <td style={td('right')}>
+                {formatMoney(r.tiers.tier2_pref_return * 100, { compact: true, precision: 2 })}
+              </td>
+              <td style={td('right')}>
+                {formatMoney(r.tiers.tier3a_gp_catchup * 100, { compact: true, precision: 2 })}
+              </td>
+              <td style={td('right')}>
+                {formatMoney(r.tiers.tier3b_to_hurdle * 100, { compact: true, precision: 2 })}
+              </td>
+              <td style={td('right')}>
+                {formatMoney(r.tiers.tier4_to_investor * 100, { compact: true, precision: 2 })}
+              </td>
+              <td style={td('right')}>
+                {formatMoney(r.tiers.tier4_to_sponsor * 100, { compact: true, precision: 2 })}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -553,7 +604,9 @@ function ProRataCheck({
           </td>
         </tr>
         <tr style={{ borderTop: '1px solid var(--color-border-hairline)' }}>
-          <td style={{ padding: '10px 0', color: 'var(--color-text-secondary)' }}>Total equity in</td>
+          <td style={{ padding: '10px 0', color: 'var(--color-text-secondary)' }}>
+            Total equity in
+          </td>
           <td
             style={{
               padding: '10px 0',
@@ -567,7 +620,9 @@ function ProRataCheck({
           </td>
         </tr>
         <tr style={{ borderTop: '1px solid var(--color-border-hairline)' }}>
-          <td style={{ padding: '10px 0', color: 'var(--color-text-secondary)' }}>Total equity out</td>
+          <td style={{ padding: '10px 0', color: 'var(--color-text-secondary)' }}>
+            Total equity out
+          </td>
           <td
             style={{
               padding: '10px 0',

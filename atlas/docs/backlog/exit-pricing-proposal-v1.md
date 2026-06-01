@@ -2,9 +2,10 @@
 
 > **Status:** Awaiting Viktor approval before coding
 > **Companion docs:**
+>
 > - Spec: `./exit-pricing-framework-v1.md`
 > - Open questions: `./exit-pricing-open-questions.md` (8 captured + 8 added; answers proposed below)
-> **Author:** Atlas agent, 2026-05-25
+>   **Author:** Atlas agent, 2026-05-25
 >
 > **Reading order:** §1 (placement) → §5 (v1 scope) → §3 (UX) → §2 (data model) → §4 (Q answers) → §6 (test plan).
 > Push back on anything; no code starts until you say go.
@@ -169,6 +170,7 @@ pricing_run_comparables          (snapshot of comps used in a run)
 ### Multi-plot-type on the financial model (Spec Q6)
 
 Extend `atlas.projects` with `plot_types JSONB`:
+
 ```
 [
   {
@@ -184,6 +186,7 @@ Extend `atlas.projects` with `plot_types JSONB`:
 ```
 
 Calc engine roll-up:
+
 - When `plot_types` is null → existing single-villa logic (back-compat for all 11 baseline projects, no migration needed).
 - When `plot_types` is set → sum each plot type's contribution: `total_sales = Σ (count × sqft_per_unit_ag × psf)` where psf = override or applied pricing run base.
 
@@ -233,6 +236,7 @@ Calc engine roll-up:
 ### Financial model integration (constant across modes)
 
 On `/projects/[id]?tab=summary` and `?tab=sales`:
+
 - "Sale price" field shows: `$1,213/sqft AG (from pricing run v3, applied 2026-05-25 by Viktor)`
 - If user has manually overridden `sale_price_per_sqft_override` to differ from latest applied run base by > 10% → small warning chip: "Manual override differs from pricing framework by +X%"
 - Hovering / clicking deep-links to `/projects/[id]?tab=pricing&run=<id>`
@@ -252,6 +256,7 @@ CSV format: `address, sub_cut_key, waterfront_type, is_nc, status, closing_date,
 v1: **single "East End" market** with rich sub_cuts JSON modeling North Fork / Shelter Island / Hamptons taxonomies. v2: multi-market. Market picked via wizard dropdown (already exists in T065). No geocoding for v1 (my Q15).
 
 **Spec Q3 — Versioning.**
+
 - Each commit = a new immutable `pricing_runs` row, `version = N+1` per project.
 - `projects.applied_pricing_run_id` points to the currently-applied run.
 - All runs visible in a timeline UI; side-by-side diff between any two.
@@ -276,24 +281,24 @@ v1: **single "East End" market** with rich sub_cuts JSON modeling North Fork / S
 
 ### My 16 additional questions — proposed answers
 
-| # | Question | Proposed answer |
-|---|---|---|
-| 1 | East End single market vs three? | **Single East End market** with sub-cuts modeling all three regions |
-| 2 | Comp library bootstrap | **Manual + CSV** with bulk seed at launch; "Add comp" panel reachable from pricing run draft routes through library |
-| 3 | Mode 2 sub-cut timing | **(a) — lands as DRAFT** with engine-suggested sub-cuts; human commits in the editor |
-| 4 | Confidence formula | **High** = ≥5 closed in-sub-cut + base within ±20% of anchor; **Medium** = 3-4 OR ≥5 but 20-50% gap; **Low** = <3 (gap-bridged) OR >50% gap |
-| 5 | Multi-plot financial model | **(a) — extend ProjectInput** with `plot_types` JSONB; back-compat by null check |
-| 6 | Approval gate | **(b) — no gate; diff banner is the gate** |
-| 7 | Comps global library | **Yes** — one record per (address + closing_date); unique constraint to enforce |
-| 8 | Active listing snapshot vs reference | **Snapshot** at run time (matches approval-snapshot pattern, integrity over time) |
-| 9 | Engine vs human on pricing | **Engine never derives the L/B/H numbers.** Human commits all three; engine validates anchor + auto-classifies + computes confidence + flags gaps. (CRITICAL — this shapes the entire UX.) |
-| 10 | Premium structured or prose? | **Optional structured field** (`base_premium_pct`). When set, engine validates `anchor × (1+pct) ≈ base` within ±0.5% tolerance; otherwise prose-only |
-| 11 | Single anchor vs reference set | **Primary anchor (1) + reference comps (N) per L/B/H**. `pricing_run_comparables.role` tags each comp's purpose |
-| 12 | Market-maker rule precedence | **Absence-of-comp wins.** Zero in-sub-cut closed comps → market-maker even if substitute-sub-cut math says rider. Literal spec read |
-| 13 | Comp snapshot integrity | **Snapshot** (matches T063 approval snapshots; consistent platform pattern) |
-| 14 | Notification channel | **Both** — `atlas.notifications` inbox + dedicated banner on Pricing tab + Summary tab |
-| 15 | Geocoding for market detection | **None v1.** Market picked in New Project Wizard dropdown (already exists). Geocoding is a v2 nice-to-have |
-| 16 | Mode 1 in v1? | **Deferred to v2.** Workaround = scratch project. Saves ~2 days of dedicated UI work |
+| #   | Question                             | Proposed answer                                                                                                                                                                            |
+| --- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | East End single market vs three?     | **Single East End market** with sub-cuts modeling all three regions                                                                                                                        |
+| 2   | Comp library bootstrap               | **Manual + CSV** with bulk seed at launch; "Add comp" panel reachable from pricing run draft routes through library                                                                        |
+| 3   | Mode 2 sub-cut timing                | **(a) — lands as DRAFT** with engine-suggested sub-cuts; human commits in the editor                                                                                                       |
+| 4   | Confidence formula                   | **High** = ≥5 closed in-sub-cut + base within ±20% of anchor; **Medium** = 3-4 OR ≥5 but 20-50% gap; **Low** = <3 (gap-bridged) OR >50% gap                                                |
+| 5   | Multi-plot financial model           | **(a) — extend ProjectInput** with `plot_types` JSONB; back-compat by null check                                                                                                           |
+| 6   | Approval gate                        | **(b) — no gate; diff banner is the gate**                                                                                                                                                 |
+| 7   | Comps global library                 | **Yes** — one record per (address + closing_date); unique constraint to enforce                                                                                                            |
+| 8   | Active listing snapshot vs reference | **Snapshot** at run time (matches approval-snapshot pattern, integrity over time)                                                                                                          |
+| 9   | Engine vs human on pricing           | **Engine never derives the L/B/H numbers.** Human commits all three; engine validates anchor + auto-classifies + computes confidence + flags gaps. (CRITICAL — this shapes the entire UX.) |
+| 10  | Premium structured or prose?         | **Optional structured field** (`base_premium_pct`). When set, engine validates `anchor × (1+pct) ≈ base` within ±0.5% tolerance; otherwise prose-only                                      |
+| 11  | Single anchor vs reference set       | **Primary anchor (1) + reference comps (N) per L/B/H**. `pricing_run_comparables.role` tags each comp's purpose                                                                            |
+| 12  | Market-maker rule precedence         | **Absence-of-comp wins.** Zero in-sub-cut closed comps → market-maker even if substitute-sub-cut math says rider. Literal spec read                                                        |
+| 13  | Comp snapshot integrity              | **Snapshot** (matches T063 approval snapshots; consistent platform pattern)                                                                                                                |
+| 14  | Notification channel                 | **Both** — `atlas.notifications` inbox + dedicated banner on Pricing tab + Summary tab                                                                                                     |
+| 15  | Geocoding for market detection       | **None v1.** Market picked in New Project Wizard dropdown (already exists). Geocoding is a v2 nice-to-have                                                                                 |
+| 16  | Mode 1 in v1?                        | **Deferred to v2.** Workaround = scratch project. Saves ~2 days of dedicated UI work                                                                                                       |
 
 ---
 
@@ -333,6 +338,7 @@ v1: **single "East End" market** with rich sub_cuts JSON modeling North Fork / S
 ### Estimate
 
 ~2-3 days of focused work for the full v1. Breakable into:
+
 1. DB migrations + repo + service + API (1 day)
 2. Comp library UI (½ day)
 3. Per-project Pricing tab — draft editor + history + apply flow (1 day)
@@ -372,6 +378,7 @@ C_84_sunset.json
 Test file: `atlas/tests/golden/pricing-framework.golden.test.ts`. Same pattern as the project + portfolio golden tests we already have.
 
 **Tolerance:**
+
 - L/B/H numbers — exact match (human-committed; no math drift)
 - Classification, data_gap_flag, confidence — exact match (string equality)
 - Premium pct (when structured) — within ±0.5%
@@ -389,7 +396,7 @@ The engine has small surface: classification + confidence + data-gap. These 3 wo
 
 Once approved, I'll plan the build in commits:
 
-1. Schema migrations (markets, comps, pricing_run_*, projects.plot_types extension)
+1. Schema migrations (markets, comps, pricing*run*\*, projects.plot_types extension)
 2. Repo + service layer
 3. APIs (REST routes following the existing pattern)
 4. Comp library UI

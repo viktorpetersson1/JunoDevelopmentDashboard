@@ -32,12 +32,7 @@ export interface JunoMarkProps {
   ariaLabel?: string;
 }
 
-export function JunoMark({
-  size = 24,
-  className,
-  animated = false,
-  ariaLabel,
-}: JunoMarkProps) {
+export function JunoMark({ size = 24, className, animated = false, ariaLabel }: JunoMarkProps) {
   const labelProps = ariaLabel
     ? { role: 'img', 'aria-label': ariaLabel }
     : { 'aria-hidden': true as const };
@@ -46,11 +41,7 @@ export function JunoMark({
   // Center 50,50; radius 47.25 leaves stroke fully inside the box.
   return (
     <span
-      className={[
-        'juno-mark',
-        animated ? 'juno-mark--animated' : '',
-        className ?? '',
-      ]
+      className={['juno-mark', animated ? 'juno-mark--animated' : '', className ?? '']
         .filter(Boolean)
         .join(' ')}
       style={{ width: size, height: size }}
@@ -67,13 +58,7 @@ export function JunoMark({
         <circle cx="50" cy="50" r="47.25" />
         {/* Vertical chord — full diameter, vertical. The animated variant
             rotates this line via CSS transform on .juno-mark__chord. */}
-        <line
-          className="juno-mark__chord"
-          x1="50"
-          y1="2.75"
-          x2="50"
-          y2="97.25"
-        />
+        <line className="juno-mark__chord" x1="50" y1="2.75" x2="50" y2="97.25" />
       </svg>
     </span>
   );

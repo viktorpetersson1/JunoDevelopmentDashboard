@@ -155,9 +155,7 @@ function Metric({
         {value}
       </div>
       {sub && (
-        <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 2 }}>
-          {sub}
-        </div>
+        <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 2 }}>{sub}</div>
       )}
     </div>
   );
@@ -273,14 +271,8 @@ function CompTable({ comps }: { comps: ResearchedComp[] }) {
                     textTransform: 'uppercase',
                     padding: '2px 6px',
                     borderRadius: 4,
-                    background:
-                      c.status === 'closed'
-                        ? 'var(--color-surface-base)'
-                        : '#dbeafe',
-                    color:
-                      c.status === 'closed'
-                        ? 'var(--color-text-secondary)'
-                        : '#1d4ed8',
+                    background: c.status === 'closed' ? 'var(--color-surface-base)' : '#dbeafe',
+                    color: c.status === 'closed' ? 'var(--color-text-secondary)' : '#1d4ed8',
                     border: '1px solid var(--color-border-hairline)',
                   }}
                 >
@@ -343,8 +335,7 @@ function CompTable({ comps }: { comps: ResearchedComp[] }) {
                     fontSize: 10,
                     padding: '1px 6px',
                     borderRadius: 4,
-                    background:
-                      c.confidence === 'confirmed' ? '#d1fae5' : '#fef9c3',
+                    background: c.confidence === 'confirmed' ? '#d1fae5' : '#fef9c3',
                     color: c.confidence === 'confirmed' ? '#065f46' : '#713f12',
                     fontWeight: 600,
                   }}
@@ -395,7 +386,15 @@ function ResultsPanel({
           gap: 8,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'space-between',
+            gap: 12,
+            flexWrap: 'wrap',
+          }}
+        >
           <div>
             <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-tertiary)' }}>
               Pricing analysis for
@@ -485,9 +484,7 @@ function ResultsPanel({
         {research.comps.length > 0 && (
           <div style={{ marginTop: 12 }}>
             {compsSaved ? (
-              <span style={{ fontSize: 12, color: '#065f46' }}>
-                ✓ Comps saved to library
-              </span>
+              <span style={{ fontSize: 12, color: '#065f46' }}>✓ Comps saved to library</span>
             ) : (
               <button
                 onClick={onSaveComps}
@@ -535,14 +532,12 @@ function ResultsPanel({
             <Metric
               label="Land cost"
               value={costStack.landCostUsd !== null ? usd(costStack.landCostUsd) : 'Not provided'}
-              sub={costStack.landCostUsd === null ? 'Re-run with land cost for full margin' : undefined}
+              sub={
+                costStack.landCostUsd === null ? 'Re-run with land cost for full margin' : undefined
+              }
             />
             <div style={{ borderTop: '1px solid var(--color-border-hairline)', paddingTop: 12 }}>
-              <Metric
-                label="Total cost basis"
-                value={usd(costStack.totalCostBasis)}
-                highlight
-              />
+              <Metric label="Total cost basis" value={usd(costStack.totalCostBasis)} highlight />
             </div>
           </div>
         </Card>
@@ -566,8 +561,16 @@ function ResultsPanel({
               >
                 {[
                   { label: 'Low (P10)', psfVal: exitCorridor.lowPsf, rev: exitCorridor.lowRevenue },
-                  { label: 'Base (P50)', psfVal: exitCorridor.basePsf, rev: exitCorridor.baseRevenue },
-                  { label: 'High (P90)', psfVal: exitCorridor.highPsf, rev: exitCorridor.highRevenue },
+                  {
+                    label: 'Base (P50)',
+                    psfVal: exitCorridor.basePsf,
+                    rev: exitCorridor.baseRevenue,
+                  },
+                  {
+                    label: 'High (P90)',
+                    psfVal: exitCorridor.highPsf,
+                    rev: exitCorridor.highRevenue,
+                  },
                 ].map(({ label, psfVal, rev }) => (
                   <div
                     key={label}
@@ -702,7 +705,9 @@ function ResultsPanel({
                           padding: '8px',
                           fontVariantNumeric: 'tabular-nums',
                           color:
-                            row.profit !== null && row.profit < 0 ? '#ef4444' : 'var(--color-text-primary)',
+                            row.profit !== null && row.profit < 0
+                              ? '#ef4444'
+                              : 'var(--color-text-primary)',
                         }}
                       >
                         {usd(row.profit)}
@@ -717,8 +722,8 @@ function ResultsPanel({
                               ? row.margin < 0.1
                                 ? '#ef4444'
                                 : row.margin < 0.2
-                                ? '#f59e0b'
-                                : '#059669'
+                                  ? '#f59e0b'
+                                  : '#059669'
                               : 'var(--color-text-tertiary)',
                         }}
                       >
@@ -743,17 +748,11 @@ function ResultsPanel({
                   color: 'var(--color-text-tertiary)',
                 }}
               >
-                <span>
-                  Low {(probabilityWeighting.lowWeight * 100).toFixed(0)}%
-                </span>
+                <span>Low {(probabilityWeighting.lowWeight * 100).toFixed(0)}%</span>
                 <span>·</span>
-                <span>
-                  Base {(probabilityWeighting.baseWeight * 100).toFixed(0)}%
-                </span>
+                <span>Base {(probabilityWeighting.baseWeight * 100).toFixed(0)}%</span>
                 <span>·</span>
-                <span>
-                  High {(probabilityWeighting.highWeight * 100).toFixed(0)}%
-                </span>
+                <span>High {(probabilityWeighting.highWeight * 100).toFixed(0)}%</span>
               </div>
 
               <Metric
@@ -765,7 +764,9 @@ function ResultsPanel({
                 <Metric
                   label="Expected profit"
                   value={usd(probabilityWeighting.weightedProfit)}
-                  sub={hasMargin ? pct(probabilityWeighting.weightedMarginPct) + ' margin' : undefined}
+                  sub={
+                    hasMargin ? pct(probabilityWeighting.weightedMarginPct) + ' margin' : undefined
+                  }
                 />
               )}
 
@@ -777,8 +778,8 @@ function ResultsPanel({
                   lineHeight: 1.5,
                 }}
               >
-                Weighted using a 20/60/20 conservative distribution across the
-                Low / Base / High exit corridors derived from comp PSF percentiles.
+                Weighted using a 20/60/20 conservative distribution across the Low / Base / High
+                exit corridors derived from comp PSF percentiles.
               </p>
             </div>
           </Card>
@@ -902,7 +903,19 @@ export function QuickPriceClient({
     } finally {
       setResearching(false);
     }
-  }, [address, lat, lng, subCutKey, subCuts, agSqft, lotSizeAcres, yearBuilt, waterfrontType, isNc, landCostUsd]);
+  }, [
+    address,
+    lat,
+    lng,
+    subCutKey,
+    subCuts,
+    agSqft,
+    lotSizeAcres,
+    yearBuilt,
+    waterfrontType,
+    isNc,
+    landCostUsd,
+  ]);
 
   // ── Save comps ─────────────────────────────────────────────────────────
   const handleSaveComps = useCallback(async () => {
@@ -980,8 +993,8 @@ export function QuickPriceClient({
             color: 'var(--color-text-secondary)',
           }}
         >
-          Paste a Google Maps link or type an address — the model researches comps
-          and runs the 5-stage exit pricing framework.
+          Paste a Google Maps link or type an address — the model researches comps and runs the
+          5-stage exit pricing framework.
         </p>
       </header>
 
@@ -1089,9 +1102,7 @@ export function QuickPriceClient({
                   {sc.label}
                 </option>
               ))}
-              {subCuts.length === 0 && (
-                <option value="">No sub-cuts configured</option>
-              )}
+              {subCuts.length === 0 && <option value="">No sub-cuts configured</option>}
             </select>
           </div>
 

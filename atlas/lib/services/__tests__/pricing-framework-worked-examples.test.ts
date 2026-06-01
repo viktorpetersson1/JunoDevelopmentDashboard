@@ -15,10 +15,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import {
-  classifyBase,
-  confidenceForPlotOutput,
-} from '../pricing-framework';
+import { classifyBase, confidenceForPlotOutput } from '../pricing-framework';
 import { applyRevenueSchedule } from '@/lib/calc/project/revenue-schedule';
 import type { MarketView } from '@/lib/repos/markets';
 import type { Effective } from '@/lib/calc/project/effectiveProject';
@@ -100,28 +97,58 @@ describe('Worked example A — Big Bing (North Fork)', () => {
 
   it('rider zone: base within ±15% of strongest sub-cut anchor', () => {
     expect(
-      classifyBase(soundFrontAnchor * 1.0, soundFrontAnchor, market.riderThresholdPct, market.stretchThresholdPct)
+      classifyBase(
+        soundFrontAnchor * 1.0,
+        soundFrontAnchor,
+        market.riderThresholdPct,
+        market.stretchThresholdPct
+      )
     ).toBe('rider');
     expect(
-      classifyBase(soundFrontAnchor * 1.15, soundFrontAnchor, market.riderThresholdPct, market.stretchThresholdPct)
+      classifyBase(
+        soundFrontAnchor * 1.15,
+        soundFrontAnchor,
+        market.riderThresholdPct,
+        market.stretchThresholdPct
+      )
     ).toBe('rider');
     expect(
-      classifyBase(soundFrontAnchor * 0.92, soundFrontAnchor, market.riderThresholdPct, market.stretchThresholdPct)
+      classifyBase(
+        soundFrontAnchor * 0.92,
+        soundFrontAnchor,
+        market.riderThresholdPct,
+        market.stretchThresholdPct
+      )
     ).toBe('rider');
   });
 
   it('stretch_rider zone: base 15-30% over anchor', () => {
     expect(
-      classifyBase(soundFrontAnchor * 1.20, soundFrontAnchor, market.riderThresholdPct, market.stretchThresholdPct)
+      classifyBase(
+        soundFrontAnchor * 1.2,
+        soundFrontAnchor,
+        market.riderThresholdPct,
+        market.stretchThresholdPct
+      )
     ).toBe('stretch_rider');
     expect(
-      classifyBase(soundFrontAnchor * 1.30, soundFrontAnchor, market.riderThresholdPct, market.stretchThresholdPct)
+      classifyBase(
+        soundFrontAnchor * 1.3,
+        soundFrontAnchor,
+        market.riderThresholdPct,
+        market.stretchThresholdPct
+      )
     ).toBe('stretch_rider');
   });
 
   it('maker zone: base > 30% over anchor', () => {
     expect(
-      classifyBase(soundFrontAnchor * 1.35, soundFrontAnchor, market.riderThresholdPct, market.stretchThresholdPct)
+      classifyBase(
+        soundFrontAnchor * 1.35,
+        soundFrontAnchor,
+        market.riderThresholdPct,
+        market.stretchThresholdPct
+      )
     ).toBe('maker');
     expect(
       classifyBase(2800, soundFrontAnchor, market.riderThresholdPct, market.stretchThresholdPct)
@@ -227,10 +254,20 @@ describe('Worked example B — 6 Great Circle (Shelter Island)', () => {
 
   it('classification on NC-only sub-cut works the same as any other sub-cut', () => {
     expect(
-      classifyBase(shelterHeightsNcAnchor * 1.10, shelterHeightsNcAnchor, market.riderThresholdPct, market.stretchThresholdPct)
+      classifyBase(
+        shelterHeightsNcAnchor * 1.1,
+        shelterHeightsNcAnchor,
+        market.riderThresholdPct,
+        market.stretchThresholdPct
+      )
     ).toBe('rider');
     expect(
-      classifyBase(shelterHeightsNcAnchor * 1.25, shelterHeightsNcAnchor, market.riderThresholdPct, market.stretchThresholdPct)
+      classifyBase(
+        shelterHeightsNcAnchor * 1.25,
+        shelterHeightsNcAnchor,
+        market.riderThresholdPct,
+        market.stretchThresholdPct
+      )
     ).toBe('stretch_rider');
   });
 });
@@ -244,13 +281,28 @@ describe('Worked example C — 84 Sunset (Hamptons family)', () => {
 
   it('Hamptons-rate base PSF still uses the same rider/stretch/maker bands', () => {
     expect(
-      classifyBase(sagHarborAnchor, sagHarborAnchor, market.riderThresholdPct, market.stretchThresholdPct)
+      classifyBase(
+        sagHarborAnchor,
+        sagHarborAnchor,
+        market.riderThresholdPct,
+        market.stretchThresholdPct
+      )
     ).toBe('rider'); // 0% premium
     expect(
-      classifyBase(sagHarborAnchor * 1.15, sagHarborAnchor, market.riderThresholdPct, market.stretchThresholdPct)
+      classifyBase(
+        sagHarborAnchor * 1.15,
+        sagHarborAnchor,
+        market.riderThresholdPct,
+        market.stretchThresholdPct
+      )
     ).toBe('rider'); // exactly 15% = inclusive rider boundary
     expect(
-      classifyBase(sagHarborAnchor * 1.20, sagHarborAnchor, market.riderThresholdPct, market.stretchThresholdPct)
+      classifyBase(
+        sagHarborAnchor * 1.2,
+        sagHarborAnchor,
+        market.riderThresholdPct,
+        market.stretchThresholdPct
+      )
     ).toBe('stretch_rider'); // 20% premium falls in stretch band
   });
 

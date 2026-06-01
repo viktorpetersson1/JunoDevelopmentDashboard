@@ -122,7 +122,7 @@ export async function createCapitalCall(
     callNumber,
     totalAmountCents: input.totalAmountCents,
     status,
-    issuedDate: input.issue ? input.issuedDate ?? new Date().toISOString().slice(0, 10) : null,
+    issuedDate: input.issue ? (input.issuedDate ?? new Date().toISOString().slice(0, 10)) : null,
     dueDate: input.dueDate ?? null,
     notes: input.notes ?? null,
     createdBy: user.id,
@@ -191,9 +191,7 @@ async function resolveSplit(
   const allowedOwnerIds = new Set(capTable.map((e) => e.ownerId));
   for (const m of split) {
     if (!allowedOwnerIds.has(m.ownerId)) {
-      throw new CapitalCallValidationError(
-        `Owner ${m.ownerId} is not in the current cap table`
-      );
+      throw new CapitalCallValidationError(`Owner ${m.ownerId} is not in the current cap table`);
     }
     if (m.shareAmountCents < 0) {
       throw new CapitalCallValidationError(
@@ -228,10 +226,7 @@ export interface AddPaymentResult {
   callStatus: CapitalCallStatus;
 }
 
-export async function addPayment(
-  input: AddPaymentInput,
-  user: User
-): Promise<AddPaymentResult> {
+export async function addPayment(input: AddPaymentInput, user: User): Promise<AddPaymentResult> {
   if (input.amountCents <= 0) {
     throw new CapitalCallValidationError('amountCents must be > 0');
   }
@@ -248,7 +243,12 @@ export async function addPayment(
   if (shareErr || !shareRow) {
     throw new CapitalCallValidationError(`Owner share not found: ${input.ownerShareId}`);
   }
-  const share = shareRow as { id: string; capital_call_id: string; share_amount_cents: number; status: string };
+  const share = shareRow as {
+    id: string;
+    capital_call_id: string;
+    share_amount_cents: number;
+    status: string;
+  };
 
   // Sum existing payments + the new one.
   const { data: existing, error: payErr } = await supabase
@@ -335,7 +335,9 @@ async function rollUpCallStatus(callId: string): Promise<CapitalCallStatus> {
     .eq('id', callId)
     .single();
   if (callErr || !callData) {
-    throw new CapitalCallValidationError(`Failed to read call status: ${callErr?.message ?? 'not found'}`);
+    throw new CapitalCallValidationError(
+      `Failed to read call status: ${callErr?.message ?? 'not found'}`
+    );
   }
   const current = (callData as { status: string }).status as CapitalCallStatus;
   if (current === 'cancelled') return current;

@@ -18,10 +18,7 @@ export async function middleware(request: NextRequest) {
   // and-suspenders with the page-level guard so prod traffic never hits
   // the demo content. (Can't use /_dev because Next.js treats underscore-
   // prefixed folders as private and excludes them from routing entirely.)
-  if (
-    process.env.NODE_ENV === 'production' &&
-    request.nextUrl.pathname.startsWith('/dev')
-  ) {
+  if (process.env.NODE_ENV === 'production' && request.nextUrl.pathname.startsWith('/dev')) {
     return new NextResponse('Not Found', {
       status: 404,
       headers: { 'Cache-Control': 'no-store, must-revalidate' },

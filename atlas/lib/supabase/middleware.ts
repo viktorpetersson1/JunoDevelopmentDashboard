@@ -158,10 +158,7 @@ export async function updateSession(request: NextRequest) {
   // intentionally NOT cleared so authenticated users don't get logged
   // out by hitting /cleanup — they'll just lose their stale SW + cache.
   if (request.nextUrl.pathname === '/cleanup') {
-    response.headers.set(
-      'Clear-Site-Data',
-      '"cache", "storage", "executionContexts"'
-    );
+    response.headers.set('Clear-Site-Data', '"cache", "storage", "executionContexts"');
   }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -201,7 +198,11 @@ export async function updateSession(request: NextRequest) {
     // through to Next.js's not-found handler instead of bouncing to
     // /sign-in. Cleaner UX (real 404) + cleaner threat model (no oracle
     // for path-existence via the redirect target).
-    if (!user && !isPublicPath(request.nextUrl.pathname) && !isProtectedPath(request.nextUrl.pathname)) {
+    if (
+      !user &&
+      !isPublicPath(request.nextUrl.pathname) &&
+      !isProtectedPath(request.nextUrl.pathname)
+    ) {
       return response;
     }
 

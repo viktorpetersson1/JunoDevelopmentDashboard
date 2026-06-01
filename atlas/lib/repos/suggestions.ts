@@ -106,7 +106,11 @@ export async function findManySuggestions(opts: {
     return raws.map((r) => normalize(r, null, null));
   }
   const map = new Map<string, { email: string | null; displayName: string | null }>();
-  for (const p of (profiles as Array<{ id: string; email: string | null; display_name: string | null }>) ?? []) {
+  for (const p of (profiles as Array<{
+    id: string;
+    email: string | null;
+    display_name: string | null;
+  }>) ?? []) {
     map.set(p.id, { email: p.email, displayName: p.display_name });
   }
   return raws.map((r) => {
@@ -142,9 +146,7 @@ export async function updateSuggestionStatus(input: {
   }
   const prev = (current as { status: SuggestionStatus }).status;
   if (!isValidTransition(prev, input.next)) {
-    throw new Error(
-      `updateSuggestionStatus: invalid transition ${prev} → ${input.next}`
-    );
+    throw new Error(`updateSuggestionStatus: invalid transition ${prev} → ${input.next}`);
   }
 
   const patch: Record<string, unknown> = {

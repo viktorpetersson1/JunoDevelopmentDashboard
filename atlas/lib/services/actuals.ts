@@ -83,14 +83,7 @@ export interface ActualsByCategory {
   totalCents: number;
 }
 
-const CATEGORIES: ActualsCategory[] = [
-  'land',
-  'build',
-  'soft',
-  'kingshaus',
-  'financing',
-  'other',
-];
+const CATEGORIES: ActualsCategory[] = ['land', 'build', 'soft', 'kingshaus', 'financing', 'other'];
 
 export async function listActualsByCategory(projectId: string): Promise<{
   entries: ActualsEntryView[];

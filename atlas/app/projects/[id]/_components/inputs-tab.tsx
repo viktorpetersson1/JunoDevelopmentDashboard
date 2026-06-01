@@ -206,8 +206,7 @@ function Card({ title, rows }: { title: string; rows: KV[] }) {
               display: 'flex',
               justifyContent: 'space-between',
               padding: '6px 0',
-              borderBottom:
-                i < rows.length - 1 ? '1px solid var(--color-border-subtle)' : 'none',
+              borderBottom: i < rows.length - 1 ? '1px solid var(--color-border-subtle)' : 'none',
               fontSize: 13,
             }}
           >

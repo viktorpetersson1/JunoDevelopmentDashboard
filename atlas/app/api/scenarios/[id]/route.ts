@@ -13,11 +13,7 @@ import { ok, badRequest, notFound } from '@/lib/api/response';
 import { withErrorBoundary } from '@/lib/api/handler';
 import { requireAuth } from '@/lib/auth/requireAuth';
 import { requireEditor } from '@/lib/auth/requireRole';
-import {
-  deleteScenario,
-  findScenarioById,
-  updateScenario,
-} from '@/lib/repos/scenarios';
+import { deleteScenario, findScenarioById, updateScenario } from '@/lib/repos/scenarios';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -35,14 +31,12 @@ const PatchBodySchema = z.object({
   excluded_project_ids: z.array(z.string().uuid()).optional(),
 });
 
-export const GET = withErrorBoundary(
-  async (_req: NextRequest, ctx: { params: { id: string } }) => {
-    await requireAuth();
-    const s = await findScenarioById(ctx.params.id);
-    if (!s) return notFound('Scenario not found');
-    return ok({ scenario: s });
-  }
-);
+export const GET = withErrorBoundary(async (_req: NextRequest, ctx: { params: { id: string } }) => {
+  await requireAuth();
+  const s = await findScenarioById(ctx.params.id);
+  if (!s) return notFound('Scenario not found');
+  return ok({ scenario: s });
+});
 
 export const PATCH = withErrorBoundary(
   async (req: NextRequest, ctx: { params: { id: string } }) => {
@@ -68,8 +62,7 @@ export const PATCH = withErrorBoundary(
     // re-edit). All other patches need locked: false first.
     if (current.locked) {
       const keys = Object.keys(parsed.data) as Array<keyof typeof parsed.data>;
-      const onlyUnlock =
-        keys.length === 1 && keys[0] === 'locked' && parsed.data.locked === false;
+      const onlyUnlock = keys.length === 1 && keys[0] === 'locked' && parsed.data.locked === false;
       if (!onlyUnlock) {
         return badRequest(
           'Scenario is locked. Unlock it first (PATCH { locked: false }) before editing other fields.',
@@ -91,10 +84,7 @@ export const DELETE = withErrorBoundary(
     const current = await findScenarioById(ctx.params.id);
     if (!current) return notFound('Scenario not found');
     if (current.locked) {
-      return badRequest(
-        'Scenario is locked. Unlock it first before deleting.',
-        'SCENARIO_LOCKED'
-      );
+      return badRequest('Scenario is locked. Unlock it first before deleting.', 'SCENARIO_LOCKED');
     }
     await deleteScenario(ctx.params.id);
     return ok({ deleted: true, id: ctx.params.id });

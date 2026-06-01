@@ -12,10 +12,7 @@ import { z } from 'zod';
 import { ok, badRequest } from '@/lib/api/response';
 import { withErrorBoundary } from '@/lib/api/handler';
 import { requireAuth } from '@/lib/auth/requireAuth';
-import {
-  markAllNotificationsRead,
-  markNotificationsRead,
-} from '@/lib/repos/notifications';
+import { markAllNotificationsRead, markNotificationsRead } from '@/lib/repos/notifications';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'edge';
@@ -32,6 +29,7 @@ export const PATCH = withErrorBoundary(async (request: Request) => {
     return badRequest(`Invalid payload: ${parsed.error.message}`);
   }
   const ids = parsed.data.ids ?? [];
-  const updated = ids.length > 0 ? await markNotificationsRead(ids) : await markAllNotificationsRead();
+  const updated =
+    ids.length > 0 ? await markNotificationsRead(ids) : await markAllNotificationsRead();
   return ok({ updated });
 });

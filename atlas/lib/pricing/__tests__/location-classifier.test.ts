@@ -48,7 +48,8 @@ describe('parseLocationClassification', () => {
   });
 
   it('handles a fenced JSON block and partial fields', () => {
-    const raw = '```json\n{ "waterfront_type": "inland", "confidence": "low", "reasoning": "No water frontage." }\n```';
+    const raw =
+      '```json\n{ "waterfront_type": "inland", "confidence": "low", "reasoning": "No water frontage." }\n```';
     const c = parseLocationClassification(raw, { usedWebSearch: false, geocodedCity: null });
     expect(c.waterfrontType).toBe('inland');
     expect(c.viewPremium).toBeNull();

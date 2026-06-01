@@ -159,10 +159,7 @@ export function Field({
       </div>
 
       {error ? (
-        <span
-          role="alert"
-          style={{ fontSize: 11, color: 'var(--color-negative, #dc2626)' }}
-        >
+        <span role="alert" style={{ fontSize: 11, color: 'var(--color-negative, #dc2626)' }}>
           {error}
         </span>
       ) : hint ? (

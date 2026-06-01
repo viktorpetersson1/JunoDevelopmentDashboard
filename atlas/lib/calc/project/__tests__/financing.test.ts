@@ -86,9 +86,9 @@ describe('applyFinancing', () => {
     // Sale month: fees 100k added to interest line on top of accrued interest.
     expect((out.interest[2] ?? 0) <= -100_000).toBe(true);
     // Debt repaid is positive and equals up-to-balance.
-    expect((out.debt_repaid[2] ?? 0)).toBeGreaterThan(0);
+    expect(out.debt_repaid[2] ?? 0).toBeGreaterThan(0);
     // Equity returned > 0 because sale exceeds debt repayment.
-    expect((out.equity_returned[2] ?? 0)).toBeGreaterThan(0);
+    expect(out.equity_returned[2] ?? 0).toBeGreaterThan(0);
     // Final debt balance is 0 (fully repaid).
     expect(out.debt_balance[3] ?? 0).toBeCloseTo(0, 2);
   });

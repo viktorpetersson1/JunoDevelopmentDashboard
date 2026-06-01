@@ -73,10 +73,7 @@ export function PricingTab({
   const [serverError, setServerError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const sortedRuns = useMemo(
-    () => [...runs].sort((a, b) => b.version - a.version),
-    [runs]
-  );
+  const sortedRuns = useMemo(() => [...runs].sort((a, b) => b.version - a.version), [runs]);
 
   // ─── Empty state — no runs ever ────────────────────────────────────────
   if (runs.length === 0) {
@@ -98,9 +95,9 @@ export function PricingTab({
     startTransition(async () => {
       const res = await fetch(`/api/pricing-runs/${runId}`, { method: 'DELETE' });
       if (!res.ok) {
-        const json = (await res.json().catch(() => null)) as
-          | { error?: { code: string; message: string } }
-          | null;
+        const json = (await res.json().catch(() => null)) as {
+          error?: { code: string; message: string };
+        } | null;
         setServerError(json?.error?.message ?? `Archive failed (HTTP ${res.status})`);
         return;
       }
@@ -113,9 +110,9 @@ export function PricingTab({
     startTransition(async () => {
       const res = await fetch(`/api/pricing-runs/${runId}/apply`, { method: 'POST' });
       if (!res.ok) {
-        const json = (await res.json().catch(() => null)) as
-          | { error?: { code: string; message: string } }
-          | null;
+        const json = (await res.json().catch(() => null)) as {
+          error?: { code: string; message: string };
+        } | null;
         setServerError(json?.error?.message ?? `Apply failed (HTTP ${res.status})`);
         return;
       }
@@ -126,8 +123,7 @@ export function PricingTab({
   // Diff banner — show when there's a newer committed run than the applied one,
   // or when there's a committed run but nothing's applied yet.
   const newerCommittedAvailable =
-    latestCommittedBundle &&
-    latestCommittedBundle.run.id !== appliedRunId;
+    latestCommittedBundle && latestCommittedBundle.run.id !== appliedRunId;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -142,10 +138,7 @@ export function PricingTab({
       )}
 
       {appliedBundle && (
-        <AppliedSummary
-          bundle={appliedBundle}
-          isCurrent={appliedRunId === appliedBundle.run.id}
-        />
+        <AppliedSummary bundle={appliedBundle} isCurrent={appliedRunId === appliedBundle.run.id} />
       )}
 
       {draftBundle && isEditor && (
@@ -243,8 +236,8 @@ function EmptyState({
             maxWidth: 480,
           }}
         >
-          Create a run to set L / B / H exit PSF per plot type. The engine pre-fills suggestions from
-          comp anchors; you commit numbers and pick which one drives the financial model.
+          Create a run to set L / B / H exit PSF per plot type. The engine pre-fills suggestions
+          from comp anchors; you commit numbers and pick which one drives the financial model.
         </p>
       </div>
       {isEditor && (
@@ -356,9 +349,9 @@ function NewRunButton({
         }),
       });
       if (!res.ok) {
-        const json = (await res.json().catch(() => null)) as
-          | { error?: { code: string; message: string } }
-          | null;
+        const json = (await res.json().catch(() => null)) as {
+          error?: { code: string; message: string };
+        } | null;
         setError(json?.error?.message ?? `Create failed (HTTP ${res.status})`);
         return;
       }
@@ -505,12 +498,7 @@ function NewRunButton({
           <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
             Cancel
           </Button>
-          <Button
-            type="button"
-            variant="primary"
-            onClick={handleCreate}
-            loading={isSubmitting}
-          >
+          <Button type="button" variant="primary" onClick={handleCreate} loading={isSubmitting}>
             Create draft run
           </Button>
         </div>
@@ -596,9 +584,9 @@ function DraftEditor({
         }),
       });
       if (!res.ok) {
-        const json = (await res.json().catch(() => null)) as
-          | { error?: { code: string; message: string } }
-          | null;
+        const json = (await res.json().catch(() => null)) as {
+          error?: { code: string; message: string };
+        } | null;
         onError(json?.error?.message ?? `Commit failed (HTTP ${res.status})`);
         return;
       }
@@ -640,8 +628,8 @@ function DraftEditor({
             color: 'var(--color-text-secondary)',
           }}
         >
-          Engine pre-filled L/B/H from strongest in-sub-cut anchor (base × 0.9 / 1.0 / 1.1). Adjust as needed,
-          then commit. Window: {bundle.run.compWindowStart} → {bundle.run.compWindowEnd}.
+          Engine pre-filled L/B/H from strongest in-sub-cut anchor (base × 0.9 / 1.0 / 1.1). Adjust
+          as needed, then commit. Window: {bundle.run.compWindowStart} → {bundle.run.compWindowEnd}.
         </p>
       </header>
 
@@ -661,7 +649,14 @@ function DraftEditor({
               gap: 10,
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                justifyContent: 'space-between',
+                gap: 8,
+              }}
+            >
               <strong style={{ fontSize: 13, color: 'var(--color-text-primary)' }}>
                 {p.plotTypeLabel}
               </strong>
@@ -777,7 +772,15 @@ function PsfBand({
         : 'var(--color-text-secondary)';
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', color: accent, textTransform: 'uppercase' }}>
+      <label
+        style={{
+          fontSize: 11,
+          fontWeight: 600,
+          letterSpacing: '0.04em',
+          color: accent,
+          textTransform: 'uppercase',
+        }}
+      >
         {label} PSF
       </label>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -959,15 +962,10 @@ function PlotDiffChip({
 }) {
   const latestBase = latest.basePsf ?? 0;
   const priorBase = prior?.basePsf ?? null;
-  const deltaPct =
-    priorBase && priorBase > 0 ? ((latestBase - priorBase) / priorBase) * 100 : null;
+  const deltaPct = priorBase && priorBase > 0 ? ((latestBase - priorBase) / priorBase) * 100 : null;
   const deltaSign = deltaPct === null ? '' : deltaPct >= 0 ? '+' : '';
   const deltaTone: 'positive' | 'negative' | 'neutral' =
-    deltaPct === null
-      ? 'neutral'
-      : deltaPct >= 0
-        ? 'positive'
-        : 'negative';
+    deltaPct === null ? 'neutral' : deltaPct >= 0 ? 'positive' : 'negative';
   return (
     <div
       style={{
@@ -1035,12 +1033,17 @@ function AppliedSummary({
         gap: 10,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-        <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+      <div
+        style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}
+      >
+        <h3
+          style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}
+        >
           Applied to financial model — v{bundle.run.version}
         </h3>
         <span style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
-          Committed {bundle.run.committedAt ? new Date(bundle.run.committedAt).toLocaleDateString() : '—'}
+          Committed{' '}
+          {bundle.run.committedAt ? new Date(bundle.run.committedAt).toLocaleDateString() : '—'}
         </span>
       </div>
       <div
@@ -1118,8 +1121,12 @@ function RunHistory({
         overflow: 'hidden',
       }}
     >
-      <header style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border-hairline)' }}>
-        <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+      <header
+        style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border-hairline)' }}
+      >
+        <h3
+          style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)' }}
+        >
           Run history
         </h3>
       </header>
@@ -1188,7 +1195,13 @@ function RunHistory({
 // Small visual primitives + helpers
 // ────────────────────────────────────────────────────────────────────────────
 
-function Pill({ tone, children }: { tone: 'info' | 'positive' | 'warn' | 'negative' | 'neutral'; children: React.ReactNode }) {
+function Pill({
+  tone,
+  children,
+}: {
+  tone: 'info' | 'positive' | 'warn' | 'negative' | 'neutral';
+  children: React.ReactNode;
+}) {
   const styles: React.CSSProperties = {
     display: 'inline-block',
     fontSize: 10,
@@ -1248,7 +1261,9 @@ function plotOutputToState(p: PricingRunPlotOutputView): DraftPlotState {
   };
 }
 
-function groupCompsByPlot(comps: PricingRunComparableView[]): Map<string, PricingRunComparableView[]> {
+function groupCompsByPlot(
+  comps: PricingRunComparableView[]
+): Map<string, PricingRunComparableView[]> {
   const out = new Map<string, PricingRunComparableView[]>();
   for (const c of comps) {
     const arr = out.get(c.snapshotSubCutKey) ?? [];
@@ -1285,7 +1300,8 @@ function pillButton(variant: 'primary' | 'secondary'): React.CSSProperties {
     border: '1px solid var(--color-border-hairline)',
     borderRadius: 6,
     cursor: 'pointer',
-    background: variant === 'primary' ? 'var(--color-accent-base, #131313)' : 'var(--color-surface-base)',
+    background:
+      variant === 'primary' ? 'var(--color-accent-base, #131313)' : 'var(--color-surface-base)',
     color: variant === 'primary' ? '#fff' : 'var(--color-text-primary)',
   };
 }

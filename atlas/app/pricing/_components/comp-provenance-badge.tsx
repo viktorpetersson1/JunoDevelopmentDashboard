@@ -32,8 +32,7 @@ const STYLES: Record<Provenance, Style> = {
     fg: '#166534',
     border: '#86efac',
     glyph: '✓',
-    title:
-      'Verified — human-entered (manual / CSV) or pulled from a real listing source.',
+    title: 'Verified — human-entered (manual / CSV) or pulled from a real listing source.',
   },
   ai_live: {
     label: 'AI · live',

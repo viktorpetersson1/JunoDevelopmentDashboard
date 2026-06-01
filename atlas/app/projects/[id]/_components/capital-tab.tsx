@@ -147,8 +147,7 @@ function FinancingScheduleCard({ rows }: { rows: FlowRow[] }) {
           color: 'var(--color-text-tertiary)',
         }}
       >
-        Calc-engine monthly debt + equity flow. Independent of recorded
-        capital calls above.
+        Calc-engine monthly debt + equity flow. Independent of recorded capital calls above.
       </p>
       <table className="ja-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>

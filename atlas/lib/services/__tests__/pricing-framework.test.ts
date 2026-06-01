@@ -1,8 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  classifyBase,
-  confidenceForPlotOutput,
-} from '../pricing-framework';
+import { classifyBase, confidenceForPlotOutput } from '../pricing-framework';
 import type { MarketView } from '@/lib/repos/markets';
 
 const eastEnd: MarketView = {

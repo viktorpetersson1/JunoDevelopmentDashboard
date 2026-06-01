@@ -80,11 +80,15 @@ export function StepBasics({
           subMarketLabel: marketLabel,
         }),
       });
-      const json = (await res.json().catch(() => null)) as
-        | { data?: { classification?: DetectResult }; error?: { message: string } }
-        | null;
+      const json = (await res.json().catch(() => null)) as {
+        data?: { classification?: DetectResult };
+        error?: { message: string };
+      } | null;
       if (!res.ok || !json?.data?.classification) {
-        setDetectMsg({ kind: 'err', text: json?.error?.message ?? `Detect failed (HTTP ${res.status})` });
+        setDetectMsg({
+          kind: 'err',
+          text: json?.error?.message ?? `Detect failed (HTTP ${res.status})`,
+        });
         return;
       }
       const c = json.data.classification;
@@ -222,7 +226,9 @@ export function StepBasics({
           type="button"
           onClick={handleDetect}
           disabled={!form.address?.trim() || detecting}
-          title={!form.address?.trim() ? 'Enter an address first' : 'Auto-detect from the address via AI'}
+          title={
+            !form.address?.trim() ? 'Enter an address first' : 'Auto-detect from the address via AI'
+          }
           style={{
             fontSize: 12,
             fontWeight: 500,
@@ -240,9 +246,9 @@ export function StepBasics({
         </button>
       </div>
       <p style={{ margin: '-8px 0 0 0', fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-        Optional, but the single biggest pricing-quality lever — they let the AI match
-        like-for-like comps (a bayfront lot vs an inland one). Enter the address above, then
-        Detect to auto-fill — or set them by hand.
+        Optional, but the single biggest pricing-quality lever — they let the AI match like-for-like
+        comps (a bayfront lot vs an inland one). Enter the address above, then Detect to auto-fill —
+        or set them by hand.
       </p>
       {detectMsg && (
         <p
@@ -251,7 +257,10 @@ export function StepBasics({
             margin: '-4px 0 0 0',
             fontSize: 11,
             lineHeight: 1.5,
-            color: detectMsg.kind === 'err' ? 'var(--color-negative, #dc2626)' : 'var(--color-positive, #16a34a)',
+            color:
+              detectMsg.kind === 'err'
+                ? 'var(--color-negative, #dc2626)'
+                : 'var(--color-positive, #16a34a)',
           }}
         >
           {detectMsg.text}

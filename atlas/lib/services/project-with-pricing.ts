@@ -73,7 +73,9 @@ export async function enrichWithAppliedPricingRun(
   const { data: plotRows, error: plotErr } = await supabase
     .schema('atlas')
     .from('pricing_run_plot_outputs')
-    .select('plot_type_key, plot_type_label, plot_count, sqft_per_unit_ag, base_psf, low_psf, high_psf')
+    .select(
+      'plot_type_key, plot_type_label, plot_count, sqft_per_unit_ag, base_psf, low_psf, high_psf'
+    )
     .eq('pricing_run_id', appliedRunId);
   if (plotErr || !plotRows || plotRows.length === 0) return project;
 

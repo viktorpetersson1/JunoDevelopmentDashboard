@@ -93,9 +93,7 @@ export const PATCH = withErrorBoundary(async (request: Request) => {
   }
 
   // Step 1: close out prior current rows for owners whose share changed.
-  const oldIds = changes
-    .map((c) => c.oldId)
-    .filter((id): id is string => id !== null);
+  const oldIds = changes.map((c) => c.oldId).filter((id): id is string => id !== null);
   if (oldIds.length > 0) {
     const { error: closeErr } = await supabase
       .schema('atlas')
@@ -115,10 +113,7 @@ export const PATCH = withErrorBoundary(async (request: Request) => {
     is_current: true,
     notes: `Updated via /settings by ${user.id}`,
   }));
-  const { error: insertErr } = await supabase
-    .schema('atlas')
-    .from('cap_table')
-    .insert(inserts);
+  const { error: insertErr } = await supabase.schema('atlas').from('cap_table').insert(inserts);
 
   if (insertErr) {
     return badRequest(`Failed to insert cap-table rows: ${insertErr.message}`);

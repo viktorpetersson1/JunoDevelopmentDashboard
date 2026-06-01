@@ -136,9 +136,8 @@ export function StepReview({ form }: { form: CreateProjectInput }) {
             color: 'var(--color-text-secondary)',
           }}
         >
-          KPIs below come from the calc engine running on the form data
-          you&apos;ve just entered. Submit creates the project + redirects to
-          its detail page.
+          KPIs below come from the calc engine running on the form data you&apos;ve just entered.
+          Submit creates the project + redirects to its detail page.
         </p>
       </header>
 
@@ -213,7 +212,10 @@ export function StepReview({ form }: { form: CreateProjectInput }) {
           <KV label="Market" value={parsed.data.market_id} />
           <KV label="Purchase" value={parsed.data.purchase_date} />
           <KV label="Sale (computed)" value={result.sale_date ?? '—'} />
-          <KV label="Total sqft" value={`${(parsed.data.villa_sqft_ag + parsed.data.villa_sqft_bg).toLocaleString()} sqft`} />
+          <KV
+            label="Total sqft"
+            value={`${(parsed.data.villa_sqft_ag + parsed.data.villa_sqft_bg).toLocaleString()} sqft`}
+          />
         </dl>
       </section>
     </div>

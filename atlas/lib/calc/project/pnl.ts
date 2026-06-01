@@ -33,10 +33,7 @@ export function computePnl(
 ): ProjectKpis {
   const totalSales = sumArr(out.sales);
   const totalDevCost =
-    -sumArr(out.land_cost) -
-    sumArr(out.build_cost) -
-    sumArr(out.kingshaus) -
-    sumArr(out.soft_cost);
+    -sumArr(out.land_cost) - sumArr(out.build_cost) - sumArr(out.kingshaus) - sumArr(out.soft_cost);
   const totalInterest = -sumArr(out.interest);
   const grossProfit = totalSales - totalDevCost - totalInterest;
   const peakDebt = out.debt_balance.length ? Math.max(0, ...out.debt_balance) : 0;

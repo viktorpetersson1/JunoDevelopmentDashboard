@@ -108,9 +108,9 @@ export function PricingStrategyTab({
           method: 'POST',
         });
         if (!res.ok) {
-          const json = (await res.json().catch(() => null)) as
-            | { error?: { message: string } }
-            | null;
+          const json = (await res.json().catch(() => null)) as {
+            error?: { message: string };
+          } | null;
           setError(json?.error?.message ?? `Generation failed (HTTP ${res.status})`);
           return;
         }
@@ -126,14 +126,13 @@ export function PricingStrategyTab({
       setError(null);
       startApplying(async () => {
         try {
-          const res = await fetch(
-            `/api/projects/${projectKey}/pricing-brief/${briefId}/apply`,
-            { method: 'POST' }
-          );
+          const res = await fetch(`/api/projects/${projectKey}/pricing-brief/${briefId}/apply`, {
+            method: 'POST',
+          });
           if (!res.ok) {
-            const json = (await res.json().catch(() => null)) as
-              | { error?: { message: string } }
-              | null;
+            const json = (await res.json().catch(() => null)) as {
+              error?: { message: string };
+            } | null;
             setError(json?.error?.message ?? `Apply failed (HTTP ${res.status})`);
             return;
           }
@@ -203,8 +202,8 @@ export function PricingStrategyTab({
             color: 'var(--color-warning, #a16207)',
           }}
         >
-          ⚠ Generation partially failed: {currentBrief.generationError}. The recommendation
-          below uses fallback values. Refresh to try again.
+          ⚠ Generation partially failed: {currentBrief.generationError}. The recommendation below
+          uses fallback values. Refresh to try again.
         </div>
       )}
 
@@ -247,9 +246,7 @@ function AddressRequiredEmptyState({
       }}
     >
       <div>
-        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>
-          Site address required
-        </h3>
+        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Site address required</h3>
         <p
           style={{
             margin: '6px 0 0',
@@ -258,10 +255,9 @@ function AddressRequiredEmptyState({
             maxWidth: 520,
           }}
         >
-          The pricing recommendation depends on a real street address —
-          comp research, location auto-detect, and the strategy brief all
-          need somewhere to anchor the analysis. Add an address in the
-          Inputs tab to activate this tab.
+          The pricing recommendation depends on a real street address — comp research, location
+          auto-detect, and the strategy brief all need somewhere to anchor the analysis. Add an
+          address in the Inputs tab to activate this tab.
         </p>
       </div>
       {isEditor ? (
@@ -318,9 +314,7 @@ function EmptyState({
       }}
     >
       <div>
-        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>
-          No pricing recommendation yet
-        </h3>
+        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>No pricing recommendation yet</h3>
         <p
           style={{
             margin: '6px 0 0',
@@ -329,10 +323,9 @@ function EmptyState({
             maxWidth: 520,
           }}
         >
-          The recommendation researches comps from Zillow / Realtor.com / Out East /
-          Compass, computes breakeven thresholds, builds a probability-weighted
-          scenario set and reduction ladder, and recommends a launch price.
-          ~20 seconds to generate.
+          The recommendation researches comps from Zillow / Realtor.com / Out East / Compass,
+          computes breakeven thresholds, builds a probability-weighted scenario set and reduction
+          ladder, and recommends a launch price. ~20 seconds to generate.
         </p>
       </div>
       {isEditor && (
@@ -361,9 +354,7 @@ function EmptyState({
         </p>
       )}
       {error && (
-        <p style={{ fontSize: 13, color: 'var(--color-negative, #b91c1c)', margin: 0 }}>
-          {error}
-        </p>
+        <p style={{ fontSize: 13, color: 'var(--color-negative, #b91c1c)', margin: 0 }}>{error}</p>
       )}
     </div>
   );
@@ -513,17 +504,13 @@ function BriefRenderer({
   const hasMarketSentiment =
     hasUsableRecommendation &&
     (brief.marketSentiment.indicators.length > 0 || brief.marketSentiment.overallRead);
-  const hasReductionLadder =
-    hasUsableRecommendation && brief.reductionLadder.phases.length > 0;
-  const hasScenarios =
-    hasUsableRecommendation && brief.outcomeScenarios.scenarios.length > 0;
+  const hasReductionLadder = hasUsableRecommendation && brief.reductionLadder.phases.length > 0;
+  const hasScenarios = hasUsableRecommendation && brief.outcomeScenarios.scenarios.length > 0;
   const hasRisks = hasUsableRecommendation && brief.risks.length > 0;
   const hasWhy =
     hasUsableRecommendation &&
-    (brief.whyThisNumber.whyNotHigher.length > 0 ||
-      brief.whyThisNumber.whyNotLower.length > 0);
-  const hasFinalRec =
-    hasUsableRecommendation && !!brief.finalRecommendation.icFraming;
+    (brief.whyThisNumber.whyNotHigher.length > 0 || brief.whyThisNumber.whyNotLower.length > 0);
+  const hasFinalRec = hasUsableRecommendation && !!brief.finalRecommendation.icFraming;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -603,11 +590,10 @@ function FailedRecommendationCard() {
           maxWidth: 720,
         }}
       >
-        Cost stack and breakeven thresholds below are still accurate — they are
-        computed deterministically from the project land + build cost
-        assumptions. Hit <strong>Refresh</strong> at the top to retry. If this
-        keeps happening, the Anthropic model may have been deprecated again —
-        flag it and the fallback chain needs a bump.
+        Cost stack and breakeven thresholds below are still accurate — they are computed
+        deterministically from the project land + build cost assumptions. Hit{' '}
+        <strong>Refresh</strong> at the top to retry. If this keeps happening, the Anthropic model
+        may have been deprecated again — flag it and the fallback chain needs a bump.
       </p>
     </div>
   );
@@ -635,9 +621,7 @@ function Recommendation({
   const askMargin = rec.expectedMarginPct;
   const pwMargin = rec.probWeightedMarginPct;
   const showPwSeparately =
-    pwMargin !== null &&
-    askMargin !== null &&
-    Math.abs(pwMargin - askMargin) >= 0.005; // ≥ 50 bps
+    pwMargin !== null && askMargin !== null && Math.abs(pwMargin - askMargin) >= 0.005; // ≥ 50 bps
 
   return (
     <Card accent>
@@ -676,9 +660,7 @@ function Recommendation({
             launch · {psfFmt(rec.psfAtLaunch)}
           </div>
         </div>
-        {isApplied && (
-          <Badge color="positive">Applied to financial model</Badge>
-        )}
+        {isApplied && <Badge color="positive">Applied to financial model</Badge>}
       </div>
 
       <p
@@ -714,11 +696,7 @@ function Recommendation({
         >
           <Metric label="Margin at ask" value={pct(askMargin)} marginColor={askMargin} />
           {showPwSeparately && (
-            <Metric
-              label="Probability-weighted"
-              value={pct(pwMargin)}
-              marginColor={pwMargin}
-            />
+            <Metric label="Probability-weighted" value={pct(pwMargin)} marginColor={pwMargin} />
           )}
         </div>
         {isEditor && !isApplied && rec.psfAtLaunch > 0 && (
@@ -749,11 +727,7 @@ function Recommendation({
 
 // ── Breakeven thresholds ────────────────────────────────────────────────────
 
-function BreakevenThresholds({
-  thresholds,
-}: {
-  thresholds: StrategyBrief['breakevenThresholds'];
-}) {
+function BreakevenThresholds({ thresholds }: { thresholds: StrategyBrief['breakevenThresholds'] }) {
   return (
     <Card>
       <SectionHeader label="Cost stack & breakeven" />
@@ -844,24 +818,43 @@ function QuickMath({ rows }: { rows: QuickMathRow[] }) {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--color-border-hairline, #c8c8c5)' }}>
-              {['Scenario', 'Exit', '$/SF', 'Net after closing', 'Profit', 'Margin', 'Read'].map((h, i) => (
-                <th key={h} style={thStyle(i > 0 ? 'right' : 'left')}>
-                  {h}
-                </th>
-              ))}
+              {['Scenario', 'Exit', '$/SF', 'Net after closing', 'Profit', 'Margin', 'Read'].map(
+                (h, i) => (
+                  <th key={h} style={thStyle(i > 0 ? 'right' : 'left')}>
+                    {h}
+                  </th>
+                )
+              )}
             </tr>
           </thead>
           <tbody>
             {rows.map((r, i) => (
-              <tr key={i} style={{ borderBottom: '1px solid var(--color-border-hairline, #c8c8c5)' }}>
+              <tr
+                key={i}
+                style={{ borderBottom: '1px solid var(--color-border-hairline, #c8c8c5)' }}
+              >
                 <td style={tdStyle()}>{r.scenario}</td>
                 <td style={tdStyle('right', true)}>{usd(r.exitUsd)}</td>
                 <td style={tdStyle('right', true)}>{psfFmt(r.psf)}</td>
                 <td style={tdStyle('right', true)}>{usd(r.netAfterClosingUsd)}</td>
-                <td style={{ ...tdStyle('right', true), color: r.profitUsd < 0 ? 'var(--color-negative, #b91c1c)' : 'var(--color-text-primary, #111)' }}>
+                <td
+                  style={{
+                    ...tdStyle('right', true),
+                    color:
+                      r.profitUsd < 0
+                        ? 'var(--color-negative, #b91c1c)'
+                        : 'var(--color-text-primary, #111)',
+                  }}
+                >
                   {usd(r.profitUsd)}
                 </td>
-                <td style={{ ...tdStyle('right', true), fontWeight: 600, color: marginColor(r.marginPct) }}>
+                <td
+                  style={{
+                    ...tdStyle('right', true),
+                    fontWeight: 600,
+                    color: marginColor(r.marginPct),
+                  }}
+                >
                   {pct(r.marginPct)}
                 </td>
                 <td style={tdStyle()}>
@@ -921,9 +914,7 @@ function CompEvidence({ evidence }: { evidence: StrategyBrief['compEvidence'] })
           {evidence.narrativeSummary}
         </p>
       )}
-      {evidence.closedComps.length > 0 && (
-        <CompTable label="Closed" comps={evidence.closedComps} />
-      )}
+      {evidence.closedComps.length > 0 && <CompTable label="Closed" comps={evidence.closedComps} />}
       {evidence.activeComps.length > 0 && (
         <div style={{ marginTop: evidence.closedComps.length > 0 ? 14 : 0 }}>
           <CompTable label="Active (ceiling)" comps={evidence.activeComps} />
@@ -968,13 +959,13 @@ function CompTable({ label, comps }: { label: string; comps: ResearchedComp[] })
           </thead>
           <tbody>
             {comps.map((c, i) => (
-              <tr key={i} style={{ borderBottom: '1px solid var(--color-border-hairline, #c8c8c5)' }}>
+              <tr
+                key={i}
+                style={{ borderBottom: '1px solid var(--color-border-hairline, #c8c8c5)' }}
+              >
                 <td style={{ ...tdStyle(), paddingTop: 6, paddingBottom: 6 }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <CompProvenanceBadge
-                      provenance={researchedCompProvenance(c)}
-                      variant="dot"
-                    />
+                    <CompProvenanceBadge provenance={researchedCompProvenance(c)} variant="dot" />
                     {c.sourceUrl ? (
                       <a
                         href={c.sourceUrl}
@@ -1047,7 +1038,10 @@ function MarketSentiment({ sentiment }: { sentiment: StrategyBrief['marketSentim
             </thead>
             <tbody>
               {sentiment.indicators.map((ind: MarketIndicator, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid var(--color-border-hairline, #c8c8c5)' }}>
+                <tr
+                  key={i}
+                  style={{ borderBottom: '1px solid var(--color-border-hairline, #c8c8c5)' }}
+                >
                   <td style={tdStyle()}>{ind.indicator}</td>
                   <td style={{ ...tdStyle(), fontWeight: 500 }}>{ind.reading}</td>
                   <td style={{ ...tdStyle(), color: 'var(--color-text-secondary, #6b7280)' }}>
@@ -1083,9 +1077,16 @@ function ReductionLadder({ ladder }: { ladder: StrategyBrief['reductionLadder'] 
   return (
     <Card>
       <SectionHeader label="Reduction ladder & DOM triggers" />
-      <p style={{ fontSize: 12, color: 'var(--color-text-secondary, #6b7280)', margin: '0 0 14px', lineHeight: 1.5 }}>
-        Pre-commit these triggers. The discipline is: reduce ON the trigger, not before.
-        Multiple early cuts signal weakness.
+      <p
+        style={{
+          fontSize: 12,
+          color: 'var(--color-text-secondary, #6b7280)',
+          margin: '0 0 14px',
+          lineHeight: 1.5,
+        }}
+      >
+        Pre-commit these triggers. The discipline is: reduce ON the trigger, not before. Multiple
+        early cuts signal weakness.
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {ladder.phases.map((p: ReductionPhase, i) => (
@@ -1100,13 +1101,37 @@ function ReductionLadder({ ladder }: { ladder: StrategyBrief['reductionLadder'] 
             borderRadius: 8,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'baseline',
+              justifyContent: 'space-between',
+              gap: 12,
+              flexWrap: 'wrap',
+            }}
+          >
             <div>
-              <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-negative, #b91c1c)' }}>
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                  color: 'var(--color-negative, #b91c1c)',
+                }}
+              >
                 Walk-away floor
               </div>
-              <div style={{ fontSize: 16, fontWeight: 600, marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
-                {usd(ladder.walkAwayFloor.priceUsd)} · {psfFmt(ladder.walkAwayFloor.psf)} · {pct(ladder.walkAwayFloor.marginPct)}
+              <div
+                style={{
+                  fontSize: 16,
+                  fontWeight: 600,
+                  marginTop: 2,
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                {usd(ladder.walkAwayFloor.priceUsd)} · {psfFmt(ladder.walkAwayFloor.psf)} ·{' '}
+                {pct(ladder.walkAwayFloor.marginPct)}
               </div>
             </div>
             <div
@@ -1135,21 +1160,43 @@ function LadderRow({ phase }: { phase: ReductionPhase }) {
         border: '1px solid var(--color-border-hairline, #c8c8c5)',
         borderRadius: 8,
         display: 'grid',
-        gridTemplateColumns: 'minmax(70px, 1fr) minmax(120px, 1fr) minmax(80px, 1fr) minmax(70px, 1fr) minmax(200px, 2fr)',
+        gridTemplateColumns:
+          'minmax(70px, 1fr) minmax(120px, 1fr) minmax(80px, 1fr) minmax(70px, 1fr) minmax(200px, 2fr)',
         gap: 12,
         alignItems: 'center',
       }}
     >
-      <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-text-tertiary, #767b84)' }}>
+      <div
+        style={{
+          fontSize: 11,
+          fontWeight: 600,
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+          color: 'var(--color-text-tertiary, #767b84)',
+        }}
+      >
         {phase.label}
       </div>
       <div style={{ fontSize: 14, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
         {usd(phase.priceUsd)}
       </div>
-      <div style={{ fontSize: 12, color: 'var(--color-text-secondary, #6b7280)', fontVariantNumeric: 'tabular-nums' }}>
+      <div
+        style={{
+          fontSize: 12,
+          color: 'var(--color-text-secondary, #6b7280)',
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
         {psfFmt(phase.psf)}
       </div>
-      <div style={{ fontSize: 12, fontWeight: 600, color: marginColor(phase.marginPct), fontVariantNumeric: 'tabular-nums' }}>
+      <div
+        style={{
+          fontSize: 12,
+          fontWeight: 600,
+          color: marginColor(phase.marginPct),
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
         {pct(phase.marginPct)}
       </div>
       <div style={{ fontSize: 12, color: 'var(--color-text-secondary, #6b7280)', lineHeight: 1.4 }}>
@@ -1178,8 +1225,20 @@ function OutcomeScenarios({ scenarios }: { scenarios: StrategyBrief['outcomeScen
           <ScenarioRow key={i} scenario={s} />
         ))}
       </div>
-      <p style={{ fontSize: 12, color: 'var(--color-text-tertiary, #767b84)', margin: '12px 0 0', lineHeight: 1.5 }}>
-        Probability-weighted expected exit: <strong style={{ color: 'var(--color-text-primary, #111)', fontVariantNumeric: 'tabular-nums' }}>{usd(scenarios.probWeightedExpectedExitUsd)}</strong>
+      <p
+        style={{
+          fontSize: 12,
+          color: 'var(--color-text-tertiary, #767b84)',
+          margin: '12px 0 0',
+          lineHeight: 1.5,
+        }}
+      >
+        Probability-weighted expected exit:{' '}
+        <strong
+          style={{ color: 'var(--color-text-primary, #111)', fontVariantNumeric: 'tabular-nums' }}
+        >
+          {usd(scenarios.probWeightedExpectedExitUsd)}
+        </strong>
       </p>
     </Card>
   );
@@ -1194,7 +1253,8 @@ function ScenarioRow({ scenario }: { scenario: OutcomeScenario }) {
         border: '1px solid var(--color-border-hairline, #c8c8c5)',
         borderRadius: 8,
         display: 'grid',
-        gridTemplateColumns: 'minmax(80px, 1fr) minmax(220px, 3fr) minmax(100px, 1fr) minmax(70px, 1fr) minmax(50px, 0.5fr)',
+        gridTemplateColumns:
+          'minmax(80px, 1fr) minmax(220px, 3fr) minmax(100px, 1fr) minmax(70px, 1fr) minmax(50px, 0.5fr)',
         gap: 12,
         alignItems: 'center',
       }}
@@ -1206,10 +1266,24 @@ function ScenarioRow({ scenario }: { scenario: OutcomeScenario }) {
       <div style={{ fontSize: 13, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
         {usd(scenario.exitUsd)}
       </div>
-      <div style={{ fontSize: 12, fontWeight: 600, color: marginColor(scenario.marginPct), fontVariantNumeric: 'tabular-nums' }}>
+      <div
+        style={{
+          fontSize: 12,
+          fontWeight: 600,
+          color: marginColor(scenario.marginPct),
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
         {pct(scenario.marginPct)}
       </div>
-      <div style={{ fontSize: 12, color: 'var(--color-text-tertiary, #767b84)', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>
+      <div
+        style={{
+          fontSize: 12,
+          color: 'var(--color-text-tertiary, #767b84)',
+          fontVariantNumeric: 'tabular-nums',
+          textAlign: 'right',
+        }}
+      >
         {scenario.probabilityPct}%
       </div>
     </div>
@@ -1236,12 +1310,27 @@ function RisksSection({ risks }: { risks: RiskItem[] }) {
           </thead>
           <tbody>
             {risks.map((r, i) => (
-              <tr key={i} style={{ borderBottom: '1px solid var(--color-border-hairline, #c8c8c5)' }}>
+              <tr
+                key={i}
+                style={{ borderBottom: '1px solid var(--color-border-hairline, #c8c8c5)' }}
+              >
                 <td style={{ ...tdStyle(), fontWeight: 600, verticalAlign: 'top' }}>{r.risk}</td>
-                <td style={{ ...tdStyle(), color: 'var(--color-text-secondary, #6b7280)', verticalAlign: 'top' }}>
+                <td
+                  style={{
+                    ...tdStyle(),
+                    color: 'var(--color-text-secondary, #6b7280)',
+                    verticalAlign: 'top',
+                  }}
+                >
                   {r.impact}
                 </td>
-                <td style={{ ...tdStyle(), color: 'var(--color-text-primary, #111)', verticalAlign: 'top' }}>
+                <td
+                  style={{
+                    ...tdStyle(),
+                    color: 'var(--color-text-primary, #111)',
+                    verticalAlign: 'top',
+                  }}
+                >
                   {r.mitigation}
                 </td>
               </tr>
@@ -1263,9 +1352,7 @@ function WhyThisNumber({ section }: { section: StrategyBrief['whyThisNumber'] })
     <Card>
       <SectionHeader label="Why this number" />
       {section.headline && (
-        <p style={{ margin: '0 0 16px', fontSize: 13, lineHeight: 1.5 }}>
-          {section.headline}
-        </p>
+        <p style={{ margin: '0 0 16px', fontSize: 13, lineHeight: 1.5 }}>{section.headline}</p>
       )}
       <div
         style={{
@@ -1297,7 +1384,16 @@ function WhyColumn({ label, bullets }: { label: string; bullets: string[] }) {
       >
         {label}
       </div>
-      <ul style={{ margin: 0, padding: '0 0 0 16px', listStyle: 'disc', display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <ul
+        style={{
+          margin: 0,
+          padding: '0 0 0 16px',
+          listStyle: 'disc',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+        }}
+      >
         {bullets.map((b, i) => (
           <li
             key={i}
@@ -1335,7 +1431,15 @@ function FinalRecommendation({ section }: { section: StrategyBrief['finalRecomme
         </p>
       )}
       {section.nextSteps.length > 0 && (
-        <ol style={{ margin: 0, padding: '0 0 0 20px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <ol
+          style={{
+            margin: 0,
+            padding: '0 0 0 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6,
+          }}
+        >
           {section.nextSteps.map((s, i) => (
             <li key={i} style={{ fontSize: 13, lineHeight: 1.5 }}>
               {s}
@@ -1357,17 +1461,25 @@ function BriefHistory({ briefs, currentId }: { briefs: PricingBriefView[]; curre
         <thead>
           <tr style={{ borderBottom: '1px solid var(--color-border-hairline, #c8c8c5)' }}>
             {['Version', 'Status', 'Phase', 'Recommended', 'Comps', 'Generated'].map((h) => (
-              <th key={h} style={thStyle('left')}>{h}</th>
+              <th key={h} style={thStyle('left')}>
+                {h}
+              </th>
             ))}
           </tr>
         </thead>
         <tbody>
           {briefs.map((b) => (
-            <tr key={b.id} style={{ borderBottom: '1px solid var(--color-border-hairline, #c8c8c5)' }}>
+            <tr
+              key={b.id}
+              style={{ borderBottom: '1px solid var(--color-border-hairline, #c8c8c5)' }}
+            >
               <td style={{ ...tdStyle(), fontWeight: 600 }}>
-                v{b.version}{b.id === currentId ? ' (current)' : ''}
+                v{b.version}
+                {b.id === currentId ? ' (current)' : ''}
               </td>
-              <td style={tdStyle()}><StatusBadge status={b.status} /></td>
+              <td style={tdStyle()}>
+                <StatusBadge status={b.status} />
+              </td>
               <td style={tdStyle()}>{b.phase}</td>
               <td style={{ ...tdStyle(), fontVariantNumeric: 'tabular-nums' }}>
                 {usd(b.recommendedLaunchPriceUsd)} · {pct(b.expectedMarginPct)}
@@ -1388,13 +1500,7 @@ function BriefHistory({ briefs, currentId }: { briefs: PricingBriefView[]; curre
 // Reusable primitives
 // ────────────────────────────────────────────────────────────────────────────
 
-function Card({
-  children,
-  accent,
-}: {
-  children: React.ReactNode;
-  accent?: boolean;
-}) {
+function Card({ children, accent }: { children: React.ReactNode; accent?: boolean }) {
   return (
     <div
       style={{
@@ -1531,7 +1637,11 @@ function Badge({
     positive: { bg: '#ecfdf5', border: '#6ee7b7', text: '#065f46' },
     warning: { bg: '#fefce8', border: '#fde047', text: '#713f12' },
     negative: { bg: '#fef2f2', border: '#fca5a5', text: '#991b1b' },
-    neutral: { bg: 'var(--color-surface-base, #fff)', border: 'var(--color-border-hairline, #c8c8c5)', text: 'var(--color-text-tertiary, #767b84)' },
+    neutral: {
+      bg: 'var(--color-surface-base, #fff)',
+      border: 'var(--color-border-hairline, #c8c8c5)',
+      text: 'var(--color-text-tertiary, #767b84)',
+    },
   };
   const p = palette[color];
   return (
@@ -1617,7 +1727,7 @@ function tdStyle(align: 'left' | 'right' = 'left', tabular = false): React.CSSPr
 
 function marginColor(m: number | null | undefined): string {
   if (m == null) return 'var(--color-text-tertiary, #767b84)';
-  if (m >= 0.10) return 'var(--color-positive, #15803d)';
+  if (m >= 0.1) return 'var(--color-positive, #15803d)';
   if (m >= 0) return 'var(--color-warning, #a16207)';
   return 'var(--color-negative, #b91c1c)';
 }

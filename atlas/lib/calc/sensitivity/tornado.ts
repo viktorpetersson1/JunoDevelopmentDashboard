@@ -24,11 +24,7 @@
 import { aggregatePortfolio } from '../portfolio/aggregate';
 import type { Globals, ProjectInput, Scenario } from '../project/types';
 
-export type SensitivityDriverId =
-  | 'sale_price'
-  | 'build_cost'
-  | 'interest_rate'
-  | 'timing';
+export type SensitivityDriverId = 'sale_price' | 'build_cost' | 'interest_rate' | 'timing';
 
 export interface SensitivityDriver {
   id: SensitivityDriverId;
@@ -127,10 +123,8 @@ export function runSensitivityTornado(
   ];
 
   const results: SensitivityDriver[] = drivers.map((d) => {
-    const lowPbt = aggregatePortfolio(projects, globals, d.low).kpis
-      .total_profit_before_tax;
-    const highPbt = aggregatePortfolio(projects, globals, d.high).kpis
-      .total_profit_before_tax;
+    const lowPbt = aggregatePortfolio(projects, globals, d.low).kpis.total_profit_before_tax;
+    const highPbt = aggregatePortfolio(projects, globals, d.high).kpis.total_profit_before_tax;
     const lowDelta = lowPbt - basePbt;
     const highDelta = highPbt - basePbt;
     return {

@@ -109,7 +109,12 @@ function yearOf(date: string | null | undefined): number | null {
 
 function normStage(stage: string | undefined): string {
   const s = (stage ?? '').toLowerCase();
-  if (s.includes('pre_const') || s.includes('precon') || s.includes('permit') || s.includes('design')) {
+  if (
+    s.includes('pre_const') ||
+    s.includes('precon') ||
+    s.includes('permit') ||
+    s.includes('design')
+  ) {
     return 'pre_construction';
   }
   if (s.includes('construction') || s.includes('build')) return 'construction';
@@ -256,7 +261,11 @@ export function computeVelocity(
   // Funnel: ordered early-stage progression.
   const funnel: FunnelStage[] = [
     { key: 'sourcing', label: 'Sourcing', count: funnelCounts.get('sourcing') ?? 0 },
-    { key: 'pre_construction', label: 'Pre-construction', count: funnelCounts.get('pre_construction') ?? 0 },
+    {
+      key: 'pre_construction',
+      label: 'Pre-construction',
+      count: funnelCounts.get('pre_construction') ?? 0,
+    },
     { key: 'construction', label: 'Construction', count: funnelCounts.get('construction') ?? 0 },
     { key: 'sales', label: 'Sales', count: funnelCounts.get('sales') ?? 0 },
   ];

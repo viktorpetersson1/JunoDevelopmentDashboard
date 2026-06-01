@@ -48,9 +48,7 @@ export function sanitizeRedirect(input: string | undefined | null): string {
   const pathOnly = input.split('?')[0]!.split('#')[0]!;
 
   // Exact match to an allowed prefix OR a child of one (prefix + '/').
-  const allowed = ALLOWED_PREFIXES.some(
-    (p) => pathOnly === p || pathOnly.startsWith(`${p}/`)
-  );
+  const allowed = ALLOWED_PREFIXES.some((p) => pathOnly === p || pathOnly.startsWith(`${p}/`));
   return allowed ? input : FALLBACK;
 }
 

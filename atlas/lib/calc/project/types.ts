@@ -10,11 +10,7 @@
  * (atlas/tests/fixtures/vanilla-snapshots/*.json) can be byte-asserted.
  */
 
-import type {
-  WaterfrontType,
-  ViewPremium,
-  TownProximity,
-} from '@/lib/pricing/location-factors';
+import type { WaterfrontType, ViewPremium, TownProximity } from '@/lib/pricing/location-factors';
 
 export type BuildCostCurve = 'linear' | 'front_loaded' | 's_curve';
 
@@ -186,8 +182,8 @@ export interface Globals {
   loss_carryforward?: boolean;
   // Closing-cost defaults (D-025a). Used by Pricing Strategy Brief to
   // compute breakeven thresholds + margin math against gross sale.
-  closing_cost_variable_pct?: number;  // fraction of gross sale (commission + transfer tax)
-  closing_cost_fixed_usd?: number;     // attorney + tax proration + title/misc
+  closing_cost_variable_pct?: number; // fraction of gross sale (commission + transfer tax)
+  closing_cost_fixed_usd?: number; // attorney + tax proration + title/misc
   // Velocity plan (D-027). Read by the /pipeline workspace to track
   // starts/sells per year vs. goal. Not read by calcProject.
   target_starts_per_year?: number;

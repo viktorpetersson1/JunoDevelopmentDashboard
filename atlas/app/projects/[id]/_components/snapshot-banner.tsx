@@ -47,19 +47,15 @@ export function SnapshotBanner({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  async function call(
-    method: 'POST' | 'PATCH' | 'DELETE',
-    url: string,
-    failPrefix: string
-  ) {
+  async function call(method: 'POST' | 'PATCH' | 'DELETE', url: string, failPrefix: string) {
     setError(null);
     return new Promise<void>((resolve) => {
       startTransition(async () => {
         const res = await fetch(url, { method });
         if (!res.ok) {
-          const body = (await res.json().catch(() => null)) as
-            | { error?: { message: string } }
-            | null;
+          const body = (await res.json().catch(() => null)) as {
+            error?: { message: string };
+          } | null;
           setError(body?.error?.message ?? `${failPrefix} (HTTP ${res.status})`);
           resolve();
           return;
@@ -70,8 +66,10 @@ export function SnapshotBanner({
     });
   }
 
-  const handleCreate = () => call('POST', `/api/projects/${projectKey}/approval-snapshots`, 'Create failed');
-  const handleLock = (id: string) => call('POST', `/api/approval-snapshots/${id}/lock`, 'Lock failed');
+  const handleCreate = () =>
+    call('POST', `/api/projects/${projectKey}/approval-snapshots`, 'Create failed');
+  const handleLock = (id: string) =>
+    call('POST', `/api/approval-snapshots/${id}/lock`, 'Lock failed');
   const handleApprove = (id: string) =>
     call('POST', `/api/approval-snapshots/${id}/approve`, 'Approve failed');
   const handleRefresh = (id: string) =>
@@ -92,8 +90,7 @@ export function SnapshotBanner({
               color: 'var(--color-text-secondary)',
             }}
           >
-            Capturing a snapshot freezes the current inputs + computed model
-            for peer review.
+            Capturing a snapshot freezes the current inputs + computed model for peer review.
           </p>
         </div>
         {isEditor && (
@@ -106,7 +103,7 @@ export function SnapshotBanner({
     );
   }
 
-  const creatorName = latest.createdBy ? approverNames[latest.createdBy] ?? 'Creator' : 'Unknown';
+  const creatorName = latest.createdBy ? (approverNames[latest.createdBy] ?? 'Creator') : 'Unknown';
   const creatorIsCaller = latest.createdBy === currentUserId;
   const callerAlreadyApproved = latest.approvedBy.includes(currentUserId);
 
@@ -122,17 +119,22 @@ export function SnapshotBanner({
             </span>
           </strong>
           <p style={{ margin: '2px 0 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>
-            Editable. Refresh to capture recent input changes, then a second
-            admin can lock for peer review.
+            Editable. Refresh to capture recent input changes, then a second admin can lock for peer
+            review.
           </p>
         </div>
         {isEditor && (
-          <Button variant="ghost" size="sm" onClick={() => handleRefresh(latest.id)} loading={isPending}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleRefresh(latest.id)}
+            loading={isPending}
+          >
             Refresh
           </Button>
         )}
-        {isSuperAdmin && (
-          creatorIsCaller ? (
+        {isSuperAdmin &&
+          (creatorIsCaller ? (
             <span
               style={{
                 fontSize: 11,
@@ -145,11 +147,15 @@ export function SnapshotBanner({
               Awaiting peer to lock
             </span>
           ) : (
-            <Button variant="primary" size="sm" onClick={() => handleLock(latest.id)} loading={isPending}>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => handleLock(latest.id)}
+              loading={isPending}
+            >
               Lock
             </Button>
-          )
-        )}
+          ))}
         {error && <BannerError message={error} />}
       </BannerShell>
     );
@@ -171,11 +177,19 @@ export function SnapshotBanner({
             </span>
           </strong>
           <p style={{ margin: '2px 0 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>
-            Approvers: {approverCount === 0 ? '—' : latest.approvedBy.map((id) => approverNames[id] ?? id.slice(0, 8)).join(', ')}
+            Approvers:{' '}
+            {approverCount === 0
+              ? '—'
+              : latest.approvedBy.map((id) => approverNames[id] ?? id.slice(0, 8)).join(', ')}
           </p>
         </div>
         {isSuperAdmin && !callerAlreadyApproved && (
-          <Button variant="primary" size="sm" onClick={() => handleApprove(latest.id)} loading={isPending}>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => handleApprove(latest.id)}
+            loading={isPending}
+          >
             Approve
           </Button>
         )}

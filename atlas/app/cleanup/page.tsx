@@ -43,15 +43,15 @@ export default function CleanupPage() {
       <meta httpEquiv="refresh" content="3;url=/" />
 
       <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
-        <div className="rounded-xl bg-surface-base p-8 shadow-sm text-center">
+        <div className="rounded-xl bg-surface-base p-8 text-center shadow-sm">
           <div className="mb-4 flex justify-center text-text-primary">
             <JunoMark size={40} ariaLabel="Juno" animated />
           </div>
           <h1 className="text-xl font-semibold text-text-primary">Resetting your browser…</h1>
           <p className="mt-2 text-sm text-text-secondary">
-            Clearing the stale service worker and cached assets that were causing the
-            &ldquo;page not found&rdquo; loop. This takes about three seconds, then you&apos;ll
-            land on the dashboard.
+            Clearing the stale service worker and cached assets that were causing the &ldquo;page
+            not found&rdquo; loop. This takes about three seconds, then you&apos;ll land on the
+            dashboard.
           </p>
           <div className="mt-6">
             <Link
@@ -68,8 +68,8 @@ export default function CleanupPage() {
             </Link>
           </div>
           <p className="mt-4 text-xs text-text-tertiary">
-            If the issue keeps coming back, open DevTools → Application → Service Workers
-            and click &ldquo;Unregister&rdquo;, then revisit this page once more.
+            If the issue keeps coming back, open DevTools → Application → Service Workers and click
+            &ldquo;Unregister&rdquo;, then revisit this page once more.
           </p>
         </div>
       </div>

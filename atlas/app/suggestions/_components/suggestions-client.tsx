@@ -59,9 +59,9 @@ export function SuggestionsClient({ initial }: Props) {
         body: JSON.stringify({ status: next }),
       });
       if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as
-          | { error?: { message?: string } }
-          | null;
+        const body = (await res.json().catch(() => null)) as {
+          error?: { message?: string };
+        } | null;
         throw new Error(body?.error?.message ?? `${res.status} ${res.statusText}`);
       }
       const body = (await res.json()) as { suggestion: SuggestionView };
@@ -101,7 +101,15 @@ export function SuggestionsClient({ initial }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Filter chips + refresh */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 12,
+        }}
+      >
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {FILTERS.map((f) => {
             const active = filter === f.value;
@@ -117,7 +125,9 @@ export function SuggestionsClient({ initial }: Props) {
                   fontWeight: 500,
                   borderRadius: 999,
                   border: '1px solid var(--color-border-hairline)',
-                  background: active ? 'var(--color-accent-base, #131313)' : 'var(--color-surface-base)',
+                  background: active
+                    ? 'var(--color-accent-base, #131313)'
+                    : 'var(--color-surface-base)',
                   color: active ? '#fff' : 'var(--color-text-primary)',
                   cursor: 'pointer',
                 }}
@@ -173,7 +183,14 @@ export function SuggestionsClient({ initial }: Props) {
         }}
       >
         {filtered.length === 0 ? (
-          <div style={{ padding: 32, textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: 13 }}>
+          <div
+            style={{
+              padding: 32,
+              textAlign: 'center',
+              color: 'var(--color-text-tertiary)',
+              fontSize: 13,
+            }}
+          >
             {filter === 'all'
               ? 'No suggestions yet. Hit the Ask Juno launcher → "Suggest a change" to drop one.'
               : `No suggestions with status "${filter}".`}
@@ -223,7 +240,8 @@ function SuggestionRow({
   onTransition: (next: SuggestionStatus) => void;
   busy: boolean;
 }) {
-  const submitter = row.submittedByDisplayName ?? row.submittedByEmail ?? row.submittedBy.slice(0, 8);
+  const submitter =
+    row.submittedByDisplayName ?? row.submittedByEmail ?? row.submittedBy.slice(0, 8);
   const when = formatDate(row.submittedAt);
   const hasDetails = !!row.assistantSummary || !!row.proposedPatch || !!row.pathname;
 
@@ -270,13 +288,23 @@ function SuggestionRow({
           <StatusPill status={row.status} />
         </td>
         <td style={{ ...td('right') }}>
-          <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+          <div
+            style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}
+          >
             {row.status === 'pending' && (
               <>
-                <ActionButton tone="positive" disabled={busy} onClick={() => onTransition('approved')}>
+                <ActionButton
+                  tone="positive"
+                  disabled={busy}
+                  onClick={() => onTransition('approved')}
+                >
                   Approve
                 </ActionButton>
-                <ActionButton tone="negative" disabled={busy} onClick={() => onTransition('rejected')}>
+                <ActionButton
+                  tone="negative"
+                  disabled={busy}
+                  onClick={() => onTransition('rejected')}
+                >
                   Reject
                 </ActionButton>
               </>
@@ -324,7 +352,9 @@ function DetailsBlock({ row }: { row: SuggestionView }) {
       {row.assistantSummary && (
         <div>
           <strong style={{ color: 'var(--color-text-secondary)' }}>Assistant summary:</strong>
-          <p style={{ margin: '4px 0 0 0', color: 'var(--color-text-primary)' }}>{row.assistantSummary}</p>
+          <p style={{ margin: '4px 0 0 0', color: 'var(--color-text-primary)' }}>
+            {row.assistantSummary}
+          </p>
         </div>
       )}
       {row.proposedPatch != null && (
@@ -398,7 +428,11 @@ function ActionButton({
   const styles: Record<typeof tone, { bg: string; fg: string; border: string }> = {
     positive: { bg: 'transparent', fg: '#15803d', border: '1px solid #15803d' },
     negative: { bg: 'transparent', fg: '#b91c1c', border: '1px solid #b91c1c' },
-    primary: { bg: 'var(--color-accent-base, #131313)', fg: '#fff', border: '1px solid transparent' },
+    primary: {
+      bg: 'var(--color-accent-base, #131313)',
+      fg: '#fff',
+      border: '1px solid transparent',
+    },
   };
   const s = styles[tone];
   return (

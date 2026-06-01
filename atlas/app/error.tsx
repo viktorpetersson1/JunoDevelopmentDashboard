@@ -40,8 +40,7 @@ export default function RootError({
         justifyContent: 'center',
         padding: '24px',
         background: 'var(--color-surface-sunken, #f7f7f7)',
-        fontFamily:
-          'system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+        fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
       }}
     >
       <section
@@ -74,8 +73,8 @@ export default function RootError({
             lineHeight: 1.5,
           }}
         >
-          A server-side error fired while rendering this page. The details
-          below help us trace the cause.
+          A server-side error fired while rendering this page. The details below help us trace the
+          cause.
         </p>
 
         <dl
@@ -161,9 +160,8 @@ export default function RootError({
             color: 'var(--color-text-tertiary, #888)',
           }}
         >
-          If this keeps happening, paste the message + digest above into a
-          bug report. The full stack lives in the Cloudflare function
-          real-time logs.
+          If this keeps happening, paste the message + digest above into a bug report. The full
+          stack lives in the Cloudflare function real-time logs.
         </p>
       </section>
     </main>

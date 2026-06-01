@@ -84,9 +84,8 @@ const ENTRIES: StateEntry[] = [
             marginRight: 'auto',
           }}
         >
-          The <code>actuals_entries</code> table + ingest API land in T060.
-          Once invoices &amp; payments flow in, this view will show plan vs
-          actual variance.
+          The <code>actuals_entries</code> table + ingest API land in T060. Once invoices &amp;
+          payments flow in, this view will show plan vs actual variance.
         </p>
       </CardWrap>
     ),
@@ -364,9 +363,7 @@ function SectionBlock({
           >
             <header style={{ display: 'flex', justifyContent: 'space-between' }}>
               <code style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>{e.id}</code>
-              <span style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}>
-                {e.surface}
-              </span>
+              <span style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}>{e.surface}</span>
             </header>
             <div>{e.preview}</div>
           </article>
@@ -377,13 +374,7 @@ function SectionBlock({
 }
 
 /** Reusable demo card wrapper so previews look consistent. */
-function CardWrap({
-  children,
-  pad = '24px',
-}: {
-  children: React.ReactNode;
-  pad?: string;
-}) {
+function CardWrap({ children, pad = '24px' }: { children: React.ReactNode; pad?: string }) {
   return (
     <div
       style={{

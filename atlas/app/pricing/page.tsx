@@ -17,10 +17,7 @@ import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
 import { hasRole } from '@/lib/auth/requireRole';
 import { countComps, getCompsForDashboard } from '@/lib/repos/comps';
 import { findMarketByKey } from '@/lib/repos/markets';
-import {
-  listAllCurrentBriefs,
-  type CurrentBriefForDashboard,
-} from '@/lib/repos/pricing-briefs';
+import { listAllCurrentBriefs, type CurrentBriefForDashboard } from '@/lib/repos/pricing-briefs';
 import { MarketIntel } from './_components/market-intel';
 
 export const dynamic = 'force-dynamic';
@@ -229,10 +226,7 @@ function ActiveBriefs({ briefs }: { briefs: CurrentBriefForDashboard[] }) {
 
 function Divider() {
   return (
-    <div
-      aria-hidden
-      style={{ height: 1, background: 'var(--color-border-hairline, #c8c8c5)' }}
-    />
+    <div aria-hidden style={{ height: 1, background: 'var(--color-border-hairline, #c8c8c5)' }} />
   );
 }
 
@@ -337,15 +331,7 @@ function BriefTile({ brief }: { brief: CurrentBriefForDashboard }) {
       )}
       <StatusPip
         tone={isApplied ? 'positive' : isStale ? 'warning' : isDraft ? 'info' : 'neutral'}
-        label={
-          isApplied
-            ? 'Applied'
-            : isStale
-              ? 'Stale (>30d)'
-              : isDraft
-                ? 'Draft'
-                : brief.status
-        }
+        label={isApplied ? 'Applied' : isStale ? 'Stale (>30d)' : isDraft ? 'Draft' : brief.status}
       />
     </Link>
   );
@@ -414,7 +400,7 @@ function formatPct(n: number | null): string {
 
 function marginColor(m: number | null | undefined): string {
   if (m == null) return 'var(--color-text-tertiary, #767b84)';
-  if (m >= 0.10) return 'var(--color-positive, #15803d)';
+  if (m >= 0.1) return 'var(--color-positive, #15803d)';
   if (m >= 0) return 'var(--color-warning, #a16207)';
   return 'var(--color-negative, #b91c1c)';
 }

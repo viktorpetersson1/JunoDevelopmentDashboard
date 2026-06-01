@@ -61,8 +61,8 @@ function statusTone(status: string): 'positive' | 'info' | 'neutral' | 'warning'
 }
 
 function marginTone(margin: number): string {
-  if (margin >= 0.20) return 'var(--color-positive, #15803d)';
-  if (margin >= 0.10) return 'var(--color-text-primary, #111)';
+  if (margin >= 0.2) return 'var(--color-positive, #15803d)';
+  if (margin >= 0.1) return 'var(--color-text-primary, #111)';
   if (margin >= 0) return 'var(--color-warning, #a16207)';
   return 'var(--color-negative, #b91c1c)';
 }
@@ -86,9 +86,7 @@ export function ProjectsListClient({
     if (query.trim()) {
       const q = query.toLowerCase();
       r = r.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          (p.address ?? '').toLowerCase().includes(q)
+        (p) => p.name.toLowerCase().includes(q) || (p.address ?? '').toLowerCase().includes(q)
       );
     }
     // Sort: committed projects first, then by total sales descending. Pipeline
@@ -200,9 +198,7 @@ export function ProjectsListClient({
 
         {/* Tile grid */}
         {rows.length === 0 ? (
-          <EmptyTiles
-            hasFilters={stageFilter !== 'all' || query.trim().length > 0}
-          />
+          <EmptyTiles hasFilters={stageFilter !== 'all' || query.trim().length > 0} />
         ) : (
           <div
             style={{
@@ -229,13 +225,7 @@ export function ProjectsListClient({
 // Tile
 // ────────────────────────────────────────────────────────────────────────────
 
-function ProjectTile({
-  project,
-  onClick,
-}: {
-  project: ProjectRowVM;
-  onClick: () => void;
-}) {
+function ProjectTile({ project, onClick }: { project: ProjectRowVM; onClick: () => void }) {
   const isPipeline = project.status === 'pipeline';
   const tone = statusTone(project.status);
 
@@ -263,8 +253,7 @@ function ProjectTile({
         e.currentTarget.style.borderColor = 'var(--color-text-primary, #111)';
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor =
-          'var(--color-border-hairline, #c8c8c5)';
+        e.currentTarget.style.borderColor = 'var(--color-border-hairline, #c8c8c5)';
       }}
     >
       {/* Header: name + stage badge */}
@@ -462,7 +451,7 @@ function TileMetric({
           marginTop: 2,
           color: muted
             ? 'var(--color-text-tertiary, #767b84)'
-            : color ?? 'var(--color-text-primary, #111)',
+            : (color ?? 'var(--color-text-primary, #111)'),
           fontVariantNumeric: 'tabular-nums',
         }}
       >

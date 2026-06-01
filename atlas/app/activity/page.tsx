@@ -30,10 +30,7 @@ export default async function ActivityPage() {
   }
 
   // Fetch in parallel — audit + profiles for the user display-name lookup.
-  const [entries, profiles] = await Promise.all([
-    findRecentAudit(200),
-    fetchAllProfiles(),
-  ]);
+  const [entries, profiles] = await Promise.all([findRecentAudit(200), fetchAllProfiles()]);
   const userDisplayNames: Record<string, string> = {};
   for (const p of profiles) {
     userDisplayNames[p.id] = p.displayName ?? p.email ?? p.id.slice(0, 8);

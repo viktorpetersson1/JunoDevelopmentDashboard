@@ -22,7 +22,7 @@ Workers tier).
 2. Authorise the GitHub app + pick `viktorpetersson1/JunoDevelopmentDashboard`
 3. **Project name:** `juno-atlas`
 4. **Production branch:** `main`
-5. **Framework preset:** *Next.js*
+5. **Framework preset:** _Next.js_
 6. **Root directory:** `atlas`
 7. **Build command:** `pnpm install --frozen-lockfile && pnpm run pages:build`
 8. **Build output directory:** `.vercel/output/static`
@@ -32,21 +32,23 @@ Workers tier).
 
 In **Settings → Environment variables** add (for both Production and Preview):
 
-| Variable | Value | Notes |
-|---|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | `https://mbehvcfiakjznzqkymse.supabase.co` | Public — used by browser client |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | *(from Supabase Dashboard → Project Settings → API)* | Public |
-| `SUPABASE_SERVICE_ROLE_KEY` | *(from same page, **secret**)* | **Encrypt** — never expose to client |
-| `AUDIT_HASH_SALT` | *(generate: `openssl rand -hex 32`)* | **Encrypt** — IP hashing salt |
-| `NODE_VERSION` | `20` | Pins build runtime |
+| Variable                        | Value                                                | Notes                                |
+| ------------------------------- | ---------------------------------------------------- | ------------------------------------ |
+| `NEXT_PUBLIC_SUPABASE_URL`      | `https://mbehvcfiakjznzqkymse.supabase.co`           | Public — used by browser client      |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | _(from Supabase Dashboard → Project Settings → API)_ | Public                               |
+| `SUPABASE_SERVICE_ROLE_KEY`     | _(from same page, **secret**)_                       | **Encrypt** — never expose to client |
+| `AUDIT_HASH_SALT`               | _(generate: `openssl rand -hex 32`)_                 | **Encrypt** — IP hashing salt        |
+| `NODE_VERSION`                  | `20`                                                 | Pins build runtime                   |
 
 Optional:
+
 - `ATLAS_FEATURE_FLAGS` — comma-separated flag names
 - `NEXT_PUBLIC_SENTRY_DSN` — wire later when Sentry lands
 
 ### 3. Set compatibility flags
 
 In **Settings → Functions → Compatibility flags**:
+
 - Production: `nodejs_compat`
 - Preview: `nodejs_compat`
 
@@ -63,6 +65,7 @@ route). Should return JSON. If it 500s, the flag isn't applied yet.
 
 After saving the flag, you must **re-trigger a deployment** — flag
 changes don't apply to already-built functions:
+
 - **Deployments tab → click the failed deploy → Retry deployment**, or
 - push an empty commit: `git commit --allow-empty -m "redeploy" && git push`
 
@@ -88,7 +91,7 @@ authenticated page returns 500 with `PGRST106 "Invalid schema: atlas"`.
 `/auth/v1/*`, not REST), but every authenticated page crashes after
 sign-in with a Next.js production error page and a Digest hash.
 Middleware survives because it only calls auth; pages crash because
-they query atlas.* via REST.
+they query atlas.\* via REST.
 
 **How to verify it's set:** with the anon key, hit
 `https://<project>.supabase.co/rest/v1/projects?select=id&limit=1`
@@ -125,16 +128,19 @@ header by default — browsers fall back to heuristic freshness.
 We mitigate this in two layers:
 
 **1. `atlas/public/_headers`** (CDN-level, runs first):
+
 - `/_next/static/*` and `/__next-on-pages-dist__/*` → `public, max-age=31536000, immutable` (Next chunks are content-hashed, safe to cache forever)
 - `/api/*`, `/sign-in`, `/*` (HTML) → `no-store, must-revalidate`
 - Adds `X-Content-Type-Options: nosniff` and `Referrer-Policy: strict-origin-when-cross-origin` as security headers
 
 **2. `lib/supabase/middleware.ts`** (function-level, runs second):
+
 - Sets the same Cache-Control on every Server Component / API response
 - Belt-and-suspenders in case the CDN tier is bypassed (preview URLs,
   custom-domain misconfig, etc.)
 
 What this means in practice:
+
 - The first user who hits a fresh deploy ALWAYS gets the new HTML
 - Static JS/CSS chunks still cache aggressively (fast page loads)
 - Even if a future bad deploy ships, refreshing the tab will pull the
@@ -154,7 +160,7 @@ first, which catches the deploy footguns we've actually hit:
    `https://`, surrounding quotes, trailing whitespace (the bug that
    500'd every route on the first CF deploy)
 3. **JWT-shaped keys** — catches pasting publishable handle
-   (sb_publishable_...) instead of the JWT
+   (sb*publishable*...) instead of the JWT
 4. **Every server route exports `runtime = 'edge'`** — catches a
    missed file before `next-on-pages` fails post-build, saving ~3 min
    of wasted compile time
@@ -168,6 +174,7 @@ Local-only checks (1-4) also run on every CI push via the `preflight`
 GitHub Actions job — fail-fast before lint/test/build runs.
 
 To run manually:
+
 ```bash
 pnpm run preflight          # local checks only (no network)
 pnpm run preflight:remote   # + Supabase + CF API checks (needs env)
@@ -184,6 +191,7 @@ production deploys** — Cloudflare's build pipeline runs on Linux, and
 our CI's `pages-build` job runs on `ubuntu-latest`.
 
 Local options for Windows users:
+
 - **WSL (recommended):** `wsl --install`, clone the repo inside Ubuntu,
   run `pnpm run pages:build` there.
 - **Skip local pages-build:** rely on CI + the Cloudflare preview URL
@@ -212,13 +220,15 @@ Atlas already complies with the constraints below — adding any new code
 that violates them will fail at build time.
 
 **Disallowed at runtime:**
+
 - `fs` / `fs/promises` (no filesystem)
 - `child_process` (no spawning)
 - `cluster`, `worker_threads`
 - Direct TCP / TLS sockets (use HTTP)
-- `crypto.randomBytes` *(use `crypto.getRandomValues()` instead — Web Crypto)*
+- `crypto.randomBytes` _(use `crypto.getRandomValues()` instead — Web Crypto)_
 
 **Compatible (we use these):**
+
 - `@supabase/ssr` + `@supabase/supabase-js` — HTTP only
 - `next/headers` cookies/headers helpers
 - Standard `fetch`, `URL`, `Request`, `Response`
@@ -229,6 +239,7 @@ that violates them will fail at build time.
 (TCP-based) and would NOT work at the edge.** It's only imported by
 `drizzle-kit` migration scripts that run locally — not by any runtime
 route. If we ever need direct DB queries at runtime, switch to:
+
 - Supabase REST API (preferred — already in use)
 - `@neondatabase/serverless` (HTTP-over-WebSocket, edge-compatible)
 - Cloudflare Hyperdrive (Postgres proxy over HTTP)
@@ -264,15 +275,15 @@ logs`. Server errors stream there with stack traces.
 
 ## Why Cloudflare (vs Render web_service)
 
-| | Cloudflare Pages | Render web_service |
-|---|---|---|
-| Cost | Free tier covers Atlas | $7/mo starter |
-| Latency | Global edge (~30ms TTFB worldwide) | Single region (Oregon) |
-| Build | Native Next.js via adapter | Native Next.js direct |
-| Preview URLs | Auto per-PR | Paid plan only |
-| DDoS protection | Built in | Manual |
-| Cold starts | Minimal (edge-isolated) | Up to 30s on free tier |
-| MCP for setup | None — wrangler CLI / dashboard | Render MCP |
+|                 | Cloudflare Pages                   | Render web_service     |
+| --------------- | ---------------------------------- | ---------------------- |
+| Cost            | Free tier covers Atlas             | $7/mo starter          |
+| Latency         | Global edge (~30ms TTFB worldwide) | Single region (Oregon) |
+| Build           | Native Next.js via adapter         | Native Next.js direct  |
+| Preview URLs    | Auto per-PR                        | Paid plan only         |
+| DDoS protection | Built in                           | Manual                 |
+| Cold starts     | Minimal (edge-isolated)            | Up to 30s on free tier |
+| MCP for setup   | None — wrangler CLI / dashboard    | Render MCP             |
 
 The runtime constraints are real but Atlas was already edge-compatible
 (all data access via Supabase HTTP client). Net win on cost,

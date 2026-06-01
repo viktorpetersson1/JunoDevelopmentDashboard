@@ -102,11 +102,7 @@ function parseCsv(text: string): string[][] {
   return rows;
 }
 
-function parseRow(
-  header: string[],
-  rawRow: string[],
-  subCutKeys: Set<string>
-): ParsedRow {
+function parseRow(header: string[], rawRow: string[], subCutKeys: Set<string>): ParsedRow {
   const errors: string[] = [];
   const cell = (name: string) => {
     const i = header.indexOf(name);
@@ -118,7 +114,8 @@ function parseRow(
 
   const subCutKey = cell('sub_cut_key');
   if (!subCutKey) errors.push('sub_cut_key is required');
-  else if (!subCutKeys.has(subCutKey)) errors.push(`sub_cut_key '${subCutKey}' is not in the East End taxonomy`);
+  else if (!subCutKeys.has(subCutKey))
+    errors.push(`sub_cut_key '${subCutKey}' is not in the East End taxonomy`);
 
   const statusRaw = cell('status').toLowerCase();
   if (!['closed', 'active', 'pending', 'withdrawn'].includes(statusRaw)) {
@@ -139,9 +136,8 @@ function parseRow(
 
   const salePriceRaw = cell('sale_price_usd');
   const salePriceUsd = salePriceRaw ? Number.parseFloat(salePriceRaw.replace(/[,$]/g, '')) : null;
-  const salePriceCents = salePriceUsd != null && Number.isFinite(salePriceUsd)
-    ? Math.round(salePriceUsd * 100)
-    : null;
+  const salePriceCents =
+    salePriceUsd != null && Number.isFinite(salePriceUsd) ? Math.round(salePriceUsd * 100) : null;
   if (status === 'closed' && (!salePriceCents || salePriceCents <= 0)) {
     errors.push('sale_price_usd > 0 required for closed comps');
   }
@@ -165,7 +161,9 @@ function parseRow(
   const waterfrontType =
     wfRaw && ['sound_front_bluff', 'bayfront', 'inlet', 'inland'].includes(wfRaw) ? wfRaw : null;
   if (wfRaw && !waterfrontType) {
-    errors.push(`waterfront_type must be one of sound_front_bluff|bayfront|inlet|inland (got '${wfRaw}')`);
+    errors.push(
+      `waterfront_type must be one of sound_front_bluff|bayfront|inlet|inland (got '${wfRaw}')`
+    );
   }
 
   const sourceUrl = cell('source_url') || null;
@@ -229,22 +227,24 @@ export function CsvImportClient({ subCuts }: { subCuts: SubCutOpt[] }) {
     setServerError(null);
     setSuccess(null);
     startSubmit(async () => {
-      const comps = okRows.map((r) => r.parsed!).map((c) => ({
-        address: c.address,
-        subCutKey: c.subCutKey,
-        waterfrontType: c.waterfrontType,
-        isNc: c.isNc,
-        status: c.status,
-        closingDate: c.closingDate,
-        salePriceCents: c.salePriceCents,
-        agSqft: c.agSqft,
-        lotSizeAcres: c.lotSizeAcres,
-        yearBuilt: c.yearBuilt,
-        broker: c.broker,
-        sourceUrl: c.sourceUrl,
-        notes: c.notes,
-        source: 'csv' as const,
-      }));
+      const comps = okRows
+        .map((r) => r.parsed!)
+        .map((c) => ({
+          address: c.address,
+          subCutKey: c.subCutKey,
+          waterfrontType: c.waterfrontType,
+          isNc: c.isNc,
+          status: c.status,
+          closingDate: c.closingDate,
+          salePriceCents: c.salePriceCents,
+          agSqft: c.agSqft,
+          lotSizeAcres: c.lotSizeAcres,
+          yearBuilt: c.yearBuilt,
+          broker: c.broker,
+          sourceUrl: c.sourceUrl,
+          notes: c.notes,
+          source: 'csv' as const,
+        }));
       const res = await fetch('/api/comps/bulk', {
         method: 'POST',
         headers: {
@@ -254,9 +254,9 @@ export function CsvImportClient({ subCuts }: { subCuts: SubCutOpt[] }) {
         body: JSON.stringify({ comps }),
       });
       if (!res.ok) {
-        const json = (await res.json().catch(() => null)) as
-          | { error?: { code: string; message: string } }
-          | null;
+        const json = (await res.json().catch(() => null)) as {
+          error?: { code: string; message: string };
+        } | null;
         setServerError(json?.error?.message ?? `Import failed (HTTP ${res.status})`);
         return;
       }
@@ -413,7 +413,8 @@ export function CsvImportClient({ subCuts }: { subCuts: SubCutOpt[] }) {
                 color: 'var(--color-text-primary)',
               }}
             >
-              Preview — {preview.parsed.length} rows ({okRows.length} valid, {badRows.length} with errors)
+              Preview — {preview.parsed.length} rows ({okRows.length} valid, {badRows.length} with
+              errors)
             </h2>
             {badRows.length > 0 && (
               <span
@@ -464,7 +465,14 @@ export function CsvImportClient({ subCuts }: { subCuts: SubCutOpt[] }) {
                       <td style={{ ...td, textAlign: 'right' }}>
                         {p.parsed?.agSqft.toLocaleString() ?? '—'}
                       </td>
-                      <td style={{ ...td, color: hasError ? 'var(--color-negative, #dc2626)' : 'var(--color-text-tertiary)' }}>
+                      <td
+                        style={{
+                          ...td,
+                          color: hasError
+                            ? 'var(--color-negative, #dc2626)'
+                            : 'var(--color-text-tertiary)',
+                        }}
+                      >
                         {p.errors.join('; ') || 'OK'}
                       </td>
                     </tr>
@@ -523,9 +531,7 @@ export function CsvImportClient({ subCuts }: { subCuts: SubCutOpt[] }) {
           disabled={!canImport}
           loading={isSubmitting}
         >
-          {canImport
-            ? `Import ${okRows.length} comp${okRows.length === 1 ? '' : 's'}`
-            : 'Import'}
+          {canImport ? `Import ${okRows.length} comp${okRows.length === 1 ? '' : 's'}` : 'Import'}
         </Button>
       </footer>
     </div>

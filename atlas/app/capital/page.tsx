@@ -44,7 +44,12 @@ export default async function CapitalOverviewPage() {
   };
 
   // 6 KPI tiles per INVENTORY §17.
-  const kpis: Array<{ label: string; value: string; hint?: string; tone?: 'negative' | 'neutral' }> = [
+  const kpis: Array<{
+    label: string;
+    value: string;
+    hint?: string;
+    tone?: 'negative' | 'neutral';
+  }> = [
     {
       label: 'KPC LOC peak',
       value: formatMoney(m.loc_peak_balance * 100, { compact: true, precision: 2 }),
@@ -89,7 +94,9 @@ export default async function CapitalOverviewPage() {
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
         <header>
-          <h1 style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}>
+          <h1
+            style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}
+          >
             Capital
           </h1>
           <p style={{ margin: '4px 0 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
@@ -136,7 +143,13 @@ export default async function CapitalOverviewPage() {
         </Section>
 
         {/* Sources & uses */}
-        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
+        <section
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: 16,
+          }}
+        >
           <SourcesTable
             rows={[
               { label: 'Senior debt peak', value: k.max_debt_outstanding },
@@ -159,7 +172,11 @@ export default async function CapitalOverviewPage() {
           title="Owner cap table"
           subtitle={`${capTable.length} shareholder${capTable.length === 1 ? '' : 's'} — basis-point shares, equity calls scaled by share`}
         >
-          <OwnerCapTable rows={capTable} totalEquityCalled={k.total_equity_called} totalProfit={k.total_profit_after_tax} />
+          <OwnerCapTable
+            rows={capTable}
+            totalEquityCalled={k.total_equity_called}
+            totalProfit={k.total_profit_after_tax}
+          />
         </Section>
       </div>
     </DashboardShell>
@@ -187,7 +204,9 @@ function Section({
       }}
     >
       <header style={{ marginBottom: 12 }}>
-        <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+        <h2
+          style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}
+        >
           {title}
         </h2>
         {subtitle && (
@@ -240,7 +259,8 @@ function KpiTile({
         style={{
           fontSize: 22,
           fontWeight: 600,
-          color: tone === 'negative' ? 'var(--color-negative, #dc2626)' : 'var(--color-text-primary)',
+          color:
+            tone === 'negative' ? 'var(--color-negative, #dc2626)' : 'var(--color-text-primary)',
           marginTop: 6,
           fontVariantNumeric: 'tabular-nums',
         }}
@@ -295,13 +315,8 @@ function SourcesTable({ rows }: { rows: Array<{ label: string; value: number }> 
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
         <tbody>
           {rows.map((r) => (
-            <tr
-              key={r.label}
-              style={{ borderTop: '1px solid var(--color-border-hairline)' }}
-            >
-              <td style={{ padding: '10px 0', color: 'var(--color-text-secondary)' }}>
-                {r.label}
-              </td>
+            <tr key={r.label} style={{ borderTop: '1px solid var(--color-border-hairline)' }}>
+              <td style={{ padding: '10px 0', color: 'var(--color-text-secondary)' }}>{r.label}</td>
               <td
                 style={{
                   padding: '10px 0',
@@ -327,13 +342,8 @@ function UsesTable({ rows }: { rows: Array<{ label: string; value: number }> }) 
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
         <tbody>
           {rows.map((r) => (
-            <tr
-              key={r.label}
-              style={{ borderTop: '1px solid var(--color-border-hairline)' }}
-            >
-              <td style={{ padding: '10px 0', color: 'var(--color-text-secondary)' }}>
-                {r.label}
-              </td>
+            <tr key={r.label} style={{ borderTop: '1px solid var(--color-border-hairline)' }}>
+              <td style={{ padding: '10px 0', color: 'var(--color-text-secondary)' }}>{r.label}</td>
               <td
                 style={{
                   padding: '10px 0',
@@ -407,8 +417,12 @@ function OwnerCapTable({
                 )}
               </td>
               <td style={td('right')}>{sharePct.toFixed(1)}%</td>
-              <td style={td('right')}>{formatMoney(equityShare * 100, { compact: true, precision: 2 })}</td>
-              <td style={td('right')}>{formatMoney(profitShare * 100, { compact: true, precision: 2 })}</td>
+              <td style={td('right')}>
+                {formatMoney(equityShare * 100, { compact: true, precision: 2 })}
+              </td>
+              <td style={td('right')}>
+                {formatMoney(profitShare * 100, { compact: true, precision: 2 })}
+              </td>
             </tr>
           );
         })}

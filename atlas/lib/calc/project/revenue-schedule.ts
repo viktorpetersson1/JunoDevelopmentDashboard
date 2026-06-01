@@ -59,8 +59,7 @@ export function applyRevenueSchedule(
   const totalCostExFinancing = Math.abs(
     costs.landCost + costs.buildTotal + costs.kingshausTotal + costs.softTotal
   );
-  const totalCostPerSqft =
-    project.villa_sqft > 0 ? totalCostExFinancing / project.villa_sqft : 0;
+  const totalCostPerSqft = project.villa_sqft > 0 ? totalCostExFinancing / project.villa_sqft : 0;
 
   let salePerSqft: number;
   let salePrice: number;

@@ -127,7 +127,14 @@ export function ActiveScenarioPicker({ initialActiveId, initialDisplayName }: Pr
         }}
       >
         <span style={{ fontSize: 10, opacity: 0.7 }}>Scenario:</span>
-        <span style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span
+          style={{
+            maxWidth: 140,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
           {activeName}
         </span>
         <span style={{ fontSize: 10, opacity: 0.6 }}>{open ? '▴' : '▾'}</span>

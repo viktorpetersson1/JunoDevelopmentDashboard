@@ -128,10 +128,10 @@ If the engine does not reproduce these outputs when fed the same inputs, it is w
 
 **Expected outputs:**
 
-| Plot type | Low | Base | High | Classification |
-|---|---|---|---|---|
-| Sound-front | $1,100 | $1,450 | $1,800 | Market-maker (zero closed NC in sub-cut) |
-| Inland | $650 | $850 | $1,200 | Stretch market-rider (base = +63% above Cutchogue interior NC $522, but anchored to Mattituck NC $1,048) |
+| Plot type   | Low    | Base   | High   | Classification                                                                                           |
+| ----------- | ------ | ------ | ------ | -------------------------------------------------------------------------------------------------------- |
+| Sound-front | $1,100 | $1,450 | $1,800 | Market-maker (zero closed NC in sub-cut)                                                                 |
+| Inland      | $650   | $850   | $1,200 | Stretch market-rider (base = +63% above Cutchogue interior NC $522, but anchored to Mattituck NC $1,048) |
 
 Sound-front anchors: Low → active SF listings $1,100–$1,269. Base → bayfront NC closed $1,455 with implicit modest discount for unproven Sound-front market. High → Hamptons NC closed peak $1,725–$1,800; explicitly market-making.
 
@@ -240,6 +240,7 @@ These are not opinions. The engine must enforce them and refuse to produce an ou
 ## PART 5 — WHAT NOT TO DO
 
 1. **Do not automate the judgement steps.** These remain human-driven and engine-assisted:
+
    - Declaring the sub-cuts for a project (the engine suggests; the human commits)
    - Separating narrative from fact (the engine surfaces broker quotes with sources; the human decides what to weight)
    - The market-making call when the engine flags a wide gap (the engine classifies; the human commits to underwriting)

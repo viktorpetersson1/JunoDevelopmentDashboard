@@ -145,11 +145,7 @@ function SegmentBar({
   const overflow = Math.max(0, total - target);
 
   const statusLabel =
-    total >= target
-      ? 'on plan'
-      : total === 0
-        ? `${target} needed`
-        : `${gap} to go`;
+    total >= target ? 'on plan' : total === 0 ? `${target} needed` : `${gap} to go`;
   const statusColor =
     total >= target
       ? 'var(--color-positive, #15803d)'
@@ -312,9 +308,7 @@ function InFlightCard({ project }: { project: InFlightProject }) {
           fontVariantNumeric: 'tabular-nums',
         }}
       >
-        <span
-          style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary, #111)' }}
-        >
+        <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary, #111)' }}>
           {formatMoney(project.totalSales * 100, { compact: true, precision: 2 })}
         </span>
         <span
@@ -373,10 +367,7 @@ export function CandidateFunnel({
 
   return (
     <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <SectionHead
-        title="Candidate funnel"
-        hint={`${report.candidateCount} in sourcing`}
-      />
+      <SectionHead title="Candidate funnel" hint={`${report.candidateCount} in sourcing`} />
       <div
         style={{
           background: 'var(--color-surface-raised, #fff)',
@@ -417,23 +408,16 @@ export function CandidateFunnel({
         >
           {gap > 0 ? (
             <>
-              <strong style={{ color: 'var(--color-text-primary, #111)' }}>
-                Forward signal:
-              </strong>{' '}
+              <strong style={{ color: 'var(--color-text-primary, #111)' }}>Forward signal:</strong>{' '}
               {linedUp} of {target} starts lined up for {nextYear}.{' '}
-              <strong style={{ color: 'var(--color-warning, #a16207)' }}>
-                Need {gap} more
-              </strong>{' '}
-              {gap === 1 ? 'candidate' : 'candidates'} to advance from sourcing to keep
-              the plan on track.
+              <strong style={{ color: 'var(--color-warning, #a16207)' }}>Need {gap} more</strong>{' '}
+              {gap === 1 ? 'candidate' : 'candidates'} to advance from sourcing to keep the plan on
+              track.
             </>
           ) : (
             <>
-              <strong style={{ color: 'var(--color-text-primary, #111)' }}>
-                Forward signal:
-              </strong>{' '}
-              {nextYear} starts target ({target}) is covered by projects already in the
-              pipeline.
+              <strong style={{ color: 'var(--color-text-primary, #111)' }}>Forward signal:</strong>{' '}
+              {nextYear} starts target ({target}) is covered by projects already in the pipeline.
             </>
           )}
         </div>
@@ -442,15 +426,7 @@ export function CandidateFunnel({
   );
 }
 
-function FunnelStep({
-  label,
-  count,
-  isLast,
-}: {
-  label: string;
-  count: number;
-  isLast: boolean;
-}) {
+function FunnelStep({ label, count, isLast }: { label: string; count: number; isLast: boolean }) {
   return (
     <>
       <div

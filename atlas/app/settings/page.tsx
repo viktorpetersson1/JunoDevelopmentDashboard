@@ -36,11 +36,7 @@ type SettingsTab = (typeof TABS)[number];
 const ADMIN_ONLY: SettingsTab[] = ['general', 'cap-table', 'owners', 'history'];
 const EDITOR_PLUS: SettingsTab[] = ['suggestions'];
 
-export default async function SettingsPage({
-  searchParams,
-}: {
-  searchParams: { tab?: string };
-}) {
+export default async function SettingsPage({ searchParams }: { searchParams: { tab?: string } }) {
   const { profile, user } = await requireAuthOrRedirect('/settings');
   const requested = (searchParams.tab ?? 'profile') as SettingsTab;
   const tab: SettingsTab = TABS.includes(requested) ? requested : 'profile';
@@ -62,9 +58,7 @@ export default async function SettingsPage({
   const [capTable, allProfiles, activeGlobals] = await Promise.all([
     tab === 'cap-table' ? fetchCapTable() : Promise.resolve(null),
     tab === 'owners' ? fetchAllProfiles() : Promise.resolve(null),
-    tab === 'general'
-      ? getActiveGlobals()
-      : Promise.resolve(null),
+    tab === 'general' ? getActiveGlobals() : Promise.resolve(null),
   ]);
 
   const dashboardUser = {
@@ -95,7 +89,7 @@ export default async function SettingsPage({
             // Cheap O(1) check that's right for the common case (every market
             // matches baseline); the editor itself shows the markets so the
             // user can see if they were tweaked.
-            (activeGlobals!.isBaseline === true)
+            activeGlobals!.isBaseline === true
           }
         />
       );

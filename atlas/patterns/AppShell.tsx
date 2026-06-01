@@ -132,7 +132,11 @@ const ScenarioIcon = () => (
  *  outcome distribution. */
 const StressIcon = () => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-    <path d="M2.5 16 Q5 16 6.5 12 T10 6 T13.5 12 T17.5 16" strokeLinecap="round" strokeLinejoin="round" />
+    <path
+      d="M2.5 16 Q5 16 6.5 12 T10 6 T13.5 12 T17.5 16"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
     <line x1="2.5" y1="17" x2="17.5" y2="17" strokeLinecap="round" />
   </svg>
 );
@@ -186,10 +190,7 @@ function openAskJuno() {
 
 const NotificationsIcon = () => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-    <path
-      d="M10 2.5a5 5 0 0 0-5 5v3l-1.5 2h13L15 10.5v-3a5 5 0 0 0-5-5z"
-      strokeLinejoin="round"
-    />
+    <path d="M10 2.5a5 5 0 0 0-5 5v3l-1.5 2h13L15 10.5v-3a5 5 0 0 0-5-5z" strokeLinejoin="round" />
     <path d="M8.5 15.5a1.5 1.5 0 0 0 3 0" strokeLinecap="round" />
   </svg>
 );

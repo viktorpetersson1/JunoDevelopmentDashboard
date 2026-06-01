@@ -24,12 +24,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { runProject } from '@/lib/calc/project/runProject';
-import type {
-  Globals,
-  ProjectInput,
-  ProjectResult,
-  Scenario,
-} from '@/lib/calc/project/types';
+import type { Globals, ProjectInput, ProjectResult, Scenario } from '@/lib/calc/project/types';
 
 const FIXTURES_DIR = resolve(__dirname, '..', 'fixtures', 'vanilla-snapshots');
 
@@ -183,6 +178,9 @@ describe('Excel parity smoke (vs _excel_* benchmarks)', () => {
         fx.inputs.project._excel_total_cost_per_sqft > 0;
       if (hasSale !== hasCps) inconsistent.push(`${f} (sale=${hasSale} cps=${hasCps})`);
     }
-    expect(inconsistent, `Fixtures with inconsistent Excel benchmarks: ${inconsistent.join(', ')}`).toEqual([]);
+    expect(
+      inconsistent,
+      `Fixtures with inconsistent Excel benchmarks: ${inconsistent.join(', ')}`
+    ).toEqual([]);
   });
 });

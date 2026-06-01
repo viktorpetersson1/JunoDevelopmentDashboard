@@ -22,11 +22,7 @@ import { created, badRequest, conflict } from '@/lib/api/response';
 import { withErrorBoundary } from '@/lib/api/handler';
 import { requireAuth } from '@/lib/auth/requireAuth';
 import { requireEditor } from '@/lib/auth/requireRole';
-import {
-  bulkCreateComps,
-  CompDuplicateError,
-  CompValidationError,
-} from '@/lib/repos/comps';
+import { bulkCreateComps, CompDuplicateError, CompValidationError } from '@/lib/repos/comps';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';

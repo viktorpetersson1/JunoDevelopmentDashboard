@@ -33,8 +33,7 @@ export default function GlobalError({
           padding: 24,
           minHeight: '100vh',
           background: '#f7f7f7',
-          fontFamily:
-            'system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+          fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -70,8 +69,8 @@ export default function GlobalError({
               lineHeight: 1.5,
             }}
           >
-            The root layout itself threw. This is rarer than the page-level
-            error boundary catching — usually an env/config issue.
+            The root layout itself threw. This is rarer than the page-level error boundary catching
+            — usually an env/config issue.
           </p>
           <pre
             style={{

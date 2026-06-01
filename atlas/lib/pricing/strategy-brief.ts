@@ -211,7 +211,9 @@ function computeBreakevens(
 ): StrategyBrief['breakevenThresholds'] {
   const buildCost = facts.buildCostPerSqftUsd * facts.villaSqftAg;
   const totalDevCost =
-    facts.landCostUsd + buildCost + facts.softCostsLumpSumUsd +
+    facts.landCostUsd +
+    buildCost +
+    facts.softCostsLumpSumUsd +
     (facts.closingCostsOverrideUsd ?? 0);
 
   // Solve for gross sale price G such that:
@@ -234,7 +236,7 @@ function computeBreakevens(
     breakevenExitUsd: breakevenExit,
     breakevenPsf: facts.villaSqftAg > 0 ? Math.round(breakevenExit / facts.villaSqftAg) : 0,
     margin5ExitUsd: exitForMargin(0.05),
-    margin10ExitUsd: exitForMargin(0.10),
+    margin10ExitUsd: exitForMargin(0.1),
     margin15ExitUsd: exitForMargin(0.15),
   };
 }
@@ -291,8 +293,7 @@ function reconcileMath(
     const net = netCC(exit);
     const profit = net - totalDevCost;
     const margin = marginOf(exit);
-    const psf =
-      row.psf > 0 ? row.psf : Math.round(exit / Math.max(row.psf || 1, 1));
+    const psf = row.psf > 0 ? row.psf : Math.round(exit / Math.max(row.psf || 1, 1));
     return {
       ...row,
       psf,
@@ -321,17 +322,11 @@ function reconcileMath(
 
   // Probability-weighted expected exit + margin (normalize if probs don't
   // sum to exactly 100 — Claude sometimes drifts a bit).
-  const totalProb = correctedScenarios.reduce(
-    (sum, s) => sum + (s.probabilityPct || 0),
-    0
-  );
+  const totalProb = correctedScenarios.reduce((sum, s) => sum + (s.probabilityPct || 0), 0);
   let probWeightedExit = 0;
   if (totalProb > 0) {
     probWeightedExit = Math.round(
-      correctedScenarios.reduce(
-        (sum, s) => sum + (s.probabilityPct / totalProb) * s.exitUsd,
-        0
-      )
+      correctedScenarios.reduce((sum, s) => sum + (s.probabilityPct / totalProb) * s.exitUsd, 0)
     );
   }
   const probWeightedMargin = probWeightedExit > 0 ? marginOf(probWeightedExit) : 0;
@@ -644,8 +639,9 @@ async function callClaudeForBrief(
       };
       const text =
         data.content
-          ?.filter((c): c is { type: string; text: string } =>
-            c.type === 'text' && typeof c.text === 'string'
+          ?.filter(
+            (c): c is { type: string; text: string } =>
+              c.type === 'text' && typeof c.text === 'string'
           )
           .map((c) => c.text)
           .join('\n')
@@ -708,10 +704,14 @@ export async function generateStrategyBrief(
   ];
 
   const closedPsfs = closedComps.map((c) => c.psf).sort((a, b) => a - b);
-  const medianPsf = closedPsfs.length > 0 ? closedPsfs[Math.floor(closedPsfs.length / 2)] ?? null : null;
+  const medianPsf =
+    closedPsfs.length > 0 ? (closedPsfs[Math.floor(closedPsfs.length / 2)] ?? null) : null;
   const rangePsf =
     closedPsfs.length > 0
-      ? { low: Math.round(closedPsfs[0] ?? 0), high: Math.round(closedPsfs[closedPsfs.length - 1] ?? 0) }
+      ? {
+          low: Math.round(closedPsfs[0] ?? 0),
+          high: Math.round(closedPsfs[closedPsfs.length - 1] ?? 0),
+        }
       : null;
 
   // 3. Brief-generation Claude call.
@@ -720,7 +720,15 @@ export async function generateStrategyBrief(
 
   if (!ok || !text) {
     return {
-      brief: buildFallbackBrief(facts, closingCosts, breakevens, compResearch.comps, medianPsf, rangePsf, compResearch.narrativeSummary),
+      brief: buildFallbackBrief(
+        facts,
+        closingCosts,
+        breakevens,
+        compResearch.comps,
+        medianPsf,
+        rangePsf,
+        compResearch.narrativeSummary
+      ),
       usedWebSearch: compResearch.usedWebSearch,
       compCount: compResearch.comps.length,
       dataGap: compResearch.dataGap,
@@ -733,7 +741,15 @@ export async function generateStrategyBrief(
     parsed = JSON.parse(extractJson(text)) as ParsedBriefBody;
   } catch (err) {
     return {
-      brief: buildFallbackBrief(facts, closingCosts, breakevens, compResearch.comps, medianPsf, rangePsf, compResearch.narrativeSummary),
+      brief: buildFallbackBrief(
+        facts,
+        closingCosts,
+        breakevens,
+        compResearch.comps,
+        medianPsf,
+        rangePsf,
+        compResearch.narrativeSummary
+      ),
       usedWebSearch: compResearch.usedWebSearch,
       compCount: compResearch.comps.length,
       dataGap: compResearch.dataGap,
@@ -811,7 +827,8 @@ function buildFallbackBrief(
       psfAtLaunch: launchPsf,
       expectedMarginPct: margin,
       probWeightedMarginPct: margin,
-      oneLineThesis: 'AI brief generation unavailable — placeholder recommendation based on cost-stack breakeven + comp median.',
+      oneLineThesis:
+        'AI brief generation unavailable — placeholder recommendation based on cost-stack breakeven + comp median.',
     },
     breakevenThresholds: breakevens,
     quickMath: [],
@@ -842,7 +859,10 @@ function buildFallbackBrief(
     whyThisNumber: { headline: '', whyNotHigher: [], whyNotLower: [] },
     finalRecommendation: {
       icFraming: 'Brief generation failed. Refresh once the AI service is available.',
-      nextSteps: ['Retry brief generation', 'Verify ANTHROPIC_API_KEY is configured in Cloudflare Pages env vars'],
+      nextSteps: [
+        'Retry brief generation',
+        'Verify ANTHROPIC_API_KEY is configured in Cloudflare Pages env vars',
+      ],
     },
   };
 }
@@ -863,7 +883,12 @@ export function stageToPhase(stage: string | null | undefined): ProjectPhase {
   if (s.includes('permit') || s.includes('precon') || s.includes('design')) {
     return 'precon';
   }
-  if (s.includes('sales') || s.includes('listed') || s.includes('marketing') || s.includes('sold')) {
+  if (
+    s.includes('sales') ||
+    s.includes('listed') ||
+    s.includes('marketing') ||
+    s.includes('sold')
+  ) {
     return 'sales';
   }
   // Default: construction (covers 'construction', 'building', 'completion', etc.)

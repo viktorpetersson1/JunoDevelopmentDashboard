@@ -12,11 +12,7 @@
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { ProjectInput } from '@/lib/calc/project/types';
-import type {
-  WaterfrontType,
-  ViewPremium,
-  TownProximity,
-} from '@/lib/pricing/location-factors';
+import type { WaterfrontType, ViewPremium, TownProximity } from '@/lib/pricing/location-factors';
 import { projectRowToInput, type ProjectRow } from './project-row-to-input';
 
 const SELECT_COLUMNS = [
@@ -167,9 +163,7 @@ export async function findCurrentProjectByKey(projectKey: string): Promise<Proje
  * reference projects by uuid, but pages route by project_key — this is
  * the boundary translator.
  */
-export async function findCurrentProjectUuidByKey(
-  projectKey: string
-): Promise<string | null> {
+export async function findCurrentProjectUuidByKey(projectKey: string): Promise<string | null> {
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .schema('atlas')
@@ -180,7 +174,7 @@ export async function findCurrentProjectUuidByKey(
     .eq('is_archived', false)
     .maybeSingle();
   if (error) throw new Error(`findCurrentProjectUuidByKey: ${error.message}`);
-  return ((data as { id: string } | null)?.id) ?? null;
+  return (data as { id: string } | null)?.id ?? null;
 }
 
 export interface ProjectLocationFactorsPatch {

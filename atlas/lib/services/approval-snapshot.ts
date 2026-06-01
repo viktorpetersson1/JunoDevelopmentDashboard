@@ -140,10 +140,7 @@ export async function createDraftSnapshot(
  *
  * Refuses to touch a locked snapshot.
  */
-export async function refreshDraft(
-  snapshotId: string,
-  user: User
-): Promise<ApprovalSnapshotView> {
+export async function refreshDraft(snapshotId: string, user: User): Promise<ApprovalSnapshotView> {
   const existing = await findSnapshotById(snapshotId);
   if (!existing) throw new SnapshotValidationError(`Snapshot ${snapshotId} not found`);
   if (existing.lockedAt) {
@@ -186,10 +183,7 @@ export async function refreshDraft(
  *
  * Caller (the API route) is responsible for the super_admin role gate.
  */
-export async function lockSnapshot(
-  snapshotId: string,
-  user: User
-): Promise<ApprovalSnapshotView> {
+export async function lockSnapshot(snapshotId: string, user: User): Promise<ApprovalSnapshotView> {
   const existing = await findSnapshotById(snapshotId);
   if (!existing) throw new SnapshotValidationError(`Snapshot ${snapshotId} not found`);
   if (existing.lockedAt) {
@@ -237,9 +231,9 @@ export async function approveSnapshot(
   await appendApproverRaw(snapshotId, user.id);
 
   await emitAudit(user.id, 'snapshot.approve', snapshotId, {
-    approverCount: (existing.approvedBy.includes(user.id)
+    approverCount: existing.approvedBy.includes(user.id)
       ? existing.approvedBy.length
-      : existing.approvedBy.length + 1),
+      : existing.approvedBy.length + 1,
   });
 
   const updated = await findSnapshotById(snapshotId);
@@ -251,10 +245,7 @@ export async function approveSnapshot(
 // archiveSnapshot
 // ────────────────────────────────────────────────────────────────────────────
 
-export async function archiveSnapshot(
-  snapshotId: string,
-  user: User
-): Promise<void> {
+export async function archiveSnapshot(snapshotId: string, user: User): Promise<void> {
   const existing = await findSnapshotById(snapshotId);
   if (!existing) throw new SnapshotValidationError(`Snapshot ${snapshotId} not found`);
   if (existing.archivedAt) return; // idempotent

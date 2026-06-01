@@ -69,7 +69,7 @@ describe('buildPortfolioRiskReport honors thresholds', () => {
         cap_breach_months: 0,
         true_equity_total_drawn: 0,
       },
-    } as unknown as PortfolioResult);
+    }) as unknown as PortfolioResult;
 
   const proj = (id: string, ltcPct: number): ProjectInput =>
     ({
@@ -77,7 +77,7 @@ describe('buildPortfolioRiskReport honors thresholds', () => {
       name: `Project ${id}`,
       status: 'planning',
       ltc_pct: ltcPct,
-    } as unknown as ProjectInput);
+    }) as unknown as ProjectInput;
 
   const emptyResult = (): ProjectResult =>
     ({
@@ -87,7 +87,7 @@ describe('buildPortfolioRiskReport honors thresholds', () => {
         total_dev_cost: 0,
         total_interest: 0,
       },
-    } as unknown as ProjectResult);
+    }) as unknown as ProjectResult;
 
   function inputFor(safeLtc: number, ltcPct: number): RiskEngineInput {
     return {

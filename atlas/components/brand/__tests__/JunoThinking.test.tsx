@@ -24,9 +24,7 @@ describe('JunoThinking', () => {
   });
 
   it('hides label visually when visuallyHiddenLabel is true', () => {
-    const { container } = render(
-      <JunoThinking label="Loading projects" visuallyHiddenLabel />
-    );
+    const { container } = render(<JunoThinking label="Loading projects" visuallyHiddenLabel />);
     // Visible label span is absent; visually-hidden span is present
     const visibleSpans = Array.from(container.querySelectorAll('span'));
     const hasInlineHidden = visibleSpans.some(

@@ -64,9 +64,7 @@ export function TornadoChart({ drivers }: { drivers: SensitivityDriver[] }) {
   }));
 
   // Symmetric x-axis around 0 — find the biggest absolute delta.
-  const maxAbs = Math.max(
-    ...drivers.flatMap((d) => [Math.abs(d.lowDelta), Math.abs(d.highDelta)])
-  );
+  const maxAbs = Math.max(...drivers.flatMap((d) => [Math.abs(d.lowDelta), Math.abs(d.highDelta)]));
   const padded = maxAbs * 1.1 || 1;
 
   // Height: 50px per row + 30px chrome. Keeps readable for 1-8 drivers.
@@ -97,9 +95,7 @@ export function TornadoChart({ drivers }: { drivers: SensitivityDriver[] }) {
             width={110}
           />
           <Tooltip
-            formatter={(v: number | string) =>
-              typeof v === 'number' ? compact(v) : String(v)
-            }
+            formatter={(v: number | string) => (typeof v === 'number' ? compact(v) : String(v))}
             labelStyle={{ color: 'var(--color-text-primary)', fontSize: 12 }}
             contentStyle={{
               background: 'var(--color-surface-base)',
@@ -115,7 +111,9 @@ export function TornadoChart({ drivers }: { drivers: SensitivityDriver[] }) {
             {data.map((r, i) => (
               <Cell
                 key={`low-${i}`}
-                fill={r.low < 0 ? 'var(--color-negative, #dc2626)' : 'var(--color-positive, #15803d)'}
+                fill={
+                  r.low < 0 ? 'var(--color-negative, #dc2626)' : 'var(--color-positive, #15803d)'
+                }
               />
             ))}
           </Bar>
@@ -123,7 +121,9 @@ export function TornadoChart({ drivers }: { drivers: SensitivityDriver[] }) {
             {data.map((r, i) => (
               <Cell
                 key={`high-${i}`}
-                fill={r.high < 0 ? 'var(--color-negative, #dc2626)' : 'var(--color-positive, #15803d)'}
+                fill={
+                  r.high < 0 ? 'var(--color-negative, #dc2626)' : 'var(--color-positive, #15803d)'
+                }
               />
             ))}
           </Bar>

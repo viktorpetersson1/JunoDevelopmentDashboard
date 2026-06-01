@@ -67,9 +67,7 @@ export function CapTableTab({
   );
 
   function updatePct(ownerId: string, value: string) {
-    setDraft((prev) =>
-      prev.map((r) => (r.ownerId === ownerId ? { ...r, pct: value } : r))
-    );
+    setDraft((prev) => prev.map((r) => (r.ownerId === ownerId ? { ...r, pct: value } : r)));
     setServerError(null);
     setSavedAt(null);
   }
@@ -112,8 +110,7 @@ export function CapTableTab({
         }}
       >
         <p style={{ margin: 0, color: 'var(--color-text-secondary)', fontSize: 13 }}>
-          No cap-table entries yet. Seed via SQL or wait for the owner
-          onboarding wizard.
+          No cap-table entries yet. Seed via SQL or wait for the owner onboarding wizard.
         </p>
       </section>
     );
@@ -259,12 +256,7 @@ export function CapTableTab({
           </span>
         )}
         {isAdmin && (
-          <Button
-            type="submit"
-            variant="primary"
-            disabled={!sumOk || !isDirty}
-            loading={isPending}
-          >
+          <Button type="submit" variant="primary" disabled={!sumOk || !isDirty} loading={isPending}>
             Save shares
           </Button>
         )}

@@ -3,6 +3,7 @@
 ## What changed
 
 ### New files
+
 - `atlas/tests/e2e/smoke.spec.ts` — 4 specs that need no auth:
   - `/api/health` returns the standard envelope
   - `/` redirects unauthenticated → `/sign-in?redirectTo=/`

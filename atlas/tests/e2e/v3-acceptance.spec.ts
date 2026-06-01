@@ -24,7 +24,9 @@ const SIGNIN = '/sign-in';
 const SIGNUP = '/sign-up';
 
 test.describe('V3 §3 — sign-in layout + interaction', () => {
-  test('item 1: Sign in button height >= 48px AND inputs >= 44px (WCAG 2.5.5)', async ({ page }) => {
+  test('item 1: Sign in button height >= 48px AND inputs >= 44px (WCAG 2.5.5)', async ({
+    page,
+  }) => {
     await page.goto(SIGNIN);
 
     const signInBtn = page.getByRole('button', { name: /^Sign in$/i });
@@ -40,12 +42,16 @@ test.describe('V3 §3 — sign-in layout + interaction', () => {
         return (wrap ?? (el as HTMLElement)).offsetHeight;
       });
       expect(wrapHeight, `${label} input height`).toBeGreaterThanOrEqual(44);
-      const fontPx = await input.evaluate((el) => parseFloat(getComputedStyle(el as HTMLElement).fontSize));
+      const fontPx = await input.evaluate((el) =>
+        parseFloat(getComputedStyle(el as HTMLElement).fontSize)
+      );
       expect(fontPx, `${label} font-size (iOS no-zoom)`).toBeGreaterThanOrEqual(16);
     }
   });
 
-  test('item 2: Eye toggle visible, has aria-label, aria-pressed flips with state', async ({ page }) => {
+  test('item 2: Eye toggle visible, has aria-label, aria-pressed flips with state', async ({
+    page,
+  }) => {
     await page.goto(SIGNIN);
     // Initial: password is hidden → aria-label says "Show password"
     const toggle = page.getByRole('button', { name: /show password/i });
@@ -68,7 +74,9 @@ test.describe('V3 §3 — sign-in layout + interaction', () => {
     // assert our custom .ja-field__error element appears instead.
     await page.getByRole('button', { name: /^Sign in$/i }).click();
     await expect(page.locator('.ja-field__error', { hasText: /email is required/i })).toBeVisible();
-    await expect(page.locator('.ja-field__error', { hasText: /password is required/i })).toBeVisible();
+    await expect(
+      page.locator('.ja-field__error', { hasText: /password is required/i })
+    ).toBeVisible();
     // Custom error labels are wired to aria-describedby — confirming the
     // accessibility link, not just the visual.
     const emailInput = page.getByLabel('Email');
@@ -142,7 +150,9 @@ test.describe('V3 §3 — /sign-up + forgot-password flow', () => {
     await expect(page.getByRole('link', { name: /back to sign in/i })).toBeVisible();
   });
 
-  test('item 9: forgot fake@fake.com shows enumeration-safe copy + locks form', async ({ page }) => {
+  test('item 9: forgot fake@fake.com shows enumeration-safe copy + locks form', async ({
+    page,
+  }) => {
     await page.goto(SIGNIN);
     await page.getByRole('button', { name: /forgot password\?/i }).click();
     await page.getByLabel('Email').fill('fake@fake.test');
@@ -156,7 +166,9 @@ test.describe('V3 §3 — /sign-up + forgot-password flow', () => {
     await expect(page.getByRole('button', { name: /send reset link/i })).toBeDisabled();
   });
 
-  test('item 4 (partial): Sign In button switches to "Signing in…" while submitting', async ({ page }) => {
+  test('item 4 (partial): Sign In button switches to "Signing in…" while submitting', async ({
+    page,
+  }) => {
     await page.goto(SIGNIN);
     // Fire a submit with placeholder Supabase env (auth call will fail).
     // We only assert the button label flips before the response lands.

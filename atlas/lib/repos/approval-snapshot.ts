@@ -52,11 +52,7 @@ interface SnapshotRow {
 }
 
 function toView(row: SnapshotRow): ApprovalSnapshotView {
-  const status: SnapshotStatus = row.archived_at
-    ? 'archived'
-    : row.locked_at
-      ? 'locked'
-      : 'draft';
+  const status: SnapshotStatus = row.archived_at ? 'archived' : row.locked_at ? 'locked' : 'draft';
   return {
     id: row.id,
     projectId: row.project_id,
@@ -102,9 +98,7 @@ export async function findSnapshotsByProject(
 }
 
 /** Fetch the most recent non-archived snapshot for a project (any status). */
-export async function findLatestSnapshot(
-  projectId: string
-): Promise<ApprovalSnapshotView | null> {
+export async function findLatestSnapshot(projectId: string): Promise<ApprovalSnapshotView | null> {
   const list = await findSnapshotsByProject(projectId, { limit: 1 });
   return list[0] ?? null;
 }
@@ -129,9 +123,7 @@ export async function findLatestLockedSnapshot(
 }
 
 /** Fetch one snapshot by uuid. */
-export async function findSnapshotById(
-  snapshotId: string
-): Promise<ApprovalSnapshotView | null> {
+export async function findSnapshotById(snapshotId: string): Promise<ApprovalSnapshotView | null> {
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .schema('atlas')
@@ -178,10 +170,7 @@ export async function insertSnapshot(row: InsertSnapshotRow): Promise<string> {
  * approved_by atomically. Trigger atlas.enforce_snapshot_immutability
  * permits this exact mutation while disallowing later content changes.
  */
-export async function lockSnapshotRaw(
-  snapshotId: string,
-  lockerId: string
-): Promise<void> {
+export async function lockSnapshotRaw(snapshotId: string, lockerId: string): Promise<void> {
   const supabase = createSupabaseServerClient();
   const now = new Date().toISOString();
   const { error } = await supabase
@@ -203,10 +192,7 @@ export async function lockSnapshotRaw(
  * RPC because Supabase JS doesn't expose array-mutation operators directly.
  * Trigger enforces append-only (no removal, no reorder).
  */
-export async function appendApproverRaw(
-  snapshotId: string,
-  approverId: string
-): Promise<void> {
+export async function appendApproverRaw(snapshotId: string, approverId: string): Promise<void> {
   const supabase = createSupabaseServerClient();
   // Read current approved_by, append if not present, write back. Race-safe
   // enough for the human-paced approval workflow; if two admins approve

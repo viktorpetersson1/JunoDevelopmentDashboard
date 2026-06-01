@@ -17,10 +17,7 @@ import { requireAuth } from '@/lib/auth/requireAuth';
 import { requireEditor } from '@/lib/auth/requireRole';
 import { findCurrentProjectUuidByKey } from '@/lib/repos/project';
 import { findSnapshotsByProject } from '@/lib/repos/approval-snapshot';
-import {
-  createDraftSnapshot,
-  SnapshotValidationError,
-} from '@/lib/services/approval-snapshot';
+import { createDraftSnapshot, SnapshotValidationError } from '@/lib/services/approval-snapshot';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;

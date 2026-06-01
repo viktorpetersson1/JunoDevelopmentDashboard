@@ -87,24 +87,48 @@ function SourcesUsesCard({ result }: { result: ProjectResult }) {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
         <div>
-          <h3 style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-tertiary)', margin: 0, marginBottom: 8 }}>
+          <h3
+            style={{
+              fontSize: 11,
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              color: 'var(--color-text-tertiary)',
+              margin: 0,
+              marginBottom: 8,
+            }}
+          >
             Sources
           </h3>
           <KV label="Senior debt (peak)" value={formatMoney(k.peak_debt * 100, { precision: 0 })} />
-          <KV label="Equity / LOC (peak)" value={formatMoney(k.peak_equity * 100, { precision: 0 })} />
-          <KV label="Gross sale proceeds" value={formatMoney(k.total_sales * 100, { precision: 0 })} bold />
+          <KV
+            label="Equity / LOC (peak)"
+            value={formatMoney(k.peak_equity * 100, { precision: 0 })}
+          />
+          <KV
+            label="Gross sale proceeds"
+            value={formatMoney(k.total_sales * 100, { precision: 0 })}
+            bold
+          />
         </div>
         <div>
-          <h3 style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-tertiary)', margin: 0, marginBottom: 8 }}>
+          <h3
+            style={{
+              fontSize: 11,
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              color: 'var(--color-text-tertiary)',
+              margin: 0,
+              marginBottom: 8,
+            }}
+          >
             Uses
           </h3>
           <KV label="Dev cost" value={formatMoney(k.total_dev_cost * 100, { precision: 0 })} />
-          <KV label="Financing cost" value={formatMoney(k.total_interest * 100, { precision: 0 })} />
           <KV
-            label="Net profit"
-            value={formatMoney(k.gross_profit * 100, { precision: 0 })}
-            bold
+            label="Financing cost"
+            value={formatMoney(k.total_interest * 100, { precision: 0 })}
           />
+          <KV label="Net profit" value={formatMoney(k.gross_profit * 100, { precision: 0 })} bold />
         </div>
       </div>
     </section>

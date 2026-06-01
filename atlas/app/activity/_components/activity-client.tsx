@@ -55,10 +55,19 @@ export function ActivityClient({
   const groups = useMemo(() => groupByDay(filtered), [filtered]);
 
   function exportCsv() {
-    const header = ['timestamp', 'user', 'category', 'action', 'resource_id', 'method', 'status', 'route'];
+    const header = [
+      'timestamp',
+      'user',
+      'category',
+      'action',
+      'resource_id',
+      'method',
+      'status',
+      'route',
+    ];
     const rows = filtered.map((e) => [
       e.createdAt,
-      e.userId ? userDisplayNames[e.userId] ?? e.userId : '(anonymous)',
+      e.userId ? (userDisplayNames[e.userId] ?? e.userId) : '(anonymous)',
       e.category,
       e.action,
       e.resourceId ?? '',
@@ -66,9 +75,7 @@ export function ActivityClient({
       String(e.statusCode),
       e.route,
     ]);
-    const csv = [header, ...rows]
-      .map((r) => r.map(csvCell).join(','))
-      .join('\n');
+    const csv = [header, ...rows].map((r) => r.map(csvCell).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -82,9 +89,19 @@ export function ActivityClient({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+      <header
+        style={{
+          display: 'flex',
+          alignItems: 'flex-end',
+          justifyContent: 'space-between',
+          gap: 12,
+          flexWrap: 'wrap',
+        }}
+      >
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}>
+          <h1
+            style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}
+          >
             Activity
           </h1>
           <p style={{ margin: '4px 0 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
@@ -145,17 +162,46 @@ export function ActivityClient({
 
       {/* Empty / grouped feed */}
       {filtered.length === 0 ? (
-        <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-tertiary)', padding: 24, textAlign: 'center', background: 'var(--color-surface-raised)', borderRadius: 12, border: '1px solid var(--color-border-hairline)' }}>
+        <p
+          style={{
+            margin: 0,
+            fontSize: 13,
+            color: 'var(--color-text-tertiary)',
+            padding: 24,
+            textAlign: 'center',
+            background: 'var(--color-surface-raised)',
+            borderRadius: 12,
+            border: '1px solid var(--color-border-hairline)',
+          }}
+        >
           No audit entries match the current filters.
         </p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {groups.map((g) => (
             <section key={g.label}>
-              <h2 style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-text-tertiary)', margin: '0 0 8px 0' }}>
+              <h2
+                style={{
+                  fontSize: 11,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                  color: 'var(--color-text-tertiary)',
+                  margin: '0 0 8px 0',
+                }}
+              >
                 {g.label}
               </h2>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0, background: 'var(--color-surface-raised)', border: '1px solid var(--color-border-hairline)', borderRadius: 12, overflow: 'hidden' }}>
+              <ul
+                style={{
+                  listStyle: 'none',
+                  padding: 0,
+                  margin: 0,
+                  background: 'var(--color-surface-raised)',
+                  border: '1px solid var(--color-border-hairline)',
+                  borderRadius: 12,
+                  overflow: 'hidden',
+                }}
+              >
                 {g.entries.map((e) => (
                   <li
                     key={e.id}
@@ -169,7 +215,12 @@ export function ActivityClient({
                       fontSize: 12,
                     }}
                   >
-                    <span style={{ color: 'var(--color-text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
+                    <span
+                      style={{
+                        color: 'var(--color-text-tertiary)',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}
+                    >
                       {e.createdAt.slice(11, 19)}
                     </span>
                     <CategoryBadge category={e.category} />
@@ -186,7 +237,7 @@ export function ActivityClient({
                       </span>
                     </span>
                     <span style={{ color: 'var(--color-text-tertiary)' }}>
-                      {e.userId ? userDisplayNames[e.userId] ?? e.userId.slice(0, 8) : '—'}
+                      {e.userId ? (userDisplayNames[e.userId] ?? e.userId.slice(0, 8)) : '—'}
                     </span>
                   </li>
                 ))}

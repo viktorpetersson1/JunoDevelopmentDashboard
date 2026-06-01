@@ -62,8 +62,8 @@ export default async function CashflowPage() {
               color: 'var(--color-text-secondary)',
             }}
           >
-            Aggregated across {k.active_project_count} active projects ·{' '}
-            base scenario · {portfolio.monthly.dates.length}-month horizon
+            Aggregated across {k.active_project_count} active projects · base scenario ·{' '}
+            {portfolio.monthly.dates.length}-month horizon
           </p>
         </header>
 

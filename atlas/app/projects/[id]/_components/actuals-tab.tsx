@@ -33,8 +33,7 @@ const CATEGORY_LABELS: Record<ActualsCategory, string> = {
  */
 function planByCategory(result: ProjectResult): Record<ActualsCategory, number> {
   const m = result.monthly;
-  const sumAbs = (arr: number[]): number =>
-    arr.reduce((s, v) => s + (v < 0 ? -v : v), 0);
+  const sumAbs = (arr: number[]): number => arr.reduce((s, v) => s + (v < 0 ? -v : v), 0);
   return {
     land: sumAbs(m.land_cost),
     build: sumAbs(m.build_cost),
@@ -81,7 +80,9 @@ export function ActualsTab({
         />
         <KPITile
           label="Variance"
-          value={totalCents === 0 ? '—' : formatMoney(varianceCents, { compact: true, precision: 2 })}
+          value={
+            totalCents === 0 ? '—' : formatMoney(varianceCents, { compact: true, precision: 2 })
+          }
           hint={totalCents === 0 ? 'no actuals yet' : `${(variancePct * 100).toFixed(1)}% vs plan`}
         />
         <KPITile
@@ -166,9 +167,7 @@ export function ActualsTab({
                       textAlign: 'right',
                       fontVariantNumeric: 'tabular-nums',
                       color:
-                        planCents > 0
-                          ? 'var(--color-text-primary)'
-                          : 'var(--color-text-tertiary)',
+                        planCents > 0 ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)',
                       borderBottom: '1px solid var(--color-border-subtle)',
                     }}
                   >

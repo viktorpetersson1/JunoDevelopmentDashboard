@@ -18,12 +18,7 @@
 import { buildTimeline, parseYM } from '@/lib/utils/dates';
 import { runProject } from '../project/runProject';
 import { annualizedIRR, monthlyIRR, equityCashFlowFromCalls } from '../project/irr';
-import type {
-  Globals,
-  ProjectInput,
-  ProjectResult,
-  Scenario,
-} from '../project/types';
+import type { Globals, ProjectInput, ProjectResult, Scenario } from '../project/types';
 import type {
   PortfolioAnnualEntry,
   PortfolioKpis,
@@ -123,9 +118,7 @@ export function aggregatePortfolio(
   const excluded = new Set(scenario.excluded_project_ids ?? []);
   const includeClosed = globals.include_sold_projects ?? false;
 
-  const active = projects.filter(
-    (p) => !excluded.has(p.id) && (includeClosed || !isClosed(p))
-  );
+  const active = projects.filter((p) => !excluded.has(p.id) && (includeClosed || !isClosed(p)));
   const projectResults: ProjectResult[] = active.map((p) => runProject(p, globals, scenario));
 
   const N = globals.horizon_months;
@@ -244,10 +237,7 @@ export function aggregatePortfolio(
   port.loc_peak_drawn_pct = locCap > 0 ? port.loc_peak_balance / locCap : 0;
   port.loc_total_interest = sumArr(port.loc_interest);
   port.true_equity_total_drawn = sumArr(port.true_equity_drawn);
-  port.cap_breach_months = port.cap_breach.reduce<number>(
-    (acc, b) => acc + (b ? 1 : 0),
-    0
-  );
+  port.cap_breach_months = port.cap_breach.reduce<number>((acc, b) => acc + (b ? 1 : 0), 0);
   port.kpc_loc_config = {
     facility_size_usd: locCap,
     interest_rate_apr: locConfig.interest_rate_apr ?? 0,
@@ -332,7 +322,7 @@ export function aggregatePortfolio(
     peakEquityOutstandingIdx >= 0 ? port.equity_balance![peakEquityOutstandingIdx]! : 0;
   const maxDebtIdx = argmax(port.debt_balance!);
   const totalEquityCalled = sumArr(port.equity_called);
-  const finalCash = N > 0 ? port.closing_cash[N - 1] ?? 0 : 0;
+  const finalCash = N > 0 ? (port.closing_cash[N - 1] ?? 0) : 0;
   const totalEquityReturned = Math.max(0, finalCash);
   const totalEquityIn = sumArr(port.equity_drawn!);
   const totalEquityOut = sumArr(port.equity_returned!);
@@ -376,12 +366,13 @@ export function aggregatePortfolio(
 
   const kpis: PortfolioKpis = {
     peak_equity_required: peakEquityCommitted,
-    peak_equity_month: peakEquityCommittedIdx >= 0 ? timeline[peakEquityCommittedIdx] ?? null : null,
+    peak_equity_month:
+      peakEquityCommittedIdx >= 0 ? (timeline[peakEquityCommittedIdx] ?? null) : null,
     peak_equity_outstanding: peakEquityOutstanding,
     peak_equity_outstanding_month:
-      peakEquityOutstandingIdx >= 0 ? timeline[peakEquityOutstandingIdx] ?? null : null,
-    max_debt_outstanding: maxDebtIdx >= 0 ? port.debt_balance![maxDebtIdx] ?? 0 : 0,
-    max_debt_month: maxDebtIdx >= 0 ? timeline[maxDebtIdx] ?? null : null,
+      peakEquityOutstandingIdx >= 0 ? (timeline[peakEquityOutstandingIdx] ?? null) : null,
+    max_debt_outstanding: maxDebtIdx >= 0 ? (port.debt_balance![maxDebtIdx] ?? 0) : 0,
+    max_debt_month: maxDebtIdx >= 0 ? (timeline[maxDebtIdx] ?? null) : null,
     total_sales: sumArr(port.sales!),
     total_dev_cost: totalDevCost,
     total_interest: totalInterest,

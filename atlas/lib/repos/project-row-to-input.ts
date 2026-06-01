@@ -130,8 +130,7 @@ export function projectRowToInput(row: ProjectRow): ProjectInput {
     // Location factors (D-025b) — coerce text columns to the typed unions;
     // lot_size_acres is numeric (supabase-js may return it as a string).
     waterfront_type: coerceWaterfrontType(row.waterfront_type),
-    lot_size_acres:
-      row.lot_size_acres == null ? null : Number(row.lot_size_acres),
+    lot_size_acres: row.lot_size_acres == null ? null : Number(row.lot_size_acres),
     year_built: row.year_built ?? null,
     view_premium: coerceViewPremium(row.view_premium),
     town_proximity: coerceTownProximity(row.town_proximity),

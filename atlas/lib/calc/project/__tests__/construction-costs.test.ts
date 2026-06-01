@@ -73,7 +73,7 @@ describe('applyConstructionCosts', () => {
     const out = blankSeries(36);
     const scaledGlobals = { ...globals, build_cost_realization_pct: 0.5 };
     applyConstructionCosts(out, proj(), eff, 0, 12, scaledGlobals);
-    const expected = -1_880_000 / 12 * 0.5;
+    const expected = (-1_880_000 / 12) * 0.5;
     expect(out.build_cost[0]).toBeCloseTo(expected, 6);
   });
 

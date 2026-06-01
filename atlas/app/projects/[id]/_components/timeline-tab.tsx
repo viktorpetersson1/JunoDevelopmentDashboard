@@ -27,15 +27,14 @@ const PHASE_COLORS: Record<string, string> = {
   sales: 'var(--color-positive)',
 };
 
-export function TimelineTab({
-  project,
-  result,
-}: {
-  project: ProjectInput;
-  result: ProjectResult;
-}) {
+export function TimelineTab({ project, result }: { project: ProjectInput; result: ProjectResult }) {
   const phases: PhaseSegment[] = [
-    { id: 'sourcing', label: 'Sourcing', months: project.sourcing_months ?? 0, color: PHASE_COLORS.sourcing! },
+    {
+      id: 'sourcing',
+      label: 'Sourcing',
+      months: project.sourcing_months ?? 0,
+      color: PHASE_COLORS.sourcing!,
+    },
     {
       id: 'permitting',
       label: 'Permitting',
@@ -126,7 +125,10 @@ export function TimelineTab({
                 justifyContent: 'center',
                 fontSize: 11,
                 fontWeight: 500,
-                color: p.id === 'construction' ? 'var(--color-text-on-lime)' : 'var(--color-text-inverse)',
+                color:
+                  p.id === 'construction'
+                    ? 'var(--color-text-on-lime)'
+                    : 'var(--color-text-inverse)',
               }}
             >
               {p.months >= 2 ? p.label : ''}

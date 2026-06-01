@@ -143,12 +143,14 @@ export default async function RiskPage({
     <DashboardShell activeHref="/risk" user={dashboardUser}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
         <header>
-          <h1 style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}>
+          <h1
+            style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}
+          >
             Stress test
           </h1>
           <p style={{ margin: '4px 0 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
-            Monte Carlo across all four scenario drivers — triangular distributions per INVENTORY §22.
-            Re-runs on every page load; seeded so the same trials reproduce.
+            Monte Carlo across all four scenario drivers — triangular distributions per INVENTORY
+            §22. Re-runs on every page load; seeded so the same trials reproduce.
           </p>
         </header>
 
@@ -174,13 +176,27 @@ export default async function RiskPage({
             label="P(loss)"
             value={`${(lossProb * 100).toFixed(1)}%`}
             tone={lossProb > 0.05 ? 'negative' : 'neutral'}
-            hint={lossProb === 0 ? 'no losing trials' : `${Math.round(lossProb * report.trials)} of ${report.trials} trials`}
+            hint={
+              lossProb === 0
+                ? 'no losing trials'
+                : `${Math.round(lossProb * report.trials)} of ${report.trials} trials`
+            }
           />
         </section>
 
         {/* Quick interpretation */}
         <Section title="Quick interpretation" subtitle="Plain-English summary of the simulation">
-          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--color-text-primary)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <ul
+            style={{
+              margin: 0,
+              paddingLeft: 18,
+              fontSize: 13,
+              color: 'var(--color-text-primary)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+            }}
+          >
             <li>
               Across {report.trials} trials, the median portfolio profit (pre-tax) lands at{' '}
               <strong>{formatMoney(median * 100, { compact: true, precision: 2 })}</strong>.
@@ -198,17 +214,26 @@ export default async function RiskPage({
                 : `${(lossProb * 100).toFixed(1)}% of trials produce a loss — the model is exposed to the configured downside envelope.`}
             </li>
             <li style={{ color: 'var(--color-text-tertiary)', fontSize: 12 }}>
-              Driver envelopes: sale ×[{DEFAULT_DISTRIBUTIONS.sale_price_multiplier.min}, {DEFAULT_DISTRIBUTIONS.sale_price_multiplier.max}],
-              build ×[{DEFAULT_DISTRIBUTIONS.build_cost_multiplier.min}, {DEFAULT_DISTRIBUTIONS.build_cost_multiplier.max}],
-              rate ±{Math.max(Math.abs(DEFAULT_DISTRIBUTIONS.interest_rate_delta_bps.min), Math.abs(DEFAULT_DISTRIBUTIONS.interest_rate_delta_bps.max))}bps,
-              timing {DEFAULT_DISTRIBUTIONS.timing_shift_months.min}—{DEFAULT_DISTRIBUTIONS.timing_shift_months.max} mo.
-              Triangular distribution with mode at base.
+              Driver envelopes: sale ×[{DEFAULT_DISTRIBUTIONS.sale_price_multiplier.min},{' '}
+              {DEFAULT_DISTRIBUTIONS.sale_price_multiplier.max}], build ×[
+              {DEFAULT_DISTRIBUTIONS.build_cost_multiplier.min},{' '}
+              {DEFAULT_DISTRIBUTIONS.build_cost_multiplier.max}], rate ±
+              {Math.max(
+                Math.abs(DEFAULT_DISTRIBUTIONS.interest_rate_delta_bps.min),
+                Math.abs(DEFAULT_DISTRIBUTIONS.interest_rate_delta_bps.max)
+              )}
+              bps, timing {DEFAULT_DISTRIBUTIONS.timing_shift_months.min}—
+              {DEFAULT_DISTRIBUTIONS.timing_shift_months.max} mo. Triangular distribution with mode
+              at base.
             </li>
           </ul>
         </Section>
 
         {/* Percentiles */}
-        <Section title="Outcome percentiles" subtitle="9 percentiles + mean + P(loss) per simulated outcome">
+        <Section
+          title="Outcome percentiles"
+          subtitle="9 percentiles + mean + P(loss) per simulated outcome"
+        >
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
@@ -227,7 +252,10 @@ export default async function RiskPage({
               </thead>
               <tbody>
                 {report.percentiles.map((r) => (
-                  <tr key={r.outcome} style={{ borderBottom: '1px solid var(--color-border-hairline)' }}>
+                  <tr
+                    key={r.outcome}
+                    style={{ borderBottom: '1px solid var(--color-border-hairline)' }}
+                  >
                     <td style={td()}>{r.label}</td>
                     <td style={td('right')}>{fmt(r.outcome, r.min)}</td>
                     <td style={td('right')}>{fmt(r.outcome, r.p10)}</td>
@@ -243,7 +271,10 @@ export default async function RiskPage({
                       r.outcome === 'irr_annual' ? (
                         <span
                           style={{
-                            color: r.p_loss > 0.05 ? 'var(--color-negative, #dc2626)' : 'var(--color-text-primary)',
+                            color:
+                              r.p_loss > 0.05
+                                ? 'var(--color-negative, #dc2626)'
+                                : 'var(--color-text-primary)',
                             fontWeight: r.p_loss > 0 ? 500 : 400,
                           }}
                         >
@@ -261,17 +292,23 @@ export default async function RiskPage({
         </Section>
 
         {/* Profit histogram */}
-        <Section title="Profit distribution" subtitle="Distribution of portfolio profit (pre-tax) across trials">
-          <DistributionChart
-            values={profitOutcomes}
-            valueLabel="Profit (pre-tax)"
-            negativeIsBad
-          />
+        <Section
+          title="Profit distribution"
+          subtitle="Distribution of portfolio profit (pre-tax) across trials"
+        >
+          <DistributionChart values={profitOutcomes} valueLabel="Profit (pre-tax)" negativeIsBad />
         </Section>
 
         {/* Peak equity histogram */}
-        <Section title="Peak equity distribution" subtitle="Where the equity-call peak lands across trials">
-          <DistributionChart values={equityOutcomes} valueLabel="Peak equity" negativeIsBad={false} />
+        <Section
+          title="Peak equity distribution"
+          subtitle="Where the equity-call peak lands across trials"
+        >
+          <DistributionChart
+            values={equityOutcomes}
+            valueLabel="Peak equity"
+            negativeIsBad={false}
+          />
         </Section>
 
         {/* V4.7b — editable driver envelopes. URL-driven via GET form
@@ -320,7 +357,9 @@ function Section({
       }}
     >
       <header style={{ marginBottom: 12 }}>
-        <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+        <h2
+          style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}
+        >
           {title}
         </h2>
         {subtitle && (
@@ -373,7 +412,8 @@ function KpiTile({
         style={{
           fontSize: 22,
           fontWeight: 600,
-          color: tone === 'negative' ? 'var(--color-negative, #dc2626)' : 'var(--color-text-primary)',
+          color:
+            tone === 'negative' ? 'var(--color-negative, #dc2626)' : 'var(--color-text-primary)',
           marginTop: 6,
           fontVariantNumeric: 'tabular-nums',
         }}
@@ -381,7 +421,9 @@ function KpiTile({
         {value}
       </div>
       {hint && (
-        <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', marginTop: 4 }}>{hint}</div>
+        <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', marginTop: 4 }}>
+          {hint}
+        </div>
       )}
     </div>
   );

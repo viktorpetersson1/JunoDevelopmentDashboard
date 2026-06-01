@@ -67,11 +67,7 @@ export function SettingsClient({
   }));
 
   return (
-    <TabbedPage
-      title="Settings"
-      subtitle="Profile, cap table, and owner accounts."
-      tabs={tabs}
-    >
+    <TabbedPage title="Settings" subtitle="Profile, cap table, and owner accounts." tabs={tabs}>
       {children}
     </TabbedPage>
   );

@@ -137,8 +137,20 @@ describe('applyRevenueSchedule', () => {
         sale_price_override_usd: 99_999_999,
         sale_price_per_sqft_override: 9999,
         plot_exits: [
-          { plot_type_key: 'sound_front', plot_type_label: 'Sound-front villa', count: 1, sqft_per_unit_ag: 4200, base_psf: 1900 },
-          { plot_type_key: 'inland', plot_type_label: 'Inland villa', count: 2, sqft_per_unit_ag: 3000, base_psf: 1100 },
+          {
+            plot_type_key: 'sound_front',
+            plot_type_label: 'Sound-front villa',
+            count: 1,
+            sqft_per_unit_ag: 4200,
+            base_psf: 1900,
+          },
+          {
+            plot_type_key: 'inland',
+            plot_type_label: 'Inland villa',
+            count: 2,
+            sqft_per_unit_ag: 3000,
+            base_psf: 1100,
+          },
         ],
       }),
       eff,
@@ -158,7 +170,13 @@ describe('applyRevenueSchedule', () => {
       out,
       proj({
         plot_exits: [
-          { plot_type_key: 'a', plot_type_label: 'A', count: 1, sqft_per_unit_ag: 4000, base_psf: 1500 },
+          {
+            plot_type_key: 'a',
+            plot_type_label: 'A',
+            count: 1,
+            sqft_per_unit_ag: 4000,
+            base_psf: 1500,
+          },
         ],
       }),
       { ...eff, sale_price_multiplier: 0.9 },

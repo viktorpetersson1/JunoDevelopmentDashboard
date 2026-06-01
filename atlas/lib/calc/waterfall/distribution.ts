@@ -59,8 +59,7 @@ export function distributionWaterfall(
       lastDist = i;
     }
   }
-  const holdMonths =
-    lastDist >= 0 && firstCall >= 0 ? Math.max(1, lastDist - firstCall) : 12;
+  const holdMonths = lastDist >= 0 && firstCall >= 0 ? Math.max(1, lastDist - firstCall) : 12;
   const holdYears = holdMonths / 12;
 
   const pref = investor.preferred_return_pct ?? 0;
@@ -74,10 +73,7 @@ export function distributionWaterfall(
   // (catch-up to GP), the GP has received `carry %` of the total pref +
   // catch-up combined. Closed-form: catch_up = pref × carry / (1 - carry).
   const gpCatchUp = carry < 1 ? prefThreshold * (carry / (1 - carry)) : 0;
-  const postCatchUpToHurdle = Math.max(
-    0,
-    hurdleThreshold - prefThreshold - gpCatchUp
-  );
+  const postCatchUpToHurdle = Math.max(0, hurdleThreshold - prefThreshold - gpCatchUp);
 
   let remaining = grossDistribution;
   const tier1 = Math.min(remaining, equityIn);

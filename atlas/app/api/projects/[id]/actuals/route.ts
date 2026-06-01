@@ -55,10 +55,7 @@ export const POST = withErrorBoundary(async (req: NextRequest, ctx: RouteContext
     );
   }
   if (parsed.data.projectId !== uuid) {
-    return badRequest(
-      'projectId in body must match the project in the URL',
-      'PROJECT_ID_MISMATCH'
-    );
+    return badRequest('projectId in body must match the project in the URL', 'PROJECT_ID_MISMATCH');
   }
 
   try {

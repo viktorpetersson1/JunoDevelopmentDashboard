@@ -30,8 +30,8 @@ export function OwnersTab({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)', margin: 0 }}>
-        Read-only. Invite-by-email + role edit ship in T071 follow-up
-        (needs Supabase Auth admin endpoint).
+        Read-only. Invite-by-email + role edit ship in T071 follow-up (needs Supabase Auth admin
+        endpoint).
       </p>
 
       <section

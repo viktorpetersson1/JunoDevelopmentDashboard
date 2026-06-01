@@ -14,8 +14,7 @@ const ROLE_LABELS: Record<UserProfile['role'], string> = {
 };
 
 const ROLE_BLURBS: Record<UserProfile['role'], string> = {
-  super_admin:
-    'Full access: edit projects, cap table, owners, and approve capital calls.',
+  super_admin: 'Full access: edit projects, cap table, owners, and approve capital calls.',
   editor: 'Edit projects + draft snapshots. Cannot approve calls or edit cap table.',
   viewer: 'Read-only portfolio + own capital-call history.',
   viewer_basic: 'Portfolio summary view only (KPIs without per-owner detail).',
@@ -31,8 +30,7 @@ export function ProfileTab({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)', margin: 0 }}>
-        Read-only. Edit affordance ships in T071 follow-up (avatar bucket + name
-        change flow).
+        Read-only. Edit affordance ships in T071 follow-up (avatar bucket + name change flow).
       </p>
 
       <section
@@ -107,15 +105,7 @@ export function ProfileTab({
   );
 }
 
-function KV({
-  label,
-  value,
-  mono = false,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-}) {
+function KV({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
   return (
     <div
       style={{

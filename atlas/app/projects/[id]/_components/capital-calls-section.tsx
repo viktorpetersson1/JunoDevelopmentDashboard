@@ -102,7 +102,16 @@ export function CapitalCallsSection({
             : 'No capital calls in your history for this project.'}
         </div>
       ) : (
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <ul
+          style={{
+            listStyle: 'none',
+            padding: 0,
+            margin: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+          }}
+        >
           {calls.map((c) => (
             <li key={c.id}>
               <CapitalCallCard call={c} isAdmin={isAdmin} />
@@ -139,9 +148,7 @@ function CapitalCallCard({ call, isAdmin }: { call: CapitalCallView; isAdmin: bo
     startTransition(async () => {
       const res = await fetch(`/api/capital-calls/${call.id}`, { method: 'DELETE' });
       if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as
-          | { error?: { message: string } }
-          | null;
+        const body = (await res.json().catch(() => null)) as { error?: { message: string } } | null;
         setError(body?.error?.message ?? `Cancel failed (HTTP ${res.status})`);
         return;
       }
@@ -182,9 +189,7 @@ function CapitalCallCard({ call, isAdmin }: { call: CapitalCallView; isAdmin: bo
             </code>
             <StatusPill status={call.status} />
             {call.isArchived && (
-              <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-                archived
-              </span>
+              <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>archived</span>
             )}
           </div>
           <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
@@ -209,7 +214,8 @@ function CapitalCallCard({ call, isAdmin }: { call: CapitalCallView; isAdmin: bo
               fontVariantNumeric: 'tabular-nums',
             }}
           >
-            {formatMoney(totalPaidCents, { compact: true, precision: 2 })} funded ({(pct * 100).toFixed(0)}%)
+            {formatMoney(totalPaidCents, { compact: true, precision: 2 })} funded (
+            {(pct * 100).toFixed(0)}%)
           </div>
         </div>
       </header>

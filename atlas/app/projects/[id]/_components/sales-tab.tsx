@@ -47,13 +47,7 @@ function inferPhase(project: ProjectInput): PhaseInfo {
 
 const PHASE_ORDER: LifecyclePhase[] = ['planning', 'listed', 'under_contract', 'closed'];
 
-export function SalesTab({
-  project,
-  result,
-}: {
-  project: ProjectInput;
-  result: ProjectResult;
-}) {
+export function SalesTab({ project, result }: { project: ProjectInput; result: ProjectResult }) {
   const k = result.kpis;
   const saleMonths: SaleMonth[] = [];
   for (let i = 0; i < result.monthly.dates.length; i++) {
@@ -68,9 +62,7 @@ export function SalesTab({
         <KPITile
           label="List value"
           value={formatMoney(k.total_sales * 100, { compact: true, precision: 2 })}
-          hint={
-            saleMonths.length > 1 ? `across ${saleMonths.length} villas` : 'single villa'
-          }
+          hint={saleMonths.length > 1 ? `across ${saleMonths.length} villas` : 'single villa'}
         />
         <KPITile
           label="Per sqft"
@@ -111,8 +103,10 @@ function LifecycleCard({
   plannedSaleUsd: number;
 }) {
   const plannedCents = toCents(plannedSaleUsd);
-  const listingCents = project.listing_price_usd != null ? toCents(project.listing_price_usd) : null;
-  const actualCents = project.actual_sale_price_usd != null ? toCents(project.actual_sale_price_usd) : null;
+  const listingCents =
+    project.listing_price_usd != null ? toCents(project.listing_price_usd) : null;
+  const actualCents =
+    project.actual_sale_price_usd != null ? toCents(project.actual_sale_price_usd) : null;
 
   const varianceVsPlanCents = actualCents != null ? actualCents - plannedCents : null;
   const varianceVsPlanPct =
@@ -182,12 +176,12 @@ function LifecycleCard({
             }
             date={
               p === 'planning'
-                ? project.purchase_date ?? null
+                ? (project.purchase_date ?? null)
                 : p === 'listed'
-                  ? project.listing_date ?? null
+                  ? (project.listing_date ?? null)
                   : p === 'under_contract'
-                    ? project.under_contract_date ?? null
-                    : project.closing_date ?? null
+                    ? (project.under_contract_date ?? null)
+                    : (project.closing_date ?? null)
             }
             active={p === phase.phase}
             done={PHASE_ORDER.indexOf(p) < PHASE_ORDER.indexOf(phase.phase)}
@@ -214,11 +208,7 @@ function LifecycleCard({
             highlight
           />
           {varianceVsPlanCents !== null && (
-            <VarianceRow
-              label="vs plan"
-              valueCents={varianceVsPlanCents}
-              pct={varianceVsPlanPct}
-            />
+            <VarianceRow label="vs plan" valueCents={varianceVsPlanCents} pct={varianceVsPlanPct} />
           )}
           {varianceVsListCents !== null && (
             <VarianceRow
@@ -244,11 +234,7 @@ function PhaseChip({
   active: boolean;
   done: boolean;
 }) {
-  const fg = active
-    ? '#fff'
-    : done
-      ? 'var(--color-text-secondary)'
-      : 'var(--color-text-tertiary)';
+  const fg = active ? '#fff' : done ? 'var(--color-text-secondary)' : 'var(--color-text-tertiary)';
   const bg = active
     ? 'var(--color-accent-base, #131313)'
     : done

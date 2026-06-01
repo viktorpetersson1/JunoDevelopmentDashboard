@@ -52,12 +52,14 @@ export default async function SensitivityPage() {
     <DashboardShell activeHref="/sensitivity" user={dashboardUser}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
         <header>
-          <h1 style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}>
+          <h1
+            style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}
+          >
             Sensitivity
           </h1>
           <p style={{ margin: '4px 0 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
-            How portfolio profit-before-tax moves when each input is perturbed one at a time.
-            Bars sorted by magnitude — biggest mover on top.
+            How portfolio profit-before-tax moves when each input is perturbed one at a time. Bars
+            sorted by magnitude — biggest mover on top.
           </p>
         </header>
 
@@ -78,7 +80,7 @@ export default async function SensitivityPage() {
             <KpiTile
               label="Biggest mover"
               value={biggestMover.label}
-              hint={`±${formatMoney(biggestMover.span * 100 / 2, { compact: true, precision: 2 })} swing`}
+              hint={`±${formatMoney((biggestMover.span * 100) / 2, { compact: true, precision: 2 })} swing`}
             />
           )}
           <KpiTile
@@ -98,7 +100,14 @@ export default async function SensitivityPage() {
           }}
         >
           <header style={{ marginBottom: 12 }}>
-            <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+            <h2
+              style={{
+                margin: 0,
+                fontSize: 14,
+                fontWeight: 600,
+                color: 'var(--color-text-primary)',
+              }}
+            >
               Profit swing per driver
             </h2>
             <p style={{ margin: '2px 0 0 0', fontSize: 12, color: 'var(--color-text-tertiary)' }}>
@@ -118,7 +127,14 @@ export default async function SensitivityPage() {
           }}
         >
           <header style={{ marginBottom: 12 }}>
-            <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+            <h2
+              style={{
+                margin: 0,
+                fontSize: 14,
+                fontWeight: 600,
+                color: 'var(--color-text-primary)',
+              }}
+            >
               Driver breakdown
             </h2>
             <p style={{ margin: '2px 0 0 0', fontSize: 12, color: 'var(--color-text-tertiary)' }}>
@@ -146,7 +162,10 @@ export default async function SensitivityPage() {
                   <td
                     style={{
                       ...td('right'),
-                      color: d.lowDelta < 0 ? 'var(--color-negative, #dc2626)' : 'var(--color-positive, #15803d)',
+                      color:
+                        d.lowDelta < 0
+                          ? 'var(--color-negative, #dc2626)'
+                          : 'var(--color-positive, #15803d)',
                     }}
                   >
                     {formatMoney(d.lowDelta * 100, { compact: true, precision: 2 })}
@@ -157,12 +176,17 @@ export default async function SensitivityPage() {
                   <td
                     style={{
                       ...td('right'),
-                      color: d.highDelta < 0 ? 'var(--color-negative, #dc2626)' : 'var(--color-positive, #15803d)',
+                      color:
+                        d.highDelta < 0
+                          ? 'var(--color-negative, #dc2626)'
+                          : 'var(--color-positive, #15803d)',
                     }}
                   >
                     {formatMoney(d.highDelta * 100, { compact: true, precision: 2 })}
                   </td>
-                  <td style={td('right')}>{formatMoney(d.span * 100, { compact: true, precision: 2 })}</td>
+                  <td style={td('right')}>
+                    {formatMoney(d.span * 100, { compact: true, precision: 2 })}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -179,12 +203,20 @@ export default async function SensitivityPage() {
           }}
         >
           <header style={{ marginBottom: 12 }}>
-            <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+            <h2
+              style={{
+                margin: 0,
+                fontSize: 14,
+                fontWeight: 600,
+                color: 'var(--color-text-primary)',
+              }}
+            >
               Two-driver heatmap
             </h2>
             <p style={{ margin: '2px 0 0 0', fontSize: 12, color: 'var(--color-text-tertiary)' }}>
-              Build cost × × sale price × — each cell is portfolio profit (pre-tax) at that combination.
-              Base case (×1.0, ×1.0) outlined. Color: red worst → green best across the grid.
+              Build cost × × sale price × — each cell is portfolio profit (pre-tax) at that
+              combination. Base case (×1.0, ×1.0) outlined. Color: red worst → green best across the
+              grid.
             </p>
           </header>
           <HeatmapGrid report={heatmap} />
@@ -227,7 +259,9 @@ function KpiTile({ label, value, hint }: { label: string; value: string; hint?: 
         {value}
       </div>
       {hint && (
-        <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', marginTop: 4 }}>{hint}</div>
+        <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', marginTop: 4 }}>
+          {hint}
+        </div>
       )}
     </div>
   );

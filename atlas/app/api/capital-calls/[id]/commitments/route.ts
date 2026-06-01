@@ -62,10 +62,7 @@ export const POST = withErrorBoundary(async (req: NextRequest, ctx: RouteContext
   const share = data as { id: string; capital_call_id: string; owner_id: string };
 
   if (share.capital_call_id !== ctx.params.id) {
-    return badRequest(
-      'Owner share does not belong to this capital call',
-      'SHARE_CALL_MISMATCH'
-    );
+    return badRequest('Owner share does not belong to this capital call', 'SHARE_CALL_MISMATCH');
   }
 
   // Authorisation:

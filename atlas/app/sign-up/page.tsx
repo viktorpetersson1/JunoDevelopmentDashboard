@@ -32,15 +32,20 @@ export default function SignUpPage() {
             </div>
             <h1 className="text-2xl font-semibold text-text-primary">Invite only</h1>
             <p className="mt-2 text-sm text-text-secondary">
-              Juno Atlas is currently available to Juno owners and admins only. To
-              request access, contact your Juno administrator.
+              Juno Atlas is currently available to Juno owners and admins only. To request access,
+              contact your Juno administrator.
             </p>
           </div>
 
           <Link
             href="/sign-in"
             className="ja-button ja-button--primary ja-button--auth"
-            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textDecoration: 'none',
+            }}
           >
             Back to sign in
           </Link>

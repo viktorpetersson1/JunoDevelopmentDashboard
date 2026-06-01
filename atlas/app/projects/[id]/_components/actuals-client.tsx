@@ -36,10 +36,7 @@ export function ActualsClient({
   isEditor: boolean;
 }) {
   const [addOpen, setAddOpen] = useState(false);
-  const flatEntries = useMemo(
-    () => byCategory.flatMap((g) => g.entries),
-    [byCategory]
-  );
+  const flatEntries = useMemo(() => byCategory.flatMap((g) => g.entries), [byCategory]);
 
   return (
     <section
@@ -78,7 +75,8 @@ export function ActualsClient({
               color: 'var(--color-text-tertiary)',
             }}
           >
-            {flatEntries.length} {flatEntries.length === 1 ? 'invoice / line item' : 'invoices / line items'}
+            {flatEntries.length}{' '}
+            {flatEntries.length === 1 ? 'invoice / line item' : 'invoices / line items'}
           </p>
         </div>
         {isEditor && projectUuid && (
@@ -154,11 +152,7 @@ function EntryRow({ entry }: { entry: ActualsEntryView }) {
       <Td>{entry.lineItem}</Td>
       <Td muted>{entry.vendor ?? '—'}</Td>
       <Td muted>
-        {entry.invoiceRef ? (
-          <code style={{ fontSize: 12 }}>{entry.invoiceRef}</code>
-        ) : (
-          '—'
-        )}
+        {entry.invoiceRef ? <code style={{ fontSize: 12 }}>{entry.invoiceRef}</code> : '—'}
       </Td>
       <td
         style={{
@@ -227,9 +221,7 @@ function AddEntryModal({
         }),
       });
       if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as
-          | { error?: { message: string } }
-          | null;
+        const body = (await res.json().catch(() => null)) as { error?: { message: string } } | null;
         setError(body?.error?.message ?? `Save failed (HTTP ${res.status})`);
         return;
       }

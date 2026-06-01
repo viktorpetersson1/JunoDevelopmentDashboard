@@ -19,10 +19,7 @@
  */
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import type {
-  ProjectPhase,
-  StrategyBrief,
-} from '@/lib/pricing/strategy-brief';
+import type { ProjectPhase, StrategyBrief } from '@/lib/pricing/strategy-brief';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Types
@@ -90,8 +87,7 @@ function toView(row: PricingBriefRow): PricingBriefView {
         : null,
     recommendedPsfUsd:
       row.recommended_psf_cents != null ? Math.round(row.recommended_psf_cents / 100) : null,
-    expectedMarginPct:
-      row.expected_margin_pct == null ? null : Number(row.expected_margin_pct),
+    expectedMarginPct: row.expected_margin_pct == null ? null : Number(row.expected_margin_pct),
     probWeightedMarginPct:
       row.prob_weighted_margin_pct == null ? null : Number(row.prob_weighted_margin_pct),
     oneLineThesis: row.one_line_thesis,
@@ -299,10 +295,7 @@ export async function insertBrief(input: InsertBriefInput): Promise<PricingBrief
  * brief (if any) and flips this one to status='applied'. Caller is
  * responsible for writing the PSF back to projects.sale_price_per_sqft_override_cents.
  */
-export async function markBriefApplied(
-  briefId: string,
-  userId: string
-): Promise<PricingBriefView> {
+export async function markBriefApplied(briefId: string, userId: string): Promise<PricingBriefView> {
   const supabase = createSupabaseServerClient();
 
   // Look up the brief to find its project_id.

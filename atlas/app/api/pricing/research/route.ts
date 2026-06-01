@@ -250,7 +250,16 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
   }
 
   const research: CompResearchOutput = await researchComps(
-    { address, subCutLabel, agSqft, lotSizeAcres, yearBuilt, waterfrontType, isNc, compWindowMonths },
+    {
+      address,
+      subCutLabel,
+      agSqft,
+      lotSizeAcres,
+      yearBuilt,
+      waterfrontType,
+      isNc,
+      compWindowMonths,
+    },
     apiKey
   );
 

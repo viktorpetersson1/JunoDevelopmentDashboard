@@ -27,9 +27,8 @@ export function StepTimeline({
           color: 'var(--color-text-tertiary)',
         }}
       >
-        Program durations in months — each phase flows into the next
-        sequentially. The total drives the cash-flow horizon for this
-        project.
+        Program durations in months — each phase flows into the next sequentially. The total drives
+        the cash-flow horizon for this project.
       </p>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>

@@ -39,7 +39,11 @@ const PatchSchema = z.object({
   default_kingshaus_cost_per_sqft: z.number().min(0).max(10000).nullable().optional(),
   target_margin: z.number().min(0).max(1).nullable().optional(),
   default_program_months: z.number().int().min(1).max(120).nullable().optional(),
-  model_start: z.string().regex(/^\d{4}-\d{2}$/).nullable().optional(),
+  model_start: z
+    .string()
+    .regex(/^\d{4}-\d{2}$/)
+    .nullable()
+    .optional(),
   horizon_months: z.number().int().min(1).max(240).nullable().optional(),
   capitalize_interest: z.boolean().nullable().optional(),
   financing_fees_per_project_usd: z.number().min(0).nullable().optional(),

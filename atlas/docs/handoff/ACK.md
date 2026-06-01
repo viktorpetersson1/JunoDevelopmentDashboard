@@ -19,22 +19,24 @@ tickets that depend on them start.
    the doc says "`/dashboard` or `/projects` — pick one and document as
    D-013." Atlas today routes the post-login user to `/` which renders
    the Overview dashboard. There is no `/dashboard` URL. Options:
+
    - **(a)** Create a `/dashboard` route as the canonical home (small
      refactor — Overview moves from `/` to `/dashboard`, `/` becomes a
      redirect helper).
    - **(b)** Keep the Overview at `/` and use `/` as the canonical
      post-login target. The safe-redirect allowlist gets `"/"` instead
      of `"/dashboard"`.
-   Default if no answer: **(a)** — matches what every example in the
-   doc assumes (`/sign-in?redirectTo=/dashboard`).
+     Default if no answer: **(a)** — matches what every example in the
+     doc assumes (`/sign-in?redirectTo=/dashboard`).
 
 2. **`/api/health/detailed` auth gate (T084.2)** — the doc says "behind
    auth at `/api/health/detailed`." Two readings:
+
    - **(a)** Any authenticated user (Viktor's role gates apply).
    - **(b)** super_admin only (since commit SHA + build env are admin
      diagnostics, not user data).
-   Default if no answer: **(b)** super_admin only — more conservative
-   for a healthcheck-detail endpoint.
+     Default if no answer: **(b)** super_admin only — more conservative
+     for a healthcheck-detail endpoint.
 
 3. **Allowlist coverage for `/cashflow` (T085.1)** — the doc lists
    `/cashflow` in the allowlist but Atlas's current Forecast sidebar

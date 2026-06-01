@@ -134,7 +134,11 @@ function toView(row: AuditRow): AuditEntryView {
  *   - `/api/approval-snapshots/<uuid>/lock`  → category=snapshot action=lock resource=<uuid>
  *   - everything else                        → category=api action=<path> resource=null
  */
-function parseRoute(route: string): { category: string; action: string; resourceId: string | null } {
+function parseRoute(route: string): {
+  category: string;
+  action: string;
+  resourceId: string | null;
+} {
   if (route.startsWith('service:')) {
     const m = route.match(/^service:([^.:]+)\.([^:]+):(.+)$/);
     if (m && m[1] && m[2] && m[3]) {

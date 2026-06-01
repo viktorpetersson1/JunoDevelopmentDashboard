@@ -89,7 +89,7 @@ projects, the schema needs extension. Two options:
 
 - **(a)** Add per-plot-type exit fields as a new structure inside
   `ProjectInput` (e.g., `plot_exits: Array<{plot_type, base_psf,
-  override_psf, framework_run_id, applied_at}>`). Calc engine
+override_psf, framework_run_id, applied_at}>`). Calc engine
   consumes per-plot-type and rolls up.
 - **(b)** Framework delivers a blended $/sqft for the project and
   the existing single-villa schema stays. Multi-plot detail lives

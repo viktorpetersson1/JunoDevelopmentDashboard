@@ -25,11 +25,7 @@ import type {
   PortfolioMonthlySeries,
   PortfolioResult,
 } from '@/lib/calc/portfolio/types';
-import type {
-  Globals,
-  ProjectInput,
-  Scenario,
-} from '@/lib/calc/project/types';
+import type { Globals, ProjectInput, Scenario } from '@/lib/calc/project/types';
 
 const FIXTURES_DIR = resolve(__dirname, '..', 'fixtures', 'vanilla-snapshots');
 
@@ -157,8 +153,8 @@ describe('aggregatePortfolio vs vanilla engine (golden)', () => {
   // Re-build the per-project input array by hydrating each project from its
   // own fixture. The portfolio fixture only stores ids — full inputs live in
   // the per-project snapshots.
-  const projects: ProjectInput[] = fx.inputs.project_ids.map((id) =>
-    loadJson<ProjectFixture>(`project-${id}.json`).inputs.project
+  const projects: ProjectInput[] = fx.inputs.project_ids.map(
+    (id) => loadJson<ProjectFixture>(`project-${id}.json`).inputs.project
   );
 
   const result = aggregatePortfolio(projects, fx.inputs.globals, fx.inputs.scenario);

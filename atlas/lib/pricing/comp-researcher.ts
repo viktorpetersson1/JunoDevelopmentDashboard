@@ -66,7 +66,7 @@ export interface ResearchedComp {
 
 export interface CompResearchOutput {
   comps: ResearchedComp[];
-  dataGap: boolean;          // true when fewer than 3 closed comps returned
+  dataGap: boolean; // true when fewer than 3 closed comps returned
   confidence: 'high' | 'medium' | 'low';
   sourcesSearched: string[];
   narrativeSummary: string;
@@ -336,8 +336,9 @@ async function callAnthropic(
       const data = (await resp.json()) as AnthropicResponseBody;
       const text =
         data.content
-          ?.filter((c): c is { type: string; text: string } =>
-            c.type === 'text' && typeof c.text === 'string'
+          ?.filter(
+            (c): c is { type: string; text: string } =>
+              c.type === 'text' && typeof c.text === 'string'
           )
           .map((c) => c.text)
           .join('\n')

@@ -20,13 +20,7 @@ import { applySoftCosts } from './soft-costs';
 import { applyRevenueSchedule } from './revenue-schedule';
 import { applyFinancing } from './financing';
 import { computePnl } from './pnl';
-import type {
-  Globals,
-  MonthlySeries,
-  ProjectInput,
-  ProjectResult,
-  Scenario,
-} from './types';
+import type { Globals, MonthlySeries, ProjectInput, ProjectResult, Scenario } from './types';
 
 export function runProject(
   project: ProjectInput,

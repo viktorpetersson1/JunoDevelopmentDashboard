@@ -31,12 +31,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { runProject } from '@/lib/calc/project/runProject';
 import { aggregatePortfolio } from '@/lib/calc/portfolio/aggregate';
-import type {
-  Globals,
-  ProjectInput,
-  ProjectResult,
-  Scenario,
-} from '@/lib/calc/project/types';
+import type { Globals, ProjectInput, ProjectResult, Scenario } from '@/lib/calc/project/types';
 
 const FIXTURES_DIR = resolve(__dirname, '..', '..', '..', 'tests', 'fixtures', 'vanilla-snapshots');
 
@@ -63,7 +58,11 @@ function quantile(sorted: number[], q: number): number {
   return sorted[idx] ?? 0;
 }
 
-function measure(label: string, iterations: number, fn: () => unknown): { p50: number; p99: number; avg: number } {
+function measure(
+  label: string,
+  iterations: number,
+  fn: () => unknown
+): { p50: number; p99: number; avg: number } {
   const times: number[] = [];
   // Warmup so V8 JIT primes before we measure.
   for (let i = 0; i < 5; i++) fn();
@@ -115,15 +114,11 @@ describe('calc engine perf budgets', () => {
 
   it('runProject avg across ALL 10 baselines stays under 2ms', () => {
     // Average pass — a single hot path shouldn't drag the whole engine.
-    const r = measure(
-      'runProject (avg across 10)',
-      100,
-      () => {
-        for (const f of fixtures) {
-          runProject(f.inputs.project, f.inputs.globals, f.inputs.scenario);
-        }
+    const r = measure('runProject (avg across 10)', 100, () => {
+      for (const f of fixtures) {
+        runProject(f.inputs.project, f.inputs.globals, f.inputs.scenario);
       }
-    );
+    });
     // 10 projects per iteration; avg per project must be <2ms.
     expect(r.avg / fixtures.length, 'per-project avg latency').toBeLessThan(2);
   });

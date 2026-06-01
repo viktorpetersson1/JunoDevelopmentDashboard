@@ -19,12 +19,7 @@ describe('location-factors taxonomy', () => {
   it('waterfront enum matches the atlas.comps CHECK constraint values', () => {
     // If this drifts, subject ↔ comp matching breaks. Keep in lockstep with
     // the DB CHECK + lib/db/schema/comps.ts CompWaterfrontType.
-    expect([...WATERFRONT_TYPES]).toEqual([
-      'sound_front_bluff',
-      'bayfront',
-      'inlet',
-      'inland',
-    ]);
+    expect([...WATERFRONT_TYPES]).toEqual(['sound_front_bluff', 'bayfront', 'inlet', 'inland']);
   });
 
   it('every enum value has a human label', () => {

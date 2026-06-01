@@ -243,9 +243,7 @@ export function CompsListClient({
                   <Td>
                     <CompProvenanceBadge provenance={c.provenance} />
                   </Td>
-                  <Td>
-                    {subCuts.find((s) => s.key === c.subCutKey)?.label ?? c.subCutKey}
-                  </Td>
+                  <Td>{subCuts.find((s) => s.key === c.subCutKey)?.label ?? c.subCutKey}</Td>
                   <Td>{c.status}</Td>
                   <Td align="right">{fmtMoney(c.salePriceCents)}</Td>
                   <Td align="right">{c.agSqft.toLocaleString()}</Td>

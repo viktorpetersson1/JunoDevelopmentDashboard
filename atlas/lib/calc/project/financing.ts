@@ -33,11 +33,7 @@
 import type { Effective } from './effectiveProject';
 import type { MonthlySeries } from './types';
 
-export function applyFinancing(
-  out: MonthlySeries,
-  eff: Effective,
-  saleIdx: number
-): void {
+export function applyFinancing(out: MonthlySeries, eff: Effective, saleIdx: number): void {
   const N = out.dates.length;
   const monthlyRate = eff.interest_rate_apr / 12;
 
@@ -69,8 +65,7 @@ export function applyFinancing(
       (out.kingshaus[m] ?? 0) +
       (out.soft_cost[m] ?? 0)
     );
-    const debtDraw =
-      m === saleIdx ? 0 : landOut * eff.ltc_land_pct + otherOut * eff.ltc_pct;
+    const debtDraw = m === saleIdx ? 0 : landOut * eff.ltc_land_pct + otherOut * eff.ltc_pct;
     out.debt_drawn[m] = debtDraw;
     debtBalance += debtDraw;
 

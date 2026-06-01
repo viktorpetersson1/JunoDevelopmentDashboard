@@ -18,8 +18,7 @@ export default function NotFound() {
         justifyContent: 'center',
         padding: 24,
         background: 'var(--color-surface-sunken, #f7f7f7)',
-        fontFamily:
-          'system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+        fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
       }}
     >
       <section
@@ -60,8 +59,8 @@ export default function NotFound() {
               lineHeight: 1.5,
             }}
           >
-            The URL you tried doesn&apos;t match any route in Atlas. It may
-            have moved, or you may have followed a stale link.
+            The URL you tried doesn&apos;t match any route in Atlas. It may have moved, or you may
+            have followed a stale link.
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>

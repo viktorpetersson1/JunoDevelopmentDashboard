@@ -71,7 +71,10 @@ function mergeOverBaseline(row: GlobalsRow): Globals {
       'default_kingshaus_cost_per_sqft'
     ),
     target_margin: num(row.target_margin, BASELINE_GLOBALS.target_margin ?? 0),
-    default_program_months: num(row.default_program_months, BASELINE_GLOBALS.default_program_months ?? 12),
+    default_program_months: num(
+      row.default_program_months,
+      BASELINE_GLOBALS.default_program_months ?? 12
+    ),
     model_start: row.model_start ?? BASELINE_GLOBALS.model_start ?? '2026-01',
     horizon_months: num(row.horizon_months, BASELINE_GLOBALS.horizon_months ?? 48),
     capitalize_interest:
@@ -93,10 +96,7 @@ function mergeOverBaseline(row: GlobalsRow): Globals {
       row.risk_sales_delay_grace_months,
       'risk_sales_delay_grace_months'
     ),
-    risk_cost_overrun_ratio: numOrDefault(
-      row.risk_cost_overrun_ratio,
-      'risk_cost_overrun_ratio'
-    ),
+    risk_cost_overrun_ratio: numOrDefault(row.risk_cost_overrun_ratio, 'risk_cost_overrun_ratio'),
     risk_equity_cluster_pctile: numOrDefault(
       row.risk_equity_cluster_pctile,
       'risk_equity_cluster_pctile'
@@ -107,10 +107,7 @@ function mergeOverBaseline(row: GlobalsRow): Globals {
     ),
     annual_opex_usd: numOrDefault(row.annual_opex_usd, 'annual_opex_usd'),
     opex_growth_rate: numOrDefault(row.opex_growth_rate, 'opex_growth_rate'),
-    apply_tax:
-      row.apply_tax == null
-        ? BASELINE_GLOBALS.apply_tax
-        : Boolean(row.apply_tax),
+    apply_tax: row.apply_tax == null ? BASELINE_GLOBALS.apply_tax : Boolean(row.apply_tax),
     tax_rate_pct: numOrDefault(row.tax_rate_pct, 'tax_rate_pct'),
     tax_state_rate_pct: numOrDefault(row.tax_state_rate_pct, 'tax_state_rate_pct'),
     loss_carryforward:
@@ -132,10 +129,7 @@ function mergeOverBaseline(row: GlobalsRow): Globals {
     // V4.11c — markets: null OR empty array = fall back to baseline. An
     // editor-saved [] is treated as "I want zero markets" (degenerate but
     // explicit), distinguished from null ("use defaults").
-    markets:
-      row.markets == null
-        ? BASELINE_GLOBALS.markets
-        : (row.markets as Globals['markets']),
+    markets: row.markets == null ? BASELINE_GLOBALS.markets : (row.markets as Globals['markets']),
   };
 }
 
