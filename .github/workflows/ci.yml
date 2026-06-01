@@ -148,9 +148,17 @@ jobs:
 
   # Lighthouse CI (T075): perf + a11y budgets on the public surface.
   # Only /sign-in is unauthenticated, so it's the only target we can
-  # score without provisioning a test user. Runs against `next start`
-  # on port 3001 with placeholder Supabase env so the middleware
-  # fall-through serves the sign-in page.
+  # score without provisioning a test user.
+  #
+  # Strategy: start the Next.js server in a `run:` step (which inherits
+  # defaults.run.working-directory: atlas and correctly finds the binary
+  # in atlas/node_modules/.bin/), wait for port 3001, then run LHCI in
+  # collect-only mode (no startServerCommand — server is already up).
+  #
+  # The NEXT_PUBLIC_* env vars are intentionally NOT set for the server-
+  # start step — the middleware's `!url || !key` guard fires immediately,
+  # the sign-in page serves without any Supabase network round-trip, and
+  # Lighthouse measures a fast, clean page load.
   #
   # Asserts (see atlas/lighthouserc.json):
   #   - performance     ≥ 80  (error)
@@ -175,6 +183,17 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_placeholder_for_ci
+      # Start the server in the background. `run:` inherits
+      # working-directory: atlas, so pnpm exec finds next in
+      # atlas/node_modules/.bin/. NEXT_PUBLIC_* vars deliberately omitted
+      # so the middleware early-returns and serves sign-in immediately.
+      - name: Start Next.js server (background)
+        run: pnpm exec next start -p 3001 &
+      # Wait until port 3001 is accepting connections (typically < 3s).
+      - name: Wait for port 3001
+        run: |
+          timeout 30 bash -c 'until nc -z localhost 3001; do sleep 0.5; done'
+          echo "Server ready on port 3001"
       - name: Lighthouse CI
         uses: treosh/lighthouse-ci-action@v12
         with:
