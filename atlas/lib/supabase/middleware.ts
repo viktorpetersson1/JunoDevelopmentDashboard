@@ -85,9 +85,71 @@ function applyCacheHeaders(request: NextRequest, response: NextResponse): void {
   response.headers.set('Cache-Control', 'no-store, must-revalidate');
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// T089 — security headers via middleware.
+//
+// Cloudflare Pages applies public/_headers only to STATIC assets.
+// Pages Functions (every Next.js SSR/edge route via @cloudflare/next-on-pages)
+// bypass _headers entirely, and `next-on-pages` 1.13.7 does NOT propagate
+// next.config.mjs headers() to Function output either — both would silently
+// fail the same way. The only reliable path on this stack is the middleware,
+// which already runs on every HTML + API request. We pair these with the
+// existing public/_headers (which still protects /robots.txt, /icon.svg,
+// /sw.js, /_next/static/*, etc.) for full coverage with no duplication.
+//
+// Verified by differential curl 1 Jun 2026: pre-fix /robots.txt got CSP
+// and referrer-policy from _headers; /sign-in got neither.
+// ─────────────────────────────────────────────────────────────────────────
+
+const SECURITY_HEADERS = {
+  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
+  'X-Frame-Options': 'DENY',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
+} as const;
+
+// CSP for HTML routes.
+// `unsafe-inline` + `unsafe-eval` on script-src are V3-known relaxations
+// (D-014) — Next.js's inlined chunks + runtime preamble need them today.
+// Nonce migration is tracked separately.
+// `connect-src` includes Sentry ingest hosts so error reporting works once
+// SENTRY_DSN is set (D-020) without us having to come back here.
+const CSP_HTML = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self'",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.ingest.sentry.io https://*.ingest.us.sentry.io",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join('; ');
+
+function applySecurityHeaders(request: NextRequest, response: NextResponse): void {
+  const path = request.nextUrl.pathname;
+  // Belt-and-braces: the middleware matcher already excludes static asset
+  // paths. Skip here in case a future matcher edit accidentally lets them
+  // through (we don't want to clobber the long-lived immutable Cache-Control
+  // on hashed chunks).
+  if (path.startsWith('/_next/static/') || path.startsWith('/__next-on-pages-dist__/')) {
+    return;
+  }
+  for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+    response.headers.set(name, value);
+  }
+  // CSP is for HTML — API routes ship JSON, no inline scripts, and
+  // frame-ancestors on a JSON body is meaningless. Matches the _headers split.
+  if (!path.startsWith('/api/')) {
+    response.headers.set('Content-Security-Policy', CSP_HTML);
+  }
+}
+
 export async function updateSession(request: NextRequest) {
   const response = NextResponse.next({ request });
   applyCacheHeaders(request, response);
+  applySecurityHeaders(request, response);
 
   // V4-fix — Clear-Site-Data on /cleanup. The browser processes this
   // header BEFORE the page renders, nuking every cache + SW registration
@@ -162,6 +224,7 @@ export async function updateSession(request: NextRequest) {
             'Cache-Control': 'no-store, must-revalidate',
           },
         });
+        applySecurityHeaders(request, jsonResponse);
         return jsonResponse;
       }
 
@@ -175,6 +238,7 @@ export async function updateSession(request: NextRequest) {
       signInUrl.searchParams.set('redirectTo', target);
       const redirect = NextResponse.redirect(signInUrl);
       applyCacheHeaders(request, redirect);
+      applySecurityHeaders(request, redirect);
       return redirect;
     }
 
@@ -203,6 +267,7 @@ export async function updateSession(request: NextRequest) {
       home.search = '';
       const redirect = NextResponse.redirect(home);
       applyCacheHeaders(request, redirect);
+      applySecurityHeaders(request, redirect);
       return redirect;
     }
 

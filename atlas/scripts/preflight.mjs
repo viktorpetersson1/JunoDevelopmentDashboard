@@ -347,6 +347,45 @@ async function checkCloudflareCompat() {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// Check 6b: Security headers live on prod (T089 — V4 fix-pack)
+//
+// Why: prior to T089 every Pages Function returned ZERO security headers
+// because CF Pages doesn't apply public/_headers to Functions. Now they
+// come from middleware. This check curl's /sign-in (unauth-public) and
+// asserts all 6 headers ship — catches regressions where someone removes
+// applySecurityHeaders from a code path.
+// ────────────────────────────────────────────────────────────────────────────
+
+const REQUIRED_HEADERS = [
+  'content-security-policy',
+  'strict-transport-security',
+  'x-frame-options',
+  'x-content-type-options',
+  'referrer-policy',
+  'permissions-policy',
+];
+
+async function checkSecurityHeadersLive() {
+  section('6b. Security headers live on /sign-in');
+  const url = process.env.ATLAS_PROD_URL ?? 'https://juno-atlas.pages.dev';
+  try {
+    const res = await fetch(`${url}/sign-in`, { method: 'HEAD', redirect: 'manual' });
+    const got = REQUIRED_HEADERS.filter((h) => res.headers.has(h));
+    const missing = REQUIRED_HEADERS.filter((h) => !res.headers.has(h));
+    if (missing.length === 0) {
+      pass('headers', `${got.length}/${REQUIRED_HEADERS.length} present`);
+    } else {
+      fail(
+        'headers',
+        `missing on ${url}/sign-in: ${missing.join(', ')}. Check applySecurityHeaders in lib/supabase/middleware.ts.`
+      );
+    }
+  } catch (err) {
+    warn('network', `header probe failed: ${err.message}`);
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // Check 7: Sentry DSN configured (soft check — warns only)
 //
 // Why: Atlas ships with @sentry/nextjs wired in, but the configs no-op
@@ -387,6 +426,7 @@ async function main() {
   if (remote) {
     await checkAtlasSchemaExposed();
     await checkCloudflareCompat();
+    await checkSecurityHeadersLive();
   } else {
     section('5-6. Remote checks');
     console.log(c('dim', '  skipped (pass --remote to enable)'));
