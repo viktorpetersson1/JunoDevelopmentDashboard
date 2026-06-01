@@ -21,7 +21,11 @@ import { InputsTab } from './_components/inputs-tab';
 import { PricingStrategyTab } from './_components/pricing-strategy-tab';
 import { findCurrentBrief, listBriefs } from '@/lib/repos/pricing-briefs';
 import { SnapshotBanner } from './_components/snapshot-banner';
-import { findCurrentProjectByKey, findCurrentProjectUuidByKey } from '@/lib/repos/project';
+import {
+  findCurrentProjectByKey,
+  findCurrentProjectUuidByKey,
+  findManyProjects,
+} from '@/lib/repos/project';
 import { findCapitalCallsByProject } from '@/lib/repos/capital-call';
 import {
   findLatestLockedSnapshot,
@@ -34,6 +38,8 @@ import { fetchAllProfiles, fetchCapTable } from '@/lib/repos/settings';
 import { enrichWithAppliedPricingRun } from '@/lib/services/project-with-pricing';
 import { runProject } from '@/lib/calc/project/runProject';
 import { buildProjectPnL, allocateOwnerEarnings } from '@/lib/finance/project-pnl';
+import { computeRolloutTrigger } from '@/lib/finance/rollout-trigger';
+import { getActiveGlobals } from '@/lib/globals/active';
 import { BASELINE_GLOBALS, BASELINE_SCENARIO } from '@/lib/calc/baselines';
 import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
 import { hasRole } from '@/lib/auth/requireRole';
@@ -92,7 +98,28 @@ export default async function ProjectDetailPage({
             }))
           )
         : null;
-      tabContent = <SummaryTab result={result} pnl={pnl} ownerEarnings={ownerEarnings} />;
+      // Rollout pacing (T093.7) — portfolio NPAT vs the exec target (active
+      // globals). Cheap: ~10 projects × runProject (~0.2ms each). today_month
+      // comes from the server clock so computeRolloutTrigger stays pure.
+      const { projects: portfolio } = await findManyProjects({ limit: 100 });
+      const { globals } = await getActiveGlobals();
+      const rollout = computeRolloutTrigger({
+        projects: portfolio.map((p) => {
+          const r = runProject(p, globals, BASELINE_SCENARIO);
+          return {
+            project_id: p.id,
+            recognition_month: r.sale_date,
+            npat_usd: buildProjectPnL(r, { taxRatePct: p.tax_rate_pct }).net_profit_after_tax_usd,
+          };
+        }),
+        target_annual_npat_usd: globals.target_annual_npat_usd ?? null,
+        fixed_overhead_annual_usd: globals.fixed_overhead_annual_usd,
+        project_time_to_npat_months: globals.project_time_to_npat_months ?? 18,
+        today_month: serverMonthYM(),
+      });
+      tabContent = (
+        <SummaryTab result={result} pnl={pnl} ownerEarnings={ownerEarnings} rollout={rollout} />
+      );
       break;
     }
     case 'timeline':
@@ -267,6 +294,13 @@ async function resolveOwnerIdForUser(
     .maybeSingle();
   if (error || !data) return undefined;
   return (data as { id: string }).id;
+}
+
+/** Current month as YYYY-MM from the server clock. computeRolloutTrigger is
+ *  pure (it takes "today" as an argument), so the impurity is isolated here. */
+function serverMonthYM(): string {
+  const now = new Date();
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
 function UnknownTabPlaceholder({ tab }: { tab: string }) {

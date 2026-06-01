@@ -3,12 +3,15 @@ import { render, screen } from '@testing-library/react';
 import { SummaryTab } from '../summary-tab';
 import type { ProjectResult } from '@/lib/calc/project/types';
 import type { ProjectPnL, OwnerEarningRow } from '@/lib/finance/project-pnl';
+import type { RolloutTriggerResult } from '@/lib/finance/rollout-trigger';
 
 // The cash-flow chart pulls in recharts; stub it so the Summary tab renders
 // cleanly in jsdom (we're testing the P&L + earnings markup, not the chart).
 vi.mock('../cash-flow-chart', () => ({
   CashFlowChart: () => <div data-testid="cashflow" />,
 }));
+
+// next/link renders an <a> in jsdom; no mock needed.
 
 const RESULT = {
   project_id: 'p2',
@@ -43,9 +46,31 @@ const OWNERS: OwnerEarningRow[] = [
   { key: 'viktor', displayName: 'Viktor', shareBps: 1700, earnings_usd: 320_025 },
 ];
 
+const ROLLOUT_UNCONFIGURED: RolloutTriggerResult = {
+  state: 'unconfigured',
+  next_start_required_by: null,
+  required_annual_npat_usd: null,
+  current_trailing_12mo_npat_usd: 0,
+  shortfall_month: null,
+  months_until_required: null,
+  rationale: 'Set an annual NPAT target in Settings → General to enable rollout pacing.',
+};
+
+const ROLLOUT_AMBER: RolloutTriggerResult = {
+  state: 'amber',
+  next_start_required_by: '2026-10',
+  required_annual_npat_usd: 5_000_000,
+  current_trailing_12mo_npat_usd: 1_800_000,
+  shortfall_month: '2028-04',
+  months_until_required: 4,
+  rationale: 'Trailing-12-month NPAT dips below $5.0M in 2028-04.',
+};
+
 describe('SummaryTab', () => {
   it('renders all 9 P&L lines + the Margin/IRR/MOIC row', () => {
-    render(<SummaryTab result={RESULT} pnl={PNL} ownerEarnings={null} />);
+    render(
+      <SummaryTab result={RESULT} pnl={PNL} ownerEarnings={null} rollout={ROLLOUT_UNCONFIGURED} />
+    );
     expect(screen.getByText('Gross revenue')).toBeInTheDocument();
     expect(screen.getByText('− Land')).toBeInTheDocument();
     expect(screen.getByText('− Hard construction')).toBeInTheDocument();
@@ -61,18 +86,24 @@ describe('SummaryTab', () => {
   });
 
   it('renders the "Kingshaus"/"Prefab" stream as "Superstructure" (no legacy strings)', () => {
-    const { container } = render(<SummaryTab result={RESULT} pnl={PNL} ownerEarnings={null} />);
+    const { container } = render(
+      <SummaryTab result={RESULT} pnl={PNL} ownerEarnings={null} rollout={ROLLOUT_UNCONFIGURED} />
+    );
     expect(container.textContent).not.toMatch(/kingshaus|prefab/i);
     expect(screen.getByText('− Superstructure')).toBeInTheDocument();
   });
 
   it('shows closing costs as a memo, clearly not deducted', () => {
-    render(<SummaryTab result={RESULT} pnl={PNL} ownerEarnings={null} />);
+    render(
+      <SummaryTab result={RESULT} pnl={PNL} ownerEarnings={null} rollout={ROLLOUT_UNCONFIGURED} />
+    );
     expect(screen.getByText(/memo/i)).toBeInTheDocument();
   });
 
   it('renders the owner-earnings split when provided (admin)', () => {
-    render(<SummaryTab result={RESULT} pnl={PNL} ownerEarnings={OWNERS} />);
+    render(
+      <SummaryTab result={RESULT} pnl={PNL} ownerEarnings={OWNERS} rollout={ROLLOUT_UNCONFIGURED} />
+    );
     expect(screen.getByText(/Owner earnings/i)).toBeInTheDocument();
     expect(screen.getByText('Peter · 38.0%')).toBeInTheDocument();
     expect(screen.getByText('Lars · 30.0%')).toBeInTheDocument();
@@ -80,7 +111,22 @@ describe('SummaryTab', () => {
   });
 
   it('hides the owner-earnings split when not visible to the role', () => {
-    render(<SummaryTab result={RESULT} pnl={PNL} ownerEarnings={null} />);
+    render(
+      <SummaryTab result={RESULT} pnl={PNL} ownerEarnings={null} rollout={ROLLOUT_UNCONFIGURED} />
+    );
     expect(screen.queryByText(/Owner earnings/i)).not.toBeInTheDocument();
+  });
+
+  it('shows the "set target" prompt when rollout is unconfigured (scaffold-blocked)', () => {
+    render(
+      <SummaryTab result={RESULT} pnl={PNL} ownerEarnings={null} rollout={ROLLOUT_UNCONFIGURED} />
+    );
+    expect(screen.getByText('Rollout pacing')).toBeInTheDocument();
+    expect(screen.getByText(/Set an annual NPAT target/i)).toBeInTheDocument();
+  });
+
+  it('shows the next-start date when rollout needs action', () => {
+    render(<SummaryTab result={RESULT} pnl={PNL} ownerEarnings={null} rollout={ROLLOUT_AMBER} />);
+    expect(screen.getByText(/Next start needed by Oct 2026/i)).toBeInTheDocument();
   });
 });

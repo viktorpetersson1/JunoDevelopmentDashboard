@@ -15,9 +15,11 @@
  */
 
 import type { CSSProperties, ReactNode } from 'react';
+import Link from 'next/link';
 import { formatMoney } from '@/lib/utils/money';
 import type { ProjectResult } from '@/lib/calc/project/types';
 import type { ProjectPnL, OwnerEarningRow } from '@/lib/finance/project-pnl';
+import type { RolloutTriggerResult, RolloutState } from '@/lib/finance/rollout-trigger';
 import { CashFlowChart } from './cash-flow-chart';
 
 const card: CSSProperties = {
@@ -42,15 +44,18 @@ export function SummaryTab({
   result,
   pnl,
   ownerEarnings,
+  rollout,
 }: {
   result: ProjectResult;
   pnl: ProjectPnL;
   /** null = the viewing role can't see the per-owner split. */
   ownerEarnings: OwnerEarningRow[] | null;
+  rollout: RolloutTriggerResult;
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <PnlHero pnl={pnl} />
+      <RolloutPacing rollout={rollout} />
       {ownerEarnings && <OwnerEarnings rows={ownerEarnings} npat={pnl.net_profit_after_tax_usd} />}
       <CashFlowChart monthly={result.monthly} />
       <ScheduleCard result={result} />
@@ -184,6 +189,92 @@ function Metric({ label, value }: { label: string; value: string }) {
       <span style={{ color: 'var(--color-text-tertiary)' }}>{label} </span>
       <span style={{ color: 'var(--color-text-primary)', fontWeight: 700 }}>{value}</span>
     </span>
+  );
+}
+
+// ── Rollout pacing ──────────────────────────────────────────────────────────
+
+const ROLLOUT_ACCENT: Record<RolloutState, string> = {
+  unconfigured: 'var(--color-border-strong)',
+  green: '#15803d',
+  amber: '#a16207',
+  red: '#b91c1c',
+  overdue: '#b91c1c',
+};
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function fmtMonth(ym: string): string {
+  const parts = ym.split('-');
+  const y = parts[0] ?? ym;
+  const m = Number(parts[1] ?? '1');
+  return `${MONTHS[m - 1] ?? ''} ${y}`.trim();
+}
+
+/** Rollout Profitability Trigger block (T093.7). Clicking → /pipeline, where a
+ *  prospect gets advanced. Shows a "set target" prompt while unconfigured. */
+function RolloutPacing({ rollout }: { rollout: RolloutTriggerResult }) {
+  const accent = ROLLOUT_ACCENT[rollout.state];
+  const configured = rollout.state !== 'unconfigured';
+  const headline = !configured
+    ? 'Set an annual NPAT target to enable rollout pacing'
+    : rollout.next_start_required_by
+      ? `Next start needed by ${fmtMonth(rollout.next_start_required_by)}`
+      : 'On pace — no new start required in the next 3 years';
+
+  return (
+    <Link href="/pipeline" style={{ textDecoration: 'none', color: 'inherit' }}>
+      <section style={{ ...card, borderLeft: `3px solid ${accent}` }} title={rollout.rationale}>
+        <div
+          style={{
+            ...sectionLabel,
+            marginBottom: 10,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          <span
+            style={{
+              width: 7,
+              height: 7,
+              borderRadius: 999,
+              background: accent,
+              display: 'inline-block',
+            }}
+          />
+          Rollout pacing
+        </div>
+        <p
+          style={{
+            margin: 0,
+            fontSize: 18,
+            fontWeight: 700,
+            color: configured ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
+          }}
+        >
+          {headline}
+        </p>
+        {configured ? (
+          <p
+            style={{
+              margin: '8px 0 0',
+              fontSize: 13,
+              color: 'var(--color-text-secondary)',
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            {rollout.required_annual_npat_usd != null && (
+              <>Target {money(rollout.required_annual_npat_usd)}/yr&nbsp;·&nbsp;</>
+            )}
+            Trailing 12mo {money(rollout.current_trailing_12mo_npat_usd)}
+          </p>
+        ) : (
+          <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+            Settings → General → Rollout target
+          </p>
+        )}
+      </section>
+    </Link>
   );
 }
 
