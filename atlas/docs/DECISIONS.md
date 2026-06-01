@@ -28,10 +28,19 @@ except the deliberately deferred T025-T030 modular calc split, which is
 internal refactor and doesn't gate ship). 17 June target will be hit.
 
 ### D-007 — Pricing data source (W1.7 comps)
-**Status:** ⏸️ Deferred
-**Resolution:** Viktor has a separate plan to share later. Leave the
-manual + CSV recommendation in place until that lands. No P0 ticket
-currently depends on this.
+**Status:** ✅ Resolved 31 May 2026
+**Resolution:** Functionally closed by the D-024 → D-026(b) pricing-engine
+sprint. AI comp research (`lib/pricing/comp-researcher.ts`) is now the
+primary data source — live web search across Zillow / Realtor.com /
+Out East / Compass / Douglas Elliman / Bespoke / Sotheby's, with a
+training-data fallback. As of 31 May, the `anthropic-beta` regression
+that was silently dropping every call to knowledge-only is fixed (D-026b),
+so the path is genuinely live. The original "manual + CSV" recommendation
+remains available via `/pricing/comps/new` and the CSV importer at
+`/pricing/comps/import` — useful for human-curated anchor comps from
+private MLS data Viktor brings in — but is no longer the canonical path.
+Library at this point: 217 comps (mostly AI-estimated 2024 vintage from
+the pre-fix era; live MLS recency takes effect on the next research run).
 
 ### D-008 — Owner email convention + master admin
 **Status:** ✅ Provisioned

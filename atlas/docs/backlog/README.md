@@ -10,9 +10,14 @@ the spec itself.
 
 ## Active backlog
 
-| Spec | Status | Captured | Owner | Notes |
-|---|---|---|---|---|
-| [Exit Pricing Framework v1](./exit-pricing-framework-v1.md) | Awaiting proposal | 2026-05-25 | Viktor (review) | Open questions tracked in [exit-pricing-open-questions.md](./exit-pricing-open-questions.md). New module — feeds the financial model, must not be folded into it. Three operating modes (screening / auto on project create / on-demand re-run). Three worked examples are the regression suite. No code until proposal approved. |
+_Empty as of 31 May 2026 — all captured specs have graduated. New work is
+tracked via D-decisions in [DECISIONS.md](../DECISIONS.md) instead of this folder._
+
+## Graduated
+
+| Spec | Shipped | Resolved by | Notes |
+|---|---|---|---|
+| [Exit Pricing Framework v1](./exit-pricing-framework-v1.md) | 26 May 2026 | D-016 (commits `682dae2..78c476c`) | All 8 open questions resolved. End-to-end loop: comp library → draft run → engine pre-fills L/B/H from strongest anchor → human edits + commits → engine classifies + scores confidence → apply pushes to calc engine. 31 new tests (16 worked-example regression + 10 schema invariant + 10 engine helper + 4 multi-plot revenue + 1 hygiene). Surface 26 (`/pricing`) + Surface 27 (project Pricing tab) live. Subsequently superseded by D-025a Strategy Brief (28 May), D-025b location factors (31 May), and D-026 market-intel dashboard (29 May) — all in DECISIONS.md. |
 
 ## Conventions
 
