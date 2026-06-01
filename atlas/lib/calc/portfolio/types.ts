@@ -5,6 +5,7 @@
  * is byte-comparable.
  */
 import type { ProjectResult } from '../project/types';
+import type { InvestorWaterfallResult } from '../waterfall/types';
 
 /** Monthly portfolio series. Each array has length = horizon_months. */
 export interface PortfolioMonthlySeries {
@@ -136,4 +137,16 @@ export interface PortfolioResult {
   annual: Record<string, PortfolioAnnualEntry>;
   kpis: PortfolioKpis;
   by_project: ProjectResult[];
+  /**
+   * T092 (D-013) — per-investor distribution waterfall. Empty array when
+   * globals carries no `investors` (atlas prod path — the /waterfall page
+   * computes its own from the live cap table). Populated in the golden
+   * fixture, which carries investors in globals (vanilla parity).
+   */
+  waterfall: InvestorWaterfallResult[];
+  /**
+   * T092 (D-013) — hypothetical-LP scenario. Null when
+   * `globals.hypothetical_lp_share_pct` is unset/0 (the baseline case).
+   */
+  hypothetical_lp: InvestorWaterfallResult[] | null;
 }

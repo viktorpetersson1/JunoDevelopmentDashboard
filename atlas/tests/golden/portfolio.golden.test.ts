@@ -6,13 +6,11 @@
  * the new TS `aggregatePortfolio()`, and asserts every ported field
  * matches within 0.5% relative / $1 absolute tolerance.
  *
- * Skipped fields (still deferred — see aggregate.ts header):
- *   - `outputs.waterfall` (computeWaterfall — wired by /waterfall page out-of-band)
- *   - `outputs.hypothetical_lp` (hypotheticalLpAnalysis)
- *
- * Ported as of T092 (1 Jun 2026):
+ * Ported + golden-covered as of T092 (1 Jun 2026) — nothing skipped:
  *   - `outputs.kpis.contingency` — per-project contingency aggregation
  *   - `outputs.kpis.sales_metrics` — per-project sales-pace aggregation
+ *   - `outputs.waterfall` — per-investor 5-tier European waterfall
+ *   - `outputs.hypothetical_lp` — hypothetical-LP scenario (null in baseline)
  *
  * Tolerance reasoning matches `project.golden.test.ts`: identical math in
  * spirit, 0.5%/$1 buffer for float-summation reorder drift.
@@ -27,6 +25,7 @@ import type {
   PortfolioMonthlySeries,
   PortfolioResult,
 } from '@/lib/calc/portfolio/types';
+import type { InvestorWaterfallResult, WaterfallTierBreakdown } from '@/lib/calc/waterfall/types';
 import type { Globals, ProjectInput, Scenario } from '@/lib/calc/project/types';
 
 const FIXTURES_DIR = resolve(__dirname, '..', 'fixtures', 'vanilla-snapshots');
@@ -34,12 +33,53 @@ const FIXTURES_DIR = resolve(__dirname, '..', 'fixtures', 'vanilla-snapshots');
 interface PortfolioFixture {
   meta: { project_count: number; scenario: string };
   inputs: { project_ids: string[]; globals: Globals; scenario: Scenario };
-  outputs: PortfolioResult & {
-    // Vanilla also emits these — explicitly typed so we know what we skip.
-    waterfall?: unknown;
-    hypothetical_lp?: unknown;
-  };
+  outputs: PortfolioResult;
 }
+
+// Numeric InvestorWaterfallResult fields asserted within tolerance.
+const WATERFALL_NUMERIC_KEYS: Array<keyof InvestorWaterfallResult> = [
+  'share',
+  'equity_in',
+  'equity_out_gross',
+  'gain_gross',
+  'net_distribution',
+  'net_gain',
+  'moic',
+  'moic_gross',
+  'irr_monthly',
+  'irr_annual',
+  'tax_rate',
+  'tax_paid',
+  'after_tax_distribution',
+  'after_tax_gain',
+  'after_tax_moic',
+  'after_tax_irr_annual',
+  'preferred_return_pct',
+  'hurdle_pct',
+  'carry_pct',
+  'promote_received_from_lps',
+  'promote_paid_to_sponsor',
+];
+
+const TIER_NUMERIC_KEYS: Array<keyof WaterfallTierBreakdown> = [
+  'holdYears',
+  'holdMonths',
+  'equityIn',
+  'grossDistribution',
+  'pref_threshold_usd',
+  'hurdle_threshold_usd',
+  'gp_catchup_target_usd',
+  'tier1_return_of_capital',
+  'tier2_pref_return',
+  'tier3a_gp_catchup',
+  'tier3b_to_hurdle',
+  'tier3_to_hurdle',
+  'tier4_above_hurdle',
+  'tier4_to_investor',
+  'tier4_to_sponsor',
+  'net_to_investor',
+  'promote_to_sponsor',
+];
 
 interface ProjectFixture {
   meta: { project_id: string; project_name: string };
@@ -287,5 +327,46 @@ describe('aggregatePortfolio vs vanilla engine (golden)', () => {
       v.avg_price_to_listing_ratio,
       'kpis.sales_metrics.avg_price_to_listing_ratio'
     );
+  });
+
+  // T092 (D-013) — per-investor waterfall, ported from engine.js:511.
+  it('waterfall matches vanilla per investor', () => {
+    expect(result.waterfall.length).toBe(fx.outputs.waterfall.length);
+    const byId = new Map(fx.outputs.waterfall.map((w) => [w.id, w]));
+    for (const a of result.waterfall) {
+      const e = byId.get(a.id);
+      expect(e, `waterfall investor ${a.id} missing from fixture`).toBeDefined();
+      if (!e) continue;
+      expect(a.name, `waterfall.${a.id}.name`).toBe(e.name);
+      expect(a.is_sponsor, `waterfall.${a.id}.is_sponsor`).toBe(e.is_sponsor);
+      expect(a.pref_cleared, `waterfall.${a.id}.pref_cleared`).toBe(e.pref_cleared);
+      expect(a.hurdle_cleared, `waterfall.${a.id}.hurdle_cleared`).toBe(e.hurdle_cleared);
+      for (const k of WATERFALL_NUMERIC_KEYS) {
+        expectClose(
+          (a[k] as number | null) ?? null,
+          (e[k] as number | null) ?? null,
+          `waterfall.${a.id}.${k}`
+        );
+      }
+      for (const k of TIER_NUMERIC_KEYS) {
+        expectClose(
+          (a.tiers[k] as number | null) ?? null,
+          (e.tiers[k] as number | null) ?? null,
+          `waterfall.${a.id}.tiers.${k}`
+        );
+      }
+    }
+  });
+
+  // T092 (D-013) — hypothetical LP. Baseline globals has
+  // hypothetical_lp_share_pct=0, so vanilla returns null. A non-null
+  // variant needs a synthetic fixture (deferred T092 follow-up).
+  it('hypothetical_lp matches vanilla (null in baseline)', () => {
+    if (fx.outputs.hypothetical_lp === null) {
+      expect(result.hypothetical_lp).toBeNull();
+    } else {
+      expect(result.hypothetical_lp).not.toBeNull();
+      expect(result.hypothetical_lp!.length).toBe(fx.outputs.hypothetical_lp.length);
+    }
   });
 });

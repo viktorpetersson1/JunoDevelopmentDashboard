@@ -8,21 +8,19 @@
  * Pure function. Match target: 0.5% relative / $1 absolute vs the vanilla
  * fixture at `atlas/tests/fixtures/vanilla-snapshots/portfolio.json`.
  *
- * **Ported (T092 — 1 Jun 2026):** `kpis.contingency` and `kpis.sales_metrics`
- * are now computed inline (vanilla parity, engine.js:567-599).
- *
- * **Not yet ported:** the `waterfall` and `hypothetical_lp` fields the
- * vanilla aggregator computes. Those depend on `computeWaterfall` (engine.js
- * line 1163, used by Owner Waterfall screen W4) and
- * `hypotheticalLpAnalysis` (line 1240). The TS modules exist in
- * `lib/calc/waterfall/compute.ts` (shipped V4.4 sprint) but aren't wired
- * through the aggregator — `/waterfall` page calls them out-of-band today.
- * Wiring + the `investors` arg threading is the remainder of T092.
+ * **Ported (T092 — 1 Jun 2026):** all four previously-deferred outputs now
+ * match vanilla — `kpis.contingency`, `kpis.sales_metrics` (engine.js:567-599),
+ * and `waterfall` + `hypothetical_lp` (engine.js:511-512, via
+ * `lib/calc/waterfall/compute.ts`). Investors are read from `globals.investors`
+ * exactly like vanilla; in atlas prod globals carries none, so `waterfall` is
+ * `[]` here and the `/waterfall` page computes its own from the live cap table.
  */
 
 import { buildTimeline, parseYM } from '@/lib/utils/dates';
 import { runProject } from '../project/runProject';
 import { annualizedIRR, monthlyIRR, equityCashFlowFromCalls } from '../project/irr';
+import { computeWaterfall, hypotheticalLpAnalysis } from '../waterfall/compute';
+import type { WaterfallInvestorInput, WaterfallMonthlySeries } from '../waterfall/types';
 import type { Globals, ProjectInput, ProjectResult, Scenario } from '../project/types';
 import type {
   PortfolioAnnualEntry,
@@ -96,6 +94,16 @@ interface ExtendedGlobals extends Globals {
     seniority?: string;
     provider?: string;
   };
+  // T092 — vanilla reads these for the waterfall. In atlas prod, getActiveGlobals()
+  // does NOT carry investors (the cap table lives in atlas.owners/cap_table, read
+  // separately by the /waterfall page), so `investors` is undefined → empty
+  // waterfall here. The golden fixture's globals DOES carry investors, so the
+  // golden test exercises the real per-investor math. Matches engine.js:511-512.
+  investors?: WaterfallInvestorInput[];
+  hypothetical_lp_share_pct?: number;
+  hypothetical_lp_pref_pct?: number;
+  hypothetical_lp_hurdle_pct?: number;
+  hypothetical_lp_carry_pct?: number;
 }
 
 const NUMERIC_KEYS = [
@@ -465,11 +473,27 @@ export function aggregatePortfolio(
     })(),
   };
 
+  // ── Per-investor waterfall + hypothetical LP (T092) ───────────────────
+  // Faithful port of engine.js:511-512. Investors come from globals (vanilla
+  // reads globals.investors); the waterfall reads the equity-call schedule +
+  // terminal cash from the monthly series we just built. globals is structurally
+  // a superset of WaterfallGlobals (tax_rate_pct / tax_state_rate_pct / apply_tax
+  // are typed Globals per D-023; hypothetical_lp_* on ExtendedGlobals).
+  const investors = globals.investors ?? [];
+  const waterfallMonthly: WaterfallMonthlySeries = {
+    equity_called: port.equity_called!,
+    closing_cash: port.closing_cash!,
+  };
+  const waterfall = computeWaterfall(waterfallMonthly, investors, globals);
+  const hypothetical_lp = hypotheticalLpAnalysis(waterfallMonthly, investors, globals);
+
   return {
     timeline,
     monthly: port as PortfolioMonthlySeries,
     annual,
     kpis,
     by_project: projectResults,
+    waterfall,
+    hypothetical_lp,
   };
 }
