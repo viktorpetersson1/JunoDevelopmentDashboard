@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FilterChip } from '@/components/ui/FilterChip';
 import type { CompView } from '@/lib/repos/comps';
+import { CompProvenanceBadge } from '@/app/pricing/_components/comp-provenance-badge';
 
 interface SubCutOpt {
   key: string;
@@ -211,6 +212,7 @@ export function CompsListClient({
             <thead>
               <tr style={{ background: 'var(--color-surface-base)' }}>
                 <Th>Address</Th>
+                <Th>Source</Th>
                 <Th>Sub-cut</Th>
                 <Th>Status</Th>
                 <Th align="right">Price</Th>
@@ -237,6 +239,9 @@ export function CompsListClient({
                     {c.isNc && (
                       <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>NC</div>
                     )}
+                  </Td>
+                  <Td>
+                    <CompProvenanceBadge provenance={c.provenance} />
                   </Td>
                   <Td>
                     {subCuts.find((s) => s.key === c.subCutKey)?.label ?? c.subCutKey}

@@ -16,6 +16,7 @@ import { useRouter } from 'next/navigation';
 import type { CompView } from '@/lib/repos/comps';
 import type { MarketSubCut } from '@/lib/db/schema/markets';
 import { JunoThinking } from '@/components/brand/JunoThinking';
+import { CompProvenanceBadge } from './comp-provenance-badge';
 
 interface MarketIntelProps {
   canEdit: boolean;
@@ -696,7 +697,12 @@ export function MarketIntel({
                     style={{ borderBottom: '1px solid var(--color-border-hairline, #c8c8c5)' }}
                   >
                     <td style={tdStyle('left', { tertiary: true })}>{c.closingDate ?? '—'}</td>
-                    <td style={tdStyle()}>{c.address}</td>
+                    <td style={tdStyle()}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <CompProvenanceBadge provenance={c.provenance} variant="dot" />
+                        {c.address}
+                      </span>
+                    </td>
                     <td style={tdStyle('left', { tertiary: true })}>
                       {labelMap.get(c.subCutKey) ?? prettyLabel(c.subCutKey)}
                     </td>

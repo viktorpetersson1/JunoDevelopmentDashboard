@@ -56,6 +56,13 @@ export interface ProjectFactsForBrief {
   waterfrontType: WaterfrontType | null;
   viewPremium: ViewPremium | null;
   townProximity: TownProximity | null;
+  /**
+   * D-026(a) — pre-fetched library comps that the brief route has already
+   * verified match the subject's sub-cut + waterfront + sqft. When non-empty,
+   * the AI is told to use them as primary anchors and only web-search for
+   * gaps. Pass an empty array (the default) to disable anchoring.
+   */
+  libraryAnchors?: ResearchedComp[];
   phase: ProjectPhase;
 }
 
@@ -416,6 +423,23 @@ function buildBriefPrompt(
           )
           .join('\n');
 
+  // D-026(a) — library anchors (when present) are emitted in their own block
+  // so the model treats them as pre-verified and supplements via web search
+  // only for gaps. They've already been filtered by sub-cut + waterfront +
+  // sqft match in the brief route (findAnchorComps).
+  const anchors = facts.libraryAnchors ?? [];
+  const anchorsBlock =
+    anchors.length === 0
+      ? ''
+      : `\n== LIBRARY ANCHORS (PRE-VERIFIED — USE AS PRIMARY) ==\n${anchors
+          .map(
+            (c) =>
+              `- ${c.address} | ${c.status} | ${c.closingDate ?? '—'} | $${c.salePriceUsd.toLocaleString()} | ${c.agSqft.toLocaleString()} SF | $${Math.round(c.psf)}/SF | NC: ${c.isNewConstruction} | source: ${c.sourceName}`
+          )
+          .join(
+            '\n'
+          )}\n\nThese are existing Juno-library comps already matched to the subject's sub-cut, waterfront class, and sqft band. Treat them as primary anchors. The web-search comp list below is supplemental — use it to fill gaps (e.g. more recent closings or different sqft brackets) and to spot stuck listings, but do NOT re-discover or re-list addresses already in this anchor set.\n`;
+
   const phaseFraming = framingForPhase(facts.phase);
   const locationLines = subjectLocationLines({
     waterfrontType: facts.waterfrontType,
@@ -466,7 +490,7 @@ Breakeven gross exit: $${breakevens.breakevenExitUsd.toLocaleString()} ($${break
 10% margin exit: $${breakevens.margin10ExitUsd.toLocaleString()}
 15% margin exit: $${breakevens.margin15ExitUsd.toLocaleString()}
 
-== COMP EVIDENCE FROM RESEARCH ==
+${anchorsBlock}== COMP EVIDENCE FROM WEB RESEARCH ==
 ${compsLines('CLOSED COMPS', closedComps)}
 
 ${compsLines('ACTIVE LISTINGS (CEILING)', activeComps)}
@@ -665,8 +689,23 @@ export async function generateStrategyBrief(
     anthropicApiKey
   );
 
-  const closedComps = compResearch.comps.filter((c) => c.status === 'closed');
-  const activeComps = compResearch.comps.filter((c) => c.status === 'active');
+  // D-026(a) — combine library anchors + fresh web research, deduping by
+  // address so the AI doesn't double-count a comp it both saw in the anchor
+  // block and re-discovered via search. Anchors win on conflict (they're
+  // pre-verified against the comp library; AI results may drift).
+  const libraryAnchors = facts.libraryAnchors ?? [];
+  const anchorAddrs = new Set(libraryAnchors.map((a) => a.address.trim().toLowerCase()));
+  const freshComps = compResearch.comps.filter(
+    (c) => !anchorAddrs.has(c.address.trim().toLowerCase())
+  );
+  const closedComps = [
+    ...libraryAnchors.filter((a) => a.status === 'closed'),
+    ...freshComps.filter((c) => c.status === 'closed'),
+  ];
+  const activeComps = [
+    ...libraryAnchors.filter((a) => a.status === 'active'),
+    ...freshComps.filter((c) => c.status === 'active'),
+  ];
 
   const closedPsfs = closedComps.map((c) => c.psf).sort((a, b) => a - b);
   const medianPsf = closedPsfs.length > 0 ? closedPsfs[Math.floor(closedPsfs.length / 2)] ?? null : null;

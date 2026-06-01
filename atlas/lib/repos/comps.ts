@@ -58,6 +58,20 @@ export interface CompView {
   /** Derived: sale_price / sqft (USD per sqft, NOT cents). Null when
    * status != 'closed' or any input is missing. */
   psf: number | null;
+  /**
+   * D-026(c) — derived data-provenance signal for UI badging.
+   *   - 'verified'      — human-entered or pulled from a real listing source
+   *                       (source ∈ {manual, csv, mls_onekey, compass, outeast}).
+   *   - 'ai_live'       — auto-saved from an AI research run that used live web
+   *                       search (source='other' AND notes does NOT contain the
+   *                       "(AI-estimated)" marker).
+   *   - 'ai_estimated'  — auto-saved from an AI research run that fell back to
+   *                       training-data knowledge (source='other' AND notes
+   *                       contains "(AI-estimated)").
+   * The notes-suffix detection is a stopgap until we add a typed
+   * `data_source_mode` column to atlas.comps.
+   */
+  provenance: 'verified' | 'ai_live' | 'ai_estimated';
 }
 
 interface CompRow {
@@ -100,6 +114,26 @@ function computePsf(salePriceCents: number | null, agSqft: number, status: CompS
   return salePriceCents / 100 / agSqft;
 }
 
+/**
+ * D-026(c) — classify a comp's data provenance from its source + notes.
+ *
+ * source ∈ {manual, csv, mls_onekey, compass, outeast} → 'verified'
+ * source = 'other' + notes contains "(AI-estimated)"  → 'ai_estimated'
+ * source = 'other' + otherwise                         → 'ai_live'
+ *
+ * The "(AI-estimated)" notes marker is stamped by the AI auto-save paths
+ * (pricing-brief / quick-price / market-research routes) when the underlying
+ * researchComps call returned confidence='estimated' (training-data fallback).
+ */
+function computeProvenance(
+  source: CompSource,
+  notes: string | null
+): 'verified' | 'ai_live' | 'ai_estimated' {
+  if (source !== 'other') return 'verified';
+  if (notes && notes.includes('(AI-estimated)')) return 'ai_estimated';
+  return 'ai_live';
+}
+
 function toView(row: CompRow): CompView {
   return {
     id: row.id,
@@ -125,6 +159,7 @@ function toView(row: CompRow): CompView {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     psf: computePsf(row.sale_price_cents, row.ag_sqft, row.status),
+    provenance: computeProvenance(row.source, row.notes),
   };
 }
 
@@ -413,6 +448,74 @@ export async function findActiveCompsForSubCuts(subCutKeys: string[]): Promise<C
     .order('created_at', { ascending: false });
   if (error) throw new Error(`findActiveCompsForSubCuts: ${error.message}`);
   return ((data as unknown as CompRow[]) ?? []).map(toView);
+}
+
+/**
+ * D-026(a) — Library anchor comps for an AI pricing brief.
+ *
+ * Returns the top-N closed library comps that match the subject's profile so
+ * the strategy-brief prompt can inject them as verified anchors. The AI then
+ * does targeted web search to fill gaps + verify recency rather than
+ * re-discovering comps it has seen before.
+ *
+ * Filtering rules:
+ *   - status='closed' (only closed sales are price anchors)
+ *   - sub_cut_key MUST match (cross-market comps blow up the median)
+ *   - waterfront_type MUST match the subject when both are known
+ *     (mixed-class comps are not anchors — D-025b rule)
+ *   - ag_sqft within ±35% of subject (matches comp-researcher's existing
+ *     similarity criterion)
+ *   - provenance excludes 'ai_estimated' — those are stale 2024 training-data
+ *     guesses from the pre-D-026(b) era and should NOT be used as anchors
+ *     (we filter in JS post-query because the DB doesn't store provenance)
+ *   - is_archived=false
+ *
+ * Ordered by closing_date DESC; limited to `limit` (default 8).
+ *
+ * Returns an empty array when fewer than `minAnchors` (default 3) candidates
+ * remain after filtering — the caller skips injection rather than passing a
+ * thin anchor set the AI might over-weight.
+ */
+export interface AnchorCompsQuery {
+  subCutKey: string;
+  waterfrontType?: string | null;
+  agSqft: number;
+  limit?: number;
+  minAnchors?: number;
+}
+
+export async function findAnchorComps(q: AnchorCompsQuery): Promise<CompView[]> {
+  if (!q.subCutKey || !q.agSqft || q.agSqft <= 0) return [];
+  const limit = Math.max(1, Math.min(q.limit ?? 8, 20));
+  const minAnchors = Math.max(0, q.minAnchors ?? 3);
+  const sqftLo = Math.floor(q.agSqft * 0.65);
+  const sqftHi = Math.ceil(q.agSqft * 1.35);
+
+  const supabase = createSupabaseServerClient();
+  let query = supabase
+    .schema('atlas')
+    .from('comps')
+    .select(SELECT_COLUMNS)
+    .eq('status', 'closed')
+    .eq('is_archived', false)
+    .eq('sub_cut_key', q.subCutKey)
+    .gte('ag_sqft', sqftLo)
+    .lte('ag_sqft', sqftHi)
+    .order('closing_date', { ascending: false, nullsFirst: false })
+    .limit(limit * 3); // overfetch — JS-side provenance filter trims
+
+  if (q.waterfrontType) {
+    query = query.eq('waterfront_type', q.waterfrontType);
+  }
+  const { data, error } = await query;
+  if (error) throw new Error(`findAnchorComps: ${error.message}`);
+
+  const candidates = ((data as unknown as CompRow[]) ?? [])
+    .map(toView)
+    .filter((c) => c.provenance !== 'ai_estimated')
+    .slice(0, limit);
+
+  return candidates.length >= minAnchors ? candidates : [];
 }
 
 /** Quick library count for the global /pricing/comps header chip. */

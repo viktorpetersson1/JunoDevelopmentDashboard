@@ -28,7 +28,13 @@ import type {
   RiskItem,
   MarketIndicator,
 } from '@/lib/pricing/strategy-brief';
+import { CompProvenanceBadge } from '@/app/pricing/_components/comp-provenance-badge';
 import type { ResearchedComp } from '@/lib/pricing/comp-researcher';
+
+/** D-026(c): map an AI-research comp to a provenance bucket for the badge. */
+function researchedCompProvenance(c: ResearchedComp): 'ai_live' | 'ai_estimated' {
+  return c.confidence === 'confirmed' ? 'ai_live' : 'ai_estimated';
+}
 
 // ────────────────────────────────────────────────────────────────────────────
 // Formatters
@@ -879,19 +885,25 @@ function CompTable({ label, comps }: { label: string; comps: ResearchedComp[] })
             {comps.map((c, i) => (
               <tr key={i} style={{ borderBottom: '1px solid var(--color-border-hairline, #c8c8c5)' }}>
                 <td style={{ ...tdStyle(), paddingTop: 6, paddingBottom: 6 }}>
-                  {c.sourceUrl ? (
-                    <a
-                      href={c.sourceUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ color: 'var(--color-text-primary, #111)', textDecoration: 'none' }}
-                      title={`Source: ${c.sourceName}`}
-                    >
-                      {c.address}
-                    </a>
-                  ) : (
-                    <span title={`Source: ${c.sourceName}`}>{c.address}</span>
-                  )}
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <CompProvenanceBadge
+                      provenance={researchedCompProvenance(c)}
+                      variant="dot"
+                    />
+                    {c.sourceUrl ? (
+                      <a
+                        href={c.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: 'var(--color-text-primary, #111)', textDecoration: 'none' }}
+                        title={`Source: ${c.sourceName}`}
+                      >
+                        {c.address}
+                      </a>
+                    ) : (
+                      <span title={`Source: ${c.sourceName}`}>{c.address}</span>
+                    )}
+                  </span>
                 </td>
                 <td
                   style={{

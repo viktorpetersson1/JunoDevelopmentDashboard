@@ -21,8 +21,14 @@ import {
   type ProjectLocationFactorsPatch,
 } from '@/lib/repos/project';
 import { listBriefs, insertBrief } from '@/lib/repos/pricing-briefs';
-import { bulkUpsertCompsIgnoreDupes, type NewCompInput } from '@/lib/repos/comps';
+import {
+  bulkUpsertCompsIgnoreDupes,
+  findAnchorComps,
+  type NewCompInput,
+  type CompView,
+} from '@/lib/repos/comps';
 import { classifyLocation } from '@/lib/pricing/location-classifier';
+import type { ResearchedComp } from '@/lib/pricing/comp-researcher';
 import { getActiveGlobals } from '@/lib/globals/active';
 import {
   generateStrategyBrief,
@@ -165,6 +171,19 @@ export const POST = withErrorBoundary(async (_req: NextRequest, ctx: RouteContex
     waterfrontType: loc.waterfrontType,
     viewPremium: loc.viewPremium,
     townProximity: loc.townProximity,
+    // D-026(a) — pull library anchors for this sub-cut + waterfront + sqft band
+    // so the AI uses verified comps instead of re-discovering them. Returns
+    // [] when fewer than 3 matching anchors are available (library still
+    // shallow); the AI falls back to pure web search in that case.
+    libraryAnchors: await findAnchorComps({
+      subCutKey: mapMarketIdToSubCutKey(project.market ?? 'default'),
+      waterfrontType: loc.waterfrontType ?? null,
+      agSqft: project.villa_sqft_ag,
+      limit: 8,
+      minAnchors: 3,
+    })
+      .then((rows) => rows.map(libraryCompToResearched))
+      .catch(() => []),
     phase,
   };
 
@@ -223,6 +242,39 @@ export const POST = withErrorBoundary(async (_req: NextRequest, ctx: RouteContex
 // ────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * D-026(a) — adapt a library CompView to the ResearchedComp shape the strategy
+ * brief consumes. Only called for verified / ai_live comps from `findAnchorComps`
+ * (ai_estimated is filtered out at the repo).
+ */
+function libraryCompToResearched(c: CompView): ResearchedComp {
+  const salePriceUsd = c.salePriceCents != null ? c.salePriceCents / 100 : 0;
+  const psf = c.psf ?? (c.agSqft > 0 ? salePriceUsd / c.agSqft : 0);
+  return {
+    address: c.address,
+    salePriceUsd,
+    agSqft: c.agSqft,
+    closingDate: c.closingDate,
+    // Status only ever 'closed' from the anchor query, but coerce defensively.
+    status: c.status === 'active' ? 'active' : 'closed',
+    yearBuilt: c.yearBuilt,
+    lotSizeAcres: c.lotSizeAcres,
+    waterfrontType: c.waterfrontType,
+    isNewConstruction: c.isNc,
+    domDays: c.domDays,
+    sourceUrl: c.sourceUrl,
+    sourceName:
+      c.provenance === 'verified'
+        ? 'Juno library (verified)'
+        : 'Juno library (AI · live)',
+    psf,
+    // ai_live comps came from live web search → 'confirmed'. verified
+    // (human-entered) is by definition the strongest signal — also 'confirmed'.
+    confidence: 'confirmed',
+    notes: c.notes,
+  };
+}
 
 /**
  * Map the project's legacy market_id (flat slug like "sag_harbor") to a
