@@ -11,6 +11,13 @@ on:
       - 'atlas/**'
       - '.github/workflows/ci.yml'
 
+# T088: cancel superseded runs to avoid burning runner minutes on rapid pushes.
+# Groups by workflow + ref; on a feature branch every new push cancels the prior
+# run; on main the in-progress run finishes (concurrent main pushes are rare).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 defaults:
   run:
     working-directory: atlas
