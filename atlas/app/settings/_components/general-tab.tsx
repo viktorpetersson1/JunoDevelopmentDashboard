@@ -73,6 +73,9 @@ interface FormState {
   target_starts_per_year: string;
   target_sells_per_year: string;
   velocity_plan_years: string;
+  target_annual_npat_usd: string;
+  fixed_overhead_annual_usd: string;
+  project_time_to_npat_months: string;
 }
 
 function formFromGlobals(g: Globals): FormState {
@@ -106,6 +109,11 @@ function formFromGlobals(g: Globals): FormState {
     target_starts_per_year: String(g.target_starts_per_year ?? 4),
     target_sells_per_year: String(g.target_sells_per_year ?? 4),
     velocity_plan_years: String(g.velocity_plan_years ?? 3),
+    target_annual_npat_usd:
+      g.target_annual_npat_usd == null ? '' : String(g.target_annual_npat_usd),
+    fixed_overhead_annual_usd:
+      g.fixed_overhead_annual_usd == null ? '' : String(g.fixed_overhead_annual_usd),
+    project_time_to_npat_months: String(g.project_time_to_npat_months ?? 18),
   };
 }
 
@@ -455,6 +463,40 @@ export function GeneralTab({
         <p style={{ margin: '8px 0 0 0', fontSize: 11, color: 'var(--color-text-tertiary)' }}>
           Drives the Pipeline workspace goal tracker. Defaults: 4 starts &amp; 4 sells per year over
           a 3-year window.
+        </p>
+      </Section>
+
+      <Section title="Rollout target">
+        <Grid>
+          <Field label="Annual NPAT target ($)">
+            <NumberInput
+              value={form.target_annual_npat_usd}
+              onChange={(v) => update('target_annual_npat_usd', v)}
+              step="100000"
+              disabled={!canEdit}
+            />
+          </Field>
+          <Field label="Annual fixed overhead ($)">
+            <NumberInput
+              value={form.fixed_overhead_annual_usd}
+              onChange={(v) => update('fixed_overhead_annual_usd', v)}
+              step="50000"
+              disabled={!canEdit}
+            />
+          </Field>
+          <Field label="Project time-to-NPAT (months)">
+            <NumberInput
+              value={form.project_time_to_npat_months}
+              onChange={(v) => update('project_time_to_npat_months', v)}
+              step="1"
+              disabled={!canEdit}
+            />
+          </Field>
+        </Grid>
+        <p style={{ margin: '8px 0 0 0', fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+          Drives the Rollout Pacing block + dashboard chip: the next start must begin in time to
+          keep trailing-12-month NPAT at or above target + overhead. Leave the target blank to
+          disable rollout pacing.
         </p>
       </Section>
 
@@ -845,5 +887,8 @@ function buildPayload(form: FormState): Record<string, unknown> {
     target_starts_per_year: int(form.target_starts_per_year),
     target_sells_per_year: int(form.target_sells_per_year),
     velocity_plan_years: int(form.velocity_plan_years),
+    target_annual_npat_usd: num(form.target_annual_npat_usd),
+    fixed_overhead_annual_usd: num(form.fixed_overhead_annual_usd),
+    project_time_to_npat_months: int(form.project_time_to_npat_months),
   };
 }
