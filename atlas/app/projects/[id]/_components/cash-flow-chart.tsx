@@ -1,15 +1,18 @@
 'use client';
 
 /**
- * T046.1 — Cash flow chart for the project Summary tab.
+ * T094.1 — Project cash-flow chart: FLOWS, not balances.
  *
- * Recharts composed chart:
- *   - Bars: net_cash per month (positive = cash in, negative = cash out)
- *   - Line: debt_balance over time (outstanding senior debt)
- *   - Line: equity_balance over time (outstanding equity)
+ * Recharts composed chart over the derived flow series
+ * (lib/finance/project-cashflow.ts):
+ *   - Stacked inflow bars (positive): Debt draws, Sale proceeds
+ *   - Stacked outflow bars (negative): Land, Construction, Soft, Financing,
+ *     Debt repaid
+ *   - Cumulative-net line (running inflows − outflows)
  *
- * Pure presentation: receives the already-computed MonthlySeries and renders.
- * Marked client because recharts uses ResponsiveContainer + ResizeObserver.
+ * The equity series are gone — Juno is debt-funded, so the old
+ * Net-cash/Debt-balance/Equity-balance view was the wrong shape (V5.2 §2.1).
+ * Pure presentation; client because recharts needs ResizeObserver.
  */
 
 import {
@@ -25,25 +28,33 @@ import {
   YAxis,
 } from 'recharts';
 import type { MonthlySeries } from '@/lib/calc/project/types';
+import { buildProjectCashFlow } from '@/lib/finance/project-cashflow';
 
 interface ChartRow {
   date: string;
-  netCash: number;
-  debt: number;
-  equity: number;
+  debtDraws: number;
+  sales: number;
+  // Outflows are negated so the bars render below the zero line.
+  land: number;
+  construction: number;
+  soft: number;
+  financing: number;
+  debtRepaid: number;
+  cumulative: number;
 }
 
 function buildRows(monthly: MonthlySeries): ChartRow[] {
-  const rows: ChartRow[] = new Array(monthly.dates.length);
-  for (let i = 0; i < monthly.dates.length; i++) {
-    rows[i] = {
-      date: monthly.dates[i]!,
-      netCash: monthly.net_cash[i] ?? 0,
-      debt: monthly.debt_balance[i] ?? 0,
-      equity: monthly.equity_balance[i] ?? 0,
-    };
-  }
-  return rows;
+  return buildProjectCashFlow(monthly).map((r) => ({
+    date: r.month,
+    debtDraws: r.debt_draws,
+    sales: r.sale_proceeds,
+    land: -r.land,
+    construction: -r.construction,
+    soft: -r.soft,
+    financing: -r.financing,
+    debtRepaid: -r.debt_repaid,
+    cumulative: r.cumulative_net,
+  }));
 }
 
 const compact = (n: number): string => {
@@ -53,11 +64,7 @@ const compact = (n: number): string => {
   return `$${n.toFixed(0)}`;
 };
 
-const tickMonth = (ym: string): string => {
-  // Show year on Jan, blank otherwise — keeps the axis readable for 49-mo horizon.
-  if (ym.endsWith('-01')) return ym.slice(0, 4);
-  return '';
-};
+const tickMonth = (ym: string): string => (ym.endsWith('-01') ? ym.slice(0, 4) : '');
 
 export function CashFlowChart({ monthly }: { monthly: MonthlySeries }) {
   const data = buildRows(monthly);
@@ -79,14 +86,9 @@ export function CashFlowChart({ monthly }: { monthly: MonthlySeries }) {
         }}
       >
         <h2
-          style={{
-            fontSize: 16,
-            fontWeight: 600,
-            margin: 0,
-            color: 'var(--color-text-primary)',
-          }}
+          style={{ fontSize: 16, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}
         >
-          Cash flow &amp; balances
+          Cash flow
         </h2>
         <span
           style={{
@@ -96,7 +98,7 @@ export function CashFlowChart({ monthly }: { monthly: MonthlySeries }) {
             color: 'var(--color-text-tertiary)',
           }}
         >
-          monthly · {data.length} months
+          monthly flows · {data.length} months
         </span>
       </header>
       <div style={{ width: '100%', height: 280 }}>
@@ -116,7 +118,9 @@ export function CashFlowChart({ monthly }: { monthly: MonthlySeries }) {
               width={56}
             />
             <Tooltip
-              formatter={(v: number | string) => (typeof v === 'number' ? compact(v) : String(v))}
+              formatter={(v: number | string) =>
+                typeof v === 'number' ? compact(Math.abs(v)) : String(v)
+              }
               labelStyle={{ color: 'var(--color-text-primary)', fontSize: 12 }}
               contentStyle={{
                 background: 'var(--color-surface-base)',
@@ -127,25 +131,20 @@ export function CashFlowChart({ monthly }: { monthly: MonthlySeries }) {
             />
             <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
             <ReferenceLine y={0} stroke="var(--color-border-strong)" strokeWidth={1} />
-            <Bar
-              dataKey="netCash"
-              name="Net cash"
-              fill="var(--color-accent-base, #131313)"
-              opacity={0.65}
-            />
+            {/* Inflows */}
+            <Bar dataKey="debtDraws" name="Debt draws" stackId="in" fill="#0d9488" />
+            <Bar dataKey="sales" name="Sale proceeds" stackId="in" fill="#15803d" />
+            {/* Outflows (negated) */}
+            <Bar dataKey="land" name="Land" stackId="out" fill="#78716c" />
+            <Bar dataKey="construction" name="Construction" stackId="out" fill="#d97706" />
+            <Bar dataKey="soft" name="Soft costs" stackId="out" fill="#9ca3af" />
+            <Bar dataKey="financing" name="Financing" stackId="out" fill="#b91c1c" />
+            <Bar dataKey="debtRepaid" name="Debt repaid" stackId="out" fill="#64748b" />
             <Line
               type="monotone"
-              dataKey="debt"
-              name="Debt balance"
-              stroke="var(--color-status-warning, #d97706)"
-              strokeWidth={2}
-              dot={false}
-            />
-            <Line
-              type="monotone"
-              dataKey="equity"
-              name="Equity balance"
-              stroke="var(--color-status-info, #2563eb)"
+              dataKey="cumulative"
+              name="Cumulative net"
+              stroke="#0d0d0d"
               strokeWidth={2}
               dot={false}
             />

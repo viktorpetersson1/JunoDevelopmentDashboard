@@ -20,6 +20,7 @@ import { formatMoney } from '@/lib/utils/money';
 import type { ProjectResult } from '@/lib/calc/project/types';
 import type { ProjectPnL, OwnerEarningRow } from '@/lib/finance/project-pnl';
 import type { RolloutTriggerResult, RolloutState } from '@/lib/finance/rollout-trigger';
+import type { DebtSnapshot } from '@/lib/finance/project-cashflow';
 import { CashFlowChart } from './cash-flow-chart';
 
 const card: CSSProperties = {
@@ -45,12 +46,14 @@ export function SummaryTab({
   pnl,
   ownerEarnings,
   rollout,
+  debtSnapshot,
 }: {
   result: ProjectResult;
   pnl: ProjectPnL;
   /** null = the viewing role can't see the per-owner split. */
   ownerEarnings: OwnerEarningRow[] | null;
   rollout: RolloutTriggerResult;
+  debtSnapshot: DebtSnapshot;
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -58,8 +61,34 @@ export function SummaryTab({
       <RolloutPacing rollout={rollout} />
       {ownerEarnings && <OwnerEarnings rows={ownerEarnings} npat={pnl.net_profit_after_tax_usd} />}
       <CashFlowChart monthly={result.monthly} />
+      <WhatWeOweToday snapshot={debtSnapshot} />
       <ScheduleCard result={result} />
     </div>
+  );
+}
+
+// ── What we owe today (T094.2) ──────────────────────────────────────────────
+
+function WhatWeOweToday({ snapshot }: { snapshot: DebtSnapshot }) {
+  return (
+    <section style={card}>
+      <h3 style={sectionLabel}>What we owe today</h3>
+      <Row label="Project debt outstanding" value={money(snapshot.debt_outstanding)} bold />
+      <Row label="Interest (this month)" value={money(snapshot.interest_this_month)} />
+      {snapshot.is_forecast && (
+        <p
+          style={{
+            margin: '12px 0 0',
+            fontSize: 12,
+            fontStyle: 'italic',
+            color: 'var(--color-text-tertiary)',
+          }}
+        >
+          Forecast — no actuals logged for {snapshot.month}. The engine has a single debt stream, so
+          the KPC LOC / lender split is not broken out yet.
+        </p>
+      )}
+    </section>
   );
 }
 

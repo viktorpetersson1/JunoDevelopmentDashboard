@@ -39,6 +39,7 @@ import { enrichWithAppliedPricingRun } from '@/lib/services/project-with-pricing
 import { runProject } from '@/lib/calc/project/runProject';
 import { buildProjectPnL, allocateOwnerEarnings } from '@/lib/finance/project-pnl';
 import { computeRolloutTrigger } from '@/lib/finance/rollout-trigger';
+import { debtSnapshotForMonth } from '@/lib/finance/project-cashflow';
 import { getActiveGlobals } from '@/lib/globals/active';
 import { BASELINE_GLOBALS, BASELINE_SCENARIO } from '@/lib/calc/baselines';
 import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
@@ -117,8 +118,17 @@ export default async function ProjectDetailPage({
         project_time_to_npat_months: globals.project_time_to_npat_months ?? 18,
         today_month: serverMonthYM(),
       });
+      // "What we owe today" (T094.2) — engine forecast at the current month
+      // (no actuals ingest path yet).
+      const debtSnapshot = debtSnapshotForMonth(result.monthly, serverMonthYM());
       tabContent = (
-        <SummaryTab result={result} pnl={pnl} ownerEarnings={ownerEarnings} rollout={rollout} />
+        <SummaryTab
+          result={result}
+          pnl={pnl}
+          ownerEarnings={ownerEarnings}
+          rollout={rollout}
+          debtSnapshot={debtSnapshot}
+        />
       );
       break;
     }

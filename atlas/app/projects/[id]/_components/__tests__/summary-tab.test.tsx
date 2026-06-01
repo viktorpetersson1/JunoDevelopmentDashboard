@@ -4,6 +4,7 @@ import { SummaryTab } from '../summary-tab';
 import type { ProjectResult } from '@/lib/calc/project/types';
 import type { ProjectPnL, OwnerEarningRow } from '@/lib/finance/project-pnl';
 import type { RolloutTriggerResult } from '@/lib/finance/rollout-trigger';
+import type { DebtSnapshot } from '@/lib/finance/project-cashflow';
 
 // The cash-flow chart pulls in recharts; stub it so the Summary tab renders
 // cleanly in jsdom (we're testing the P&L + earnings markup, not the chart).
@@ -66,10 +67,23 @@ const ROLLOUT_AMBER: RolloutTriggerResult = {
   rationale: 'Trailing-12-month NPAT dips below $5.0M in 2028-04.',
 };
 
+const DEBT: DebtSnapshot = {
+  month: '2026-06',
+  debt_outstanding: 1_430_000,
+  interest_this_month: 12_000,
+  is_forecast: true,
+};
+
 describe('SummaryTab', () => {
   it('renders all 9 P&L lines + the Margin/IRR/MOIC row', () => {
     render(
-      <SummaryTab result={RESULT} pnl={PNL} ownerEarnings={null} rollout={ROLLOUT_UNCONFIGURED} />
+      <SummaryTab
+        result={RESULT}
+        pnl={PNL}
+        ownerEarnings={null}
+        rollout={ROLLOUT_UNCONFIGURED}
+        debtSnapshot={DEBT}
+      />
     );
     expect(screen.getByText('Gross revenue')).toBeInTheDocument();
     expect(screen.getByText('− Land')).toBeInTheDocument();
@@ -87,7 +101,13 @@ describe('SummaryTab', () => {
 
   it('renders the "Kingshaus"/"Prefab" stream as "Superstructure" (no legacy strings)', () => {
     const { container } = render(
-      <SummaryTab result={RESULT} pnl={PNL} ownerEarnings={null} rollout={ROLLOUT_UNCONFIGURED} />
+      <SummaryTab
+        result={RESULT}
+        pnl={PNL}
+        ownerEarnings={null}
+        rollout={ROLLOUT_UNCONFIGURED}
+        debtSnapshot={DEBT}
+      />
     );
     expect(container.textContent).not.toMatch(/kingshaus|prefab/i);
     expect(screen.getByText('− Superstructure')).toBeInTheDocument();
@@ -95,14 +115,26 @@ describe('SummaryTab', () => {
 
   it('shows closing costs as a memo, clearly not deducted', () => {
     render(
-      <SummaryTab result={RESULT} pnl={PNL} ownerEarnings={null} rollout={ROLLOUT_UNCONFIGURED} />
+      <SummaryTab
+        result={RESULT}
+        pnl={PNL}
+        ownerEarnings={null}
+        rollout={ROLLOUT_UNCONFIGURED}
+        debtSnapshot={DEBT}
+      />
     );
     expect(screen.getByText(/memo/i)).toBeInTheDocument();
   });
 
   it('renders the owner-earnings split when provided (admin)', () => {
     render(
-      <SummaryTab result={RESULT} pnl={PNL} ownerEarnings={OWNERS} rollout={ROLLOUT_UNCONFIGURED} />
+      <SummaryTab
+        result={RESULT}
+        pnl={PNL}
+        ownerEarnings={OWNERS}
+        rollout={ROLLOUT_UNCONFIGURED}
+        debtSnapshot={DEBT}
+      />
     );
     expect(screen.getByText(/Owner earnings/i)).toBeInTheDocument();
     expect(screen.getByText('Peter · 38.0%')).toBeInTheDocument();
@@ -112,21 +144,55 @@ describe('SummaryTab', () => {
 
   it('hides the owner-earnings split when not visible to the role', () => {
     render(
-      <SummaryTab result={RESULT} pnl={PNL} ownerEarnings={null} rollout={ROLLOUT_UNCONFIGURED} />
+      <SummaryTab
+        result={RESULT}
+        pnl={PNL}
+        ownerEarnings={null}
+        rollout={ROLLOUT_UNCONFIGURED}
+        debtSnapshot={DEBT}
+      />
     );
     expect(screen.queryByText(/Owner earnings/i)).not.toBeInTheDocument();
   });
 
   it('shows the "set target" prompt when rollout is unconfigured (scaffold-blocked)', () => {
     render(
-      <SummaryTab result={RESULT} pnl={PNL} ownerEarnings={null} rollout={ROLLOUT_UNCONFIGURED} />
+      <SummaryTab
+        result={RESULT}
+        pnl={PNL}
+        ownerEarnings={null}
+        rollout={ROLLOUT_UNCONFIGURED}
+        debtSnapshot={DEBT}
+      />
     );
     expect(screen.getByText('Rollout pacing')).toBeInTheDocument();
     expect(screen.getByText(/Set an annual NPAT target/i)).toBeInTheDocument();
   });
 
   it('shows the next-start date when rollout needs action', () => {
-    render(<SummaryTab result={RESULT} pnl={PNL} ownerEarnings={null} rollout={ROLLOUT_AMBER} />);
+    render(
+      <SummaryTab
+        result={RESULT}
+        pnl={PNL}
+        ownerEarnings={null}
+        rollout={ROLLOUT_AMBER}
+        debtSnapshot={DEBT}
+      />
+    );
     expect(screen.getByText(/Next start needed by Oct 2026/i)).toBeInTheDocument();
+  });
+
+  it('renders the "What we owe today" debt snapshot', () => {
+    render(
+      <SummaryTab
+        result={RESULT}
+        pnl={PNL}
+        ownerEarnings={null}
+        rollout={ROLLOUT_UNCONFIGURED}
+        debtSnapshot={DEBT}
+      />
+    );
+    expect(screen.getByText('What we owe today')).toBeInTheDocument();
+    expect(screen.getByText('Project debt outstanding')).toBeInTheDocument();
   });
 });
