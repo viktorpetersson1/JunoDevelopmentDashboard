@@ -14,7 +14,8 @@
  * 100ms. Both runs happen on every page load; no lazy-load buttons.
  */
 
-import { DashboardShell } from '../_components/dashboard-shell';
+import { DashboardShell } from '../../_components/dashboard-shell';
+import { AnalyticsTabs } from '../../_components/analytics-tabs';
 import { TornadoChart } from './_components/tornado-chart';
 import { HeatmapGrid } from './_components/heatmap-grid';
 import { findManyProjects } from '@/lib/repos/project';
@@ -30,7 +31,7 @@ export const revalidate = 0;
 export const runtime = 'edge';
 
 export default async function SensitivityPage() {
-  const { profile, user } = await requireAuthOrRedirect('/sensitivity');
+  const { profile, user } = await requireAuthOrRedirect('/analytics/sensitivity');
   const { projects } = await findManyProjects({ limit: 100 });
   const globalsCtx = await getActiveGlobals();
   // Tornado intentionally anchors at the BASE scenario (not the active
@@ -49,8 +50,9 @@ export default async function SensitivityPage() {
   const biggestMover = report.drivers[0];
 
   return (
-    <DashboardShell activeHref="/sensitivity" user={dashboardUser}>
+    <DashboardShell activeHref="/analytics" user={dashboardUser}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <AnalyticsTabs activeKey="sensitivity" />
         <header>
           <h1
             style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}

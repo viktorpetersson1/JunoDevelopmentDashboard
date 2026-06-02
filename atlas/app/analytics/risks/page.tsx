@@ -10,7 +10,8 @@
  * lands in V4.8).
  */
 
-import { DashboardShell } from '../_components/dashboard-shell';
+import { DashboardShell } from '../../_components/dashboard-shell';
+import { AnalyticsTabs } from '../../_components/analytics-tabs';
 import { findManyProjects } from '@/lib/repos/project';
 import { aggregatePortfolio } from '@/lib/calc/portfolio/aggregate';
 import { runProject } from '@/lib/calc/project/runProject';
@@ -29,7 +30,7 @@ export const revalidate = 0;
 export const runtime = 'edge';
 
 export default async function RisksCenterPage() {
-  const { profile, user } = await requireAuthOrRedirect('/risks');
+  const { profile, user } = await requireAuthOrRedirect('/analytics/risks');
   const { projects } = await findManyProjects({ limit: 100 });
   const [active, globalsCtx] = await Promise.all([getActiveScenario(), getActiveGlobals()]);
   const portfolio = aggregatePortfolio(projects, globalsCtx.globals, active.scenario);
@@ -94,12 +95,13 @@ export default async function RisksCenterPage() {
 
   return (
     <DashboardShell
-      activeHref="/risks"
+      activeHref="/analytics"
       user={dashboardUser}
       activeScenarioId={active.activeId}
       activeScenarioName={active.displayName}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <AnalyticsTabs activeKey="risks" />
         <header>
           <h1
             style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}

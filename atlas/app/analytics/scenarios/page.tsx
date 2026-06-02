@@ -34,7 +34,8 @@
  * client component owns the form state + recompute-on-apply flow.
  */
 
-import { DashboardShell } from '../_components/dashboard-shell';
+import { DashboardShell } from '../../_components/dashboard-shell';
+import { AnalyticsTabs } from '../../_components/analytics-tabs';
 import { ScenarioClient } from './_components/scenario-client';
 import { findManyProjects } from '@/lib/repos/project';
 import { aggregatePortfolio } from '@/lib/calc/portfolio/aggregate';
@@ -49,7 +50,7 @@ export const revalidate = 0;
 export const runtime = 'edge';
 
 export default async function ScenarioPage() {
-  const { profile, user } = await requireAuthOrRedirect('/scenario');
+  const { profile, user } = await requireAuthOrRedirect('/analytics/scenarios');
   const [{ projects }, saved, globalsCtx] = await Promise.all([
     findManyProjects({ limit: 100 }),
     findManyScenarios(),
@@ -129,7 +130,8 @@ export default async function ScenarioPage() {
   };
 
   return (
-    <DashboardShell activeHref="/scenario" user={dashboardUser}>
+    <DashboardShell activeHref="/analytics" user={dashboardUser}>
+      <AnalyticsTabs activeKey="scenarios" />
       <ScenarioClient
         projects={projects.map((p) => ({
           id: p.id,

@@ -23,7 +23,8 @@
  *   - Distribution param persistence (atlas.risk_configs table)
  */
 
-import { DashboardShell } from '../_components/dashboard-shell';
+import { DashboardShell } from '../../_components/dashboard-shell';
+import { AnalyticsTabs } from '../../_components/analytics-tabs';
 import { DistributionChart } from './_components/distribution-chart';
 import { DriverControls } from './_components/driver-controls';
 import { findManyProjects } from '@/lib/repos/project';
@@ -106,7 +107,7 @@ export default async function RiskPage({
 }: {
   searchParams: Record<string, string | string[] | undefined>;
 }) {
-  const { profile, user } = await requireAuthOrRedirect('/risk');
+  const { profile, user } = await requireAuthOrRedirect('/analytics/stress');
   const { projects } = await findManyProjects({ limit: 100 });
   const globalsCtx = await getActiveGlobals();
 
@@ -140,8 +141,9 @@ export default async function RiskPage({
   const equityOutcomes = report.outcomes.map((o) => o.peak_equity);
 
   return (
-    <DashboardShell activeHref="/risk" user={dashboardUser}>
+    <DashboardShell activeHref="/analytics" user={dashboardUser}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <AnalyticsTabs activeKey="stress" />
         <header>
           <h1
             style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}

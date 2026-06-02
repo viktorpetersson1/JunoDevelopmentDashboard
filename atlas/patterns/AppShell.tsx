@@ -69,84 +69,21 @@ const ProjectsIcon = () => (
   </svg>
 );
 
-const ForecastIcon = () => (
+/** Analytics icon — chart line with tabs, evoking the multi-view umbrella. */
+const AnalyticsIcon = () => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
     <path d="M2.5 17.5h15" strokeLinecap="round" />
-    <path d="M5 13.5l3.5-4 3 3 4-5.5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M5 13l3-4 3 3 4-6" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M2.5 4.5h5M9.5 4.5h5" strokeLinecap="round" />
   </svg>
 );
 
-const CapitalIcon = () => (
+/** Earnings icon — bar chart with upward arrow, evoking shareholder profit. */
+const EarningsIcon = () => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-    <circle cx="10" cy="10" r="7.5" />
-    <path d="M10 6.5v7M7.5 8.5c0-1.1.9-2 2.5-2s2.5.9 2.5 2-1.1 2-2.5 2-2.5.9-2.5 2 .9 2 2.5 2 2.5-.9 2.5-2" />
-  </svg>
-);
-
-const RisksIcon = () => (
-  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-    <path d="M10 2.5L2.5 17.5h15L10 2.5z" strokeLinejoin="round" />
-    <path d="M10 8.5v4" strokeLinecap="round" />
-    <circle cx="10" cy="14.5" r="0.75" fill="currentColor" stroke="none" />
-  </svg>
-);
-
-/** V4.4 — Waterfall icon: stacked horizontal bars cascading down + right,
- *  evoking the European-waterfall tier diagram. */
-const WaterfallIcon = () => (
-  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-    <rect x="2.5" y="3.5" width="7" height="2" rx="0.5" />
-    <rect x="5.5" y="7" width="7" height="2" rx="0.5" />
-    <rect x="8.5" y="10.5" width="7" height="2" rx="0.5" />
-    <rect x="11.5" y="14" width="5" height="2" rx="0.5" />
-  </svg>
-);
-
-/** V4.6 — Sensitivity icon: horizontal bars of varying length around a
- *  center axis, evoking the tornado chart shape. */
-const SensitivityIcon = () => (
-  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-    <line x1="10" y1="2.5" x2="10" y2="17.5" strokeLinecap="round" />
-    <rect x="4" y="4" width="6" height="2" rx="0.5" />
-    <rect x="10" y="7.5" width="5" height="2" rx="0.5" />
-    <rect x="5.5" y="11" width="4.5" height="2" rx="0.5" />
-    <rect x="10" y="14.5" width="3" height="2" rx="0.5" />
-  </svg>
-);
-
-/** V4.5 — Scenarios icon: three branching paths from a single point, evoking
- *  "what-if" forks. */
-const ScenarioIcon = () => (
-  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-    <circle cx="5" cy="10" r="1.75" />
-    <circle cx="15" cy="4.5" r="1.75" />
-    <circle cx="15" cy="10" r="1.75" />
-    <circle cx="15" cy="15.5" r="1.75" />
-    <path d="M6.5 9 L13.5 5" strokeLinecap="round" />
-    <path d="M6.75 10 L13.25 10" strokeLinecap="round" />
-    <path d="M6.5 11 L13.5 15" strokeLinecap="round" />
-  </svg>
-);
-
-/** V4.7 — Stress-test icon: a bell-curve sketch, evoking the Monte-Carlo
- *  outcome distribution. */
-const StressIcon = () => (
-  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-    <path
-      d="M2.5 16 Q5 16 6.5 12 T10 6 T13.5 12 T17.5 16"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <line x1="2.5" y1="17" x2="17.5" y2="17" strokeLinecap="round" />
-  </svg>
-);
-
-const SuggestionsIcon = () => (
-  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-    <circle cx="10" cy="9" r="5.5" />
-    <path d="M10 4.5v4.5l2.5 1.5" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M8 16.5h4" strokeLinecap="round" />
-    <path d="M9 18.5h2" strokeLinecap="round" />
+    <rect x="3" y="10" width="3" height="7.5" rx="0.5" />
+    <rect x="8.5" y="6.5" width="3" height="11" rx="0.5" />
+    <rect x="14" y="3.5" width="3" height="14" rx="0.5" />
   </svg>
 );
 
@@ -167,40 +104,10 @@ const PricingIcon = () => (
   </svg>
 );
 
-/**
- * V4.1b — Ask Juno icon restored. The widget is still global (right-docked
- * panel + bottom-right floating launcher mounted via app/providers.tsx),
- * but the sidebar now also offers a CTA that DISPATCHES an open event
- * instead of navigating. Two entry points, one widget.
- */
-const AskJunoIcon = () => (
-  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-    <circle cx="10" cy="10" r="7.75" />
-    <line x1="10" y1="2.25" x2="10" y2="17.75" strokeLinecap="round" />
-  </svg>
-);
-
-/** Custom DOM event the sidebar fires; the AskJunoWidget listens for it. */
-export const ASK_JUNO_OPEN_EVENT = 'atlas:open-ask-juno';
-function openAskJuno() {
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent(ASK_JUNO_OPEN_EVENT));
-  }
-}
-
 const NotificationsIcon = () => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
     <path d="M10 2.5a5 5 0 0 0-5 5v3l-1.5 2h13L15 10.5v-3a5 5 0 0 0-5-5z" strokeLinejoin="round" />
     <path d="M8.5 15.5a1.5 1.5 0 0 0 3 0" strokeLinecap="round" />
-  </svg>
-);
-
-const UsersIcon = () => (
-  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-    <circle cx="8" cy="7" r="3" />
-    <path d="M2 17c0-3.3 2.7-6 6-6s6 2.7 6 6" strokeLinecap="round" />
-    <path d="M14 5c1.1 0 2 .9 2 2s-.9 2-2 2" strokeLinecap="round" />
-    <path d="M16 13c1.7.6 3 2.2 3 4" strokeLinecap="round" />
   </svg>
 );
 
@@ -232,47 +139,30 @@ const JunoLogo = () => (
   </div>
 );
 
-// ─── Default nav structure ────────────────────────────────────────────────────
+// ─── Default nav structure (T098 — V5.2) ────────────────────────────────────
+//
+// 6 primary items + 2 account items, no section labels.
+// The Analytics umbrella replaces the 7 individual portfolio routes.
+// Suggestions + Ask Juno removed from primary nav (Suggestions lives inside
+// Settings; Ask Juno remains as the floating widget + bottom-right launcher).
 
 export const DEFAULT_SIDEBAR_SECTIONS: SidebarSection[] = [
   {
-    label: 'PORTFOLIO',
+    // No label — the 6 primary items need no header. Two sections separated
+    // by CSS margin-top (ja-sidebar__section + ja-sidebar__section) gives
+    // the single divider before Notifications/Settings.
     items: [
-      // T081.3 — Overview moved from `/` to `/dashboard` (canonical surface).
-      { href: '/dashboard', label: 'Overview', icon: <OverviewIcon /> },
-      { href: '/cashflow', label: 'Forecast', icon: <ForecastIcon /> },
-      { href: '/capital', label: 'Capital', icon: <CapitalIcon /> },
-      { href: '/waterfall', label: 'Waterfall', icon: <WaterfallIcon /> },
-      { href: '/sensitivity', label: 'Sensitivity', icon: <SensitivityIcon /> },
-      { href: '/scenario', label: 'Scenarios', icon: <ScenarioIcon /> },
-      { href: '/risks', label: 'Risks', icon: <RisksIcon /> },
-      { href: '/risk', label: 'Stress test', icon: <StressIcon /> },
-    ],
-  },
-  {
-    label: 'WORKSPACE',
-    items: [
+      { href: '/dashboard', label: 'Home', icon: <OverviewIcon /> },
       { href: '/projects', label: 'Projects', icon: <ProjectsIcon /> },
       { href: '/pipeline', label: 'Pipeline', icon: <PipelineIcon /> },
       { href: '/pricing', label: 'Pricing', icon: <PricingIcon /> },
-      { href: '/suggestions', label: 'Suggestions', icon: <SuggestionsIcon /> },
-      // V4.1b — Ask Juno CTA. Does NOT navigate — fires the open event so
-      // the global AskJunoWidget (app/providers.tsx) pops the right-docked
-      // panel. href '#ask-juno' is a stable anchor (never matches an
-      // activeHref) so the keyboard/screen-reader path stays sane.
-      {
-        href: '#ask-juno',
-        label: 'Ask Juno',
-        icon: <AskJunoIcon />,
-        onClick: openAskJuno,
-      },
+      { href: '/analytics', label: 'Analytics', icon: <AnalyticsIcon /> },
+      { href: '/earnings', label: 'Earnings', icon: <EarningsIcon /> },
     ],
   },
   {
-    label: 'ACCOUNT',
     items: [
       { href: '/notifications', label: 'Notifications', icon: <NotificationsIcon /> },
-      // "Owners" lives inside /settings as a tab — no separate top-level entry.
       { href: '/settings', label: 'Settings', icon: <SettingsIcon /> },
     ],
   },

@@ -20,7 +20,8 @@
  * 404'd).
  */
 
-import { DashboardShell } from '../_components/dashboard-shell';
+import { DashboardShell } from '../../_components/dashboard-shell';
+import { AnalyticsTabs } from '../../_components/analytics-tabs';
 import { EquityTimelineChart } from './_components/equity-timeline-chart';
 import { findManyProjects } from '@/lib/repos/project';
 import { aggregatePortfolio } from '@/lib/calc/portfolio/aggregate';
@@ -61,7 +62,7 @@ function toInvestorInput(row: CapTableEntryView): WaterfallInvestorInput {
 }
 
 export default async function WaterfallPage() {
-  const { profile, user } = await requireAuthOrRedirect('/waterfall');
+  const { profile, user } = await requireAuthOrRedirect('/analytics/waterfall');
   const { projects } = await findManyProjects({ limit: 100 });
   const [active, globalsCtx] = await Promise.all([getActiveScenario(), getActiveGlobals()]);
   const [portfolio, capTable] = await Promise.all([
@@ -130,12 +131,13 @@ export default async function WaterfallPage() {
 
   return (
     <DashboardShell
-      activeHref="/waterfall"
+      activeHref="/analytics"
       user={dashboardUser}
       activeScenarioId={active.activeId}
       activeScenarioName={active.displayName}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <AnalyticsTabs activeKey="waterfall" />
         <header>
           <h1
             style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}

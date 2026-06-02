@@ -24,6 +24,27 @@ export async function middleware(request: NextRequest) {
       headers: { 'Cache-Control': 'no-store, must-revalidate' },
     });
   }
+
+  // T098 — 301 redirects for the 7 routes moved under /analytics.
+  // These are permanent redirects; they keep old bookmarks alive and prevent
+  // any lingering cf-pages cache from serving a 404.
+  const ANALYTICS_REDIRECTS: Record<string, string> = {
+    '/cashflow': '/analytics/forecast',
+    '/capital': '/analytics/capital',
+    '/waterfall': '/analytics/waterfall',
+    '/sensitivity': '/analytics/sensitivity',
+    '/scenario': '/analytics/scenarios',
+    '/risk': '/analytics/stress',
+    '/risks': '/analytics/risks',
+  };
+  const pathname = request.nextUrl.pathname;
+  const redirectTarget = ANALYTICS_REDIRECTS[pathname];
+  if (redirectTarget) {
+    const url = request.nextUrl.clone();
+    url.pathname = redirectTarget;
+    return NextResponse.redirect(url, { status: 301 });
+  }
+
   return updateSession(request);
 }
 

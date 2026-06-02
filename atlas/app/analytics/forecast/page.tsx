@@ -7,8 +7,9 @@
  * status card + annual table.
  */
 
-import { DashboardShell } from '../_components/dashboard-shell';
-import { PortfolioCashFlowChart } from '../_components/portfolio-cash-flow-chart';
+import { DashboardShell } from '../../_components/dashboard-shell';
+import { AnalyticsTabs } from '../../_components/analytics-tabs';
+import { PortfolioCashFlowChart } from '../../_components/portfolio-cash-flow-chart';
 import { AnnualPnLTable } from './_components/annual-pnl-table';
 import { LocStatusCard } from './_components/loc-status-card';
 import { KPIStrip } from '@/components/data/KPIStrip';
@@ -25,7 +26,7 @@ export const revalidate = 0;
 export const runtime = 'edge';
 
 export default async function CashflowPage() {
-  const { profile, user } = await requireAuthOrRedirect('/cashflow');
+  const { profile, user } = await requireAuthOrRedirect('/analytics/forecast');
   const { projects } = await findManyProjects({ limit: 100 });
   const [active, globalsCtx] = await Promise.all([getActiveScenario(), getActiveGlobals()]);
   const portfolio = aggregatePortfolio(projects, globalsCtx.globals, active.scenario);
@@ -38,12 +39,13 @@ export default async function CashflowPage() {
 
   return (
     <DashboardShell
-      activeHref="/cashflow"
+      activeHref="/analytics"
       user={dashboardUser}
       activeScenarioId={active.activeId}
       activeScenarioName={active.displayName}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <AnalyticsTabs activeKey="forecast" />
         <header>
           <h1
             style={{

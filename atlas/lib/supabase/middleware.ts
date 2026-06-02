@@ -31,20 +31,20 @@ function isPublicPath(pathname: string): boolean {
  *  Root `/` is treated as protected because it's a thin redirect to the
  *  canonical post-login surface and needs the auth gate to fire.
  */
+// T098 (V5.2): old individual portfolio routes removed — they 301-redirect to
+// /analytics/* via the root middleware so they never reach this guard.
+// New routes: /analytics (umbrella), /earnings (shareholder view).
 const PROTECTED_PREFIXES = [
   '/',
   '/dashboard',
   '/projects',
   '/pipeline',
-  '/cashflow',
+  '/pricing',
+  '/analytics', // T098 — umbrella for Forecast/Capital/Waterfall/Sensitivity/Scenarios/Stress/Risks
+  '/earnings', // T097/T098 — shareholder earnings (placeholder until owner↔auth linkage)
   '/notifications',
   '/settings',
-  '/pricing',
-  '/waterfall', // V4.4 — owner waterfall (INVENTORY §18)
-  '/sensitivity', // V4.6 — tornado (INVENTORY §20)
-  '/scenario', // V4.5 — scenarios editor (INVENTORY §19)
-  '/risk', // V4.7 — Monte Carlo stress test (INVENTORY §22, singular `/risk`)
-  '/suggestions', // V4.8 — suggestions queue (INVENTORY §25, editor+)
+  '/suggestions', // V4.8 — suggestions queue (accessible from Settings)
   '/api',
   '/dev', // dev-only routes; production-blocked in atlas/middleware.ts
 ];

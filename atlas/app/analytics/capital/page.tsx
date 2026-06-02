@@ -8,7 +8,8 @@
  * Surfaces dead-link #1 from the QA audit. Sidebar now lands somewhere real.
  */
 
-import { DashboardShell } from '../_components/dashboard-shell';
+import { DashboardShell } from '../../_components/dashboard-shell';
+import { AnalyticsTabs } from '../../_components/analytics-tabs';
 import { LocDrawdownChart } from './_components/loc-drawdown-chart';
 import { CapitalStackChart } from './_components/capital-stack-chart';
 import { findManyProjects } from '@/lib/repos/project';
@@ -24,7 +25,7 @@ export const revalidate = 0;
 export const runtime = 'edge';
 
 export default async function CapitalOverviewPage() {
-  const { profile, user } = await requireAuthOrRedirect('/capital');
+  const { profile, user } = await requireAuthOrRedirect('/analytics/capital');
   const { projects } = await findManyProjects({ limit: 100 });
   // V4.12 active scenario + V4.11b active globals.
   const [active, globalsCtx] = await Promise.all([getActiveScenario(), getActiveGlobals()]);
@@ -87,12 +88,13 @@ export default async function CapitalOverviewPage() {
 
   return (
     <DashboardShell
-      activeHref="/capital"
+      activeHref="/analytics"
       user={dashboardUser}
       activeScenarioId={active.activeId}
       activeScenarioName={active.displayName}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <AnalyticsTabs activeKey="capital" />
         <header>
           <h1
             style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}

@@ -14,21 +14,23 @@ describe('AppShell', () => {
     expect(screen.getByRole('main', { name: 'Page content' })).toHaveTextContent('BODY');
   });
 
-  it('renders default sidebar sections (Portfolio + Workspace + Account)', () => {
-    // T081.3 — Overview href moved from `/` → `/dashboard`; activeHref tracks.
+  it('renders default sidebar sections (T098: 6 primary + 2 account, no section labels)', () => {
+    // T098 — nav collapsed from 15 items / 3 labelled sections to 6+2 / no labels.
     render(
       <AppShell activeHref="/dashboard" scenario="base" onScenarioChange={() => {}}>
         x
       </AppShell>
     );
-    // 3 section labels in the default sidebar
-    expect(screen.getByText('PORTFOLIO')).toBeInTheDocument();
-    expect(screen.getByText('WORKSPACE')).toBeInTheDocument();
-    expect(screen.getByText('ACCOUNT')).toBeInTheDocument();
-    // Active link
-    const overview = screen.getByRole('link', { name: 'Overview' });
-    expect(overview).toHaveAttribute('aria-current', 'page');
-    expect(overview).toHaveAttribute('href', '/dashboard');
+    // No section labels in the simplified nav.
+    expect(screen.queryByText('PORTFOLIO')).not.toBeInTheDocument();
+    expect(screen.queryByText('WORKSPACE')).not.toBeInTheDocument();
+    // Primary 6 items present.
+    expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/dashboard');
+    expect(screen.getByRole('link', { name: 'Analytics' })).toHaveAttribute('href', '/analytics');
+    expect(screen.getByRole('link', { name: 'Earnings' })).toHaveAttribute('href', '/earnings');
+    // Active link (Home = /dashboard).
+    const home = screen.getByRole('link', { name: 'Home' });
+    expect(home).toHaveAttribute('aria-current', 'page');
   });
 
   it('user prop overrides DEFAULT_USER; topbar actions slot renders', () => {
@@ -49,7 +51,10 @@ describe('AppShell', () => {
   });
 
   it('exports DEFAULT_SIDEBAR_SECTIONS + DEFAULT_USER constants', () => {
-    expect(DEFAULT_SIDEBAR_SECTIONS).toHaveLength(3);
+    // T098: 2 sections (6 primary + 2 account), no labels.
+    expect(DEFAULT_SIDEBAR_SECTIONS).toHaveLength(2);
+    expect(DEFAULT_SIDEBAR_SECTIONS[0]?.items).toHaveLength(6);
+    expect(DEFAULT_SIDEBAR_SECTIONS[1]?.items).toHaveLength(2);
     expect(DEFAULT_USER.name).toBe('Viktor Petersson');
   });
 });
