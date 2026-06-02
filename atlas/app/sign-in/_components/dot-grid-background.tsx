@@ -36,13 +36,19 @@ interface DotGridProps {
 }
 
 export function DotGridBackground({
-  spacing = 22,
-  baseRadius = 1.1,
-  peakRadius = 2.4,
-  influence = 140,
-  pullStrength = 14,
-  baseColor = '#d4d4d2',
-  peakColor = '#0d0d0d',
+  // Tuned per Viktor 2 Jun visual feedback to match render.com:
+  // - tighter spacing so the field reads as a texture, not individual dots
+  // - lighter base so it's almost invisible at rest
+  // - peak color is medium-grey (NOT near-black) so even a focused dot
+  //   doesn't punch through; the magnetic displacement carries the effect
+  // - gentler pull so it feels "lit by gravity" rather than dragged
+  spacing = 16,
+  baseRadius = 0.9,
+  peakRadius = 1.8,
+  influence = 120,
+  pullStrength = 9,
+  baseColor = '#e8e8e6',
+  peakColor = '#9a9a96',
 }: DotGridProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rafRef = useRef<number | null>(null);
