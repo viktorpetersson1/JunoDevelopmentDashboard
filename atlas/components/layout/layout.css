@@ -18,7 +18,8 @@
   grid-template-columns: var(--layout-sidebar-width) 1fr;
   grid-template-rows: auto 1fr;
   min-height: 100vh;
-  background: var(--color-surface-sunken);
+  /* T103.9 — pure white page background per the Ramp pattern. */
+  background: var(--color-surface-base);
 }
 
 /* Sidebar occupies the full left column, both rows */
@@ -39,7 +40,7 @@
   grid-row: 2;
   overflow-y: auto;
   overflow-x: hidden;
-  background: var(--color-surface-sunken);
+  background: var(--color-surface-base);
   min-width: 0;
 }
 
