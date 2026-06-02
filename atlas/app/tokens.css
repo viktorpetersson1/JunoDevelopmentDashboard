@@ -44,6 +44,13 @@
   --color-accent-blue: #4f6fff;
   --color-accent-blue-soft: rgba(79, 111, 255, 0.08);
 
+  /* Brand signature — sand / limestone (V5.2 T103.11 / D-040). Juno's
+     differentiator vs Ramp's neutral grey. Used ONLY on hero / sign-in
+     surfaces + the dot-grid signature, never on data UI. */
+  --color-brand-sand: #e8dfcc;
+  --color-brand-sand-soft: #f2ecdc;
+  --color-brand-sand-strong: #d4c7ad;
+
   /* Semantic */
   --color-positive: #15803d;
   --color-positive-soft: #ecfdf5;

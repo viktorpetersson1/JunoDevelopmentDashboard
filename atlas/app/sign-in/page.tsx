@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { JunoMark } from '@/components/brand';
 import { SignInForm } from './sign-in-form';
 import { sanitizeRedirect } from '@/lib/auth/safe-redirect';
+import { DotGridBackground } from './_components/dot-grid-background';
 
 export const runtime = 'edge';
 
@@ -25,8 +26,9 @@ export default function SignInPage({
   const errorParam = searchParams.error;
 
   return (
-    <main className="min-h-screen bg-surface-sunken">
-      <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
+    <main className="relative min-h-screen bg-surface-sunken">
+      <DotGridBackground />
+      <div className="relative z-10 mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
         <div className="rounded-xl bg-surface-base p-8 shadow-sm">
           {/* T080.6 — H1 + subtitle copy. Mark down from 56→40 to lighten the
               top of the card; the mark already says "Juno", H1 doesn't need to. */}
