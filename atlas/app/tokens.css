@@ -195,6 +195,16 @@
   --chart-grid-color: var(--color-border-strong);
   --chart-axis-font-size: 11px;
   --chart-axis-color: var(--color-text-tertiary);
+
+  /* T103.10 — monochrome chart palette (near-black + tonal steps).
+     Use these for all charts by default. Multi-color series are exceptions
+     documented in docs/COLOR_TOKENS.md. */
+  --chart-default-1: #0d0d0d;
+  --chart-default-2: #4b4b48;
+  --chart-default-3: #8a8780;
+  --chart-default-4: #c4c0b5;
+  --chart-axis-line: #b0b5bc;
+  --chart-gridline: #efefec;
 }
 
 /* ==========================================================================

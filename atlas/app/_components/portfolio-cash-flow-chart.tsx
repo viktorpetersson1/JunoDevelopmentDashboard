@@ -84,24 +84,25 @@ export function PortfolioCashFlowChart({ monthly }: { monthly: PortfolioMonthlyS
             }}
           />
           <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-          <ReferenceLine y={0} stroke="var(--color-border-strong)" strokeWidth={1} />
+          {/* T103.10 — monochrome palette per COLOR_TOKENS.md */}
+          <ReferenceLine y={0} stroke="var(--chart-axis-line, #b0b5bc)" strokeWidth={1} />
           <Bar
             dataKey="netCash"
             name="Net cash"
-            fill="var(--color-accent-base, #131313)"
+            fill="var(--chart-default-1, #0d0d0d)"
             opacity={0.55}
           />
           <Bar
             dataKey="equityCalled"
             name="Equity called"
-            fill="var(--color-status-warning, #d97706)"
-            opacity={0.6}
+            fill="var(--chart-default-3, #8a8780)"
+            opacity={0.7}
           />
           <Line
             type="monotone"
             dataKey="closingCash"
             name="Closing cash"
-            stroke="var(--color-status-info, #2563eb)"
+            stroke="var(--chart-default-1, #0d0d0d)"
             strokeWidth={2}
             dot={false}
           />
@@ -109,7 +110,7 @@ export function PortfolioCashFlowChart({ monthly }: { monthly: PortfolioMonthlyS
             type="monotone"
             dataKey="locBalance"
             name="LOC balance"
-            stroke="var(--color-negative, #dc2626)"
+            stroke="var(--chart-default-2, #4b4b48)"
             strokeWidth={2}
             strokeDasharray="4 3"
             dot={false}

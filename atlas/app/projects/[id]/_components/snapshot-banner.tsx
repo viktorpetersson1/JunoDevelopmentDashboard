@@ -1,21 +1,19 @@
 'use client';
 
 /**
- * Snapshot banner — sits at the top of project detail. Surfaces the
- * latest non-archived snapshot's status (draft / locked / pending review /
- * fully approved) and offers create / lock / approve / refresh actions
- * scoped to the caller's role.
+ * T103.2 — Snapshot status chip (replaces the wide persistent banner).
  *
- * Roles:
- *   - editor / super_admin: can create draft + refresh draft
- *   - super_admin: can lock (must differ from creator) + approve
- *   - viewer: read-only banner; sees latest status only
+ * A compact pill that lives in the project header. Click-to-expand reveals
+ * the full Create / Refresh / Lock / Approve controls without pushing page
+ * content down.
  *
- * UX shorthand:
- *   - No snapshots yet → "Underwrite this project" CTA (editor+)
- *   - Draft exists → status + lock CTA (super_admin)
- *   - Locked, 1 approver → "Awaiting second approver" + approve CTA
- *   - Locked, 2+ approvers → "Approved by N admins" + approver names
+ * States:
+ *   red dot    · "Snapshot needed"   — no snapshot yet
+ *   amber dot  · "Draft v{n}"        — draft in progress
+ *   amber dot  · "Pending v{n}"      — locked, waiting on second approver
+ *   green dot  · "Approved v{n}"     — locked + 2 approvers
+ *
+ * Same props as the old BannerShell — no project page changes needed.
  */
 
 import { useState, useTransition } from 'react';
@@ -25,14 +23,77 @@ import type { ApprovalSnapshotView } from '@/lib/repos/approval-snapshot';
 
 export interface SnapshotBannerProps {
   projectKey: string;
-  /** Latest non-archived snapshot. null if none exists yet. */
   latest: ApprovalSnapshotView | null;
-  /** auth.users.id of caller — for the "can I lock?" peer-review gate. */
   currentUserId: string;
   isEditor: boolean;
   isSuperAdmin: boolean;
-  /** Map of approverId → displayName for rendering. */
   approverNames: Record<string, string>;
+}
+
+type DotColor = 'red' | 'amber' | 'green';
+
+const DOT: Record<DotColor, string> = {
+  red: '#b91c1c',
+  amber: '#a16207',
+  green: '#15803d',
+};
+
+function Dot({ color }: { color: DotColor }) {
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        display: 'inline-block',
+        width: 7,
+        height: 7,
+        borderRadius: 999,
+        background: DOT[color],
+        flexShrink: 0,
+      }}
+    />
+  );
+}
+
+function ChipLabel({ color, label }: { color: DotColor; label: string }) {
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 5,
+        padding: '3px 9px',
+        borderRadius: 999,
+        fontSize: 11,
+        fontWeight: 700,
+        letterSpacing: '0.04em',
+        textTransform: 'uppercase',
+        cursor: 'pointer',
+        userSelect: 'none',
+        color: DOT[color],
+        background:
+          color === 'green'
+            ? 'var(--color-positive-soft, #ecfdf5)'
+            : color === 'amber'
+              ? 'var(--color-warning-soft, #fefce8)'
+              : 'var(--color-negative-soft, #fef2f2)',
+        border: `1px solid ${DOT[color]}22`,
+      }}
+    >
+      <Dot color={color} />
+      {label}
+      <span style={{ marginLeft: 2, opacity: 0.7, fontSize: 10 }}>▾</span>
+    </span>
+  );
+}
+
+function timeAgo(iso: string): string {
+  const diffMs = Math.max(0, Date.now() - new Date(iso).getTime());
+  const min = Math.round(diffMs / 60_000);
+  if (min < 1) return 'just now';
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.round(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  return `${Math.round(hr / 24)}d ago`;
 }
 
 export function SnapshotBanner({
@@ -44,10 +105,11 @@ export function SnapshotBanner({
   approverNames,
 }: SnapshotBannerProps) {
   const router = useRouter();
+  const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  async function call(method: 'POST' | 'PATCH' | 'DELETE', url: string, failPrefix: string) {
+  async function call(method: 'POST' | 'PATCH', url: string, failPrefix: string) {
     setError(null);
     return new Promise<void>((resolve) => {
       startTransition(async () => {
@@ -61,6 +123,7 @@ export function SnapshotBanner({
           return;
         }
         router.refresh();
+        setOpen(false);
         resolve();
       });
     });
@@ -75,209 +138,172 @@ export function SnapshotBanner({
   const handleRefresh = (id: string) =>
     call('PATCH', `/api/approval-snapshots/${id}`, 'Refresh failed');
 
-  // ─── Empty state ────────────────────────────────────────────────────────
-  if (!latest) {
-    return (
-      <BannerShell tone="neutral">
-        <div style={{ flex: 1 }}>
-          <strong style={{ fontSize: 13, color: 'var(--color-text-primary)' }}>
-            No approval snapshot
-          </strong>
-          <p
-            style={{
-              margin: '2px 0 0 0',
-              fontSize: 12,
-              color: 'var(--color-text-secondary)',
-            }}
-          >
-            Capturing a snapshot freezes the current inputs + computed model for peer review.
-          </p>
-        </div>
-        {isEditor && (
-          <Button variant="primary" size="sm" onClick={handleCreate} loading={isPending}>
-            Capture draft
-          </Button>
-        )}
-        {error && <BannerError message={error} />}
-      </BannerShell>
-    );
+  // ── Derive chip label + color ───────────────────────────────────────────
+  let chipColor: DotColor = 'red';
+  let chipLabel = 'Snapshot needed';
+
+  if (latest) {
+    const v = latest.snapshotVersion;
+    if (latest.status === 'draft') {
+      chipColor = 'amber';
+      chipLabel = `Draft v${v}`;
+    } else if (latest.status === 'locked') {
+      const fullyApproved = latest.approvedBy.length >= 2;
+      if (fullyApproved) {
+        chipColor = 'green';
+        chipLabel = `Approved v${v}`;
+      } else {
+        chipColor = 'amber';
+        chipLabel = `Pending v${v}`;
+      }
+    }
   }
 
-  const creatorName = latest.createdBy ? (approverNames[latest.createdBy] ?? 'Creator') : 'Unknown';
-  const creatorIsCaller = latest.createdBy === currentUserId;
-  const callerAlreadyApproved = latest.approvedBy.includes(currentUserId);
+  // ── Drawer: full controls when expanded ─────────────────────────────────
+  const creatorName = latest?.createdBy
+    ? (approverNames[latest.createdBy] ?? 'Creator')
+    : 'Unknown';
+  const creatorIsCaller = latest?.createdBy === currentUserId;
+  const callerAlreadyApproved = latest?.approvedBy.includes(currentUserId) ?? false;
 
-  // ─── Draft ──────────────────────────────────────────────────────────────
-  if (latest.status === 'draft') {
-    return (
-      <BannerShell tone="draft">
-        <div style={{ flex: 1 }}>
-          <strong style={{ fontSize: 13, color: 'var(--color-text-primary)' }}>
-            Draft snapshot {latest.snapshotVersion}
-            <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-              by {creatorName} · {timeAgo(latest.createdAt)}
-            </span>
-          </strong>
-          <p style={{ margin: '2px 0 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>
-            Editable. Refresh to capture recent input changes, then a second admin can lock for peer
-            review.
-          </p>
-        </div>
-        {isEditor && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleRefresh(latest.id)}
-            loading={isPending}
-          >
-            Refresh
-          </Button>
-        )}
-        {isSuperAdmin &&
-          (creatorIsCaller ? (
-            <span
-              style={{
-                fontSize: 11,
-                color: 'var(--color-text-tertiary)',
-                alignSelf: 'center',
-                fontStyle: 'italic',
-              }}
-              title="A different admin must lock — peer review"
-            >
-              Awaiting peer to lock
-            </span>
-          ) : (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => handleLock(latest.id)}
-              loading={isPending}
-            >
-              Lock
-            </Button>
-          ))}
-        {error && <BannerError message={error} />}
-      </BannerShell>
-    );
-  }
-
-  // ─── Locked ─────────────────────────────────────────────────────────────
-  if (latest.status === 'locked') {
-    const approverCount = latest.approvedBy.length;
-    const fullyApproved = approverCount >= 2;
-    return (
-      <BannerShell tone={fullyApproved ? 'approved' : 'pending'}>
-        <div style={{ flex: 1 }}>
-          <strong style={{ fontSize: 13, color: 'var(--color-text-primary)' }}>
-            {fullyApproved
-              ? `Approved snapshot ${latest.snapshotVersion}`
-              : `Locked snapshot ${latest.snapshotVersion} — awaiting second approver`}
-            <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-              by {creatorName} · locked {latest.lockedAt ? timeAgo(latest.lockedAt) : '—'}
-            </span>
-          </strong>
-          <p style={{ margin: '2px 0 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>
-            Approvers:{' '}
-            {approverCount === 0
-              ? '—'
-              : latest.approvedBy.map((id) => approverNames[id] ?? id.slice(0, 8)).join(', ')}
-          </p>
-        </div>
-        {isSuperAdmin && !callerAlreadyApproved && (
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => handleApprove(latest.id)}
-            loading={isPending}
-          >
-            Approve
-          </Button>
-        )}
-        {isEditor && fullyApproved && (
-          <Button variant="ghost" size="sm" onClick={handleCreate} loading={isPending}>
-            New snapshot
-          </Button>
-        )}
-        {error && <BannerError message={error} />}
-      </BannerShell>
-    );
-  }
-
-  // ─── Archived ───────────────────────────────────────────────────────────
   return (
-    <BannerShell tone="neutral">
-      <div style={{ flex: 1 }}>
-        <strong style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
-          Latest snapshot {latest.snapshotVersion} archived
-        </strong>
-      </div>
-      {isEditor && (
-        <Button variant="primary" size="sm" onClick={handleCreate} loading={isPending}>
-          Capture new draft
-        </Button>
+    <div style={{ display: 'inline-block', position: 'relative' }}>
+      <button
+        type="button"
+        onClick={() => setOpen((s) => !s)}
+        aria-expanded={open}
+        aria-label={`Approval status: ${chipLabel}`}
+        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+      >
+        <ChipLabel color={chipColor} label={chipLabel} />
+      </button>
+
+      {open && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 6px)',
+            left: 0,
+            zIndex: 40,
+            minWidth: 300,
+            maxWidth: 420,
+            background: 'var(--color-surface-base)',
+            border: '1px solid var(--color-border-hairline)',
+            borderRadius: 12,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
+            padding: 16,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+          }}
+        >
+          {/* ── No snapshot ── */}
+          {!latest && (
+            <>
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>
+                Capturing a snapshot freezes the current inputs + computed model for peer review.
+              </p>
+              {isEditor && (
+                <Button variant="primary" size="sm" onClick={handleCreate} loading={isPending}>
+                  Capture draft
+                </Button>
+              )}
+            </>
+          )}
+
+          {/* ── Draft ── */}
+          {latest?.status === 'draft' && (
+            <>
+              <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+                v{latest.snapshotVersion} · by {creatorName} · {timeAgo(latest.createdAt)}
+              </p>
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>
+                Editable. Refresh to capture recent changes, then a second admin locks it for peer
+                review.
+              </p>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {isEditor && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRefresh(latest.id)}
+                    loading={isPending}
+                  >
+                    Refresh
+                  </Button>
+                )}
+                {isSuperAdmin && !creatorIsCaller && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => handleLock(latest.id)}
+                    loading={isPending}
+                  >
+                    Lock
+                  </Button>
+                )}
+                {isSuperAdmin && creatorIsCaller && (
+                  <span
+                    style={{
+                      fontSize: 12,
+                      color: 'var(--color-text-tertiary)',
+                      alignSelf: 'center',
+                    }}
+                  >
+                    Awaiting peer to lock
+                  </span>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* ── Locked ── */}
+          {latest?.status === 'locked' &&
+            (() => {
+              const n = latest.approvedBy.length;
+              const fullyApproved = n >= 2;
+              return (
+                <>
+                  <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+                    v{latest.snapshotVersion} · locked{' '}
+                    {latest.lockedAt ? timeAgo(latest.lockedAt) : '—'}
+                  </p>
+                  <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>
+                    {fullyApproved
+                      ? `Approved by: ${latest.approvedBy.map((id) => approverNames[id] ?? id.slice(0, 8)).join(', ')}`
+                      : `${n}/2 approvals · awaiting second approver`}
+                  </p>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {isSuperAdmin && !callerAlreadyApproved && (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleApprove(latest.id)}
+                        loading={isPending}
+                      >
+                        Approve
+                      </Button>
+                    )}
+                    {isEditor && fullyApproved && (
+                      <Button variant="ghost" size="sm" onClick={handleCreate} loading={isPending}>
+                        New snapshot
+                      </Button>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
+
+          {error && (
+            <p
+              role="alert"
+              style={{ margin: 0, fontSize: 12, color: 'var(--color-negative, #b91c1c)' }}
+            >
+              {error}
+            </p>
+          )}
+        </div>
       )}
-      {error && <BannerError message={error} />}
-    </BannerShell>
+    </div>
   );
-}
-
-// ─── Tone tokens ────────────────────────────────────────────────────────────
-
-type Tone = 'neutral' | 'draft' | 'pending' | 'approved';
-
-const TONE_BORDER: Record<Tone, string> = {
-  neutral: 'var(--color-border-hairline)',
-  draft: 'var(--color-status-info, #2563eb)',
-  pending: 'var(--color-status-warning, #d97706)',
-  approved: 'var(--color-positive, #16a34a)',
-};
-
-function BannerShell({ tone, children }: { tone: Tone; children: React.ReactNode }) {
-  return (
-    <section
-      role="status"
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        padding: '12px 16px',
-        background: 'var(--color-surface-raised)',
-        border: '1px solid var(--color-border-hairline)',
-        borderLeft: `3px solid ${TONE_BORDER[tone]}`,
-        borderRadius: 12,
-        flexWrap: 'wrap',
-      }}
-    >
-      {children}
-    </section>
-  );
-}
-
-function BannerError({ message }: { message: string }) {
-  return (
-    <p
-      role="alert"
-      style={{
-        margin: 0,
-        width: '100%',
-        fontSize: 12,
-        color: 'var(--color-negative, #dc2626)',
-      }}
-    >
-      {message}
-    </p>
-  );
-}
-
-function timeAgo(iso: string): string {
-  const t = new Date(iso).getTime();
-  const diffMs = Math.max(0, Date.now() - t);
-  const min = Math.round(diffMs / 60_000);
-  if (min < 1) return 'just now';
-  if (min < 60) return `${min}m ago`;
-  const hr = Math.round(min / 60);
-  if (hr < 24) return `${hr}h ago`;
-  const day = Math.round(hr / 24);
-  if (day < 7) return `${day}d ago`;
-  return iso.slice(0, 10);
 }

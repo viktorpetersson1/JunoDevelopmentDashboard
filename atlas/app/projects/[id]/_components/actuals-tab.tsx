@@ -67,6 +67,30 @@ export function ActualsTab({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {/* T103.3 — empty-state banner. When no actuals exist the variance
+          column would show red numbers vs plan — that looks like overruns but
+          is really just "nothing booked yet". Show a muted informational
+          banner instead so the reader doesn't misread it. */}
+      {entriesTotal === 0 && (
+        <div
+          role="status"
+          style={{
+            padding: '10px 14px',
+            borderRadius: 10,
+            border: '1px solid var(--color-border-hairline)',
+            background: 'var(--color-surface-muted)',
+            fontSize: 13,
+            color: 'var(--color-text-secondary)',
+          }}
+        >
+          No cost entries yet — variances will appear once invoices are logged.
+          {isEditor && (
+            <span style={{ marginLeft: 6, color: 'var(--color-text-tertiary)' }}>
+              Use the Add entry button below to record the first cost.
+            </span>
+          )}
+        </div>
+      )}
       <KPIStrip columns={4}>
         <KPITile
           label="Planned (calc)"
