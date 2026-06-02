@@ -99,6 +99,19 @@ export function StepFinancials({
         hint="A&E + permits + insurance + contingency reserve."
       />
 
+      <Field
+        label="Tax rate"
+        name="tax_rate_pct"
+        kind="number"
+        value={form.tax_rate_pct}
+        onChange={(v) => update('tax_rate_pct', typeof v === 'number' ? v : 25)}
+        error={errors('tax_rate_pct')}
+        min={0}
+        step={1}
+        suffix="%"
+        hint="Per-project effective tax rate on profit. Default 25%."
+      />
+
       <section
         style={{
           background: 'var(--color-surface-base)',

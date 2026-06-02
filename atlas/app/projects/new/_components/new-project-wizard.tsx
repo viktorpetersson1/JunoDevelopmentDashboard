@@ -51,6 +51,7 @@ const INITIAL: CreateProjectInput = {
   land_cost_usd: 0,
   build_cost_per_sqft: null,
   soft_costs_lump_sum: 0,
+  tax_rate_pct: 25,
 };
 
 const STEPS = [
@@ -79,6 +80,7 @@ const STEPS = [
       'land_cost_usd',
       'build_cost_per_sqft',
       'soft_costs_lump_sum',
+      'tax_rate_pct',
     ],
   },
   {

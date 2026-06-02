@@ -54,6 +54,10 @@ export const CreateProjectSchema = z.object({
   land_cost_usd: z.number().positive('Land cost must be > 0'),
   build_cost_per_sqft: z.number().positive().optional().nullable(),
   soft_costs_lump_sum: z.number().nonnegative().default(0),
+
+  // V5.2 T093.3 — per-project effective tax rate (%). Presentation-only (the
+  // 9-line P&L applies it; engine global tax unchanged). Default 25.
+  tax_rate_pct: z.number().min(0).max(60).default(25),
 });
 
 export type CreateProjectInput = z.infer<typeof CreateProjectSchema>;

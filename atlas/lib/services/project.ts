@@ -114,6 +114,8 @@ export async function createProject(
     build_cost_per_sqft_cents:
       parsed.build_cost_per_sqft != null ? toCents(parsed.build_cost_per_sqft) : null,
     soft_costs_lump_sum_cents: toCents(parsed.soft_costs_lump_sum),
+    // V5.2 T093.3 — per-project tax rate (bps). pct → bps (25 → 2500).
+    tax_rate_bps: Math.round(parsed.tax_rate_pct * 100),
 
     // Other financial fields default to schema-level defaults; the wizard
     // doesn't collect them in v1.
