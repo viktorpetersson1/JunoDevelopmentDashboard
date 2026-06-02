@@ -54,8 +54,8 @@ function PipelineColumn({ group }: { group: StageGroup }) {
       aria-label={`${group.label} column, ${group.count} projects`}
       style={{
         background: 'var(--color-surface-sunken)',
-        border: '1px solid var(--color-border-hairline)',
-        borderRadius: 12,
+        border: 'var(--ja-card-border)',
+        borderRadius: 'var(--ja-card-radius)',
         padding: 12,
         display: 'flex',
         flexDirection: 'column',
@@ -166,7 +166,7 @@ function PipelineCardLink({ card }: { card: PipelineCard }) {
       style={{
         display: 'block',
         background: 'var(--color-surface-base)',
-        border: '1px solid var(--color-border-hairline)',
+        border: 'var(--ja-card-border)',
         borderRadius: 10,
         padding: '10px 12px',
         textDecoration: 'none',

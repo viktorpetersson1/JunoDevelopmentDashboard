@@ -177,7 +177,7 @@ export function HeatmapGrid({ report }: Props) {
               height: 14,
               borderRadius: 3,
               background: colorFor(minPbt, minPbt, maxPbt),
-              border: '1px solid var(--color-border-hairline)',
+              border: 'var(--ja-card-border)',
             }}
           />
           {compact(minPbt)}
@@ -191,7 +191,7 @@ export function HeatmapGrid({ report }: Props) {
               height: 14,
               borderRadius: 3,
               background: colorFor(basePbt, minPbt, maxPbt),
-              border: '1px solid var(--color-border-hairline)',
+              border: 'var(--ja-card-border)',
             }}
           />
           {compact(basePbt)} (base)
@@ -205,7 +205,7 @@ export function HeatmapGrid({ report }: Props) {
               height: 14,
               borderRadius: 3,
               background: colorFor(maxPbt, minPbt, maxPbt),
-              border: '1px solid var(--color-border-hairline)',
+              border: 'var(--ja-card-border)',
             }}
           />
           {compact(maxPbt)}

@@ -31,7 +31,7 @@ export function GoalTracker({ report }: { report: VelocityReport }) {
         style={{
           background: 'var(--color-surface-raised, #fff)',
           border: '1px solid var(--color-border-hairline, #c8c8c5)',
-          borderRadius: 12,
+          borderRadius: 'var(--ja-card-radius)',
           overflow: 'hidden',
         }}
       >
@@ -372,7 +372,7 @@ export function CandidateFunnel({
         style={{
           background: 'var(--color-surface-raised, #fff)',
           border: '1px solid var(--color-border-hairline, #c8c8c5)',
-          borderRadius: 12,
+          borderRadius: 'var(--ja-card-radius)',
           padding: 16,
           display: 'flex',
           flexDirection: 'column',

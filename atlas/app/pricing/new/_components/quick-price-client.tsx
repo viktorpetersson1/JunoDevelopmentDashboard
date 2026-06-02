@@ -90,7 +90,7 @@ function SectionHeader({ label, badge }: { label: string; badge?: string }) {
             padding: '2px 7px',
             borderRadius: 20,
             background: 'var(--color-surface-base)',
-            border: '1px solid var(--color-border-hairline)',
+            border: 'var(--ja-card-border)',
             color: 'var(--color-text-tertiary)',
             textTransform: 'uppercase',
             letterSpacing: '0.05em',
@@ -107,9 +107,9 @@ function Card({ children, style }: { children: React.ReactNode; style?: React.CS
   return (
     <div
       style={{
-        background: 'var(--color-surface-raised)',
-        border: '1px solid var(--color-border-hairline)',
-        borderRadius: 14,
+        background: 'var(--ja-card-bg)',
+        border: 'var(--ja-card-border)',
+        borderRadius: 'var(--ja-card-radius)',
         padding: 20,
         ...style,
       }}
@@ -273,7 +273,7 @@ function CompTable({ comps }: { comps: ResearchedComp[] }) {
                     borderRadius: 4,
                     background: c.status === 'closed' ? 'var(--color-surface-base)' : '#dbeafe',
                     color: c.status === 'closed' ? 'var(--color-text-secondary)' : '#1d4ed8',
-                    border: '1px solid var(--color-border-hairline)',
+                    border: 'var(--ja-card-border)',
                   }}
                 >
                   {c.status}
@@ -378,9 +378,9 @@ function ResultsPanel({
       <div
         style={{
           padding: '16px 20px',
-          background: 'var(--color-surface-raised)',
-          border: '1px solid var(--color-border-hairline)',
-          borderRadius: 14,
+          background: 'var(--ja-card-bg)',
+          border: 'var(--ja-card-border)',
+          borderRadius: 'var(--ja-card-radius)',
           display: 'flex',
           flexDirection: 'column',
           gap: 8,
@@ -494,7 +494,7 @@ function ResultsPanel({
                   fontWeight: 400,
                   padding: '6px 14px',
                   borderRadius: 8,
-                  border: '1px solid var(--color-border-hairline)',
+                  border: 'var(--ja-card-border)',
                   background: 'var(--color-surface-base)',
                   color: 'var(--color-text-primary)',
                   cursor: savingComps ? 'wait' : 'pointer',
@@ -578,7 +578,7 @@ function ResultsPanel({
                       padding: '10px 8px',
                       borderRadius: 8,
                       background: 'var(--color-surface-base)',
-                      border: '1px solid var(--color-border-hairline)',
+                      border: 'var(--ja-card-border)',
                     }}
                   >
                     <div
@@ -1001,9 +1001,9 @@ export function QuickPriceClient({
       {/* Form */}
       <div
         style={{
-          background: 'var(--color-surface-raised)',
-          border: '1px solid var(--color-border-hairline)',
-          borderRadius: 14,
+          background: 'var(--ja-card-bg)',
+          border: 'var(--ja-card-border)',
+          borderRadius: 'var(--ja-card-radius)',
           padding: 24,
           display: 'flex',
           flexDirection: 'column',
@@ -1035,7 +1035,7 @@ export function QuickPriceClient({
                 fontSize: 13,
                 padding: '9px 12px',
                 borderRadius: 8,
-                border: '1px solid var(--color-border-hairline)',
+                border: 'var(--ja-card-border)',
                 background: 'var(--color-surface-base)',
                 color: 'var(--color-text-primary)',
                 outline: 'none',
@@ -1288,7 +1288,7 @@ const inputStyle: React.CSSProperties = {
   fontSize: 13,
   padding: '8px 12px',
   borderRadius: 8,
-  border: '1px solid var(--color-border-hairline)',
+  border: 'var(--ja-card-border)',
   background: 'var(--color-surface-base)',
   color: 'var(--color-text-primary)',
   outline: 'none',

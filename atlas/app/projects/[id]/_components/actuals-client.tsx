@@ -41,9 +41,9 @@ export function ActualsClient({
   return (
     <section
       style={{
-        background: 'var(--color-surface-raised)',
-        border: '1px solid var(--color-border-hairline)',
-        borderRadius: 14,
+        background: 'var(--ja-card-bg)',
+        border: 'var(--ja-card-border)',
+        borderRadius: 'var(--ja-card-radius)',
         padding: 24,
         overflowX: 'auto',
       }}
@@ -92,7 +92,7 @@ export function ActualsClient({
             padding: '32px 16px',
             textAlign: 'center',
             border: '1px dashed var(--color-border-hairline)',
-            borderRadius: 12,
+            borderRadius: 'var(--ja-card-radius)',
             color: 'var(--color-text-secondary)',
             fontSize: 13,
           }}
@@ -252,8 +252,8 @@ function AddEntryModal({
       <div
         style={{
           background: 'var(--color-surface-base)',
-          border: '1px solid var(--color-border-hairline)',
-          borderRadius: 14,
+          border: 'var(--ja-card-border)',
+          borderRadius: 'var(--ja-card-radius)',
           width: '100%',
           maxWidth: 560,
           padding: 24,
@@ -366,7 +366,7 @@ const inputStyle: React.CSSProperties = {
   width: '100%',
   padding: '8px 12px',
   fontSize: 14,
-  border: '1px solid var(--color-border-hairline)',
+  border: 'var(--ja-card-border)',
   borderRadius: 8,
   background: 'var(--color-surface-base)',
   color: 'var(--color-text-primary)',

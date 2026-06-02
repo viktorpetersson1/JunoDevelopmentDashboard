@@ -234,7 +234,7 @@ export function StepBasics({
             fontWeight: 400,
             padding: '5px 12px',
             borderRadius: 8,
-            border: '1px solid var(--color-border-hairline)',
+            border: 'var(--ja-card-border)',
             background: 'var(--color-surface-base)',
             color: 'var(--color-text-primary)',
             cursor: !form.address?.trim() || detecting ? 'not-allowed' : 'pointer',

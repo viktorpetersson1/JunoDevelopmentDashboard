@@ -22,12 +22,14 @@ import type { ProjectPnL, OwnerEarningRow } from '@/lib/finance/project-pnl';
 import type { RolloutTriggerResult, RolloutState } from '@/lib/finance/rollout-trigger';
 import type { DebtSnapshot } from '@/lib/finance/project-cashflow';
 import { CashFlowChart } from './cash-flow-chart';
+import { Section } from '@/app/_components/section';
 
+// T103.5/.9 — canonical card tokens (white-on-grey-on-white pattern).
 const card: CSSProperties = {
-  background: 'var(--color-surface-raised)',
-  border: '1px solid var(--color-border-hairline)',
-  borderRadius: 14,
-  padding: 24,
+  background: 'var(--ja-card-bg)',
+  border: 'var(--ja-card-border)',
+  borderRadius: 'var(--ja-card-radius)',
+  padding: 'var(--ja-card-padding)',
 };
 
 const sectionLabel: CSSProperties = {
@@ -56,13 +58,22 @@ export function SummaryTab({
   debtSnapshot: DebtSnapshot;
 }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--ja-section-gap)' }}>
       <PnlHero pnl={pnl} />
       <RolloutPacing rollout={rollout} />
       {ownerEarnings && <OwnerEarnings rows={ownerEarnings} npat={pnl.net_profit_after_tax_usd} />}
       <CashFlowChart monthly={result.monthly} />
-      <WhatWeOweToday snapshot={debtSnapshot} />
-      <ScheduleCard result={result} />
+      <Section
+        label="Project status"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: 'var(--ja-card-gap)',
+        }}
+      >
+        <WhatWeOweToday snapshot={debtSnapshot} />
+        <ScheduleCard result={result} />
+      </Section>
     </div>
   );
 }

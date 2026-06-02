@@ -115,8 +115,8 @@ export function StepFinancials({
       <section
         style={{
           background: 'var(--color-surface-base)',
-          border: '1px solid var(--color-border-hairline)',
-          borderRadius: 12,
+          border: 'var(--ja-card-border)',
+          borderRadius: 'var(--ja-card-radius)',
           padding: 16,
           display: 'grid',
           gridTemplateColumns: 'repeat(3, 1fr)',

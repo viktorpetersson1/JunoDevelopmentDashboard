@@ -49,7 +49,7 @@ export default function RootError({
           width: '100%',
           background: 'var(--color-surface-base, #fff)',
           border: '1px solid var(--color-border-hairline, #e5e5e5)',
-          borderRadius: 14,
+          borderRadius: 'var(--ja-card-radius)',
           padding: 32,
         }}
       >

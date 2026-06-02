@@ -204,7 +204,7 @@ export function GeneralTab({
           background: isBaseline
             ? 'var(--color-surface-raised)'
             : 'var(--color-accent-lime, #ddec65)',
-          border: '1px solid var(--color-border-hairline)',
+          border: 'var(--ja-card-border)',
           borderLeft: `3px solid ${isBaseline ? 'var(--color-border-strong)' : 'var(--color-accent-base, #131313)'}`,
           borderRadius: 10,
           display: 'flex',
@@ -259,7 +259,7 @@ export function GeneralTab({
           style={{
             padding: '10px 14px',
             background: 'var(--color-negative-soft, #fef2f2)',
-            border: '1px solid var(--color-border-hairline)',
+            border: 'var(--ja-card-border)',
             borderLeft: '3px solid var(--color-negative, #b91c1c)',
             borderRadius: 8,
             fontSize: 13,
@@ -275,8 +275,8 @@ export function GeneralTab({
           role="status"
           style={{
             padding: '8px 12px',
-            background: 'var(--color-surface-raised)',
-            border: '1px solid var(--color-border-hairline)',
+            background: 'var(--ja-card-bg)',
+            border: 'var(--ja-card-border)',
             borderRadius: 8,
             fontSize: 12,
             color: 'var(--color-text-secondary)',
@@ -640,9 +640,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <section
       style={{
-        background: 'var(--color-surface-raised)',
-        border: '1px solid var(--color-border-hairline)',
-        borderRadius: 12,
+        background: 'var(--ja-card-bg)',
+        border: 'var(--ja-card-border)',
+        borderRadius: 'var(--ja-card-radius)',
         padding: 16,
       }}
     >
@@ -818,7 +818,7 @@ function SecondaryButton({
         padding: '8px 14px',
         background: 'transparent',
         color: 'var(--color-text-primary)',
-        border: '1px solid var(--color-border-hairline)',
+        border: 'var(--ja-card-border)',
         borderRadius: 8,
         fontSize: 13,
         fontWeight: 400,
@@ -834,7 +834,7 @@ function SecondaryButton({
 const inputStyle: React.CSSProperties = {
   padding: '8px 10px',
   fontSize: 13,
-  border: '1px solid var(--color-border-hairline)',
+  border: 'var(--ja-card-border)',
   borderRadius: 8,
   background: 'var(--color-surface-base)',
   color: 'var(--color-text-primary)',

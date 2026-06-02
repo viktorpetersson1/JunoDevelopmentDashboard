@@ -105,7 +105,7 @@ export function UserMenu({ name, email }: UserMenuProps) {
             minWidth: 240,
             background: 'var(--color-surface-base, #fff)',
             border: '1px solid var(--color-border-hairline, #c8c8c5)',
-            borderRadius: 12,
+            borderRadius: 'var(--ja-card-radius)',
             boxShadow: '0 8px 24px rgba(17,17,17,0.10)',
             padding: 6,
             zIndex: 60,

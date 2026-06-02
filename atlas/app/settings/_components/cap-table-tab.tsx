@@ -102,9 +102,9 @@ export function CapTableTab({
     return (
       <section
         style={{
-          background: 'var(--color-surface-raised)',
-          border: '1px solid var(--color-border-hairline)',
-          borderRadius: 14,
+          background: 'var(--ja-card-bg)',
+          border: 'var(--ja-card-border)',
+          borderRadius: 'var(--ja-card-radius)',
           padding: '32px 24px',
           textAlign: 'center',
         }}
@@ -120,9 +120,9 @@ export function CapTableTab({
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <section
         style={{
-          background: 'var(--color-surface-raised)',
-          border: '1px solid var(--color-border-hairline)',
-          borderRadius: 14,
+          background: 'var(--ja-card-bg)',
+          border: 'var(--ja-card-border)',
+          borderRadius: 'var(--ja-card-radius)',
           padding: 24,
         }}
       >
@@ -195,7 +195,7 @@ export function CapTableTab({
                         fontSize: 13,
                         textAlign: 'right',
                         fontVariantNumeric: 'tabular-nums',
-                        border: '1px solid var(--color-border-hairline)',
+                        border: 'var(--ja-card-border)',
                         borderRadius: 6,
                         background: 'var(--color-surface-base)',
                         color: 'var(--color-text-primary)',

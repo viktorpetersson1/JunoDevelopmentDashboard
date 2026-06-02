@@ -118,7 +118,7 @@ export function CompsListClient({
                 fontWeight: 400,
                 color: 'var(--color-text-primary)',
                 background: 'var(--color-surface-base)',
-                border: '1px solid var(--color-border-hairline)',
+                border: 'var(--ja-card-border)',
                 borderRadius: 8,
                 textDecoration: 'none',
               }}
@@ -154,7 +154,7 @@ export function CompsListClient({
           style={{
             padding: '8px 12px',
             fontSize: 13,
-            border: '1px solid var(--color-border-hairline)',
+            border: 'var(--ja-card-border)',
             borderRadius: 8,
             background: 'var(--color-surface-base)',
             color: 'var(--color-text-primary)',
@@ -196,9 +196,9 @@ export function CompsListClient({
       ) : (
         <div
           style={{
-            background: 'var(--color-surface-raised)',
-            border: '1px solid var(--color-border-hairline)',
-            borderRadius: 12,
+            background: 'var(--ja-card-bg)',
+            border: 'var(--ja-card-border)',
+            borderRadius: 'var(--ja-card-radius)',
             overflow: 'hidden',
           }}
         >
@@ -315,9 +315,9 @@ function EmptyState({ canEdit }: { canEdit: boolean }) {
       style={{
         textAlign: 'center',
         padding: '40px 20px',
-        background: 'var(--color-surface-raised)',
-        border: '1px solid var(--color-border-hairline)',
-        borderRadius: 12,
+        background: 'var(--ja-card-bg)',
+        border: 'var(--ja-card-border)',
+        borderRadius: 'var(--ja-card-radius)',
         color: 'var(--color-text-secondary)',
       }}
     >

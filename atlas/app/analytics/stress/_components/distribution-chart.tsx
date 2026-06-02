@@ -85,7 +85,7 @@ export function DistributionChart({ values, valueLabel, negativeIsBad }: Props) 
             labelFormatter={() => valueLabel}
             contentStyle={{
               background: 'var(--color-surface-base)',
-              border: '1px solid var(--color-border-hairline)',
+              border: 'var(--ja-card-border)',
               borderRadius: 8,
               fontSize: 12,
             }}

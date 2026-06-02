@@ -153,6 +153,23 @@
   --radius-2xl: 16px;
   --radius-full: 999px;
 
+  /* ---------- CARD + SECTION (T103.5 / T103.9) ----------
+     Single source of truth for the white-on-grey-on-white pattern (Ramp-style).
+     Section container = soft warm grey, no border, no shadow.
+     Inner card       = white, hairline border, 12px radius.
+     Page = white (already set on .ja-page-shell). */
+
+  --ja-card-padding: 24px;
+  --ja-card-radius: 12px;
+  --ja-card-bg: var(--color-surface-base);
+  --ja-card-border: 1px solid var(--color-border-hairline);
+  --ja-card-gap: 16px; /* between cards inside a section */
+
+  --ja-section-padding: 20px;
+  --ja-section-radius: 16px;
+  --ja-section-bg: var(--color-surface-muted);
+  --ja-section-gap: 24px; /* between sections on a page */
+
   /* ---------- SHADOWS — minimal; hairlines preferred ---------- */
 
   --shadow-none: none;

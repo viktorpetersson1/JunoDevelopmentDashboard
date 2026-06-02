@@ -241,9 +241,9 @@ export function NewProjectWizard() {
 
       <section
         style={{
-          background: 'var(--color-surface-raised)',
-          border: '1px solid var(--color-border-hairline)',
-          borderRadius: 14,
+          background: 'var(--ja-card-bg)',
+          border: 'var(--ja-card-border)',
+          borderRadius: 'var(--ja-card-radius)',
           padding: 24,
         }}
       >
@@ -261,7 +261,7 @@ export function NewProjectWizard() {
             fontSize: 13,
             color: 'var(--color-negative, #dc2626)',
             background: 'var(--color-surface-base)',
-            border: '1px solid var(--color-border-hairline)',
+            border: 'var(--ja-card-border)',
             borderLeft: '3px solid var(--color-negative, #dc2626)',
             borderRadius: 8,
             padding: '10px 14px',

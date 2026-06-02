@@ -77,7 +77,7 @@ export function ActualsTab({
           style={{
             padding: '10px 14px',
             borderRadius: 10,
-            border: '1px solid var(--color-border-hairline)',
+            border: 'var(--ja-card-border)',
             background: 'var(--color-surface-muted)',
             fontSize: 13,
             color: 'var(--color-text-secondary)',
@@ -122,9 +122,9 @@ export function ActualsTab({
 
       <section
         style={{
-          background: 'var(--color-surface-raised)',
-          border: '1px solid var(--color-border-hairline)',
-          borderRadius: 14,
+          background: 'var(--ja-card-bg)',
+          border: 'var(--ja-card-border)',
+          borderRadius: 'var(--ja-card-radius)',
           padding: 24,
           overflowX: 'auto',
         }}

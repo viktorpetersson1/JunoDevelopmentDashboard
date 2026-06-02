@@ -294,9 +294,9 @@ export function CsvImportClient({ subCuts }: { subCuts: SubCutOpt[] }) {
 
       <section
         style={{
-          background: 'var(--color-surface-raised)',
-          border: '1px solid var(--color-border-hairline)',
-          borderRadius: 14,
+          background: 'var(--ja-card-bg)',
+          border: 'var(--ja-card-border)',
+          borderRadius: 'var(--ja-card-radius)',
           padding: 20,
           display: 'flex',
           flexDirection: 'column',
@@ -334,7 +334,7 @@ export function CsvImportClient({ subCuts }: { subCuts: SubCutOpt[] }) {
                 fontWeight: 400,
                 color: 'var(--color-text-primary)',
                 background: 'var(--color-surface-base)',
-                border: '1px solid var(--color-border-hairline)',
+                border: 'var(--ja-card-border)',
                 borderRadius: 8,
                 cursor: 'pointer',
               }}
@@ -362,7 +362,7 @@ export function CsvImportClient({ subCuts }: { subCuts: SubCutOpt[] }) {
             padding: '10px 12px',
             fontSize: 12,
             fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-            border: '1px solid var(--color-border-hairline)',
+            border: 'var(--ja-card-border)',
             borderRadius: 8,
             background: 'var(--color-surface-base)',
             color: 'var(--color-text-primary)',
@@ -387,9 +387,9 @@ export function CsvImportClient({ subCuts }: { subCuts: SubCutOpt[] }) {
       {preview && (
         <section
           style={{
-            background: 'var(--color-surface-raised)',
-            border: '1px solid var(--color-border-hairline)',
-            borderRadius: 14,
+            background: 'var(--ja-card-bg)',
+            border: 'var(--ja-card-border)',
+            borderRadius: 'var(--ja-card-radius)',
             padding: 20,
             display: 'flex',
             flexDirection: 'column',
@@ -492,7 +492,7 @@ export function CsvImportClient({ subCuts }: { subCuts: SubCutOpt[] }) {
             fontSize: 13,
             color: 'var(--color-negative, #dc2626)',
             background: 'var(--color-surface-base)',
-            border: '1px solid var(--color-border-hairline)',
+            border: 'var(--ja-card-border)',
             borderLeft: '3px solid var(--color-negative, #dc2626)',
             borderRadius: 8,
             padding: '10px 14px',
@@ -509,7 +509,7 @@ export function CsvImportClient({ subCuts }: { subCuts: SubCutOpt[] }) {
             fontSize: 13,
             color: 'var(--color-positive, #16a34a)',
             background: 'var(--color-surface-base)',
-            border: '1px solid var(--color-border-hairline)',
+            border: 'var(--ja-card-border)',
             borderLeft: '3px solid var(--color-positive, #16a34a)',
             borderRadius: 8,
             padding: '10px 14px',

@@ -319,9 +319,9 @@ function UnknownTabPlaceholder({ tab }: { tab: string }) {
       style={{
         padding: '48px 24px',
         textAlign: 'center',
-        background: 'var(--color-surface-raised)',
-        border: '1px solid var(--color-border-hairline)',
-        borderRadius: 14,
+        background: 'var(--ja-card-bg)',
+        border: 'var(--ja-card-border)',
+        borderRadius: 'var(--ja-card-radius)',
         color: 'var(--color-text-secondary)',
       }}
     >

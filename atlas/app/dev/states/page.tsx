@@ -98,8 +98,8 @@ const ENTRIES: StateEntry[] = [
       <section
         style={{
           background: 'var(--color-surface-sunken)',
-          border: '1px solid var(--color-border-hairline)',
-          borderRadius: 12,
+          border: 'var(--ja-card-border)',
+          borderRadius: 'var(--ja-card-radius)',
           padding: 12,
           minHeight: 160,
           maxWidth: 220,
@@ -352,8 +352,8 @@ function SectionBlock({
           <article
             key={e.id}
             style={{
-              border: '1px solid var(--color-border-hairline)',
-              borderRadius: 14,
+              border: 'var(--ja-card-border)',
+              borderRadius: 'var(--ja-card-radius)',
               padding: 12,
               background: 'var(--color-surface-base)',
               display: 'flex',
@@ -378,9 +378,9 @@ function CardWrap({ children, pad = '24px' }: { children: React.ReactNode; pad?:
   return (
     <div
       style={{
-        background: 'var(--color-surface-raised)',
-        border: '1px solid var(--color-border-hairline)',
-        borderRadius: 12,
+        background: 'var(--ja-card-bg)',
+        border: 'var(--ja-card-border)',
+        borderRadius: 'var(--ja-card-radius)',
         padding: pad,
         textAlign: 'center',
       }}

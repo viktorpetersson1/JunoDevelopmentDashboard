@@ -124,7 +124,7 @@ export function SuggestionsClient({ initial }: Props) {
                   fontSize: 12,
                   fontWeight: 400,
                   borderRadius: 999,
-                  border: '1px solid var(--color-border-hairline)',
+                  border: 'var(--ja-card-border)',
                   background: active
                     ? 'var(--color-accent-base, #131313)'
                     : 'var(--color-surface-base)',
@@ -146,7 +146,7 @@ export function SuggestionsClient({ initial }: Props) {
             fontSize: 12,
             fontWeight: 400,
             borderRadius: 8,
-            border: '1px solid var(--color-border-hairline)',
+            border: 'var(--ja-card-border)',
             background: 'var(--color-surface-base)',
             color: 'var(--color-text-primary)',
             cursor: 'pointer',
@@ -162,7 +162,7 @@ export function SuggestionsClient({ initial }: Props) {
           style={{
             padding: '10px 14px',
             background: 'var(--color-negative-soft, #fef2f2)',
-            border: '1px solid var(--color-border-hairline)',
+            border: 'var(--ja-card-border)',
             borderLeft: '3px solid var(--color-negative, #b91c1c)',
             borderRadius: 8,
             fontSize: 13,
@@ -176,9 +176,9 @@ export function SuggestionsClient({ initial }: Props) {
       {/* Table */}
       <div
         style={{
-          background: 'var(--color-surface-raised)',
-          border: '1px solid var(--color-border-hairline)',
-          borderRadius: 14,
+          background: 'var(--ja-card-bg)',
+          border: 'var(--ja-card-border)',
+          borderRadius: 'var(--ja-card-radius)',
           overflow: 'hidden',
         }}
       >
@@ -365,7 +365,7 @@ function DetailsBlock({ row }: { row: SuggestionView }) {
               margin: '4px 0 0 0',
               padding: 10,
               background: 'var(--color-surface-base)',
-              border: '1px solid var(--color-border-hairline)',
+              border: 'var(--ja-card-border)',
               borderRadius: 6,
               fontSize: 11,
               fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',

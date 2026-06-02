@@ -143,9 +143,9 @@ export default async function RisksCenterPage() {
         {/* Findings list */}
         <section
           style={{
-            background: 'var(--color-surface-raised)',
-            border: '1px solid var(--color-border-hairline)',
-            borderRadius: 14,
+            background: 'var(--ja-card-bg)',
+            border: 'var(--ja-card-border)',
+            borderRadius: 'var(--ja-card-radius)',
             padding: 20,
           }}
         >
@@ -197,13 +197,13 @@ function KpiTile({
   return (
     <div
       style={{
-        background: 'var(--color-surface-raised)',
-        border: '1px solid var(--color-border-hairline)',
+        background: 'var(--ja-card-bg)',
+        border: 'var(--ja-card-border)',
         borderLeft:
           tone === 'negative'
             ? '3px solid var(--color-negative, #dc2626)'
             : '1px solid var(--color-border-hairline)',
-        borderRadius: 12,
+        borderRadius: 'var(--ja-card-radius)',
         padding: 16,
       }}
     >
@@ -253,12 +253,12 @@ function CategoryCard({
   return (
     <div
       style={{
-        background: 'var(--color-surface-raised)',
-        border: '1px solid var(--color-border-hairline)',
+        background: 'var(--ja-card-bg)',
+        border: 'var(--ja-card-border)',
         borderLeft: hasFindings
           ? '3px solid var(--color-negative, #dc2626)'
           : '3px solid var(--color-positive, #15803d)',
-        borderRadius: 12,
+        borderRadius: 'var(--ja-card-radius)',
         padding: 16,
       }}
     >
@@ -305,7 +305,7 @@ function FindingCard({ finding: f }: { finding: RiskFinding }) {
     <article
       style={{
         background: 'var(--color-surface-base)',
-        border: '1px solid var(--color-border-hairline)',
+        border: 'var(--ja-card-border)',
         borderLeft: `3px solid ${sevColor[f.severity]}`,
         borderRadius: 10,
         padding: 14,

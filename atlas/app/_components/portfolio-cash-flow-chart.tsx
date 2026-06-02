@@ -78,7 +78,7 @@ export function PortfolioCashFlowChart({ monthly }: { monthly: PortfolioMonthlyS
             labelStyle={{ color: 'var(--color-text-primary)', fontSize: 12 }}
             contentStyle={{
               background: 'var(--color-surface-base)',
-              border: '1px solid var(--color-border-hairline)',
+              border: 'var(--ja-card-border)',
               borderRadius: 8,
               fontSize: 12,
             }}

@@ -445,7 +445,7 @@ export function ScenarioClient({
           style={{
             padding: '10px 14px',
             background: 'var(--color-negative-soft, #fef2f2)',
-            border: '1px solid var(--color-border-hairline)',
+            border: 'var(--ja-card-border)',
             borderLeft: '3px solid var(--color-negative, #b91c1c)',
             borderRadius: 8,
             fontSize: 13,
@@ -650,7 +650,7 @@ export function ScenarioClient({
                     alignItems: 'center',
                     gap: 10,
                     padding: '8px 12px',
-                    border: '1px solid var(--color-border-hairline)',
+                    border: 'var(--ja-card-border)',
                     borderRadius: 8,
                     background: excluded
                       ? 'var(--color-surface-sunken, #f7f7f7)'
@@ -828,7 +828,7 @@ export function ScenarioClient({
                           style={{
                             padding: '3px 10px',
                             fontSize: 12,
-                            border: '1px solid var(--color-border-hairline)',
+                            border: 'var(--ja-card-border)',
                             background: 'var(--color-surface-base)',
                             borderRadius: 6,
                             cursor: canEdit && !s.locked ? 'pointer' : 'not-allowed',
@@ -1241,9 +1241,9 @@ function Section({
   return (
     <section
       style={{
-        background: 'var(--color-surface-raised)',
-        border: '1px solid var(--color-border-hairline)',
-        borderRadius: 14,
+        background: 'var(--ja-card-bg)',
+        border: 'var(--ja-card-border)',
+        borderRadius: 'var(--ja-card-radius)',
         padding: 20,
       }}
     >
@@ -1268,9 +1268,9 @@ function KpiTile({ label, value, hint }: { label: string; value: string; hint?: 
   return (
     <div
       style={{
-        background: 'var(--color-surface-raised)',
-        border: '1px solid var(--color-border-hairline)',
-        borderRadius: 12,
+        background: 'var(--ja-card-bg)',
+        border: 'var(--ja-card-border)',
+        borderRadius: 'var(--ja-card-radius)',
         padding: 16,
       }}
     >
@@ -1372,7 +1372,7 @@ function SecondaryButton({
         padding: '8px 14px',
         background: 'var(--color-surface-base)',
         color: 'var(--color-text-primary)',
-        border: '1px solid var(--color-border-hairline)',
+        border: 'var(--ja-card-border)',
         borderRadius: 8,
         fontSize: 13,
         fontWeight: 400,
@@ -1388,7 +1388,7 @@ function SecondaryButton({
 const inputStyle: React.CSSProperties = {
   padding: '8px 10px',
   fontSize: 13,
-  border: '1px solid var(--color-border-hairline)',
+  border: 'var(--ja-card-border)',
   borderRadius: 8,
   background: 'var(--color-surface-base)',
   color: 'var(--color-text-primary)',

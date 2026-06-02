@@ -17,6 +17,7 @@
 
 import Link from 'next/link';
 import { DashboardShell } from '../_components/dashboard-shell';
+import { Section } from '../_components/section';
 import { PortfolioCashFlowChart } from '../_components/portfolio-cash-flow-chart';
 import { findManyProjects } from '@/lib/repos/project';
 import { aggregatePortfolio } from '@/lib/calc/portfolio/aggregate';
@@ -61,11 +62,14 @@ function fmtYM(ym: string): string {
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
+// T103.5/.9 — every card uses the canonical white-on-grey-on-white pattern.
+// Container hierarchy: white page → soft grey <Section> → white Card inside.
+// Cards keep hairline border (Ramp pattern), section provides the grouping.
 const card: CSSProperties = {
-  background: 'var(--color-surface-raised)',
-  border: '1px solid var(--color-border-hairline)',
-  borderRadius: 14,
-  padding: 20,
+  background: 'var(--ja-card-bg)',
+  border: 'var(--ja-card-border)',
+  borderRadius: 'var(--ja-card-radius)',
+  padding: 'var(--ja-card-padding)',
 };
 
 function Chip({
@@ -407,9 +411,10 @@ export default async function DashboardPage() {
       activeScenarioId={active.activeId}
       activeScenarioName={active.displayName}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-        {/* ── Row 1: strategic chips ── */}
-        <div
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--ja-section-gap)' }}>
+        {/* ── Row 1: strategic chips (grouped in soft-grey section) ── */}
+        <Section
+          label="Board questions"
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
@@ -458,10 +463,11 @@ export default async function DashboardPage() {
             href="/pipeline"
             color={rollout.state === 'unconfigured' ? 'default' : rolloutColor}
           />
-        </div>
+        </Section>
 
-        {/* ── Row 2: tactical chips ── */}
-        <div
+        {/* ── Row 2: tactical chips (grouped) ── */}
+        <Section
+          label="Tactical context"
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
@@ -486,10 +492,11 @@ export default async function DashboardPage() {
             sub={starts2026 >= targetStarts ? 'on target' : `${targetStarts - starts2026} to go`}
             href="/pipeline"
           />
-        </div>
+        </Section>
 
-        {/* ── Row 3: action cards ── */}
-        <div
+        {/* ── Row 3: action cards (grouped) ── */}
+        <Section
+          label="What needs you today"
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
@@ -514,9 +521,10 @@ export default async function DashboardPage() {
             emptyLabel="No LOC breaches forecast"
             href="/analytics/stress"
           />
-        </div>
+        </Section>
 
-        {/* ── Row 4: 12-month cash flow chart ── */}
+        {/* ── Row 4: 12-month cash flow chart (standalone white card — chart
+            needs solid white bg, doesn't benefit from the grey grouping). ── */}
         <section style={card}>
           <header
             style={{
@@ -550,143 +558,129 @@ export default async function DashboardPage() {
           <PortfolioCashFlowChart monthly={portfolio.monthly} />
         </section>
 
-        {/* ── Row 5: committed projects ── */}
+        {/* ── Row 5: committed projects (grouped) ── */}
         {top2Committed.length > 0 && (
-          <div>
-            <h2
-              style={{
-                fontSize: 11,
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                color: 'var(--color-text-tertiary)',
-                margin: '0 0 12px',
-              }}
-            >
-              Active committed projects
-            </h2>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-                gap: 12,
-              }}
-            >
-              {top2Committed.map(({ project, result }) => {
-                const pnl = buildProjectPnL(result, { taxRatePct: project.tax_rate_pct });
-                return (
-                  <Link
-                    key={project.id}
-                    href={`/projects/${project.id}`}
+          <Section
+            label="Active committed projects"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+              gap: 12,
+            }}
+          >
+            {top2Committed.map(({ project, result }) => {
+              const pnl = buildProjectPnL(result, { taxRatePct: project.tax_rate_pct });
+              return (
+                <Link
+                  key={project.id}
+                  href={`/projects/${project.id}`}
+                  style={{
+                    ...card,
+                    textDecoration: 'none',
+                    color: 'inherit',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 10,
+                  }}
+                >
+                  <div
                     style={{
-                      ...card,
-                      textDecoration: 'none',
-                      color: 'inherit',
                       display: 'flex',
-                      flexDirection: 'column',
-                      gap: 10,
+                      justifyContent: 'space-between',
+                      alignItems: 'baseline',
                     }}
                   >
-                    <div
+                    <span
                       style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'baseline',
+                        fontSize: 14,
+                        fontWeight: 700,
+                        color: 'var(--color-text-primary)',
                       }}
                     >
-                      <span
-                        style={{
-                          fontSize: 14,
-                          fontWeight: 700,
-                          color: 'var(--color-text-primary)',
-                        }}
-                      >
-                        {project.name}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: 10,
-                          fontWeight: 700,
-                          padding: '2px 7px',
-                          borderRadius: 999,
-                          background: 'var(--color-positive-soft, #ecfdf5)',
-                          color: 'var(--color-positive)',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.05em',
-                        }}
-                      >
-                        Committed
-                      </span>
-                    </div>
-                    <div
+                      {project.name}
+                    </span>
+                    <span
                       style={{
-                        display: 'grid',
-                        gridTemplateColumns: '1fr 1fr 1fr',
-                        gap: 8,
-                        fontVariantNumeric: 'tabular-nums',
+                        fontSize: 10,
+                        fontWeight: 700,
+                        padding: '2px 7px',
+                        borderRadius: 999,
+                        background: 'var(--color-positive-soft, #ecfdf5)',
+                        color: 'var(--color-positive)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
                       }}
                     >
-                      {[
-                        { label: 'NPAT', value: compact(pnl.net_profit_after_tax_usd) },
-                        {
-                          label: 'Margin',
-                          value: `${(pnl.npat_margin_pct * 100).toFixed(1)}%`,
-                        },
-                        {
-                          label: 'IRR',
-                          value:
-                            pnl.irr_annual != null ? `${(pnl.irr_annual * 100).toFixed(1)}%` : '—',
-                        },
-                      ].map((m) => (
-                        <div key={m.label}>
-                          <div
-                            style={{
-                              fontSize: 9,
-                              fontWeight: 700,
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.08em',
-                              color: 'var(--color-text-tertiary)',
-                            }}
-                          >
-                            {m.label}
-                          </div>
-                          <div
-                            style={{
-                              fontSize: 16,
-                              fontWeight: 700,
-                              color: 'var(--color-text-primary)',
-                            }}
-                          >
-                            {m.value}
-                          </div>
+                      Committed
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr 1fr',
+                      gap: 8,
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
+                    {[
+                      { label: 'NPAT', value: compact(pnl.net_profit_after_tax_usd) },
+                      {
+                        label: 'Margin',
+                        value: `${(pnl.npat_margin_pct * 100).toFixed(1)}%`,
+                      },
+                      {
+                        label: 'IRR',
+                        value:
+                          pnl.irr_annual != null ? `${(pnl.irr_annual * 100).toFixed(1)}%` : '—',
+                      },
+                    ].map((m) => (
+                      <div key={m.label}>
+                        <div
+                          style={{
+                            fontSize: 9,
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.08em',
+                            color: 'var(--color-text-tertiary)',
+                          }}
+                        >
+                          {m.label}
                         </div>
-                      ))}
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
-                      Stage: {project.stage?.replaceAll('_', ' ') ?? '—'} ·{' '}
-                      {result.sale_date
-                        ? `Target close ${fmtYM(result.sale_date)}`
-                        : 'No close date'}
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-            {committed.length > 2 && (
-              <Link
-                href="/projects?filter=committed"
-                style={{
-                  display: 'inline-block',
-                  marginTop: 10,
-                  fontSize: 12,
-                  color: 'var(--color-text-secondary)',
-                  textDecoration: 'none',
-                }}
-              >
-                +{committed.length - 2} more committed projects →
-              </Link>
-            )}
-          </div>
+                        <div
+                          style={{
+                            fontSize: 16,
+                            fontWeight: 700,
+                            color: 'var(--color-text-primary)',
+                          }}
+                        >
+                          {m.value}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                    Stage: {project.stage?.replaceAll('_', ' ') ?? '—'} ·{' '}
+                    {result.sale_date ? `Target close ${fmtYM(result.sale_date)}` : 'No close date'}
+                  </div>
+                </Link>
+              );
+            })}
+          </Section>
+        )}
+        {top2Committed.length > 0 && committed.length > 2 && (
+          <Link
+            href="/projects?filter=committed"
+            style={{
+              display: 'inline-block',
+              marginTop: -12,
+              paddingLeft: 4,
+              fontSize: 12,
+              color: 'var(--color-text-secondary)',
+              textDecoration: 'none',
+            }}
+          >
+            +{committed.length - 2} more committed projects →
+          </Link>
         )}
         {top2Committed.length === 0 && (
           <div

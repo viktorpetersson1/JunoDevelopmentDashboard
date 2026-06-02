@@ -245,9 +245,9 @@ function Section({
   return (
     <section
       style={{
-        background: 'var(--color-surface-raised)',
-        border: '1px solid var(--color-border-hairline)',
-        borderRadius: 14,
+        background: 'var(--ja-card-bg)',
+        border: 'var(--ja-card-border)',
+        borderRadius: 'var(--ja-card-radius)',
         padding: 20,
       }}
     >
@@ -282,13 +282,13 @@ function KpiTile({
   return (
     <div
       style={{
-        background: 'var(--color-surface-raised)',
-        border: '1px solid var(--color-border-hairline)',
+        background: 'var(--ja-card-bg)',
+        border: 'var(--ja-card-border)',
         borderLeft:
           tone === 'negative'
             ? '3px solid var(--color-negative, #dc2626)'
             : '1px solid var(--color-border-hairline)',
-        borderRadius: 12,
+        borderRadius: 'var(--ja-card-radius)',
         padding: 16,
       }}
     >
@@ -328,9 +328,9 @@ function EmptyState({ title, body }: { title: string; body: string }) {
   return (
     <div
       style={{
-        background: 'var(--color-surface-raised)',
-        border: '1px solid var(--color-border-hairline)',
-        borderRadius: 12,
+        background: 'var(--ja-card-bg)',
+        border: 'var(--ja-card-border)',
+        borderRadius: 'var(--ja-card-radius)',
         padding: 24,
         textAlign: 'center',
       }}

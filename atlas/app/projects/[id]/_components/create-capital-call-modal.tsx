@@ -168,8 +168,8 @@ export function CreateCapitalCallModal({
       <div
         style={{
           background: 'var(--color-surface-base)',
-          border: '1px solid var(--color-border-hairline)',
-          borderRadius: 14,
+          border: 'var(--ja-card-border)',
+          borderRadius: 'var(--ja-card-radius)',
           width: '100%',
           maxWidth: 720,
           maxHeight: '90vh',
@@ -381,7 +381,7 @@ const inputStyle: React.CSSProperties = {
   width: '100%',
   padding: '8px 12px',
   fontSize: 14,
-  border: '1px solid var(--color-border-hairline)',
+  border: 'var(--ja-card-border)',
   borderRadius: 8,
   background: 'var(--color-surface-base)',
   color: 'var(--color-text-primary)',
@@ -449,7 +449,7 @@ function SplitToggleButton({
         padding: '4px 10px',
         fontSize: 11,
         fontWeight: 400,
-        border: '1px solid var(--color-border-hairline)',
+        border: 'var(--ja-card-border)',
         borderRadius: 6,
         background: active ? 'var(--color-accent-base, #131313)' : 'transparent',
         color: active ? '#fff' : 'var(--color-text-secondary)',

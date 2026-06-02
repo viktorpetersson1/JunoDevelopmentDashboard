@@ -94,9 +94,9 @@ export function NotificationsList({
       {items.length === 0 ? (
         <section
           style={{
-            background: 'var(--color-surface-raised)',
-            border: '1px solid var(--color-border-hairline)',
-            borderRadius: 14,
+            background: 'var(--ja-card-bg)',
+            border: 'var(--ja-card-border)',
+            borderRadius: 'var(--ja-card-radius)',
             padding: '48px 24px',
             textAlign: 'center',
           }}
@@ -111,9 +111,9 @@ export function NotificationsList({
             listStyle: 'none',
             padding: 0,
             margin: 0,
-            background: 'var(--color-surface-raised)',
-            border: '1px solid var(--color-border-hairline)',
-            borderRadius: 14,
+            background: 'var(--ja-card-bg)',
+            border: 'var(--ja-card-border)',
+            borderRadius: 'var(--ja-card-radius)',
             overflow: 'hidden',
           }}
         >

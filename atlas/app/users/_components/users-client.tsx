@@ -80,9 +80,9 @@ export function UsersClient({
 
       <section
         style={{
-          background: 'var(--color-surface-raised)',
-          border: '1px solid var(--color-border-hairline)',
-          borderRadius: 12,
+          background: 'var(--ja-card-bg)',
+          border: 'var(--ja-card-border)',
+          borderRadius: 'var(--ja-card-radius)',
           overflow: 'hidden',
         }}
       >
@@ -135,7 +135,7 @@ export function UsersClient({
                           fontSize: 13,
                           background: 'var(--color-surface-base)',
                           color: 'var(--color-text-primary)',
-                          border: '1px solid var(--color-border-hairline)',
+                          border: 'var(--ja-card-border)',
                           borderRadius: 6,
                           cursor: isSelf ? 'not-allowed' : 'pointer',
                           opacity: isSelf ? 0.5 : 1,

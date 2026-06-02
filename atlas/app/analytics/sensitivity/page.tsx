@@ -95,9 +95,9 @@ export default async function SensitivityPage() {
         {/* Tornado */}
         <section
           style={{
-            background: 'var(--color-surface-raised)',
-            border: '1px solid var(--color-border-hairline)',
-            borderRadius: 14,
+            background: 'var(--ja-card-bg)',
+            border: 'var(--ja-card-border)',
+            borderRadius: 'var(--ja-card-radius)',
             padding: 20,
           }}
         >
@@ -122,9 +122,9 @@ export default async function SensitivityPage() {
         {/* Driver detail table */}
         <section
           style={{
-            background: 'var(--color-surface-raised)',
-            border: '1px solid var(--color-border-hairline)',
-            borderRadius: 14,
+            background: 'var(--ja-card-bg)',
+            border: 'var(--ja-card-border)',
+            borderRadius: 'var(--ja-card-radius)',
             padding: 20,
           }}
         >
@@ -198,9 +198,9 @@ export default async function SensitivityPage() {
         {/* V4.6b — two-driver heatmap */}
         <section
           style={{
-            background: 'var(--color-surface-raised)',
-            border: '1px solid var(--color-border-hairline)',
-            borderRadius: 14,
+            background: 'var(--ja-card-bg)',
+            border: 'var(--ja-card-border)',
+            borderRadius: 'var(--ja-card-radius)',
             padding: 20,
           }}
         >
@@ -232,9 +232,9 @@ function KpiTile({ label, value, hint }: { label: string; value: string; hint?: 
   return (
     <div
       style={{
-        background: 'var(--color-surface-raised)',
-        border: '1px solid var(--color-border-hairline)',
-        borderRadius: 12,
+        background: 'var(--ja-card-bg)',
+        border: 'var(--ja-card-border)',
+        borderRadius: 'var(--ja-card-radius)',
         padding: 16,
       }}
     >

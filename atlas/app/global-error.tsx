@@ -45,7 +45,7 @@ export default function GlobalError({
             width: '100%',
             background: '#fff',
             border: '1px solid #e5e5e5',
-            borderRadius: 14,
+            borderRadius: 'var(--ja-card-radius)',
             padding: 32,
           }}
         >

@@ -41,9 +41,9 @@ export function CapitalCallsSection({
   return (
     <section
       style={{
-        background: 'var(--color-surface-raised)',
-        border: '1px solid var(--color-border-hairline)',
-        borderRadius: 14,
+        background: 'var(--ja-card-bg)',
+        border: 'var(--ja-card-border)',
+        borderRadius: 'var(--ja-card-radius)',
         padding: 24,
       }}
     >
@@ -92,7 +92,7 @@ export function CapitalCallsSection({
             padding: '32px 16px',
             textAlign: 'center',
             border: '1px dashed var(--color-border-hairline)',
-            borderRadius: 12,
+            borderRadius: 'var(--ja-card-radius)',
             color: 'var(--color-text-secondary)',
             fontSize: 13,
           }}
@@ -160,8 +160,8 @@ function CapitalCallCard({ call, isAdmin }: { call: CapitalCallView; isAdmin: bo
     <article
       style={{
         background: 'var(--color-surface-base)',
-        border: '1px solid var(--color-border-hairline)',
-        borderRadius: 12,
+        border: 'var(--ja-card-border)',
+        borderRadius: 'var(--ja-card-radius)',
         padding: 16,
         opacity: call.isArchived ? 0.55 : 1,
       }}

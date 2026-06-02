@@ -231,7 +231,7 @@ function ProjectTile({ project, onClick }: { project: ProjectRowVM; onClick: () 
         border: isProspect
           ? '1px dashed var(--color-border-hairline, #c8c8c5)'
           : '1px solid var(--color-border-strong, #9a9a97)',
-        borderRadius: 12,
+        borderRadius: 'var(--ja-card-radius)',
         padding: 16,
         display: 'flex',
         flexDirection: 'column',
@@ -457,7 +457,7 @@ function EmptyTiles({ hasFilters }: { hasFilters: boolean }) {
       style={{
         background: 'var(--color-surface-raised, #fff)',
         border: '1px solid var(--color-border-hairline, #c8c8c5)',
-        borderRadius: 12,
+        borderRadius: 'var(--ja-card-radius)',
         padding: 32,
         textAlign: 'center',
       }}

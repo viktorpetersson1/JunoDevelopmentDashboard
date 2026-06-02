@@ -175,7 +175,7 @@ export function PricingTab({
             fontSize: 13,
             color: 'var(--color-negative, #dc2626)',
             background: 'var(--color-surface-base)',
-            border: '1px solid var(--color-border-hairline)',
+            border: 'var(--ja-card-border)',
             borderLeft: '3px solid var(--color-negative, #dc2626)',
             borderRadius: 8,
             padding: '10px 14px',
@@ -206,9 +206,9 @@ function EmptyState({
   return (
     <div
       style={{
-        background: 'var(--color-surface-raised)',
-        border: '1px solid var(--color-border-hairline)',
-        borderRadius: 14,
+        background: 'var(--ja-card-bg)',
+        border: 'var(--ja-card-border)',
+        borderRadius: 'var(--ja-card-radius)',
         padding: 32,
         textAlign: 'center',
         display: 'flex',
@@ -371,9 +371,9 @@ function NewRunButton({
   return (
     <section
       style={{
-        background: 'var(--color-surface-raised)',
-        border: '1px solid var(--color-border-hairline)',
-        borderRadius: 14,
+        background: 'var(--ja-card-bg)',
+        border: 'var(--ja-card-border)',
+        borderRadius: 'var(--ja-card-radius)',
         padding: 20,
         display: 'flex',
         flexDirection: 'column',
@@ -466,7 +466,7 @@ function NewRunButton({
                 fontSize: 12,
                 background: 'transparent',
                 color: 'var(--color-text-tertiary)',
-                border: '1px solid var(--color-border-hairline)',
+                border: 'var(--ja-card-border)',
                 borderRadius: 6,
                 cursor: 'pointer',
               }}
@@ -487,7 +487,7 @@ function NewRunButton({
             fontSize: 12,
             background: 'var(--color-surface-base)',
             color: 'var(--color-text-primary)',
-            border: '1px solid var(--color-border-hairline)',
+            border: 'var(--ja-card-border)',
             borderRadius: 6,
             cursor: 'pointer',
           }}
@@ -597,9 +597,9 @@ function DraftEditor({
   return (
     <section
       style={{
-        background: 'var(--color-surface-raised)',
-        border: '1px solid var(--color-border-hairline)',
-        borderRadius: 14,
+        background: 'var(--ja-card-bg)',
+        border: 'var(--ja-card-border)',
+        borderRadius: 'var(--ja-card-radius)',
         padding: 20,
         display: 'flex',
         flexDirection: 'column',
@@ -640,7 +640,7 @@ function DraftEditor({
           <div
             key={p.plotOutputId}
             style={{
-              border: '1px solid var(--color-border-hairline)',
+              border: 'var(--ja-card-border)',
               borderRadius: 10,
               padding: 16,
               background: 'var(--color-surface-base)',
@@ -710,9 +710,9 @@ function DraftEditor({
                 width: '100%',
                 padding: '8px 10px',
                 fontSize: 12,
-                border: '1px solid var(--color-border-hairline)',
+                border: 'var(--ja-card-border)',
                 borderRadius: 8,
-                background: 'var(--color-surface-raised)',
+                background: 'var(--ja-card-bg)',
                 color: 'var(--color-text-primary)',
                 resize: 'vertical',
                 boxSizing: 'border-box',
@@ -839,7 +839,7 @@ function NarrativeField({
           width: '100%',
           padding: '8px 10px',
           fontSize: 12,
-          border: '1px solid var(--color-border-hairline)',
+          border: 'var(--ja-card-border)',
           borderRadius: 8,
           background: 'var(--color-surface-base)',
           color: 'var(--color-text-primary)',
@@ -879,10 +879,10 @@ function DiffBanner({
   return (
     <section
       style={{
-        background: 'var(--color-surface-raised)',
-        border: '1px solid var(--color-border-hairline)',
+        background: 'var(--ja-card-bg)',
+        border: 'var(--ja-card-border)',
         borderLeft: '3px solid var(--color-warning, #d97706)',
-        borderRadius: 12,
+        borderRadius: 'var(--ja-card-radius)',
         padding: 14,
         display: 'flex',
         flexDirection: 'column',
@@ -970,7 +970,7 @@ function PlotDiffChip({
     <div
       style={{
         background: 'var(--color-surface-base)',
-        border: '1px solid var(--color-border-hairline)',
+        border: 'var(--ja-card-border)',
         borderRadius: 8,
         padding: 10,
       }}
@@ -1023,10 +1023,10 @@ function AppliedSummary({
   return (
     <section
       style={{
-        background: 'var(--color-surface-raised)',
-        border: '1px solid var(--color-border-hairline)',
+        background: 'var(--ja-card-bg)',
+        border: 'var(--ja-card-border)',
         borderLeft: `3px solid ${isCurrent ? 'var(--color-positive, #16a34a)' : 'var(--color-text-tertiary)'}`,
-        borderRadius: 12,
+        borderRadius: 'var(--ja-card-radius)',
         padding: 16,
         display: 'flex',
         flexDirection: 'column',
@@ -1066,7 +1066,7 @@ function PlotChip({ p }: { p: PricingRunPlotOutputView }) {
     <div
       style={{
         background: 'var(--color-surface-base)',
-        border: '1px solid var(--color-border-hairline)',
+        border: 'var(--ja-card-border)',
         borderRadius: 8,
         padding: 10,
       }}
@@ -1115,9 +1115,9 @@ function RunHistory({
   return (
     <section
       style={{
-        background: 'var(--color-surface-raised)',
-        border: '1px solid var(--color-border-hairline)',
-        borderRadius: 12,
+        background: 'var(--ja-card-bg)',
+        border: 'var(--ja-card-border)',
+        borderRadius: 'var(--ja-card-radius)',
         overflow: 'hidden',
       }}
     >
@@ -1284,7 +1284,7 @@ function groupCompsByPlot(
 const cellInput: React.CSSProperties = {
   padding: '6px 8px',
   fontSize: 12,
-  border: '1px solid var(--color-border-hairline)',
+  border: 'var(--ja-card-border)',
   borderRadius: 6,
   background: 'var(--color-surface-base)',
   color: 'var(--color-text-primary)',
@@ -1297,7 +1297,7 @@ function pillButton(variant: 'primary' | 'secondary'): React.CSSProperties {
     padding: '4px 10px',
     fontSize: 11,
     fontWeight: 400,
-    border: '1px solid var(--color-border-hairline)',
+    border: 'var(--ja-card-border)',
     borderRadius: 6,
     cursor: 'pointer',
     background:

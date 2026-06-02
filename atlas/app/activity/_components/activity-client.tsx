@@ -118,7 +118,7 @@ export function ActivityClient({
               fontWeight: 400,
               color: 'var(--color-text-primary)',
               background: 'var(--color-surface-base)',
-              border: '1px solid var(--color-border-hairline)',
+              border: 'var(--ja-card-border)',
               borderRadius: 8,
               cursor: 'pointer',
             }}
@@ -138,7 +138,7 @@ export function ActivityClient({
           style={{
             padding: '8px 12px',
             fontSize: 13,
-            border: '1px solid var(--color-border-hairline)',
+            border: 'var(--ja-card-border)',
             borderRadius: 8,
             background: 'var(--color-surface-base)',
             color: 'var(--color-text-primary)',
@@ -169,9 +169,9 @@ export function ActivityClient({
             color: 'var(--color-text-tertiary)',
             padding: 24,
             textAlign: 'center',
-            background: 'var(--color-surface-raised)',
-            borderRadius: 12,
-            border: '1px solid var(--color-border-hairline)',
+            background: 'var(--ja-card-bg)',
+            borderRadius: 'var(--ja-card-radius)',
+            border: 'var(--ja-card-border)',
           }}
         >
           No audit entries match the current filters.
@@ -196,9 +196,9 @@ export function ActivityClient({
                   listStyle: 'none',
                   padding: 0,
                   margin: 0,
-                  background: 'var(--color-surface-raised)',
-                  border: '1px solid var(--color-border-hairline)',
-                  borderRadius: 12,
+                  background: 'var(--ja-card-bg)',
+                  border: 'var(--ja-card-border)',
+                  borderRadius: 'var(--ja-card-radius)',
                   overflow: 'hidden',
                 }}
               >
@@ -302,7 +302,7 @@ function chip(active: boolean): React.CSSProperties {
     fontSize: 12,
     background: active ? 'var(--color-accent-base, #131313)' : 'var(--color-surface-base)',
     color: active ? '#fff' : 'var(--color-text-secondary)',
-    border: '1px solid var(--color-border-hairline)',
+    border: 'var(--ja-card-border)',
     borderRadius: 999,
     cursor: 'pointer',
   };

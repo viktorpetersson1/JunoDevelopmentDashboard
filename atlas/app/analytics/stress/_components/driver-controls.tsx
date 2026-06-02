@@ -57,7 +57,7 @@ export function DriverControls({ trials, distributions, isDefault }: Props) {
               padding: '6px 14px',
               fontSize: 12,
               fontWeight: 400,
-              border: '1px solid var(--color-border-hairline)',
+              border: 'var(--ja-card-border)',
               borderRadius: 8,
               color: 'var(--color-text-primary)',
               background: 'var(--color-surface-base)',
@@ -148,7 +148,7 @@ function DriverBlock({
   return (
     <div
       style={{
-        border: '1px solid var(--color-border-hairline)',
+        border: 'var(--ja-card-border)',
         borderRadius: 10,
         padding: 12,
         background: 'var(--color-surface-base)',
@@ -225,7 +225,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 const inputStyle: React.CSSProperties = {
   padding: '6px 8px',
   fontSize: 12,
-  border: '1px solid var(--color-border-hairline)',
+  border: 'var(--ja-card-border)',
   borderRadius: 6,
   background: 'var(--color-surface-base)',
   color: 'var(--color-text-primary)',

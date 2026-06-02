@@ -236,7 +236,7 @@ function AddressRequiredEmptyState({
       style={{
         background: 'var(--color-surface-raised, #fff)',
         border: '1px solid var(--color-border-hairline, #c8c8c5)',
-        borderRadius: 14,
+        borderRadius: 'var(--ja-card-radius)',
         padding: 32,
         textAlign: 'center',
         display: 'flex',
@@ -304,7 +304,7 @@ function EmptyState({
       style={{
         background: 'var(--color-surface-raised, #fff)',
         border: '1px solid var(--color-border-hairline, #c8c8c5)',
-        borderRadius: 14,
+        borderRadius: 'var(--ja-card-radius)',
         padding: 32,
         textAlign: 'center',
         display: 'flex',
@@ -555,7 +555,7 @@ function FailedRecommendationCard() {
       style={{
         background: 'var(--color-warning-soft, #fefce8)',
         border: '1px solid #fde047',
-        borderRadius: 14,
+        borderRadius: 'var(--ja-card-radius)',
         padding: 24,
       }}
     >
@@ -1508,7 +1508,7 @@ function Card({ children, accent }: { children: React.ReactNode; accent?: boolea
         border: accent
           ? '1.5px solid var(--color-accent-base, #131313)'
           : '1px solid var(--color-border-hairline, #c8c8c5)',
-        borderRadius: 12,
+        borderRadius: 'var(--ja-card-radius)',
         padding: accent ? 20 : 16,
       }}
     >

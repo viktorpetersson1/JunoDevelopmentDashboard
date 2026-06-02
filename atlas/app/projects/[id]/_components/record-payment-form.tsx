@@ -75,7 +75,7 @@ export function RecordPaymentForm({
         marginTop: 12,
         padding: 12,
         background: 'var(--color-surface-sunken)',
-        border: '1px solid var(--color-border-hairline)',
+        border: 'var(--ja-card-border)',
         borderRadius: 8,
       }}
     >
@@ -174,7 +174,7 @@ function Input({
           width: '100%',
           padding: '6px 10px',
           fontSize: 13,
-          border: '1px solid var(--color-border-hairline)',
+          border: 'var(--ja-card-border)',
           borderRadius: 6,
           background: 'var(--color-surface-base)',
           color: 'var(--color-text-primary)',

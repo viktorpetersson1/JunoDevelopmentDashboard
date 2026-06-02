@@ -22,9 +22,9 @@ export function LocStatusCard({ monthly }: { monthly: PortfolioMonthlySeries }) 
   return (
     <aside
       style={{
-        background: 'var(--color-surface-raised)',
-        border: '1px solid var(--color-border-hairline)',
-        borderRadius: 14,
+        background: 'var(--ja-card-bg)',
+        border: 'var(--ja-card-border)',
+        borderRadius: 'var(--ja-card-radius)',
         padding: 24,
       }}
     >

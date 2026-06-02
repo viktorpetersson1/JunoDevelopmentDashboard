@@ -71,9 +71,9 @@ export function CashFlowChart({ monthly }: { monthly: MonthlySeries }) {
   return (
     <section
       style={{
-        background: 'var(--color-surface-raised)',
-        border: '1px solid var(--color-border-hairline)',
-        borderRadius: 14,
+        background: 'var(--ja-card-bg)',
+        border: 'var(--ja-card-border)',
+        borderRadius: 'var(--ja-card-radius)',
         padding: 24,
       }}
     >
@@ -124,7 +124,7 @@ export function CashFlowChart({ monthly }: { monthly: MonthlySeries }) {
               labelStyle={{ color: 'var(--color-text-primary)', fontSize: 12 }}
               contentStyle={{
                 background: 'var(--color-surface-base)',
-                border: '1px solid var(--color-border-hairline)',
+                border: 'var(--ja-card-border)',
                 borderRadius: 8,
                 fontSize: 12,
               }}
