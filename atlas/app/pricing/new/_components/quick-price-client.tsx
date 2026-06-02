@@ -1004,7 +1004,7 @@ export function QuickPriceClient({
           background: 'var(--ja-card-bg)',
           border: 'var(--ja-card-border)',
           borderRadius: 'var(--ja-card-radius)',
-          padding: 24,
+          padding: 'var(--ja-card-padding)',
           display: 'flex',
           flexDirection: 'column',
           gap: 20,

@@ -556,7 +556,7 @@ function FailedRecommendationCard() {
         background: 'var(--color-warning-soft, #fefce8)',
         border: '1px solid #fde047',
         borderRadius: 'var(--ja-card-radius)',
-        padding: 24,
+        padding: 'var(--ja-card-padding)',
       }}
     >
       <div

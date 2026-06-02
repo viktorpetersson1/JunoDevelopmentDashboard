@@ -125,7 +125,7 @@ export function ActualsTab({
           background: 'var(--ja-card-bg)',
           border: 'var(--ja-card-border)',
           borderRadius: 'var(--ja-card-radius)',
-          padding: 24,
+          padding: 'var(--ja-card-padding)',
           overflowX: 'auto',
         }}
       >

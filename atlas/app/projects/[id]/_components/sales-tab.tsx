@@ -125,7 +125,7 @@ function LifecycleCard({
         background: 'var(--ja-card-bg)',
         border: 'var(--ja-card-border)',
         borderRadius: 'var(--ja-card-radius)',
-        padding: 24,
+        padding: 'var(--ja-card-padding)',
       }}
     >
       <header style={{ marginBottom: 16 }}>
@@ -386,7 +386,7 @@ function SaleScheduleCard({ saleMonths }: { saleMonths: SaleMonth[] }) {
         background: 'var(--ja-card-bg)',
         border: 'var(--ja-card-border)',
         borderRadius: 'var(--ja-card-radius)',
-        padding: 24,
+        padding: 'var(--ja-card-padding)',
       }}
     >
       <h2
