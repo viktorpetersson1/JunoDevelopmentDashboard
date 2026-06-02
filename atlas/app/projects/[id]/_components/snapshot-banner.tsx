@@ -20,6 +20,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import type { ApprovalSnapshotView } from '@/lib/repos/approval-snapshot';
+import { StatusDot } from '@/components/feedback/StatusDot';
 
 export interface SnapshotBannerProps {
   projectKey: string;
@@ -210,13 +211,24 @@ export function SnapshotBanner({
             gap: 10,
           }}
         >
-          {/* ── Pending re-approval (T104 E3) ── */}
+          {/* ── Pending re-approval (T113 — upgraded from T104 placeholder) ── */}
           {pendingReapproval && (
-            <p style={{ margin: 0, fontSize: 13, color: 'var(--color-warning, #a16207)' }}>
-              Inputs changed since this project was last locked
-              {lockedSnapshotDate ? ` (${timeAgo(lockedSnapshotDate)})` : ''}. Capture a new
-              snapshot to send it for re-approval.
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <StatusDot
+                severity="warning"
+                title="Re-approval needed"
+                message={
+                  'Project inputs changed since the last locked snapshot' +
+                  (lockedSnapshotDate ? ` (locked ${timeAgo(lockedSnapshotDate)})` : '') +
+                  '. Capture a new snapshot to send for re-approval.'
+                }
+                action={isEditor ? { label: 'Capture draft', onClick: handleCreate } : undefined}
+                timestamp={lockedSnapshotDate ?? undefined}
+              />
+              <span style={{ fontSize: 12, color: 'var(--color-warning, #a16207)' }}>
+                Inputs changed since last lock
+              </span>
+            </div>
           )}
 
           {/* ── No snapshot ── */}

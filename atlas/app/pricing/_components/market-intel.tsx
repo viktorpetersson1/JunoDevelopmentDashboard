@@ -17,6 +17,7 @@ import type { CompView } from '@/lib/repos/comps';
 import type { MarketSubCut } from '@/lib/db/schema/markets';
 import { JunoThinking } from '@/components/brand/JunoThinking';
 import { CompProvenanceBadge } from './comp-provenance-badge';
+import { StatusDot } from '@/components/feedback/StatusDot';
 
 interface MarketIntelProps {
   canEdit: boolean;
@@ -513,54 +514,31 @@ export function MarketIntel({
         </p>
       )}
 
-      {/* T100.2 — staleness banner (newest comp older than the 180d threshold). */}
+      {/* T113 — stale-data banner replaced by StatusDot (V6.1). */}
       {isStale && newestClosedDate && (
-        <div
-          role="alert"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-            flexWrap: 'wrap',
-            padding: '10px 14px',
-            borderRadius: 8,
-            background: 'var(--color-amber-bg, #fef3c7)',
-            border: '1px solid var(--color-amber-border, #fde68a)',
-            color: 'var(--color-amber-fg, #a16207)',
-            fontSize: 12,
-          }}
-        >
-          <span>
-            ⚠ Market data may be stale — the newest closed comp is from{' '}
-            {new Date(newestClosedDate + 'T00:00:00Z').toLocaleDateString('en-US', {
-              month: 'short',
-              year: 'numeric',
-              timeZone: 'UTC',
-            })}
-            . Recommendations may underweight recent market movement.
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+          <StatusDot
+            severity="warning"
+            title="Market data may be stale"
+            message={
+              'Newest closed comp is from ' +
+              new Date(newestClosedDate + 'T00:00:00Z').toLocaleDateString('en-US', {
+                month: 'short',
+                year: 'numeric',
+                timeZone: 'UTC',
+              }) +
+              '. Recommendations may underweight recent market movement.'
+            }
+            action={
+              canEdit
+                ? { label: refreshing ? 'Refreshing…' : 'Refresh data now', onClick: () => doRefresh() }
+                : undefined
+            }
+          />
+          <span style={{ fontSize: 12, color: 'var(--color-warning, #a16207)' }}>
+            Market intelligence data may be stale
           </span>
-          {canEdit && (
-            <button
-              type="button"
-              onClick={() => doRefresh()}
-              disabled={refreshing}
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                padding: '6px 12px',
-                borderRadius: 8,
-                border: '1px solid var(--color-amber-border, #fde68a)',
-                background: 'var(--color-surface-base, #fff)',
-                color: 'var(--color-amber-fg, #a16207)',
-                cursor: refreshing ? 'wait' : 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {refreshing ? 'Refreshing…' : 'Refresh data now'}
-            </button>
-          )}
-        </div>
+        </span>
       )}
 
       {/* KPI strip */}
@@ -797,12 +775,7 @@ function KpiTile({
   sub?: string;
 }) {
   const hasDelta = delta !== null && delta !== undefined && Number.isFinite(delta);
-  let deltaColor = 'var(--color-text-tertiary, #767b84)';
-  if (hasDelta && tone) {
-    const positive = delta! > 0;
-    const good = (tone === 'higher-better' && positive) || (tone === 'lower-better' && !positive);
-    deltaColor = good ? 'var(--color-positive, #15803d)' : 'var(--color-negative, #b91c1c)';
-  }
+  // deltaColor removed — severity is now computed inside the StatusDot below (T113)
   return (
     <div>
       <div
@@ -835,13 +808,30 @@ function KpiTile({
           fontSize: 11,
           color: 'var(--color-text-tertiary, #767b84)',
           fontVariantNumeric: 'tabular-nums',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          flexWrap: 'wrap',
         }}
       >
-        {hasDelta && (
-          <span style={{ color: deltaColor, fontWeight: 700, marginRight: 6 }}>
-            {delta! > 0 ? '▲' : delta! < 0 ? '▼' : '·'} {formatDelta(delta!)}
-          </span>
-        )}
+        {/* T113 — YoY delta replaced by StatusDot; suppressed when delta === 0 */}
+        <StatusDot
+          severity={
+            !hasDelta
+              ? 'info'
+              : tone === 'higher-better'
+                ? delta! > 0 ? 'info' : 'error'
+                : tone === 'lower-better'
+                  ? delta! < 0 ? 'info' : 'error'
+                  : 'info'
+          }
+          title={`${label} YoY`}
+          message={
+            (delta && delta > 0 ? '▲ ' : delta && delta < 0 ? '▼ ' : '') +
+            (formatDelta(delta ?? 0) ?? '—')
+          }
+          suppressIfZero={delta ?? 0}
+        />
         {sub && <span>{sub}</span>}
       </div>
     </div>
