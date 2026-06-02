@@ -220,7 +220,7 @@ export function CompForm({
           <h1
             style={{
               fontSize: 24,
-              fontWeight: 600,
+              fontWeight: 700,
               margin: 0,
               color: 'var(--color-text-primary)',
             }}
@@ -401,7 +401,7 @@ export function CompForm({
             htmlFor="comp-notes"
             style={{
               fontSize: 12,
-              fontWeight: 500,
+              fontWeight: 400,
               color: 'var(--color-text-secondary)',
               display: 'block',
               marginBottom: 4,

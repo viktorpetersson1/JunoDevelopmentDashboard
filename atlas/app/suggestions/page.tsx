@@ -44,7 +44,7 @@ export default async function SuggestionsPage() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
         <header>
           <h1
-            style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}
+            style={{ fontSize: 24, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}
           >
             Suggestions
           </h1>

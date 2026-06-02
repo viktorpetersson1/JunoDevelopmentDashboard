@@ -55,7 +55,7 @@ export default async function SensitivityPage() {
         <AnalyticsTabs activeKey="sensitivity" />
         <header>
           <h1
-            style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}
+            style={{ fontSize: 24, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}
           >
             Sensitivity
           </h1>
@@ -106,7 +106,7 @@ export default async function SensitivityPage() {
               style={{
                 margin: 0,
                 fontSize: 14,
-                fontWeight: 600,
+                fontWeight: 700,
                 color: 'var(--color-text-primary)',
               }}
             >
@@ -133,7 +133,7 @@ export default async function SensitivityPage() {
               style={{
                 margin: 0,
                 fontSize: 14,
-                fontWeight: 600,
+                fontWeight: 700,
                 color: 'var(--color-text-primary)',
               }}
             >
@@ -209,7 +209,7 @@ export default async function SensitivityPage() {
               style={{
                 margin: 0,
                 fontSize: 14,
-                fontWeight: 600,
+                fontWeight: 700,
                 color: 'var(--color-text-primary)',
               }}
             >
@@ -244,7 +244,7 @@ function KpiTile({ label, value, hint }: { label: string; value: string; hint?: 
           textTransform: 'uppercase',
           letterSpacing: '0.06em',
           color: 'var(--color-text-tertiary)',
-          fontWeight: 600,
+          fontWeight: 700,
         }}
       >
         {label}
@@ -252,7 +252,7 @@ function KpiTile({ label, value, hint }: { label: string; value: string; hint?: 
       <div
         style={{
           fontSize: 22,
-          fontWeight: 600,
+          fontWeight: 700,
           color: 'var(--color-text-primary)',
           marginTop: 6,
           fontVariantNumeric: 'tabular-nums',
@@ -285,7 +285,7 @@ function th(align: 'left' | 'right' = 'left'): React.CSSProperties {
     textAlign: align,
     padding: '8px 0',
     fontSize: 11,
-    fontWeight: 600,
+    fontWeight: 700,
     letterSpacing: '0.04em',
     textTransform: 'uppercase',
     color: 'var(--color-text-tertiary)',

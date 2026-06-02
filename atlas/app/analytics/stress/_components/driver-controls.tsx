@@ -56,7 +56,7 @@ export function DriverControls({ trials, distributions, isDefault }: Props) {
             style={{
               padding: '6px 14px',
               fontSize: 12,
-              fontWeight: 500,
+              fontWeight: 400,
               border: '1px solid var(--color-border-hairline)',
               borderRadius: 8,
               color: 'var(--color-text-primary)',
@@ -71,7 +71,7 @@ export function DriverControls({ trials, distributions, isDefault }: Props) {
             style={{
               padding: '6px 14px',
               fontSize: 12,
-              fontWeight: 500,
+              fontWeight: 400,
               border: 'none',
               borderRadius: 8,
               color: '#fff',
@@ -157,7 +157,7 @@ function DriverBlock({
       <div
         style={{
           fontSize: 11,
-          fontWeight: 600,
+          fontWeight: 700,
           color: 'var(--color-text-tertiary)',
           textTransform: 'uppercase',
           letterSpacing: '0.04em',
@@ -209,7 +209,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <label
         style={{
           fontSize: 11,
-          fontWeight: 600,
+          fontWeight: 700,
           color: 'var(--color-text-tertiary)',
           textTransform: 'uppercase',
           letterSpacing: '0.04em',

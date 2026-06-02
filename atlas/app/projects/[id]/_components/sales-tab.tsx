@@ -132,7 +132,7 @@ function LifecycleCard({
         <h2
           style={{
             fontSize: 16,
-            fontWeight: 600,
+            fontWeight: 700,
             margin: 0,
             color: 'var(--color-text-primary)',
           }}
@@ -263,7 +263,7 @@ function PhaseChip({
       <span
         style={{
           fontSize: 11,
-          fontWeight: 600,
+          fontWeight: 700,
           textTransform: 'uppercase',
           letterSpacing: '0.06em',
         }}
@@ -392,7 +392,7 @@ function SaleScheduleCard({ saleMonths }: { saleMonths: SaleMonth[] }) {
       <h2
         style={{
           fontSize: 16,
-          fontWeight: 600,
+          fontWeight: 700,
           margin: 0,
           marginBottom: 16,
           color: 'var(--color-text-primary)',

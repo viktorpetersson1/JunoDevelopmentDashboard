@@ -74,7 +74,7 @@ export function HeatmapGrid({ report }: Props) {
               style={{
                 padding: '6px 10px',
                 fontSize: 10,
-                fontWeight: 600,
+                fontWeight: 700,
                 textTransform: 'uppercase',
                 letterSpacing: '0.04em',
                 color: 'var(--color-text-tertiary)',
@@ -89,7 +89,7 @@ export function HeatmapGrid({ report }: Props) {
                 style={{
                   padding: '6px 10px',
                   fontSize: 11,
-                  fontWeight: 600,
+                  fontWeight: 700,
                   color: 'var(--color-text-secondary)',
                   textAlign: 'center',
                 }}
@@ -108,7 +108,7 @@ export function HeatmapGrid({ report }: Props) {
                   style={{
                     padding: '6px 10px',
                     fontSize: 11,
-                    fontWeight: 600,
+                    fontWeight: 700,
                     color: 'var(--color-text-secondary)',
                     textAlign: 'right',
                   }}
@@ -143,7 +143,7 @@ export function HeatmapGrid({ report }: Props) {
                             marginTop: 2,
                             textTransform: 'uppercase',
                             letterSpacing: '0.04em',
-                            fontWeight: 600,
+                            fontWeight: 700,
                           }}
                         >
                           base

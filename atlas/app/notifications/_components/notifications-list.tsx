@@ -186,7 +186,7 @@ function NotificationRow({
               textTransform: 'uppercase',
               letterSpacing: '0.08em',
               color: KIND_COLOR[notification.kind],
-              fontWeight: 600,
+              fontWeight: 700,
             }}
           >
             {KIND_LABEL[notification.kind]}

@@ -109,7 +109,7 @@ export function StepTimeline({
           <div
             style={{
               fontSize: 22,
-              fontWeight: 600,
+              fontWeight: 700,
               color: 'var(--color-text-primary)',
               fontVariantNumeric: 'tabular-nums',
             }}
@@ -134,7 +134,7 @@ export function StepTimeline({
             <div
               style={{
                 fontSize: 14,
-                fontWeight: 600,
+                fontWeight: 700,
                 color: 'var(--color-text-primary)',
                 fontVariantNumeric: 'tabular-nums',
               }}

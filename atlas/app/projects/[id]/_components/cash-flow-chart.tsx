@@ -86,7 +86,7 @@ export function CashFlowChart({ monthly }: { monthly: MonthlySeries }) {
         }}
       >
         <h2
-          style={{ fontSize: 16, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}
+          style={{ fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}
         >
           Cash flow
         </h2>

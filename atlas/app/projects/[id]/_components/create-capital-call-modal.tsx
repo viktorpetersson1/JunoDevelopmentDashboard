@@ -178,7 +178,7 @@ export function CreateCapitalCallModal({
         }}
       >
         <header style={{ marginBottom: 16 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>New capital call</h2>
+          <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>New capital call</h2>
           <p style={{ margin: '4px 0 0 0', fontSize: 12, color: 'var(--color-text-tertiary)' }}>
             Pick a total, split among owners, and issue. Owners can then commit + fund their share.
           </p>
@@ -238,7 +238,7 @@ export function CreateCapitalCallModal({
               <h3
                 style={{
                   fontSize: 12,
-                  fontWeight: 600,
+                  fontWeight: 700,
                   color: 'var(--color-text-secondary)',
                   margin: 0,
                   textTransform: 'uppercase',
@@ -323,7 +323,7 @@ export function CreateCapitalCallModal({
                         textAlign: 'right',
                         fontSize: 13,
                         fontVariantNumeric: 'tabular-nums',
-                        fontWeight: 600,
+                        fontWeight: 700,
                         color: sumOk
                           ? 'var(--color-positive, #16a34a)'
                           : 'var(--color-negative, #dc2626)',
@@ -448,7 +448,7 @@ function SplitToggleButton({
       style={{
         padding: '4px 10px',
         fontSize: 11,
-        fontWeight: 500,
+        fontWeight: 400,
         border: '1px solid var(--color-border-hairline)',
         borderRadius: 6,
         background: active ? 'var(--color-accent-base, #131313)' : 'transparent',

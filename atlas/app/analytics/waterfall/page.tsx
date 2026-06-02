@@ -140,7 +140,7 @@ export default async function WaterfallPage() {
         <AnalyticsTabs activeKey="waterfall" />
         <header>
           <h1
-            style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}
+            style={{ fontSize: 24, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}
           >
             Owner waterfall
           </h1>
@@ -253,7 +253,7 @@ function Section({
     >
       <header style={{ marginBottom: 12 }}>
         <h2
-          style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}
+          style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--color-text-primary)' }}
         >
           {title}
         </h2>
@@ -298,7 +298,7 @@ function KpiTile({
           textTransform: 'uppercase',
           letterSpacing: '0.06em',
           color: 'var(--color-text-tertiary)',
-          fontWeight: 600,
+          fontWeight: 700,
         }}
       >
         {label}
@@ -306,7 +306,7 @@ function KpiTile({
       <div
         style={{
           fontSize: 22,
-          fontWeight: 600,
+          fontWeight: 700,
           color:
             tone === 'negative' ? 'var(--color-negative, #dc2626)' : 'var(--color-text-primary)',
           marginTop: 6,
@@ -472,7 +472,7 @@ function InvestorTable({ rows }: { rows: InvestorWaterfallResult[] }) {
                         color: 'var(--color-text-on-lime, #0d0d0d)',
                         letterSpacing: '0.04em',
                         textTransform: 'uppercase',
-                        fontWeight: 600,
+                        fontWeight: 700,
                       }}
                     >
                       Sponsor
@@ -599,7 +599,7 @@ function ProRataCheck({
               textAlign: 'right',
               fontVariantNumeric: 'tabular-nums',
               color: ok ? 'var(--color-text-primary)' : 'var(--color-negative, #dc2626)',
-              fontWeight: 500,
+              fontWeight: 400,
             }}
           >
             {(sumShare * 100).toFixed(2)}%
@@ -615,7 +615,7 @@ function ProRataCheck({
               textAlign: 'right',
               fontVariantNumeric: 'tabular-nums',
               color: 'var(--color-text-primary)',
-              fontWeight: 500,
+              fontWeight: 400,
             }}
           >
             {formatMoney(totalIn * 100, { compact: true, precision: 2 })}
@@ -631,7 +631,7 @@ function ProRataCheck({
               textAlign: 'right',
               fontVariantNumeric: 'tabular-nums',
               color: 'var(--color-text-primary)',
-              fontWeight: 500,
+              fontWeight: 400,
             }}
           >
             {formatMoney(totalOut * 100, { compact: true, precision: 2 })}
@@ -647,7 +647,7 @@ function th(align: 'left' | 'right' = 'left'): React.CSSProperties {
     textAlign: align,
     padding: '8px 0',
     fontSize: 11,
-    fontWeight: 600,
+    fontWeight: 700,
     letterSpacing: '0.04em',
     textTransform: 'uppercase',
     color: 'var(--color-text-tertiary)',

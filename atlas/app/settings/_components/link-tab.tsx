@@ -40,7 +40,7 @@ export function LinkTab({
         style={{
           margin: 0,
           fontSize: 16,
-          fontWeight: 600,
+          fontWeight: 700,
           color: 'var(--color-text-primary)',
         }}
       >
@@ -63,7 +63,7 @@ export function LinkTab({
           alignItems: 'center',
           padding: '8px 14px',
           fontSize: 13,
-          fontWeight: 500,
+          fontWeight: 400,
           color: '#fff',
           background: 'var(--color-accent-base, #131313)',
           borderRadius: 8,

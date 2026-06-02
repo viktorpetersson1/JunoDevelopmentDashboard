@@ -61,7 +61,7 @@ export function ActualsClient({
           <h2
             style={{
               fontSize: 16,
-              fontWeight: 600,
+              fontWeight: 700,
               margin: 0,
               color: 'var(--color-text-primary)',
             }}
@@ -259,7 +259,7 @@ function AddEntryModal({
           padding: 24,
         }}
       >
-        <h3 style={{ fontSize: 16, fontWeight: 600, margin: 0, marginBottom: 16 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, marginBottom: 16 }}>
           New actuals entry
         </h3>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

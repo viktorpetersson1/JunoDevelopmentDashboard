@@ -82,7 +82,7 @@ function PipelineColumn({ group }: { group: StageGroup }) {
           <h2
             style={{
               fontSize: 13,
-              fontWeight: 600,
+              fontWeight: 700,
               margin: 0,
               color: 'var(--color-text-primary)',
               letterSpacing: '-0.01em',
@@ -93,7 +93,7 @@ function PipelineColumn({ group }: { group: StageGroup }) {
           <span
             style={{
               fontSize: 11,
-              fontWeight: 500,
+              fontWeight: 400,
               color: 'var(--color-text-tertiary)',
               fontVariantNumeric: 'tabular-nums',
             }}
@@ -176,7 +176,7 @@ function PipelineCardLink({ card }: { card: PipelineCard }) {
       <div
         style={{
           fontSize: 13,
-          fontWeight: 600,
+          fontWeight: 700,
           color: 'var(--color-text-primary)',
           marginBottom: 2,
           letterSpacing: '-0.01em',

@@ -97,7 +97,7 @@ export default async function DashboardPage() {
             <h2
               style={{
                 fontSize: 11,
-                fontWeight: 500,
+                fontWeight: 400,
                 letterSpacing: '0.08em',
                 textTransform: 'uppercase',
                 color: 'var(--color-text-tertiary)',

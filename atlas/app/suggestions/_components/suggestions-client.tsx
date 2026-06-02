@@ -122,7 +122,7 @@ export function SuggestionsClient({ initial }: Props) {
                 style={{
                   padding: '6px 12px',
                   fontSize: 12,
-                  fontWeight: 500,
+                  fontWeight: 400,
                   borderRadius: 999,
                   border: '1px solid var(--color-border-hairline)',
                   background: active
@@ -144,7 +144,7 @@ export function SuggestionsClient({ initial }: Props) {
           style={{
             padding: '6px 14px',
             fontSize: 12,
-            fontWeight: 500,
+            fontWeight: 400,
             borderRadius: 8,
             border: '1px solid var(--color-border-hairline)',
             background: 'var(--color-surface-base)',
@@ -402,7 +402,7 @@ function StatusPill({ status }: { status: SuggestionStatus }) {
         padding: '2px 10px',
         borderRadius: 999,
         fontSize: 11,
-        fontWeight: 600,
+        fontWeight: 700,
         background: c.bg,
         color: c.fg,
         textTransform: 'uppercase',
@@ -443,7 +443,7 @@ function ActionButton({
       style={{
         padding: '4px 12px',
         fontSize: 12,
-        fontWeight: 500,
+        fontWeight: 400,
         borderRadius: 6,
         background: s.bg,
         color: s.fg,
@@ -476,7 +476,7 @@ function th(align: 'left' | 'right' = 'left'): React.CSSProperties {
     textAlign: align,
     padding: '10px 14px',
     fontSize: 11,
-    fontWeight: 600,
+    fontWeight: 700,
     letterSpacing: '0.04em',
     textTransform: 'uppercase',
     color: 'var(--color-text-tertiary)',

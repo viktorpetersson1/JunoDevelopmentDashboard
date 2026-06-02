@@ -166,7 +166,7 @@ export function MarketsEditor({ initialMarkets, isBaselineMarkets, canEdit }: Pr
             style={{
               margin: 0,
               fontSize: 12,
-              fontWeight: 600,
+              fontWeight: 700,
               color: 'var(--color-text-tertiary)',
               textTransform: 'uppercase',
               letterSpacing: '0.04em',
@@ -346,7 +346,7 @@ function PrimaryButton({
         border: 'none',
         borderRadius: 8,
         fontSize: 12,
-        fontWeight: 500,
+        fontWeight: 400,
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.5 : 1,
       }}
@@ -377,7 +377,7 @@ function SecondaryButton({
         border: '1px solid var(--color-border-hairline)',
         borderRadius: 8,
         fontSize: 12,
-        fontWeight: 500,
+        fontWeight: 400,
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.5 : 1,
       }}
@@ -401,7 +401,7 @@ function th(align: 'left' | 'right' = 'left'): React.CSSProperties {
     textAlign: align,
     padding: '8px 8px 8px 0',
     fontSize: 11,
-    fontWeight: 600,
+    fontWeight: 700,
     letterSpacing: '0.04em',
     textTransform: 'uppercase',
     color: 'var(--color-text-tertiary)',

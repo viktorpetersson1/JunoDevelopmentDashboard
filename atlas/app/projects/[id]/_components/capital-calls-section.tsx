@@ -60,7 +60,7 @@ export function CapitalCallsSection({
           <h2
             style={{
               fontSize: 16,
-              fontWeight: 600,
+              fontWeight: 700,
               margin: 0,
               color: 'var(--color-text-primary)',
             }}
@@ -180,7 +180,7 @@ function CapitalCallCard({ call, isAdmin }: { call: CapitalCallView; isAdmin: bo
             <code
               style={{
                 fontSize: 12,
-                fontWeight: 600,
+                fontWeight: 700,
                 color: 'var(--color-text-primary)',
                 fontVariantNumeric: 'tabular-nums',
               }}
@@ -200,7 +200,7 @@ function CapitalCallCard({ call, isAdmin }: { call: CapitalCallView; isAdmin: bo
           <div
             style={{
               fontSize: 16,
-              fontWeight: 600,
+              fontWeight: 700,
               color: 'var(--color-text-primary)',
               fontVariantNumeric: 'tabular-nums',
             }}
@@ -340,7 +340,7 @@ function StatusPill({ status }: { status: string }) {
     <span
       style={{
         fontSize: 10,
-        fontWeight: 600,
+        fontWeight: 700,
         textTransform: 'uppercase',
         letterSpacing: '0.08em',
         padding: '2px 8px',
@@ -365,7 +365,7 @@ function ShareStatusBadge({ status }: { status: OwnerShareStatus }) {
     <span
       style={{
         fontSize: 11,
-        fontWeight: 500,
+        fontWeight: 400,
         color,
       }}
     >

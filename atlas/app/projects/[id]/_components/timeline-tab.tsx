@@ -92,7 +92,7 @@ export function TimelineTab({ project, result }: { project: ProjectInput; result
         <h2
           style={{
             fontSize: 16,
-            fontWeight: 600,
+            fontWeight: 700,
             margin: 0,
             marginBottom: 16,
             color: 'var(--color-text-primary)',
@@ -124,7 +124,7 @@ export function TimelineTab({ project, result }: { project: ProjectInput; result
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: 11,
-                fontWeight: 500,
+                fontWeight: 400,
                 color:
                   p.id === 'construction'
                     ? 'var(--color-text-on-lime)'
@@ -183,7 +183,7 @@ export function TimelineTab({ project, result }: { project: ProjectInput; result
         <h2
           style={{
             fontSize: 16,
-            fontWeight: 600,
+            fontWeight: 700,
             margin: 0,
             marginBottom: 16,
             color: 'var(--color-text-primary)',

@@ -57,7 +57,7 @@ export function AnnualPnLTable({ annual, effectiveTaxRate }: Props) {
         <h2
           style={{
             fontSize: 16,
-            fontWeight: 600,
+            fontWeight: 700,
             margin: 0,
             color: 'var(--color-text-primary)',
           }}

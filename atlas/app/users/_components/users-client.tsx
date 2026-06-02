@@ -68,7 +68,7 @@ export function UsersClient({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <header>
         <h1
-          style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}
+          style={{ fontSize: 24, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}
         >
           Users
         </h1>
@@ -115,7 +115,7 @@ export function UsersClient({
                           color: 'var(--color-text-on-lime, #0d0d0d)',
                           letterSpacing: '0.04em',
                           textTransform: 'uppercase',
-                          fontWeight: 600,
+                          fontWeight: 700,
                         }}
                       >
                         You
@@ -181,7 +181,7 @@ function th(): React.CSSProperties {
     textAlign: 'left',
     padding: '10px 14px',
     fontSize: 11,
-    fontWeight: 600,
+    fontWeight: 700,
     letterSpacing: '0.04em',
     textTransform: 'uppercase',
     color: 'var(--color-text-tertiary)',

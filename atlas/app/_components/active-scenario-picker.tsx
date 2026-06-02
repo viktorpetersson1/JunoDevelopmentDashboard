@@ -118,7 +118,7 @@ export function ActiveScenarioPicker({ initialActiveId, initialDisplayName }: Pr
           gap: 6,
           padding: '6px 12px',
           fontSize: 12,
-          fontWeight: 500,
+          fontWeight: 400,
           borderRadius: 999,
           border: '1px solid var(--color-border-hairline)',
           background: isBase ? 'var(--color-surface-base)' : 'var(--color-accent-lime, #ddec65)',

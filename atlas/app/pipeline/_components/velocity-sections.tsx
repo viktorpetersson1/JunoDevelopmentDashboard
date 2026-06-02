@@ -74,7 +74,7 @@ function YearRow({ row }: { row: VelocityYearRow }) {
       <div
         style={{
           fontSize: 14,
-          fontWeight: 600,
+          fontWeight: 700,
           fontVariantNumeric: 'tabular-nums',
           color: 'var(--color-text-primary, #111)',
         }}
@@ -85,7 +85,7 @@ function YearRow({ row }: { row: VelocityYearRow }) {
             style={{
               display: 'block',
               fontSize: 9,
-              fontWeight: 600,
+              fontWeight: 700,
               textTransform: 'uppercase',
               letterSpacing: '0.06em',
               color: 'var(--color-text-tertiary, #767b84)',
@@ -180,7 +180,7 @@ function SegmentBar({
           <span
             style={{
               fontSize: 11,
-              fontWeight: 600,
+              fontWeight: 700,
               color: 'var(--color-positive, #15803d)',
               marginLeft: 2,
               alignSelf: 'center',
@@ -193,7 +193,7 @@ function SegmentBar({
       <span
         style={{
           fontSize: 12,
-          fontWeight: 600,
+          fontWeight: 700,
           fontVariantNumeric: 'tabular-nums',
           color: 'var(--color-text-primary, #111)',
         }}
@@ -261,7 +261,7 @@ function InFlightCard({ project }: { project: InFlightProject }) {
         <div
           style={{
             fontSize: 13,
-            fontWeight: 600,
+            fontWeight: 700,
             color: 'var(--color-text-primary, #111)',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -308,13 +308,13 @@ function InFlightCard({ project }: { project: InFlightProject }) {
           fontVariantNumeric: 'tabular-nums',
         }}
       >
-        <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary, #111)' }}>
+        <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text-primary, #111)' }}>
           {formatMoney(project.totalSales * 100, { compact: true, precision: 2 })}
         </span>
         <span
           style={{
             fontSize: 12,
-            fontWeight: 600,
+            fontWeight: 700,
             color: marginColor(project.marginPct),
           }}
         >
@@ -337,7 +337,7 @@ function Timeline({
   return (
     <span>
       <span style={{ color: 'var(--color-text-tertiary, #767b84)' }}>{label} </span>
-      <span style={{ color: 'var(--color-text-primary, #111)', fontWeight: 500 }}>
+      <span style={{ color: 'var(--color-text-primary, #111)', fontWeight: 400 }}>
         {year ?? '—'}
       </span>
       {basis === 'expected' && (
@@ -445,7 +445,7 @@ function FunnelStep({ label, count, isLast }: { label: string; count: number; is
         <span
           style={{
             fontSize: 22,
-            fontWeight: 600,
+            fontWeight: 700,
             fontVariantNumeric: 'tabular-nums',
             color: 'var(--color-text-primary, #111)',
             lineHeight: 1,
@@ -456,7 +456,7 @@ function FunnelStep({ label, count, isLast }: { label: string; count: number; is
         <span
           style={{
             fontSize: 10,
-            fontWeight: 600,
+            fontWeight: 700,
             textTransform: 'uppercase',
             letterSpacing: '0.05em',
             color: 'var(--color-text-tertiary, #767b84)',
@@ -492,7 +492,7 @@ function SectionHead({ title, hint }: { title: string; hint?: string }) {
         style={{
           margin: 0,
           fontSize: 17,
-          fontWeight: 600,
+          fontWeight: 700,
           letterSpacing: '-0.015em',
           color: 'var(--color-text-primary, #111)',
         }}
@@ -519,7 +519,7 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
     <span
       style={{
         fontSize: 10,
-        fontWeight: 600,
+        fontWeight: 700,
         textTransform: 'uppercase',
         letterSpacing: '0.06em',
         color: 'var(--color-text-tertiary, #767b84)',

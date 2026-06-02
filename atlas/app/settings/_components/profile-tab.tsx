@@ -90,7 +90,7 @@ export function ProfileTab({
           <span
             style={{
               fontSize: 15,
-              fontWeight: 600,
+              fontWeight: 700,
               color: 'var(--color-text-primary)',
             }}
           >

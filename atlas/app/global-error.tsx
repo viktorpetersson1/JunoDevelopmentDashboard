@@ -52,7 +52,7 @@ export default function GlobalError({
           <h1
             style={{
               fontSize: 20,
-              fontWeight: 600,
+              fontWeight: 700,
               margin: 0,
               marginBottom: 8,
               color: '#b91c1c',
@@ -100,7 +100,7 @@ export default function GlobalError({
               borderRadius: 8,
               cursor: 'pointer',
               fontSize: 13,
-              fontWeight: 500,
+              fontWeight: 400,
             }}
           >
             Try again

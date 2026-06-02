@@ -89,7 +89,7 @@ export function CompsListClient({
           <h1
             style={{
               fontSize: 24,
-              fontWeight: 600,
+              fontWeight: 700,
               margin: 0,
               color: 'var(--color-text-primary)',
             }}
@@ -115,7 +115,7 @@ export function CompsListClient({
                 alignItems: 'center',
                 padding: '8px 14px',
                 fontSize: 13,
-                fontWeight: 500,
+                fontWeight: 400,
                 color: 'var(--color-text-primary)',
                 background: 'var(--color-surface-base)',
                 border: '1px solid var(--color-border-hairline)',
@@ -132,7 +132,7 @@ export function CompsListClient({
                 alignItems: 'center',
                 padding: '8px 14px',
                 fontSize: 13,
-                fontWeight: 500,
+                fontWeight: 400,
                 color: '#fff',
                 background: 'var(--color-accent-base, #131313)',
                 borderRadius: 8,
@@ -235,7 +235,7 @@ export function CompsListClient({
                   }}
                 >
                   <Td>
-                    <div style={{ fontWeight: 500 }}>{c.address}</div>
+                    <div style={{ fontWeight: 400 }}>{c.address}</div>
                     {c.isNc && (
                       <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>NC</div>
                     )}
@@ -281,7 +281,7 @@ function Th({ children, align }: { children: React.ReactNode; align?: 'right' | 
         textAlign: align ?? 'left',
         padding: '10px 14px',
         fontSize: 11,
-        fontWeight: 600,
+        fontWeight: 700,
         letterSpacing: '0.04em',
         textTransform: 'uppercase',
         color: 'var(--color-text-tertiary)',

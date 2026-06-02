@@ -83,7 +83,7 @@ export function RecordPaymentForm({
         style={{
           marginBottom: 8,
           fontSize: 12,
-          fontWeight: 600,
+          fontWeight: 700,
           color: 'var(--color-text-primary)',
         }}
       >

@@ -97,7 +97,7 @@ export default async function CapitalOverviewPage() {
         <AnalyticsTabs activeKey="capital" />
         <header>
           <h1
-            style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}
+            style={{ fontSize: 24, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}
           >
             Capital
           </h1>
@@ -207,7 +207,7 @@ function Section({
     >
       <header style={{ marginBottom: 12 }}>
         <h2
-          style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}
+          style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--color-text-primary)' }}
         >
           {title}
         </h2>
@@ -252,7 +252,7 @@ function KpiTile({
           textTransform: 'uppercase',
           letterSpacing: '0.06em',
           color: 'var(--color-text-tertiary)',
-          fontWeight: 600,
+          fontWeight: 700,
         }}
       >
         {label}
@@ -260,7 +260,7 @@ function KpiTile({
       <div
         style={{
           fontSize: 22,
-          fontWeight: 600,
+          fontWeight: 700,
           color:
             tone === 'negative' ? 'var(--color-negative, #dc2626)' : 'var(--color-text-primary)',
           marginTop: 6,
@@ -325,7 +325,7 @@ function SourcesTable({ rows }: { rows: Array<{ label: string; value: number }> 
                   textAlign: 'right',
                   fontVariantNumeric: 'tabular-nums',
                   color: 'var(--color-text-primary)',
-                  fontWeight: 500,
+                  fontWeight: 400,
                 }}
               >
                 {formatMoney(r.value * 100, { compact: true, precision: 2 })}
@@ -352,7 +352,7 @@ function UsesTable({ rows }: { rows: Array<{ label: string; value: number }> }) 
                   textAlign: 'right',
                   fontVariantNumeric: 'tabular-nums',
                   color: 'var(--color-text-primary)',
-                  fontWeight: 500,
+                  fontWeight: 400,
                 }}
               >
                 {formatMoney(r.value * 100, { compact: true, precision: 2 })}
@@ -411,7 +411,7 @@ function OwnerCapTable({
                       color: 'var(--color-text-on-lime, #0d0d0d)',
                       letterSpacing: '0.04em',
                       textTransform: 'uppercase',
-                      fontWeight: 600,
+                      fontWeight: 700,
                     }}
                   >
                     Sponsor
@@ -438,7 +438,7 @@ function th(align: 'left' | 'right' = 'left'): React.CSSProperties {
     textAlign: align,
     padding: '8px 0',
     fontSize: 11,
-    fontWeight: 600,
+    fontWeight: 700,
     letterSpacing: '0.04em',
     textTransform: 'uppercase',
     color: 'var(--color-text-tertiary)',

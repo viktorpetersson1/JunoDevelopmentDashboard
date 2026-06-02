@@ -285,7 +285,7 @@ export function AskJunoWidget() {
               style={{
                 padding: '8px 10px',
                 fontSize: 12,
-                fontWeight: 500,
+                fontWeight: 400,
                 border: 'none',
                 borderBottom:
                   mode === m ? '2px solid var(--color-text-primary)' : '2px solid transparent',
@@ -365,7 +365,7 @@ export function AskJunoWidget() {
               padding: '0 14px',
               height: 36,
               fontSize: 12,
-              fontWeight: 500,
+              fontWeight: 400,
               color: '#fff',
               background: 'var(--color-accent-base, #131313)',
               border: 'none',

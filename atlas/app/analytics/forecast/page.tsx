@@ -50,7 +50,7 @@ export default async function CashflowPage() {
           <h1
             style={{
               fontSize: 24,
-              fontWeight: 600,
+              fontWeight: 700,
               margin: 0,
               color: 'var(--color-text-primary)',
             }}
@@ -111,7 +111,7 @@ export default async function CashflowPage() {
             <h2
               style={{
                 fontSize: 16,
-                fontWeight: 600,
+                fontWeight: 700,
                 margin: 0,
                 color: 'var(--color-text-primary)',
               }}

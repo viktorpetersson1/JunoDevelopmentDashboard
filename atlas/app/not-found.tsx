@@ -43,7 +43,7 @@ export default function NotFound() {
           <h1
             style={{
               fontSize: 22,
-              fontWeight: 600,
+              fontWeight: 700,
               margin: 0,
               marginBottom: 6,
               color: 'var(--color-text-primary, #111)',
@@ -73,7 +73,7 @@ export default function NotFound() {
               borderRadius: 8,
               textDecoration: 'none',
               fontSize: 13,
-              fontWeight: 500,
+              fontWeight: 400,
             }}
           >
             Go to dashboard
@@ -88,7 +88,7 @@ export default function NotFound() {
               borderRadius: 8,
               textDecoration: 'none',
               fontSize: 13,
-              fontWeight: 500,
+              fontWeight: 400,
             }}
           >
             Browse projects

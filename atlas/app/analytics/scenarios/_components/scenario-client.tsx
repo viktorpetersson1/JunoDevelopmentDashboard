@@ -417,7 +417,7 @@ export function ScenarioClient({
       >
         <div>
           <h1
-            style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}
+            style={{ fontSize: 24, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}
           >
             Scenarios
           </h1>
@@ -1146,7 +1146,7 @@ function AnnualRow({
       <td
         style={{
           ...comparisonTd('right'),
-          fontWeight: 500,
+          fontWeight: 400,
           color:
             avgDelta === 0
               ? 'var(--color-text-tertiary)'
@@ -1249,7 +1249,7 @@ function Section({
     >
       <header style={{ marginBottom: 12 }}>
         <h2
-          style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}
+          style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--color-text-primary)' }}
         >
           {title}
         </h2>
@@ -1280,7 +1280,7 @@ function KpiTile({ label, value, hint }: { label: string; value: string; hint?: 
           textTransform: 'uppercase',
           letterSpacing: '0.06em',
           color: 'var(--color-text-tertiary)',
-          fontWeight: 600,
+          fontWeight: 700,
         }}
       >
         {label}
@@ -1288,7 +1288,7 @@ function KpiTile({ label, value, hint }: { label: string; value: string; hint?: 
       <div
         style={{
           fontSize: 18,
-          fontWeight: 600,
+          fontWeight: 700,
           color: 'var(--color-text-primary)',
           marginTop: 6,
         }}
@@ -1310,7 +1310,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <label
         style={{
           fontSize: 11,
-          fontWeight: 600,
+          fontWeight: 700,
           color: 'var(--color-text-tertiary)',
           textTransform: 'uppercase',
           letterSpacing: '0.04em',
@@ -1344,7 +1344,7 @@ function PrimaryButton({
         border: 'none',
         borderRadius: 8,
         fontSize: 13,
-        fontWeight: 500,
+        fontWeight: 400,
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.5 : 1,
       }}
@@ -1375,7 +1375,7 @@ function SecondaryButton({
         border: '1px solid var(--color-border-hairline)',
         borderRadius: 8,
         fontSize: 13,
-        fontWeight: 500,
+        fontWeight: 400,
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.5 : 1,
       }}
@@ -1423,7 +1423,7 @@ function th(align: 'left' | 'right' = 'left'): React.CSSProperties {
     textAlign: align,
     padding: '8px 0',
     fontSize: 11,
-    fontWeight: 600,
+    fontWeight: 700,
     letterSpacing: '0.04em',
     textTransform: 'uppercase',
     color: 'var(--color-text-tertiary)',

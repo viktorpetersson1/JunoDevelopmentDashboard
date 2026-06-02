@@ -105,7 +105,7 @@ export function ProjectsListClient({
               style={{
                 margin: 0,
                 fontSize: 24,
-                fontWeight: 600,
+                fontWeight: 700,
                 letterSpacing: '-0.025em',
                 color: 'var(--color-text-primary, #111)',
               }}
@@ -260,7 +260,7 @@ function ProjectTile({ project, onClick }: { project: ProjectRowVM; onClick: () 
           <div
             style={{
               fontSize: 14,
-              fontWeight: 600,
+              fontWeight: 700,
               color: isProspect
                 ? 'var(--color-text-secondary, #6b7280)'
                 : 'var(--color-text-primary, #111)',
@@ -363,7 +363,7 @@ function StageBadge({ stage }: { stage: string }) {
     <span
       style={{
         fontSize: 10,
-        fontWeight: 600,
+        fontWeight: 700,
         padding: '2px 7px',
         borderRadius: 999,
         background: 'var(--color-surface-base, #fff)',
@@ -422,7 +422,7 @@ function TileMetric({
       <div
         style={{
           fontSize: 10,
-          fontWeight: 600,
+          fontWeight: 700,
           textTransform: 'uppercase',
           letterSpacing: '0.05em',
           color: 'var(--color-text-tertiary, #767b84)',
@@ -433,7 +433,7 @@ function TileMetric({
       <div
         style={{
           fontSize: 14,
-          fontWeight: 600,
+          fontWeight: 700,
           marginTop: 2,
           color: muted
             ? 'var(--color-text-tertiary, #767b84)'
@@ -465,7 +465,7 @@ function EmptyTiles({ hasFilters }: { hasFilters: boolean }) {
       <div
         style={{
           fontSize: 14,
-          fontWeight: 600,
+          fontWeight: 700,
           color: 'var(--color-text-primary, #111)',
         }}
       >

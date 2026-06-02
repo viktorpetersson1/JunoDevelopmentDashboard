@@ -104,7 +104,7 @@ export default async function RisksCenterPage() {
         <AnalyticsTabs activeKey="risks" />
         <header>
           <h1
-            style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}
+            style={{ fontSize: 24, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}
           >
             Risks
           </h1>
@@ -150,7 +150,7 @@ export default async function RisksCenterPage() {
           }}
         >
           <h2
-            style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}
+            style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--color-text-primary)' }}
           >
             Active findings ({findings.length})
           </h2>
@@ -213,7 +213,7 @@ function KpiTile({
           textTransform: 'uppercase',
           letterSpacing: '0.06em',
           color: 'var(--color-text-tertiary)',
-          fontWeight: 600,
+          fontWeight: 700,
         }}
       >
         {label}
@@ -221,7 +221,7 @@ function KpiTile({
       <div
         style={{
           fontSize: 22,
-          fontWeight: 600,
+          fontWeight: 700,
           color:
             tone === 'negative' ? 'var(--color-negative, #dc2626)' : 'var(--color-text-primary)',
           marginTop: 6,
@@ -267,7 +267,7 @@ function CategoryCard({
         <span
           style={{
             fontSize: 16,
-            fontWeight: 600,
+            fontWeight: 700,
             color: hasFindings ? 'var(--color-negative, #dc2626)' : 'var(--color-text-tertiary)',
             fontVariantNumeric: 'tabular-nums',
           }}
@@ -328,7 +328,7 @@ function FindingCard({ finding: f }: { finding: RiskFinding }) {
           <span
             style={{
               fontSize: 10,
-              fontWeight: 600,
+              fontWeight: 700,
               textTransform: 'uppercase',
               letterSpacing: '0.06em',
               color: sevColor[f.severity],
@@ -364,7 +364,7 @@ function FindingCard({ finding: f }: { finding: RiskFinding }) {
         <span
           style={{
             fontSize: 13,
-            fontWeight: 600,
+            fontWeight: 700,
             color:
               f.financialImpactUsd < 0
                 ? 'var(--color-negative, #b91c1c)'

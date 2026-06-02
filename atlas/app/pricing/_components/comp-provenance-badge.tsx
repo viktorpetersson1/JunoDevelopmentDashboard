@@ -95,7 +95,7 @@ export function CompProvenanceBadge({
         alignItems: 'center',
         gap: 4,
         fontSize: 10,
-        fontWeight: 600,
+        fontWeight: 700,
         padding: '1px 7px',
         borderRadius: 999,
         background: s.bg,

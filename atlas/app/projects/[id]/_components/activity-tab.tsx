@@ -90,7 +90,7 @@ function AuditSection({
           <h2
             style={{
               fontSize: 16,
-              fontWeight: 600,
+              fontWeight: 700,
               margin: 0,
               color: 'var(--color-text-primary)',
             }}
@@ -186,7 +186,7 @@ function AuditEntry({
         style={{
           color: categoryColor,
           fontSize: 10,
-          fontWeight: 600,
+          fontWeight: 700,
           textTransform: 'uppercase',
           letterSpacing: '0.08em',
         }}
@@ -202,7 +202,7 @@ function AuditEntry({
             alignItems: 'baseline',
           }}
         >
-          <strong style={{ fontWeight: 600 }}>{userName}</strong>
+          <strong style={{ fontWeight: 700 }}>{userName}</strong>
           <span style={{ color: 'var(--color-text-secondary)' }}>{entry.action}</span>
           {entry.resourceId && (
             <code style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
@@ -301,7 +301,7 @@ function LifecycleSection({ events }: { events: ActivityRow[] }) {
         <h2
           style={{
             fontSize: 16,
-            fontWeight: 600,
+            fontWeight: 700,
             margin: 0,
             color: 'var(--color-text-primary)',
           }}

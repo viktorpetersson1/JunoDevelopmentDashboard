@@ -103,7 +103,7 @@ export default async function PipelinePage() {
           <h1
             style={{
               fontSize: 24,
-              fontWeight: 600,
+              fontWeight: 700,
               margin: 0,
               letterSpacing: '-0.025em',
               color: 'var(--color-text-primary)',
@@ -135,7 +135,7 @@ export default async function PipelinePage() {
             style={{
               cursor: 'pointer',
               fontSize: 13,
-              fontWeight: 600,
+              fontWeight: 700,
               color: 'var(--color-text-secondary, #6b7280)',
               padding: '8px 0',
               listStyle: 'revert',

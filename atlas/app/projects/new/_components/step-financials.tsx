@@ -156,7 +156,7 @@ function Summary({ label, value, hint }: { label: string; value: string; hint?: 
       <span
         style={{
           fontSize: 16,
-          fontWeight: 600,
+          fontWeight: 700,
           color: 'var(--color-text-primary)',
           fontVariantNumeric: 'tabular-nums',
         }}

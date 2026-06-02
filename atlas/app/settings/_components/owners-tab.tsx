@@ -104,7 +104,7 @@ export function OwnersTab({
                     <span
                       style={{
                         fontSize: 12,
-                        fontWeight: 500,
+                        fontWeight: 400,
                         color: ROLE_COLOR[p.role],
                       }}
                     >

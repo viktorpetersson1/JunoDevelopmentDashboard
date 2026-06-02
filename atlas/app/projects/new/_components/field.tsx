@@ -82,7 +82,7 @@ export function Field({
         htmlFor={id}
         style={{
           fontSize: 12,
-          fontWeight: 500,
+          fontWeight: 400,
           color: 'var(--color-text-secondary)',
         }}
       >

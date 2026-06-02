@@ -151,7 +151,7 @@ export function CapTableTab({
               fontSize: 12,
               fontVariantNumeric: 'tabular-nums',
               color: sumOk ? 'var(--color-positive, #16a34a)' : 'var(--color-negative, #dc2626)',
-              fontWeight: 600,
+              fontWeight: 700,
             }}
           >
             {sumPct}% / 100%

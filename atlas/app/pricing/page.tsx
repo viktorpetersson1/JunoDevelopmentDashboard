@@ -105,7 +105,7 @@ function PageHeader({ canEdit }: { canEdit: boolean }) {
           style={{
             margin: 0,
             fontSize: 24,
-            fontWeight: 600,
+            fontWeight: 700,
             letterSpacing: '-0.025em',
             color: 'var(--color-text-primary, #111)',
           }}
@@ -128,7 +128,7 @@ function PageHeader({ canEdit }: { canEdit: boolean }) {
             href="/pricing/new"
             style={{
               fontSize: 13,
-              fontWeight: 600,
+              fontWeight: 700,
               padding: '8px 14px',
               borderRadius: 8,
               background: 'var(--color-accent-base, #131313)',
@@ -144,7 +144,7 @@ function PageHeader({ canEdit }: { canEdit: boolean }) {
           href="/pricing/comps"
           style={{
             fontSize: 13,
-            fontWeight: 500,
+            fontWeight: 400,
             padding: '8px 14px',
             borderRadius: 8,
             border: '1px solid var(--color-border-hairline, #c8c8c5)',
@@ -160,7 +160,7 @@ function PageHeader({ canEdit }: { canEdit: boolean }) {
           href="/projects"
           style={{
             fontSize: 13,
-            fontWeight: 500,
+            fontWeight: 400,
             padding: '8px 14px',
             borderRadius: 8,
             border: '1px solid var(--color-border-hairline, #c8c8c5)',
@@ -196,7 +196,7 @@ function ActiveBriefs({ briefs }: { briefs: CurrentBriefForDashboard[] }) {
           style={{
             margin: 0,
             fontSize: 17,
-            fontWeight: 600,
+            fontWeight: 700,
             color: 'var(--color-text-primary, #111)',
             letterSpacing: '-0.015em',
           }}
@@ -280,7 +280,7 @@ function BriefTile({ brief }: { brief: CurrentBriefForDashboard }) {
       <div
         style={{
           fontSize: 13,
-          fontWeight: 600,
+          fontWeight: 700,
           color: 'var(--color-text-primary, #111)',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
@@ -329,7 +329,7 @@ function BriefTile({ brief }: { brief: CurrentBriefForDashboard }) {
           <span
             style={{
               fontSize: 18,
-              fontWeight: 600,
+              fontWeight: 700,
               color: 'var(--color-text-primary, #111)',
               letterSpacing: '-0.01em',
             }}
@@ -339,7 +339,7 @@ function BriefTile({ brief }: { brief: CurrentBriefForDashboard }) {
           <span
             style={{
               fontSize: 12,
-              fontWeight: 600,
+              fontWeight: 700,
               color: marginColor(margin),
             }}
           >

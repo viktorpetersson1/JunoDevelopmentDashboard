@@ -333,7 +333,7 @@ export function MarketIntel({
             style={{
               margin: 0,
               fontSize: 17,
-              fontWeight: 600,
+              fontWeight: 700,
               color: 'var(--color-text-primary, #111)',
               letterSpacing: '-0.015em',
             }}
@@ -365,7 +365,7 @@ export function MarketIntel({
             onChange={(e) => setFilter(e.target.value)}
             style={{
               fontSize: 12,
-              fontWeight: 500,
+              fontWeight: 400,
               padding: '6px 28px 6px 12px',
               borderRadius: 8,
               border: '1px solid var(--color-border-hairline, #c8c8c5)',
@@ -400,7 +400,7 @@ export function MarketIntel({
                   alignItems: 'center',
                   gap: 8,
                   fontSize: 12,
-                  fontWeight: 500,
+                  fontWeight: 400,
                   padding: refreshing ? '4px 10px 4px 6px' : '6px 12px',
                   borderRadius: 8,
                   border: '1px solid var(--color-border-hairline, #c8c8c5)',
@@ -426,7 +426,7 @@ export function MarketIntel({
                 disabled={refreshing}
                 style={{
                   fontSize: 12,
-                  fontWeight: 500,
+                  fontWeight: 400,
                   padding: '6px 12px',
                   borderRadius: 8,
                   border: '1px solid var(--color-border-hairline, #c8c8c5)',
@@ -482,7 +482,7 @@ export function MarketIntel({
             disabled={!customLabel.trim() || refreshing}
             style={{
               fontSize: 12,
-              fontWeight: 600,
+              fontWeight: 700,
               padding: '6px 12px',
               borderRadius: 6,
               border: 'none',
@@ -547,7 +547,7 @@ export function MarketIntel({
               disabled={refreshing}
               style={{
                 fontSize: 12,
-                fontWeight: 600,
+                fontWeight: 700,
                 padding: '6px 12px',
                 borderRadius: 8,
                 border: '1px solid var(--color-amber-border, #fde68a)',
@@ -692,7 +692,7 @@ export function MarketIntel({
                     style={{
                       fontVariantNumeric: 'tabular-nums',
                       color: 'var(--color-text-primary, #111)',
-                      fontWeight: 600,
+                      fontWeight: 700,
                       textAlign: 'right',
                     }}
                   >
@@ -808,7 +808,7 @@ function KpiTile({
       <div
         style={{
           fontSize: 10,
-          fontWeight: 600,
+          fontWeight: 700,
           textTransform: 'uppercase',
           letterSpacing: '0.06em',
           color: 'var(--color-text-tertiary, #767b84)',
@@ -819,7 +819,7 @@ function KpiTile({
       <div
         style={{
           fontSize: 26,
-          fontWeight: 600,
+          fontWeight: 700,
           marginTop: 4,
           color: 'var(--color-text-primary, #111)',
           fontVariantNumeric: 'tabular-nums',
@@ -838,7 +838,7 @@ function KpiTile({
         }}
       >
         {hasDelta && (
-          <span style={{ color: deltaColor, fontWeight: 600, marginRight: 6 }}>
+          <span style={{ color: deltaColor, fontWeight: 700, marginRight: 6 }}>
             {delta! > 0 ? '▲' : delta! < 0 ? '▼' : '·'} {formatDelta(delta!)}
           </span>
         )}
@@ -863,7 +863,7 @@ function SubHeader({ label, hint }: { label: string; hint: string | null }) {
         style={{
           margin: 0,
           fontSize: 11,
-          fontWeight: 600,
+          fontWeight: 700,
           textTransform: 'uppercase',
           letterSpacing: '0.07em',
           color: 'var(--color-text-tertiary, #767b84)',
@@ -910,7 +910,7 @@ function thStyle(align: 'left' | 'right'): React.CSSProperties {
     padding: '6px 10px',
     textAlign: align,
     fontSize: 10,
-    fontWeight: 600,
+    fontWeight: 700,
     textTransform: 'uppercase',
     letterSpacing: '0.06em',
     color: 'var(--color-text-tertiary, #767b84)',

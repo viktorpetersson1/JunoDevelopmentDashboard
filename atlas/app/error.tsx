@@ -56,7 +56,7 @@ export default function RootError({
         <h1
           style={{
             fontSize: 20,
-            fontWeight: 600,
+            fontWeight: 700,
             margin: 0,
             marginBottom: 8,
             color: 'var(--color-negative, #b91c1c)',
@@ -128,7 +128,7 @@ export default function RootError({
               borderRadius: 8,
               cursor: 'pointer',
               fontSize: 13,
-              fontWeight: 500,
+              fontWeight: 400,
             }}
           >
             Try again
@@ -143,7 +143,7 @@ export default function RootError({
               borderRadius: 8,
               textDecoration: 'none',
               fontSize: 13,
-              fontWeight: 500,
+              fontWeight: 400,
             }}
           >
             Back to sign-in

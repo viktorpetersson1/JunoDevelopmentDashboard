@@ -121,7 +121,7 @@ export function StepReview({ form }: { form: CreateProjectInput }) {
         <h2
           style={{
             fontSize: 16,
-            fontWeight: 600,
+            fontWeight: 700,
             margin: 0,
             marginBottom: 4,
             color: 'var(--color-text-primary)',
@@ -261,7 +261,7 @@ function KPI({
       <div
         style={{
           fontSize: 18,
-          fontWeight: 600,
+          fontWeight: 700,
           color,
           fontVariantNumeric: 'tabular-nums',
           marginTop: 2,

@@ -100,7 +100,7 @@ export function ActivityClient({
       >
         <div>
           <h1
-            style={{ fontSize: 24, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}
+            style={{ fontSize: 24, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}
           >
             Activity
           </h1>
@@ -115,7 +115,7 @@ export function ActivityClient({
             style={{
               padding: '8px 14px',
               fontSize: 13,
-              fontWeight: 500,
+              fontWeight: 400,
               color: 'var(--color-text-primary)',
               background: 'var(--color-surface-base)',
               border: '1px solid var(--color-border-hairline)',
@@ -283,7 +283,7 @@ function CategoryBadge({ category }: { category: string }) {
         fontSize: 10,
         padding: '2px 8px',
         borderRadius: 4,
-        fontWeight: 600,
+        fontWeight: 700,
         letterSpacing: '0.04em',
         textTransform: 'uppercase',
         background: c.bg,

@@ -66,7 +66,7 @@ const ENTRIES: StateEntry[] = [
         <h2
           style={{
             fontSize: 16,
-            fontWeight: 600,
+            fontWeight: 700,
             margin: 0,
             marginBottom: 8,
             color: 'var(--color-text-primary)',
@@ -105,7 +105,7 @@ const ENTRIES: StateEntry[] = [
           maxWidth: 220,
         }}
       >
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Sold</div>
+        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Sold</div>
         <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginBottom: 8 }}>
           Closed within last 12 mo
         </div>
@@ -215,7 +215,7 @@ const ENTRIES: StateEntry[] = [
             alignItems: 'center',
             gap: 6,
             fontSize: 12,
-            fontWeight: 500,
+            fontWeight: 400,
             color: 'var(--color-negative, #dc2626)',
           }}
         >
@@ -257,7 +257,7 @@ const ENTRIES: StateEntry[] = [
       <CardWrap pad="32px 24px">
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
           <JunoMark size={56} ariaLabel="Juno" />
-          <span style={{ fontSize: 15, fontWeight: 600 }}>Juno Atlas</span>
+          <span style={{ fontSize: 15, fontWeight: 700 }}>Juno Atlas</span>
         </div>
       </CardWrap>
     ),
@@ -286,7 +286,7 @@ export default async function StatesGalleryPage() {
           <h1
             style={{
               fontSize: 24,
-              fontWeight: 600,
+              fontWeight: 700,
               margin: 0,
               color: 'var(--color-text-primary)',
             }}

@@ -214,7 +214,7 @@ export function StepBasics({
         <span
           style={{
             fontSize: 11,
-            fontWeight: 600,
+            fontWeight: 700,
             textTransform: 'uppercase',
             letterSpacing: '0.06em',
             color: 'var(--color-text-tertiary)',
@@ -231,7 +231,7 @@ export function StepBasics({
           }
           style={{
             fontSize: 12,
-            fontWeight: 500,
+            fontWeight: 400,
             padding: '5px 12px',
             borderRadius: 8,
             border: '1px solid var(--color-border-hairline)',

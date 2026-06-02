@@ -222,7 +222,7 @@ function EmptyState({
           style={{
             margin: 0,
             fontSize: 16,
-            fontWeight: 600,
+            fontWeight: 700,
             color: 'var(--color-text-primary)',
           }}
         >
@@ -387,7 +387,7 @@ function NewRunButton({
           style={{
             margin: 0,
             fontSize: 14,
-            fontWeight: 600,
+            fontWeight: 700,
             color: 'var(--color-text-primary)',
           }}
         >
@@ -611,7 +611,7 @@ function DraftEditor({
           style={{
             margin: 0,
             fontSize: 14,
-            fontWeight: 600,
+            fontWeight: 700,
             color: 'var(--color-text-primary)',
             display: 'flex',
             alignItems: 'center',
@@ -775,7 +775,7 @@ function PsfBand({
       <label
         style={{
           fontSize: 11,
-          fontWeight: 600,
+          fontWeight: 700,
           letterSpacing: '0.04em',
           color: accent,
           textTransform: 'uppercase',
@@ -827,7 +827,7 @@ function NarrativeField({
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)' }}>
+      <label style={{ fontSize: 12, fontWeight: 400, color: 'var(--color-text-secondary)' }}>
         {label}
       </label>
       <textarea
@@ -924,7 +924,7 @@ function DiffBanner({
             style={{
               padding: '6px 14px',
               fontSize: 12,
-              fontWeight: 500,
+              fontWeight: 400,
               color: '#fff',
               background: 'var(--color-accent-base, #131313)',
               border: 'none',
@@ -975,7 +975,7 @@ function PlotDiffChip({
         padding: 10,
       }}
     >
-      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-primary)' }}>
         {latest.plotTypeLabel}
       </div>
       <div
@@ -1037,7 +1037,7 @@ function AppliedSummary({
         style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}
       >
         <h3
-          style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}
+          style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--color-text-primary)' }}
         >
           Applied to financial model — v{bundle.run.version}
         </h3>
@@ -1071,7 +1071,7 @@ function PlotChip({ p }: { p: PricingRunPlotOutputView }) {
         padding: 10,
       }}
     >
-      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-primary)' }}>
         {p.plotTypeLabel}
       </div>
       <div
@@ -1125,7 +1125,7 @@ function RunHistory({
         style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border-hairline)' }}
       >
         <h3
-          style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)' }}
+          style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--color-text-primary)' }}
         >
           Run history
         </h3>
@@ -1207,7 +1207,7 @@ function Pill({
     fontSize: 10,
     padding: '2px 6px',
     borderRadius: 4,
-    fontWeight: 600,
+    fontWeight: 700,
     letterSpacing: '0.04em',
     textTransform: 'uppercase',
   };
@@ -1296,7 +1296,7 @@ function pillButton(variant: 'primary' | 'secondary'): React.CSSProperties {
   return {
     padding: '4px 10px',
     fontSize: 11,
-    fontWeight: 500,
+    fontWeight: 400,
     border: '1px solid var(--color-border-hairline)',
     borderRadius: 6,
     cursor: 'pointer',
@@ -1313,7 +1313,7 @@ function Th({ children, align }: { children: React.ReactNode; align?: 'right' | 
         textAlign: align ?? 'left',
         padding: '8px 12px',
         fontSize: 10,
-        fontWeight: 600,
+        fontWeight: 700,
         letterSpacing: '0.06em',
         textTransform: 'uppercase',
         color: 'var(--color-text-tertiary)',

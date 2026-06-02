@@ -219,7 +219,7 @@ export function NewProjectWizard() {
         <h1
           style={{
             fontSize: 24,
-            fontWeight: 600,
+            fontWeight: 700,
             margin: 0,
             color: 'var(--color-text-primary)',
           }}
@@ -330,7 +330,7 @@ function StepIndicator({ step, steps }: { step: number; steps: typeof STEPS }) {
               background: bg,
               color,
               fontSize: 12,
-              fontWeight: 600,
+              fontWeight: 700,
               textAlign: 'center',
               letterSpacing: '0.02em',
               border: state === 'todo' ? '1px solid var(--color-border-hairline)' : 'none',

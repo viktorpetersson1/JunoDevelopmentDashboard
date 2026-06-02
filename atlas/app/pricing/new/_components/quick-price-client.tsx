@@ -76,7 +76,7 @@ function SectionHeader({ label, badge }: { label: string; badge?: string }) {
         style={{
           margin: 0,
           fontSize: 14,
-          fontWeight: 600,
+          fontWeight: 700,
           color: 'var(--color-text-primary)',
         }}
       >
@@ -86,7 +86,7 @@ function SectionHeader({ label, badge }: { label: string; badge?: string }) {
         <span
           style={{
             fontSize: 11,
-            fontWeight: 600,
+            fontWeight: 700,
             padding: '2px 7px',
             borderRadius: 20,
             background: 'var(--color-surface-base)',
@@ -138,7 +138,7 @@ function Metric({
           textTransform: 'uppercase',
           letterSpacing: '0.06em',
           color: 'var(--color-text-tertiary)',
-          fontWeight: 600,
+          fontWeight: 700,
           marginBottom: 4,
         }}
       >
@@ -147,7 +147,7 @@ function Metric({
       <div
         style={{
           fontSize: highlight ? 20 : 16,
-          fontWeight: 600,
+          fontWeight: 700,
           color: highlight ? 'var(--color-text-primary)' : 'var(--color-text-primary)',
           fontVariantNumeric: 'tabular-nums',
         }}
@@ -172,7 +172,7 @@ function ConfidenceBadge({ level }: { level: 'high' | 'medium' | 'low' }) {
     <span
       style={{
         fontSize: 11,
-        fontWeight: 600,
+        fontWeight: 700,
         padding: '2px 8px',
         borderRadius: 20,
         background: c.bg,
@@ -227,7 +227,7 @@ function CompTable({ comps }: { comps: ResearchedComp[] }) {
                 style={{
                   padding: '6px 10px',
                   textAlign: 'left',
-                  fontWeight: 600,
+                  fontWeight: 700,
                   color: 'var(--color-text-tertiary)',
                   textTransform: 'uppercase',
                   letterSpacing: '0.04em',
@@ -267,7 +267,7 @@ function CompTable({ comps }: { comps: ResearchedComp[] }) {
                 <span
                   style={{
                     fontSize: 10,
-                    fontWeight: 600,
+                    fontWeight: 700,
                     textTransform: 'uppercase',
                     padding: '2px 6px',
                     borderRadius: 4,
@@ -302,7 +302,7 @@ function CompTable({ comps }: { comps: ResearchedComp[] }) {
                   padding: '8px 10px',
                   color: 'var(--color-text-primary)',
                   fontVariantNumeric: 'tabular-nums',
-                  fontWeight: 500,
+                  fontWeight: 400,
                 }}
               >
                 {usd(c.salePriceUsd)}
@@ -312,7 +312,7 @@ function CompTable({ comps }: { comps: ResearchedComp[] }) {
                   padding: '8px 10px',
                   color: 'var(--color-text-primary)',
                   fontVariantNumeric: 'tabular-nums',
-                  fontWeight: 600,
+                  fontWeight: 700,
                 }}
               >
                 {psf(c.psf)}
@@ -337,7 +337,7 @@ function CompTable({ comps }: { comps: ResearchedComp[] }) {
                     borderRadius: 4,
                     background: c.confidence === 'confirmed' ? '#d1fae5' : '#fef9c3',
                     color: c.confidence === 'confirmed' ? '#065f46' : '#713f12',
-                    fontWeight: 600,
+                    fontWeight: 700,
                   }}
                 >
                   {c.confidence}
@@ -403,7 +403,7 @@ function ResultsPanel({
               style={{
                 margin: '2px 0 0',
                 fontSize: 18,
-                fontWeight: 600,
+                fontWeight: 700,
                 color: 'var(--color-text-primary)',
               }}
             >
@@ -491,7 +491,7 @@ function ResultsPanel({
                 disabled={savingComps}
                 style={{
                   fontSize: 12,
-                  fontWeight: 500,
+                  fontWeight: 400,
                   padding: '6px 14px',
                   borderRadius: 8,
                   border: '1px solid var(--color-border-hairline)',
@@ -584,7 +584,7 @@ function ResultsPanel({
                     <div
                       style={{
                         fontSize: 10,
-                        fontWeight: 600,
+                        fontWeight: 700,
                         color: 'var(--color-text-tertiary)',
                         textTransform: 'uppercase',
                         marginBottom: 4,
@@ -647,7 +647,7 @@ function ResultsPanel({
                           padding: '4px 8px',
                           textAlign: 'left',
                           fontSize: 10,
-                          fontWeight: 600,
+                          fontWeight: 700,
                           color: 'var(--color-text-tertiary)',
                           textTransform: 'uppercase',
                         }}
@@ -685,7 +685,7 @@ function ResultsPanel({
                       <td
                         style={{
                           padding: '8px',
-                          fontWeight: 600,
+                          fontWeight: 700,
                           color: 'var(--color-text-secondary)',
                         }}
                       >
@@ -716,7 +716,7 @@ function ResultsPanel({
                         style={{
                           padding: '8px',
                           fontVariantNumeric: 'tabular-nums',
-                          fontWeight: 600,
+                          fontWeight: 700,
                           color:
                             row.margin !== null
                               ? row.margin < 0.1
@@ -979,7 +979,7 @@ export function QuickPriceClient({
         <h1
           style={{
             fontSize: 24,
-            fontWeight: 600,
+            fontWeight: 700,
             margin: '8px 0 4px',
             color: 'var(--color-text-primary)',
           }}
@@ -1015,7 +1015,7 @@ export function QuickPriceClient({
           <label
             style={{
               fontSize: 12,
-              fontWeight: 600,
+              fontWeight: 700,
               color: 'var(--color-text-secondary)',
               display: 'block',
               marginBottom: 6,
@@ -1046,7 +1046,7 @@ export function QuickPriceClient({
               disabled={parsingUrl || !mapsInput.trim()}
               style={{
                 fontSize: 13,
-                fontWeight: 500,
+                fontWeight: 400,
                 padding: '9px 16px',
                 borderRadius: 8,
                 border: 'none',
@@ -1218,7 +1218,7 @@ export function QuickPriceClient({
             disabled={!isFormValid || researching || !canEdit}
             style={{
               fontSize: 14,
-              fontWeight: 600,
+              fontWeight: 700,
               padding: '11px 24px',
               borderRadius: 10,
               border: 'none',
@@ -1277,7 +1277,7 @@ export function QuickPriceClient({
 
 const labelStyle: React.CSSProperties = {
   fontSize: 12,
-  fontWeight: 600,
+  fontWeight: 700,
   color: 'var(--color-text-secondary)',
   display: 'block',
   marginBottom: 6,

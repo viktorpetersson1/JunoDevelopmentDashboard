@@ -246,7 +246,7 @@ function AddressRequiredEmptyState({
       }}
     >
       <div>
-        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Site address required</h3>
+        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Site address required</h3>
         <p
           style={{
             margin: '6px 0 0',
@@ -265,7 +265,7 @@ function AddressRequiredEmptyState({
           href={`/projects/${projectKey}?tab=inputs`}
           style={{
             fontSize: 14,
-            fontWeight: 600,
+            fontWeight: 700,
             padding: '12px 24px',
             borderRadius: 10,
             background: 'var(--color-accent-base, #131313)',
@@ -314,7 +314,7 @@ function EmptyState({
       }}
     >
       <div>
-        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>No pricing recommendation yet</h3>
+        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>No pricing recommendation yet</h3>
         <p
           style={{
             margin: '6px 0 0',
@@ -335,7 +335,7 @@ function EmptyState({
           disabled={generating}
           style={{
             fontSize: 14,
-            fontWeight: 600,
+            fontWeight: 700,
             padding: '12px 24px',
             borderRadius: 10,
             border: 'none',
@@ -413,7 +413,7 @@ function ActionBar({
           fontVariantNumeric: 'tabular-nums',
         }}
       >
-        <span style={{ fontWeight: 600, color: 'var(--color-text-secondary, #6b7280)' }}>
+        <span style={{ fontWeight: 700, color: 'var(--color-text-secondary, #6b7280)' }}>
           v{brief.version}
         </span>
         <span>·</span>
@@ -455,7 +455,7 @@ function ActionBar({
           disabled={generating}
           style={{
             fontSize: 12,
-            fontWeight: 500,
+            fontWeight: 400,
             padding: '6px 12px',
             borderRadius: 8,
             border: '1px solid var(--color-border-hairline, #c8c8c5)',
@@ -562,7 +562,7 @@ function FailedRecommendationCard() {
       <div
         style={{
           fontSize: 11,
-          fontWeight: 600,
+          fontWeight: 700,
           textTransform: 'uppercase',
           letterSpacing: '0.06em',
           color: 'var(--color-warning, #a16207)',
@@ -574,7 +574,7 @@ function FailedRecommendationCard() {
         style={{
           margin: '6px 0 0',
           fontSize: 20,
-          fontWeight: 600,
+          fontWeight: 700,
           color: 'var(--color-text-primary, #111)',
           letterSpacing: '-0.02em',
         }}
@@ -669,7 +669,7 @@ function Recommendation({
           fontSize: 15,
           color: 'var(--color-text-primary, #111)',
           lineHeight: 1.5,
-          fontWeight: 500,
+          fontWeight: 400,
         }}
       >
         {thesis}
@@ -706,7 +706,7 @@ function Recommendation({
             disabled={applying}
             style={{
               fontSize: 13,
-              fontWeight: 600,
+              fontWeight: 700,
               padding: '10px 18px',
               borderRadius: 8,
               border: 'none',
@@ -774,7 +774,7 @@ function InlineMetric({
       <div
         style={{
           fontSize: 10,
-          fontWeight: 600,
+          fontWeight: 700,
           textTransform: 'uppercase',
           letterSpacing: '0.06em',
           color: 'var(--color-text-tertiary, #767b84)',
@@ -851,7 +851,7 @@ function QuickMath({ rows }: { rows: QuickMathRow[] }) {
                 <td
                   style={{
                     ...tdStyle('right', true),
-                    fontWeight: 600,
+                    fontWeight: 700,
                     color: marginColor(r.marginPct),
                   }}
                 >
@@ -937,7 +937,7 @@ function CompTable({ label, comps }: { label: string; comps: ResearchedComp[] })
       <div
         style={{
           fontSize: 10,
-          fontWeight: 600,
+          fontWeight: 700,
           textTransform: 'uppercase',
           letterSpacing: '0.06em',
           color: 'var(--color-text-tertiary, #767b84)',
@@ -1003,7 +1003,7 @@ function CompTable({ label, comps }: { label: string; comps: ResearchedComp[] })
                     ...tdStyle('right', true),
                     paddingTop: 6,
                     paddingBottom: 6,
-                    fontWeight: 600,
+                    fontWeight: 700,
                   }}
                 >
                   {psfFmt(c.psf)}
@@ -1043,7 +1043,7 @@ function MarketSentiment({ sentiment }: { sentiment: StrategyBrief['marketSentim
                   style={{ borderBottom: '1px solid var(--color-border-hairline, #c8c8c5)' }}
                 >
                   <td style={tdStyle()}>{ind.indicator}</td>
-                  <td style={{ ...tdStyle(), fontWeight: 500 }}>{ind.reading}</td>
+                  <td style={{ ...tdStyle(), fontWeight: 400 }}>{ind.reading}</td>
                   <td style={{ ...tdStyle(), color: 'var(--color-text-secondary, #6b7280)' }}>
                     {ind.implication}
                   </td>
@@ -1114,7 +1114,7 @@ function ReductionLadder({ ladder }: { ladder: StrategyBrief['reductionLadder'] 
               <div
                 style={{
                   fontSize: 11,
-                  fontWeight: 600,
+                  fontWeight: 700,
                   textTransform: 'uppercase',
                   letterSpacing: '0.06em',
                   color: 'var(--color-negative, #b91c1c)',
@@ -1125,7 +1125,7 @@ function ReductionLadder({ ladder }: { ladder: StrategyBrief['reductionLadder'] 
               <div
                 style={{
                   fontSize: 16,
-                  fontWeight: 600,
+                  fontWeight: 700,
                   marginTop: 2,
                   fontVariantNumeric: 'tabular-nums',
                 }}
@@ -1169,7 +1169,7 @@ function LadderRow({ phase }: { phase: ReductionPhase }) {
       <div
         style={{
           fontSize: 11,
-          fontWeight: 600,
+          fontWeight: 700,
           textTransform: 'uppercase',
           letterSpacing: '0.06em',
           color: 'var(--color-text-tertiary, #767b84)',
@@ -1177,7 +1177,7 @@ function LadderRow({ phase }: { phase: ReductionPhase }) {
       >
         {phase.label}
       </div>
-      <div style={{ fontSize: 14, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+      <div style={{ fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
         {usd(phase.priceUsd)}
       </div>
       <div
@@ -1192,7 +1192,7 @@ function LadderRow({ phase }: { phase: ReductionPhase }) {
       <div
         style={{
           fontSize: 12,
-          fontWeight: 600,
+          fontWeight: 700,
           color: marginColor(phase.marginPct),
           fontVariantNumeric: 'tabular-nums',
         }}
@@ -1200,7 +1200,7 @@ function LadderRow({ phase }: { phase: ReductionPhase }) {
         {pct(phase.marginPct)}
       </div>
       <div style={{ fontSize: 12, color: 'var(--color-text-secondary, #6b7280)', lineHeight: 1.4 }}>
-        <strong style={{ color: 'var(--color-text-primary, #111)', fontWeight: 500 }}>
+        <strong style={{ color: 'var(--color-text-primary, #111)', fontWeight: 400 }}>
           {phase.trigger}
         </strong>
         {' — '}
@@ -1259,17 +1259,17 @@ function ScenarioRow({ scenario }: { scenario: OutcomeScenario }) {
         alignItems: 'center',
       }}
     >
-      <div style={{ fontSize: 12, fontWeight: 600 }}>{scenario.name}</div>
+      <div style={{ fontSize: 12, fontWeight: 700 }}>{scenario.name}</div>
       <div style={{ fontSize: 12, color: 'var(--color-text-secondary, #6b7280)', lineHeight: 1.4 }}>
         {scenario.description}
       </div>
-      <div style={{ fontSize: 13, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+      <div style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
         {usd(scenario.exitUsd)}
       </div>
       <div
         style={{
           fontSize: 12,
-          fontWeight: 600,
+          fontWeight: 700,
           color: marginColor(scenario.marginPct),
           fontVariantNumeric: 'tabular-nums',
         }}
@@ -1314,7 +1314,7 @@ function RisksSection({ risks }: { risks: RiskItem[] }) {
                 key={i}
                 style={{ borderBottom: '1px solid var(--color-border-hairline, #c8c8c5)' }}
               >
-                <td style={{ ...tdStyle(), fontWeight: 600, verticalAlign: 'top' }}>{r.risk}</td>
+                <td style={{ ...tdStyle(), fontWeight: 700, verticalAlign: 'top' }}>{r.risk}</td>
                 <td
                   style={{
                     ...tdStyle(),
@@ -1375,7 +1375,7 @@ function WhyColumn({ label, bullets }: { label: string; bullets: string[] }) {
       <div
         style={{
           fontSize: 11,
-          fontWeight: 600,
+          fontWeight: 700,
           textTransform: 'uppercase',
           letterSpacing: '0.06em',
           color: 'var(--color-text-tertiary, #767b84)',
@@ -1473,7 +1473,7 @@ function BriefHistory({ briefs, currentId }: { briefs: PricingBriefView[]; curre
               key={b.id}
               style={{ borderBottom: '1px solid var(--color-border-hairline, #c8c8c5)' }}
             >
-              <td style={{ ...tdStyle(), fontWeight: 600 }}>
+              <td style={{ ...tdStyle(), fontWeight: 700 }}>
                 v{b.version}
                 {b.id === currentId ? ' (current)' : ''}
               </td>
@@ -1532,7 +1532,7 @@ function SectionHeader({ label, badge }: { label: string; badge?: string }) {
         style={{
           margin: 0,
           fontSize: 13,
-          fontWeight: 600,
+          fontWeight: 700,
           color: 'var(--color-text-primary, #111)',
         }}
       >
@@ -1542,7 +1542,7 @@ function SectionHeader({ label, badge }: { label: string; badge?: string }) {
         <span
           style={{
             fontSize: 11,
-            fontWeight: 500,
+            fontWeight: 400,
             color: 'var(--color-text-tertiary, #767b84)',
             fontVariantNumeric: 'tabular-nums',
           }}
@@ -1559,7 +1559,7 @@ function SectionEyebrow({ label }: { label: string }) {
     <div
       style={{
         fontSize: 11,
-        fontWeight: 600,
+        fontWeight: 700,
         textTransform: 'uppercase',
         letterSpacing: '0.06em',
         color: 'var(--color-text-tertiary, #767b84)',
@@ -1584,7 +1584,7 @@ function Metric({
       <div
         style={{
           fontSize: 11,
-          fontWeight: 600,
+          fontWeight: 700,
           textTransform: 'uppercase',
           letterSpacing: '0.06em',
           color: 'var(--color-text-tertiary, #767b84)',
@@ -1596,7 +1596,7 @@ function Metric({
       <div
         style={{
           fontSize: 18,
-          fontWeight: 600,
+          fontWeight: 700,
           fontVariantNumeric: 'tabular-nums',
           color: m == null ? 'var(--color-text-primary, #111)' : marginColor(m),
         }}
@@ -1648,7 +1648,7 @@ function Badge({
     <span
       style={{
         fontSize: 10,
-        fontWeight: 600,
+        fontWeight: 700,
         padding: '2px 7px',
         borderRadius: 999,
         background: p.bg,
@@ -1708,7 +1708,7 @@ function thStyle(align: 'left' | 'right' = 'left'): React.CSSProperties {
     padding: '6px 10px',
     textAlign: align,
     fontSize: 10,
-    fontWeight: 600,
+    fontWeight: 700,
     textTransform: 'uppercase',
     letterSpacing: '0.06em',
     color: 'var(--color-text-tertiary, #767b84)',

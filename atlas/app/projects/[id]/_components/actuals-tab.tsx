@@ -108,7 +108,7 @@ export function ActualsTab({
         <h2
           style={{
             fontSize: 16,
-            fontWeight: 600,
+            fontWeight: 700,
             margin: 0,
             marginBottom: 16,
             color: 'var(--color-text-primary)',
