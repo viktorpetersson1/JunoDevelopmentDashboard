@@ -22,6 +22,7 @@ import type { ProjectPnL, OwnerEarningRow } from '@/lib/finance/project-pnl';
 import type { RolloutTriggerResult, RolloutState } from '@/lib/finance/rollout-trigger';
 import type { DebtSnapshot } from '@/lib/finance/project-cashflow';
 import { CashFlowChart } from './cash-flow-chart';
+import { MonthlyPnLTable } from './monthly-pnl-table';
 import { Section } from '@/app/_components/section';
 
 // T103.5/.9 — canonical card tokens (white-on-grey-on-white pattern).
@@ -60,9 +61,11 @@ export function SummaryTab({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--ja-section-gap)' }}>
       <PnlHero pnl={pnl} />
+      {/* T105 — Monthly P&L table below the 9-line hero */}
+      <MonthlyPnLTable result={result} pnl={pnl} taxRatePct={pnl.tax_rate_pct} />
       <RolloutPacing rollout={rollout} />
       {ownerEarnings && <OwnerEarnings rows={ownerEarnings} npat={pnl.net_profit_after_tax_usd} />}
-      <CashFlowChart monthly={result.monthly} />
+      <CashFlowChart monthly={result.monthly} startDate={result.start_date} saleDate={result.sale_date} />
       <Section
         label="Project status"
         style={{

@@ -15,6 +15,7 @@
  * Pure presentation; client because recharts needs ResizeObserver.
  */
 
+import { useState } from 'react';
 import {
   Bar,
   CartesianGrid,
@@ -29,6 +30,7 @@ import {
 } from 'recharts';
 import type { MonthlySeries } from '@/lib/calc/project/types';
 import { buildProjectCashFlow } from '@/lib/finance/project-cashflow';
+import { projectWindow } from '@/lib/charts/project-window';
 
 interface ChartRow {
   date: string;
@@ -66,8 +68,21 @@ const compact = (n: number): string => {
 
 const tickMonth = (ym: string): string => (ym.endsWith('-01') ? ym.slice(0, 4) : '');
 
-export function CashFlowChart({ monthly }: { monthly: MonthlySeries }) {
-  const data = buildRows(monthly);
+export function CashFlowChart({
+  monthly,
+  startDate,
+  saleDate,
+}: {
+  monthly: MonthlySeries;
+  /** T105: used to compute the default project window. */
+  startDate?: string | null;
+  saleDate?: string | null;
+}) {
+  const [showFull, setShowFull] = useState(false);
+  const allData = buildRows(monthly);
+  const win = projectWindow(monthly, startDate, saleDate);
+  const data = showFull ? allData : allData.slice(win.startIdx, win.endIdx + 1);
+
   return (
     <section
       style={{
@@ -81,7 +96,7 @@ export function CashFlowChart({ monthly }: { monthly: MonthlySeries }) {
         style={{
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'baseline',
+          alignItems: 'center',
           marginBottom: 16,
         }}
       >
@@ -90,16 +105,32 @@ export function CashFlowChart({ monthly }: { monthly: MonthlySeries }) {
         >
           Cash flow
         </h2>
-        <span
-          style={{
-            fontSize: 11,
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-            color: 'var(--color-text-tertiary)',
-          }}
-        >
-          monthly flows · {data.length} months
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button
+            type="button"
+            onClick={() => setShowFull((s) => !s)}
+            style={{
+              fontSize: 11,
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--color-text-tertiary)',
+              padding: '2px 6px',
+            }}
+          >
+            {showFull ? 'Show project window' : 'Show full model horizon'}
+          </button>
+          <span
+            style={{
+              fontSize: 11,
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              color: 'var(--color-text-tertiary)',
+            }}
+          >
+            monthly flows · {data.length} months
+          </span>
+        </div>
       </header>
       <div style={{ width: '100%', height: 280 }}>
         <ResponsiveContainer width="100%" height="100%">

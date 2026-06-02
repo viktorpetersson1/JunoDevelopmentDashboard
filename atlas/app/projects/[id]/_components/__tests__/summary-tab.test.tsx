@@ -12,6 +12,13 @@ vi.mock('../cash-flow-chart', () => ({
   CashFlowChart: () => <div data-testid="cashflow" />,
 }));
 
+// MonthlyPnLTable is a client component relying on useState + full
+// MonthlySeries data; stub it here — its own rendering is tested via the
+// project-pnl-monthly golden test.
+vi.mock('../monthly-pnl-table', () => ({
+  MonthlyPnLTable: () => <div data-testid="monthly-pnl-table" />,
+}));
+
 // next/link renders an <a> in jsdom; no mock needed.
 
 const RESULT = {

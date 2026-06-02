@@ -9,6 +9,7 @@
  *   - Line: loc_balance (KPC LOC utilization)
  */
 
+import { useState } from 'react';
 import {
   Bar,
   CartesianGrid,
@@ -22,6 +23,7 @@ import {
   YAxis,
 } from 'recharts';
 import type { PortfolioMonthlySeries } from '@/lib/calc/portfolio/types';
+import { autoWindow } from '@/lib/charts/project-window';
 
 interface ChartRow {
   date: string;
@@ -55,8 +57,29 @@ const compact = (n: number): string => {
 const tickMonth = (ym: string): string => (ym.endsWith('-01') ? ym.slice(0, 4) : '');
 
 export function PortfolioCashFlowChart({ monthly }: { monthly: PortfolioMonthlySeries }) {
-  const data = buildRows(monthly);
+  const [showFull, setShowFull] = useState(false);
+  const allData = buildRows(monthly);
+  const win = autoWindow(allData as unknown as Array<Record<string, number | string>>, ['netCash', 'equityCalled', 'closingCash', 'locBalance']);
+  const data = showFull ? allData : allData.slice(win.startIdx, win.endIdx + 1);
+
   return (
+    <div style={{ width: '100%' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+        <button
+          type="button"
+          onClick={() => setShowFull((s) => !s)}
+          style={{
+            fontSize: 11,
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            color: 'var(--color-text-tertiary)',
+            padding: '2px 6px',
+          }}
+        >
+          {showFull ? 'Show active window' : 'Show full model horizon'}
+        </button>
+      </div>
     <div style={{ width: '100%', height: 320 }}>
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={data} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
@@ -117,6 +140,7 @@ export function PortfolioCashFlowChart({ monthly }: { monthly: PortfolioMonthlyS
           />
         </ComposedChart>
       </ResponsiveContainer>
+    </div>
     </div>
   );
 }

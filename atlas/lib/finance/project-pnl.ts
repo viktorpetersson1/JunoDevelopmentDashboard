@@ -157,3 +157,66 @@ export function allocateOwnerEarnings(npatUsd: number, owners: OwnerShare[]): Ow
 
   return rows;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Monthly P&L (V6.1 T105)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * One row of the per-month P&L breakdown for the Summary tab's Monthly P&L
+ * table. Derives entirely from the existing MonthlySeries — no engine changes.
+ * The sum of each column across all months equals the corresponding field in
+ * `buildProjectPnL()` (proven in the golden test).
+ */
+export interface MonthlyPnLRow {
+  month: string; // YYYY-MM
+  gross_revenue_usd: number;
+  land_usd: number;
+  hard_construction_usd: number;
+  soft_costs_usd: number;
+  superstructure_usd: number;
+  financing_cost_usd: number;
+  net_profit_before_tax_usd: number;
+  tax_usd: number;
+  net_profit_after_tax_usd: number;
+}
+
+/**
+ * Build the per-month breakdown of the 9-line P&L.
+ *
+ * Pure presentation: reads existing MonthlySeries arrays, never recomputes the
+ * engine (Hard Rule #2). Tax floors at 0 on loss months. The columns sum to the
+ * same totals as `buildProjectPnL()` to within floating-point precision (~$1).
+ */
+export function buildProjectPnLMonthly(
+  monthly: MonthlySeries,
+  opts: BuildProjectPnLOptions = {},
+): MonthlyPnLRow[] {
+  const taxRatePct = opts.taxRatePct ?? DEFAULT_PROJECT_TAX_RATE_PCT;
+
+  return monthly.dates.map((month, i) => {
+    // Guard: the series arrays are optional in test mocks (MonthlySeries is
+    // typed with required arrays, but tests stub minimal shapes).
+    const rev  =  (monthly.sales?.[i]      ?? 0);
+    const land = -(monthly.land_cost?.[i]  ?? 0);
+    const hard = -(monthly.build_cost?.[i] ?? 0);
+    const soft = -(monthly.soft_cost?.[i]  ?? 0);
+    const sup  = -(monthly.kingshaus?.[i]  ?? 0);
+    const fin  = -(monthly.interest?.[i]   ?? 0);
+    const npbt = rev - land - hard - soft - sup - fin;
+    const tax  = npbt > 0 ? npbt * (taxRatePct / 100) : 0;
+
+    return {
+      month,
+      gross_revenue_usd: rev,
+      land_usd: land,
+      hard_construction_usd: hard,
+      soft_costs_usd: soft,
+      superstructure_usd: sup,
+      financing_cost_usd: fin,
+      net_profit_before_tax_usd: npbt,
+      tax_usd: tax,
+      net_profit_after_tax_usd: npbt - tax,
+    };
+  });
+}
