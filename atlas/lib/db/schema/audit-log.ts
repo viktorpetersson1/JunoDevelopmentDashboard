@@ -22,6 +22,8 @@ export const auditLog = atlas.table(
     afterJson: jsonb('after_json'),
     ipHash: text('ip_hash'),
     userAgent: text('user_agent'),
+    /** V6.1 T104 (migration 0030): ui | csv_import | ask_juno_agent | api. */
+    source: text('source'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({

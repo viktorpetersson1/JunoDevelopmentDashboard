@@ -46,3 +46,9 @@ export function conflict(message: string, code = 'CONFLICT') {
 export function serverError(message = 'Unexpected server error', code = 'INTERNAL_ERROR') {
   return NextResponse.json<{ error: ApiError }>({ error: { code, message } }, { status: 500 });
 }
+
+/** 422 — request well-formed but couldn't be processed (e.g. calc engine threw
+ *  on the new inputs). Used to surface the verbatim engine error (V6.1 E7). */
+export function unprocessable(message: string, code = 'UNPROCESSABLE') {
+  return NextResponse.json<{ error: ApiError }>({ error: { code, message } }, { status: 422 });
+}

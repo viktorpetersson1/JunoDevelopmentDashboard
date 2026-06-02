@@ -47,6 +47,9 @@ export function redactPII(value: unknown): unknown {
   return out;
 }
 
+/** Origin surface for an audit row (V6.1 T104, migration 0030). */
+export type AuditSource = 'ui' | 'csv_import' | 'ask_juno_agent' | 'api';
+
 export interface AuditMutationInput {
   orgId: string;
   userId: string | null;
@@ -57,6 +60,8 @@ export interface AuditMutationInput {
   after?: unknown;
   ip?: string | null;
   userAgent?: string | null;
+  /** Which surface produced this mutation. Defaults to 'api'. */
+  source?: AuditSource;
 }
 
 /**
@@ -79,6 +84,7 @@ export async function recordMutation(input: AuditMutationInput): Promise<string 
         after_json: input.after === undefined ? null : redactPII(input.after),
         ip_hash: input.ip ? await hashWithSalt(input.ip) : null,
         user_agent: input.userAgent ?? null,
+        source: input.source ?? 'api',
       })
       .select('id')
       .single();

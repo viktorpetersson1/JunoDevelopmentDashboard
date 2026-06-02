@@ -61,3 +61,54 @@ export const CreateProjectSchema = z.object({
 });
 
 export type CreateProjectInput = z.infer<typeof CreateProjectSchema>;
+
+// ────────────────────────────────────────────────────────────────────────────
+// UpdateProjectSchema (V6.1 T104) — partial edit of an existing project.
+//
+// Every field is OPTIONAL: the Inputs editor modal sends the whole form, but
+// T109's field-scoped PATCH reuse (Sales / Timeline tabs) sends a subset, so
+// PATCH must accept partial payloads. Units mirror ProjectInput (dollars,
+// decimals 0–1 for ltv/rate, % for tax) — the service converts to cents/bps.
+//
+// DELIBERATELY EXCLUDED (V6.1 stop-and-ask / drift register):
+//   - kingshaus_cost_per_sqft  — in the ProjectInput TYPE but has NO
+//     atlas.projects column (projectRowToInput never maps it; it's a
+//     globals/baseline default). No persistence target → not editable here.
+//   - ltc_pct                  — same: ProjectInput field, no project column.
+// Adding columns + wiring them into projectRowToInput would feed the engine
+// new per-project values and risk the golden master (Hard Rule #2). Surfaced
+// to Viktor rather than fabricated. `start_date` is also omitted — it is a
+// derived mirror of purchase_date (no column); editing purchase_date drives it.
+export const UpdateProjectSchema = z
+  .object({
+    // Schedule
+    purchase_date: z.string().regex(/^\d{4}-\d{2}$/, 'purchase_date must be YYYY-MM'),
+    sourcing_months: z.number().int().min(0),
+    permitting_preconstruction_months: z.number().int().min(0),
+    construction_months: z.number().int().min(0),
+    sales_months: z.number().int().min(0),
+    // Villa
+    villa_sqft_ag: z.number().int().positive('Above-grade sqft must be > 0'),
+    villa_sqft_bg: z.number().int().min(0),
+    // Costs (dollars)
+    land_cost_usd: z.number().nonnegative(),
+    build_cost_per_sqft: z.number().positive().nullable(),
+    soft_costs_lump_sum: z.number().nonnegative(),
+    // Financing (decimals 0–1)
+    lender_name: z.string().trim().max(120).nullable(),
+    // senior_ltv_bps is NOT NULL DEFAULT 7500 in the DB — never write null.
+    senior_ltv_pct: z.number().min(0).max(1),
+    interest_rate_apr: z.number().min(0).max(1).nullable(),
+    // Targets
+    sale_price_override_usd: z.number().nonnegative().nullable(),
+    sale_price_per_sqft_override: z.number().nonnegative().nullable(),
+    target_margin: z.number().min(0).max(2).nullable(),
+    // Tax (%)
+    tax_rate_pct: z.number().min(0).max(100),
+  })
+  .partial()
+  .refine((d) => Object.keys(d).length > 0, {
+    message: 'No fields to update — provide at least one field',
+  });
+
+export type UpdateProjectInput = z.infer<typeof UpdateProjectSchema>;

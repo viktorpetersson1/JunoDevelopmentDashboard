@@ -28,6 +28,11 @@ export interface SnapshotBannerProps {
   isEditor: boolean;
   isSuperAdmin: boolean;
   approverNames: Record<string, string>;
+  /** T104 E3 — current inputs drifted from the locked snapshot. Overrides the
+   *  status chip to "Re-approval needed" (placeholder for the T113 StatusDot). */
+  pendingReapproval?: boolean;
+  /** lockedAt (ISO) of the snapshot now needing re-approval. */
+  lockedSnapshotDate?: string | null;
 }
 
 type DotColor = 'red' | 'amber' | 'green';
@@ -103,6 +108,8 @@ export function SnapshotBanner({
   isEditor,
   isSuperAdmin,
   approverNames,
+  pendingReapproval = false,
+  lockedSnapshotDate = null,
 }: SnapshotBannerProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -159,6 +166,12 @@ export function SnapshotBanner({
     }
   }
 
+  // T104 E3 — drifted inputs over a locked snapshot trump the status label.
+  if (pendingReapproval) {
+    chipColor = 'amber';
+    chipLabel = 'Re-approval needed';
+  }
+
   // ── Drawer: full controls when expanded ─────────────────────────────────
   const creatorName = latest?.createdBy
     ? (approverNames[latest.createdBy] ?? 'Creator')
@@ -197,6 +210,15 @@ export function SnapshotBanner({
             gap: 10,
           }}
         >
+          {/* ── Pending re-approval (T104 E3) ── */}
+          {pendingReapproval && (
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--color-warning, #a16207)' }}>
+              Inputs changed since this project was last locked
+              {lockedSnapshotDate ? ` (${timeAgo(lockedSnapshotDate)})` : ''}. Capture a new
+              snapshot to send it for re-approval.
+            </p>
+          )}
+
           {/* ── No snapshot ── */}
           {!latest && (
             <>

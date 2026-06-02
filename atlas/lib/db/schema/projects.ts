@@ -152,6 +152,13 @@ export const projects = atlas.table(
     createdBy: uuid('created_by'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+
+    // ── Edit tracking (V6.1 T104, migration 0029) ────────────────────────
+    /** auth.users.id of the last editor; FK declared in the migration. */
+    lastEditedByUserId: uuid('last_edited_by_user_id'),
+    lastEditedAt: timestamp('last_edited_at', { withTimezone: true }),
+    /** ui | csv_import | ask_juno_agent | api — surface that made the edit. */
+    editSource: text('edit_source'),
   },
   (t) => ({
     keyVersionUnique: uniqueIndex('atlas_projects_key_version_unique').on(t.projectKey, t.version),

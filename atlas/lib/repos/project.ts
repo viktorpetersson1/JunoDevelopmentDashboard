@@ -11,6 +11,7 @@
  */
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { log } from '@/lib/utils/log';
 import type { ProjectInput } from '@/lib/calc/project/types';
 import type { WaterfrontType, ViewPremium, TownProximity } from '@/lib/pricing/location-factors';
 import { projectRowToInput, type ProjectRow } from './project-row-to-input';
@@ -232,4 +233,129 @@ export async function findProjectRowById(id: string): Promise<ProjectInput | nul
   if (error) throw new Error(`findProjectRowById: ${error.message}`);
   if (!data) return null;
   return projectRowToInput(data as unknown as ProjectRow);
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Edit / version-bump (V6.1 T104)
+// ────────────────────────────────────────────────────────────────────────────
+
+export class ProjectNotFoundError extends Error {
+  readonly code = 'PROJECT_NOT_FOUND';
+  constructor(public projectKey: string) {
+    super(`Project "${projectKey}" not found`);
+    this.name = 'ProjectNotFoundError';
+  }
+}
+
+/** Read the full raw row (ALL columns, untransformed) of the current project
+ *  version. Unlike findCurrentProjectByKey (which returns the calc-shaped
+ *  ProjectInput), this returns the raw DB row so a version bump can copy every
+ *  column forward — including ones not in ProjectRow (plot_types,
+ *  applied_pricing_run_id, the V6.1 edit-tracking columns). Null when missing. */
+export async function findCurrentProjectFullRowByKey(
+  projectKey: string
+): Promise<Record<string, unknown> | null> {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .schema('atlas')
+    .from('projects')
+    .select('*')
+    .eq('project_key', projectKey)
+    .eq('is_current', true)
+    .eq('is_archived', false)
+    .maybeSingle();
+  if (error) throw new Error(`findCurrentProjectFullRowByKey: ${error.message}`);
+  return (data as Record<string, unknown> | null) ?? null;
+}
+
+export interface ApplyProjectEditParams {
+  projectKey: string;
+  /** Raw atlas.projects column names → values, cents/bps already applied. */
+  columnPatch: Record<string, unknown>;
+  editedBy: string;
+  editSource: 'ui' | 'csv_import' | 'ask_juno_agent' | 'api';
+}
+
+/**
+ * Persist a project edit as a version bump. V6.1 T104.
+ *
+ * IMPORTANT (V6.1 deviation from doc §3b E4): the current row's UUID is kept
+ * STABLE. We update the current row IN PLACE (new column values + bumped
+ * `version`) and archive the PRE-EDIT state as a new historical row
+ * (is_current=false). This inverts the naive "new row becomes current, flip
+ * old" model because approval_snapshots.project_id is an FK to a specific
+ * project-version UUID and the immutability trigger forbids repointing locked
+ * snapshots — a fresh current UUID would orphan the re-approval gate
+ * (findLatestLockedSnapshot) and the snapshot banner. Keeping the UUID stable
+ * preserves snapshot linkage AND keeps the prior version queryable (E4 intent;
+ * the audit log holds the authoritative before/after per E9).
+ *
+ * Returns the (unchanged) current UUID + the new version number.
+ */
+export async function applyProjectEdit(
+  params: ApplyProjectEditParams
+): Promise<{ id: string; version: number }> {
+  const { projectKey, columnPatch, editedBy, editSource } = params;
+  const supabase = createSupabaseServerClient();
+
+  // 1. Read the full current row so we can archive its pre-edit state.
+  const current = await findCurrentProjectFullRowByKey(projectKey);
+  if (!current) throw new ProjectNotFoundError(projectKey);
+  const currentId = current.id as string;
+  const currentVersion = current.version as number;
+
+  // 2. Next version = max existing version for this key + 1 (don't reuse a
+  //    number an archived row already holds).
+  const { data: maxRow, error: maxErr } = await supabase
+    .schema('atlas')
+    .from('projects')
+    .select('version')
+    .eq('project_key', projectKey)
+    .order('version', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (maxErr) throw new Error(`applyProjectEdit max version: ${maxErr.message}`);
+  const nextVersion = ((maxRow as { version: number } | null)?.version ?? currentVersion) + 1;
+
+  // 3. Update the current row IN PLACE — uuid stays stable, is_current stays
+  //    true. Frees `currentVersion` for the archive row in step 4.
+  const nowIso = new Date().toISOString();
+  const { error: updErr } = await supabase
+    .schema('atlas')
+    .from('projects')
+    .update({
+      ...columnPatch,
+      version: nextVersion,
+      last_edited_by_user_id: editedBy,
+      last_edited_at: nowIso,
+      edit_source: editSource,
+      updated_at: nowIso,
+    })
+    .eq('id', currentId)
+    .eq('is_current', true);
+  if (updErr) throw new Error(`applyProjectEdit update: ${updErr.message}`);
+
+  // 4. Archive the PRE-EDIT state as a new historical row (best-effort —
+  //    the audit log is the authoritative history per E9, so a failure here
+  //    must not fail the user's edit). currentVersion is now free.
+  const historical: Record<string, unknown> = { ...current };
+  delete historical.id; // mint a new uuid
+  delete historical.created_at; // default now()
+  delete historical.updated_at; // default now()
+  historical.is_current = false;
+  historical.is_archived = false;
+  historical.version = currentVersion;
+  const { error: histErr } = await supabase
+    .schema('atlas')
+    .from('projects')
+    .insert(historical);
+  if (histErr) {
+    log.warn('applyProjectEdit: history copy failed (edit + audit still applied)', {
+      projectKey,
+      version: currentVersion,
+      error: histErr.message,
+    });
+  }
+
+  return { id: currentId, version: nextVersion };
 }

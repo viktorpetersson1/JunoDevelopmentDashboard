@@ -33,6 +33,7 @@ import {
   findSnapshotsByProject,
 } from '@/lib/repos/approval-snapshot';
 import { findAuditForProject } from '@/lib/repos/audit-log';
+import { inputsDrifted } from '@/lib/projects/reapproval';
 import { listActualsByCategory } from '@/lib/services/actuals';
 import { fetchAllProfiles, fetchCapTable } from '@/lib/repos/settings';
 import { enrichWithAppliedPricingRun } from '@/lib/services/project-with-pricing';
@@ -219,7 +220,13 @@ export default async function ProjectDetailPage({
       break;
     }
     case 'inputs':
-      tabContent = <InputsTab project={project} />;
+      tabContent = (
+        <InputsTab
+          project={project}
+          projectKey={params.id}
+          isEditor={hasRole(profile, ['super_admin', 'editor'])}
+        />
+      );
       break;
     case 'pricing': {
       // D-025a: replaced the bottoms-up L/B/H pricing-runs UX with a
@@ -259,6 +266,10 @@ export default async function ProjectDetailPage({
   // don't add a new query path.
   const projectUuid = await findCurrentProjectUuidByKey(params.id);
   const latestSnapshot = projectUuid ? await findLatestSnapshot(projectUuid) : null;
+  // Re-approval gate (T104 E3): a locked snapshot + drifted inputs = the
+  // project needs a fresh snapshot before its numbers are board-trusted again.
+  const latestLocked = projectUuid ? await findLatestLockedSnapshot(projectUuid) : null;
+  const pendingReapproval = !!latestLocked && inputsDrifted(project, latestLocked.computedInputs);
   const approverNames: Record<string, string> = {};
   if (latestSnapshot) {
     const ids = new Set<string>(latestSnapshot.approvedBy);
@@ -282,6 +293,8 @@ export default async function ProjectDetailPage({
           isEditor={hasRole(profile, ['super_admin', 'editor'])}
           isSuperAdmin={hasRole(profile, ['super_admin'])}
           approverNames={approverNames}
+          pendingReapproval={pendingReapproval}
+          lockedSnapshotDate={latestLocked?.lockedAt ?? null}
         />
         {tabContent}
       </div>

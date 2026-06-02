@@ -14,6 +14,7 @@ import {
   viewPremiumLabel,
   townProximityLabel,
 } from '@/lib/pricing/location-factors';
+import { InputsEditor } from './inputs-editor-modal';
 
 interface KV {
   label: string;
@@ -40,7 +41,15 @@ function fmtStr(s: string | null | undefined): string {
   return s;
 }
 
-export function InputsTab({ project }: { project: ProjectInput }) {
+export function InputsTab({
+  project,
+  projectKey,
+  isEditor,
+}: {
+  project: ProjectInput;
+  projectKey: string;
+  isEditor: boolean;
+}) {
   const identity: KV[] = [
     { label: 'ID', value: project.id },
     { label: 'Name', value: project.name },
@@ -151,16 +160,22 @@ export function InputsTab({ project }: { project: ProjectInput }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <p
+      <div
         style={{
-          fontSize: 12,
-          color: 'var(--color-text-tertiary)',
-          margin: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
           paddingBottom: 4,
         }}
       >
-        Read-only. The editable wizard ships in T065.
-      </p>
+        <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)', margin: 0 }}>
+          {isEditor
+            ? 'The inputs the calc engine consumed. Editing re-runs the model and may require re-approval.'
+            : 'Read-only — the inputs the calc engine consumed.'}
+        </p>
+        <InputsEditor projectKey={projectKey} project={project} isEditor={isEditor} />
+      </div>
       <div
         style={{
           display: 'grid',
