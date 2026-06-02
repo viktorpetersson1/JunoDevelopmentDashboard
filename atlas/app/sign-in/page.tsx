@@ -26,7 +26,7 @@ export default function SignInPage({
   const errorParam = searchParams.error;
 
   return (
-    <main className="relative min-h-screen" style={{ background: 'var(--color-brand-sand-soft)' }}>
+    <main className="relative min-h-screen" style={{ background: '#ffffff' }}>
       <DotGridBackground />
       <div className="relative z-10 mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
         <div className="rounded-xl bg-surface-base p-8 shadow-sm">

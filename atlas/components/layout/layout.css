@@ -335,6 +335,17 @@
   gap: 8px;
 }
 
+/* Action slot — wraps the scenario picker, page-specific actions, and the
+   user-menu avatar passed through DashboardShell. Without an explicit flex
+   here the children stack as block (e.g. picker on top, V avatar below)
+   because both wrap their button in a positioned <div>. */
+.ja-topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
 /* Compact search */
 .ja-topbar__search {
   position: relative;

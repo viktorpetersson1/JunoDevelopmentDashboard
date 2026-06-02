@@ -68,13 +68,13 @@ export function UserMenu({ name, email }: UserMenuProps) {
         aria-haspopup="menu"
         aria-expanded={open}
         style={{
-          width: 32,
-          height: 32,
+          width: 34,
+          height: 34,
           borderRadius: '50%',
           background: 'var(--color-text-primary, #0d0d0d)',
           color: 'var(--color-text-inverse, #fff)',
           border: 'none',
-          fontSize: 13,
+          fontSize: 14,
           fontWeight: 700,
           letterSpacing: '-0.01em',
           cursor: 'pointer',
