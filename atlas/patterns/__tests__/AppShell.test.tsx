@@ -33,7 +33,11 @@ describe('AppShell', () => {
     expect(home).toHaveAttribute('aria-current', 'page');
   });
 
-  it('user prop overrides DEFAULT_USER; topbar actions slot renders', () => {
+  it('user prop is wired through Sidebar; topbar actions slot renders', () => {
+    // V5.2: the sidebar footer chip is opt-in (showFooter, default false) and
+    // the user identity now lives in the topbar via DashboardShell's UserMenu.
+    // AppShell itself no longer surfaces user name/email by default — but the
+    // SidebarUser prop still threads through (asserted via the `name` aria-label).
     render(
       <AppShell
         activeHref="/"
@@ -45,9 +49,9 @@ describe('AppShell', () => {
         x
       </AppShell>
     );
-    expect(screen.getByText('Alex Chen')).toBeInTheDocument();
-    expect(screen.getByText('alex@juno.com')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
+    // Sidebar still exists; the footer chip is just hidden by default.
+    expect(screen.getByRole('navigation', { name: 'Main navigation' })).toBeInTheDocument();
   });
 
   it('exports DEFAULT_SIDEBAR_SECTIONS + DEFAULT_USER constants', () => {

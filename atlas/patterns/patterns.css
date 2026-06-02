@@ -25,6 +25,81 @@
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
+   ASK JUNO LAUNCHER — "alive" animation
+   ───────────────────────────────────────────────────────────────────────────
+   Subtle metallic shimmer + breathing pulse so the launcher reads as alive
+   without becoming distracting. Pauses on hover (so the focus ring isn't
+   fighting the animation) and respects prefers-reduced-motion.
+   --------------------------------------------------------------------------- */
+
+@keyframes ja-ask-juno-breathe {
+  0%,
+  100% {
+    transform: translateZ(0) scale(1);
+    box-shadow:
+      0 8px 24px rgba(17, 17, 17, 0.18),
+      0 0 0 0 rgba(221, 236, 101, 0.55);
+  }
+  50% {
+    transform: translateZ(0) scale(1.035);
+    box-shadow:
+      0 10px 28px rgba(17, 17, 17, 0.22),
+      0 0 0 6px rgba(221, 236, 101, 0);
+  }
+}
+
+@keyframes ja-ask-juno-shimmer {
+  0% {
+    background-position: -120% 0;
+  }
+  100% {
+    background-position: 220% 0;
+  }
+}
+
+.ja-ask-juno-launcher {
+  animation: ja-ask-juno-breathe 3.6s ease-in-out infinite;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Metallic sheen — a diagonal highlight slides across the lime base every cycle. */
+.ja-ask-juno-launcher::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 25%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 75%
+  );
+  background-size: 200% 100%;
+  animation: ja-ask-juno-shimmer 6s ease-in-out infinite;
+  mix-blend-mode: overlay;
+  opacity: 0.7;
+}
+
+.ja-ask-juno-launcher:hover,
+.ja-ask-juno-launcher:focus-visible {
+  animation-play-state: paused;
+}
+
+.ja-ask-juno-launcher:hover::after,
+.ja-ask-juno-launcher:focus-visible::after {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ja-ask-juno-launcher,
+  .ja-ask-juno-launcher::after {
+    animation: none;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
    LIST PAGE
    ─────────────────────────────────────────────────────────────────────────── */
 

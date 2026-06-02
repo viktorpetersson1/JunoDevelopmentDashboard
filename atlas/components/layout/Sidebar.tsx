@@ -54,7 +54,7 @@ export interface SidebarUser {
 export interface SidebarProps {
   /** Navigation sections rendered in order */
   sections: SidebarSection[];
-  /** Authenticated user info shown in the footer */
+  /** Authenticated user info shown in the footer (when `showFooter` is true) */
   user: SidebarUser;
   /** Href that matches the currently active page */
   activeHref: string;
@@ -62,6 +62,12 @@ export interface SidebarProps {
   logo?: ReactNode;
   /** Optional CSS class appended to the root element */
   className?: string;
+  /**
+   * Render the user-identity footer chip. Defaults to false (V5.2: the user
+   * menu moved to the topbar — the sidebar chip had no click handler and
+   * confused users). Pass true for storybook / standalone Sidebar usage.
+   */
+  showFooter?: boolean;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -107,7 +113,7 @@ const ChevronIcon = () => (
  * ```
  */
 export const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar(
-  { sections, user, activeHref, logo, className },
+  { sections, user, activeHref, logo, className, showFooter = false },
   ref
 ) {
   const rootClass = ['ja-sidebar', className].filter(Boolean).join(' ');
@@ -178,38 +184,40 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar(
         ))}
       </nav>
 
-      {/* ── Footer (user identity) ──────────────────────── */}
-      <div
-        className="ja-sidebar__footer"
-        role="button"
-        tabIndex={0}
-        aria-label={`${user.name} — account menu`}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.currentTarget.click();
-          }
-        }}
-      >
-        {/* Avatar */}
-        <div className="ja-sidebar__avatar" aria-hidden="true">
-          {user.avatarSrc ? (
-            // User-uploaded avatar from Supabase Storage — see Avatar.tsx for context
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={user.avatarSrc} alt={user.name} />
-          ) : (
-            <span>{getInitials(user.name)}</span>
-          )}
-        </div>
+      {/* ── Footer (user identity) — opt-in via showFooter ─────────── */}
+      {showFooter && (
+        <div
+          className="ja-sidebar__footer"
+          role="button"
+          tabIndex={0}
+          aria-label={`${user.name} — account menu`}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.currentTarget.click();
+            }
+          }}
+        >
+          {/* Avatar */}
+          <div className="ja-sidebar__avatar" aria-hidden="true">
+            {user.avatarSrc ? (
+              // User-uploaded avatar from Supabase Storage — see Avatar.tsx for context
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={user.avatarSrc} alt={user.name} />
+            ) : (
+              <span>{getInitials(user.name)}</span>
+            )}
+          </div>
 
-        {/* Name + email */}
-        <div className="ja-sidebar__user-info">
-          <div className="ja-sidebar__user-name">{user.name}</div>
-          <div className="ja-sidebar__user-email">{user.email}</div>
-        </div>
+          {/* Name + email */}
+          <div className="ja-sidebar__user-info">
+            <div className="ja-sidebar__user-name">{user.name}</div>
+            <div className="ja-sidebar__user-email">{user.email}</div>
+          </div>
 
-        {/* Chevron */}
-        <ChevronIcon />
-      </div>
+          {/* Chevron */}
+          <ChevronIcon />
+        </div>
+      )}
     </aside>
   );
 });

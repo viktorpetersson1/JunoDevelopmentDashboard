@@ -155,9 +155,13 @@ export function AskJunoWidget() {
 
   return (
     <>
-      {/* Floating launcher — fixed bottom-right, always visible (except auth pages) */}
+      {/* Floating launcher — fixed bottom-right, always visible (except auth pages).
+          V5.2 feedback (Viktor 2 Jun): added breathing pulse + metallic shimmer via
+          .ja-ask-juno-launcher (patterns.css) so users see it's alive. Animation
+          pauses on hover/focus and respects prefers-reduced-motion. */}
       <button
         type="button"
+        className={open ? undefined : 'ja-ask-juno-launcher'}
         onClick={() => setOpen((v) => !v)}
         aria-label={open ? 'Close Ask Juno' : 'Open Ask Juno'}
         aria-expanded={open}

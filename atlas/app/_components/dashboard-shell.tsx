@@ -22,6 +22,7 @@ import { AppShell } from '@/patterns/AppShell';
 import type { ScenarioVariant } from '@/components/layout';
 import type { SidebarUser } from '@/components/layout';
 import { ActiveScenarioPicker } from './active-scenario-picker';
+import { UserMenu } from './user-menu';
 
 export function DashboardShell({
   activeHref,
@@ -47,6 +48,9 @@ export function DashboardShell({
   // Compose the topbar action slot: scenario picker first, then any extras
   // the page passes. Using a fragment so the existing Topbar styling
   // (gap, spacing) wraps both cleanly.
+  // Compose topbar actions: scenario picker, page-specific actions, then user menu
+  // (avatar + dropdown). The user menu replaces the dead sidebar-footer chip
+  // (Viktor 2 Jun feedback) and is the canonical surface for Settings / Sign out.
   const actions = (
     <>
       <ActiveScenarioPicker
@@ -54,6 +58,7 @@ export function DashboardShell({
         initialDisplayName={activeScenarioName}
       />
       {topbarActions}
+      <UserMenu name={user.name} email={user.email} />
     </>
   );
 
