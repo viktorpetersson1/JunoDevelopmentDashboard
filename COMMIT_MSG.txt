@@ -1,38 +1,17 @@
-D-027: rebuild /pipeline as the 3-year velocity workspace
+chore: stage CLAUDE_CODE_INSTRUCTIONS_V6_1 plan-of-record
 
-Reframes /pipeline from a read-only 6-stage kanban into a goal-driven
-planning surface answering "am I on pace for 4 starts + 4 sells per year?"
+Verbatim copy of Viktor's 2 Jun 2026 V6.1 dev plan into the repo
+(atlas/docs/CLAUDE_CODE_INSTRUCTIONS_V6_1.md) so future sessions can
+Read it directly instead of going through Downloads.
 
-Three sections:
-1. Goal tracker — per-year starts/sells vs target. Segmented bars: solid =
-   actual (date on row), grey = expected (derived from calc engine), hollow =
-   gap. "+N" chip for over-performance. On-plan / N-to-go / N-needed status.
-2. In-flight — projects actively building or selling (pre-con/construction/
-   sales stages), each with start→sell timeline (actual vs est), revenue +
-   margin. Sorted closest-to-sale first.
-3. Candidate funnel — sourcing→pre-con→construction→sales counts + a forward
-   signal: "X of N starts lined up for {nextYear}, need M more candidates."
+V6.1 supersedes V5.2 (tagged v5.2.0). 14 tickets T104-T117 split into:
+  1. Platform editability (T104-T109)
+  2. Home / Projects / Pipeline UX rebuild + StatusDot (T110-T114)
+  3. Ask Juno -> tool-calling agent + close PR (T115-T117)
 
-The original 6-stage kanban is preserved at the bottom in a collapsed
-<details> ("Full pipeline board") — nothing lost, just no longer the
-headline.
+Engine untouched (Hard Rule #2). Migrations 0029-0033 extend, never modify.
 
-Definitions (per Viktor):
-- START = year acquired. purchase_date if set (actual), else engine
-  start_date (expected).
-- SELL  = year closed. closing_date if set (actual), else engine sale_date
-  (expected).
+Next session executes T104 onwards against this doc, tracking plan-vs-shipped
+in atlas/docs/V6_1_TRACKER.md (to be created on T104 entry).
 
-DB / wiring:
-- Migration 0020: target_starts_per_year (4), target_sells_per_year (4),
-  velocity_plan_years (3) on atlas.globals. Editable via the existing
-  /api/globals path; tunable from Settings later.
-- Globals type + BASELINE_GLOBALS + repo row/patch/ROW_SELECT +
-  active-globals merge/hasAnyOverride + API PatchSchema all extended.
-- lib/services/pipeline-velocity.ts — pure computeVelocity(inputs, goal,
-  currentYear). Deterministic, takes currentYear as arg for testability.
-
-Gates: typecheck clean, lint clean, 163/163 logic tests pass (UI act()
-failures pre-existing, unrelated).
-
-Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
