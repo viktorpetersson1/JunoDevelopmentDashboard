@@ -42,7 +42,7 @@
 | T103.9   | Page bg white + card surfaces                                          | P0  | ◐      | `fb6d841`                               | Page shell = pure white (#fff). Sign-in = sand soft bg. Deeper card-hierarchy sweep = remaining work.                                                                                         |
 | T103.10  | Mono charts + lime discipline                                          | P0  | ◐      | `339e63e`                               | Tokens in tokens.css; portfolio cash-flow chart updated. Per-project flows chart is functional-exception (documented). Remaining charts are legacy surfaces for T103.9 sweep.                 |
 | T103.11  | Sign-in dot-grid signature (vanilla canvas, sand tokens)               | P0  | ✅     | `3739cd4`                               | Live-verified on /sign-in (public): canvas painted, z-0 behind form, pointer-events none, aria-hidden, sand token resolves, reduced-motion.                                                   |
-| **T102** | Closing PR: DECISIONS D-030→ + DEVIATION_REGISTER + tag `v5.2.0` (~1)  | P0  | ☐      | —                                       | Final ticket.                                                                                                                                                                                 |
+| **T102** | Closing PR: DECISIONS D-030→ + DEVIATION_REGISTER + tag `v5.2.0` (~1)  | P0  | ✅     | (this commit)                           | DECISIONS.md: D-029 flipped to ✅ + V5.2 sprint block D-030→D-043. DEVIATION_REGISTER.md: V5.2 sprint additions V5-01→V5-20. Tag `v5.2.0` pushed.                                             |
 
 ## Blockers — need Viktor (scaffold-build until provided)
 
