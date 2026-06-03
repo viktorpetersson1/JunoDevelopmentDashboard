@@ -26,6 +26,7 @@ import {
   type VelocityGoal,
 } from '@/lib/services/pipeline-velocity';
 import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
+import { hasRole } from '@/lib/auth/requireRole';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -123,7 +124,7 @@ export default async function PipelinePage() {
           </p>
         </header>
 
-        <GoalTracker report={report} />
+        <GoalTracker report={report} isEditor={hasRole(profile, ['super_admin', 'editor'])} />
         <Divider />
         <InFlight report={report} />
         <Divider />
@@ -144,7 +145,7 @@ export default async function PipelinePage() {
             Full pipeline board ({projects.length} projects, 6 stages)
           </summary>
           <div style={{ marginTop: 12 }}>
-            <PipelineBoard groups={groups} />
+            <PipelineBoard groups={groups} isEditor={hasRole(profile, ['super_admin', 'editor'])} />
           </div>
         </details>
       </div>

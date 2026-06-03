@@ -1,13 +1,17 @@
+'use client';
 /**
  * D-027 — Pipeline velocity presentation components.
  *
- * Pure server-render helpers for the /pipeline workspace. No client state;
- * the only interactive piece (collapsible full board) uses native <details>.
+ * GoalTracker is now 'use client' so the inline edit form can toggle.
+ * All other exports remain pure render; they live in the same file for
+ * co-location but don't use any client hooks.
  *
  * Follows the Juno design framework: hairline borders, tabular numerals,
  * near-black accents, no drop shadows.
  */
 
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatMoney } from '@/lib/utils/money';
 import type {
@@ -20,13 +24,217 @@ import type {
 // Goal tracker
 // ────────────────────────────────────────────────────────────────────────────
 
-export function GoalTracker({ report }: { report: VelocityReport }) {
+interface GoalTrackerProps {
+  report: VelocityReport;
+  isEditor?: boolean;
+}
+
+export function GoalTracker({ report, isEditor = false }: GoalTrackerProps) {
+  const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [starts, setStarts] = useState(report.goal.startsPerYear);
+  const [sells, setSells] = useState(report.goal.sellsPerYear);
+  const [planYears, setPlanYears] = useState(report.goal.planYears);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  async function handleSave() {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const res = await fetch('/api/globals/velocity', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          target_starts_per_year: starts,
+          target_sells_per_year: sells,
+          velocity_plan_years: planYears,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error?.message ?? `Server error ${res.status}`);
+      }
+      setEditing(false);
+      router.refresh();
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <SectionHead
-        title="Goal tracker"
-        hint={`${report.goal.startsPerYear} starts · ${report.goal.sellsPerYear} sells per year · ${report.goal.planYears}-year plan`}
-      />
+      {/* Section header row with optional Edit button */}
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+        <SectionHead
+          title="Goal tracker"
+          hint={`${report.goal.startsPerYear} starts · ${report.goal.sellsPerYear} sells per year · ${report.goal.planYears}-year plan`}
+        />
+        {isEditor && !editing && (
+          <button
+            onClick={() => {
+              setSaveError(null);
+              setEditing(true);
+            }}
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              color: 'var(--color-text-secondary, #6b7280)',
+              background: 'transparent',
+              border: '1px solid var(--color-border-hairline, #c8c8c5)',
+              borderRadius: 6,
+              padding: '4px 10px',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            Edit goals
+          </button>
+        )}
+      </div>
+
+      {/* Inline edit form — only visible when editing=true */}
+      {editing && (
+        <div
+          style={{
+            background: 'var(--color-surface-raised, #fff)',
+            border: '1px solid var(--color-border-hairline, #c8c8c5)',
+            borderRadius: 'var(--ja-card-radius)',
+            padding: 16,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 14,
+          }}
+        >
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-tertiary, #767b84)' }}>
+                Starts / year
+              </span>
+              <input
+                type="number"
+                min={0}
+                max={20}
+                step={1}
+                value={starts}
+                onChange={(e) => setStarts(Number(e.target.value))}
+                style={{
+                  width: 80,
+                  fontSize: 15,
+                  fontWeight: 700,
+                  padding: '6px 8px',
+                  border: '1px solid var(--color-border-hairline, #c8c8c5)',
+                  borderRadius: 6,
+                  background: 'var(--color-surface-sunken, #fafaf8)',
+                  color: 'var(--color-text-primary, #111)',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              />
+            </label>
+
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-tertiary, #767b84)' }}>
+                Sells / year
+              </span>
+              <input
+                type="number"
+                min={0}
+                max={20}
+                step={1}
+                value={sells}
+                onChange={(e) => setSells(Number(e.target.value))}
+                style={{
+                  width: 80,
+                  fontSize: 15,
+                  fontWeight: 700,
+                  padding: '6px 8px',
+                  border: '1px solid var(--color-border-hairline, #c8c8c5)',
+                  borderRadius: 6,
+                  background: 'var(--color-surface-sunken, #fafaf8)',
+                  color: 'var(--color-text-primary, #111)',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              />
+            </label>
+
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-tertiary, #767b84)' }}>
+                Plan years (1–10)
+              </span>
+              <input
+                type="number"
+                min={1}
+                max={10}
+                step={1}
+                value={planYears}
+                onChange={(e) => setPlanYears(Number(e.target.value))}
+                style={{
+                  width: 80,
+                  fontSize: 15,
+                  fontWeight: 700,
+                  padding: '6px 8px',
+                  border: '1px solid var(--color-border-hairline, #c8c8c5)',
+                  borderRadius: 6,
+                  background: 'var(--color-surface-sunken, #fafaf8)',
+                  color: 'var(--color-text-primary, #111)',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              />
+            </label>
+          </div>
+
+          {saveError && (
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--color-negative, #b91c1c)' }}>
+              {saveError}
+            </p>
+          )}
+
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              style={{
+                fontSize: 13,
+                fontWeight: 700,
+                color: 'var(--color-surface-base, #fff)',
+                background: saving ? 'var(--color-text-tertiary, #767b84)' : 'var(--color-accent-base, #131313)',
+                border: 'none',
+                borderRadius: 6,
+                padding: '7px 16px',
+                cursor: saving ? 'default' : 'pointer',
+              }}
+            >
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+            <button
+              onClick={() => {
+                setEditing(false);
+                setSaveError(null);
+                // Reset inputs to current report values
+                setStarts(report.goal.startsPerYear);
+                setSells(report.goal.sellsPerYear);
+                setPlanYears(report.goal.planYears);
+              }}
+              disabled={saving}
+              style={{
+                fontSize: 13,
+                fontWeight: 700,
+                color: 'var(--color-text-secondary, #6b7280)',
+                background: 'transparent',
+                border: '1px solid var(--color-border-hairline, #c8c8c5)',
+                borderRadius: 6,
+                padding: '7px 16px',
+                cursor: saving ? 'default' : 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       <div
         style={{
           background: 'var(--color-surface-raised, #fff)',

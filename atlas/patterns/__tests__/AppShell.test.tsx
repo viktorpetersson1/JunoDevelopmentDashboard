@@ -26,7 +26,7 @@ describe('AppShell', () => {
     expect(screen.queryByText('WORKSPACE')).not.toBeInTheDocument();
     // Primary 6 items present.
     expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/dashboard');
-    expect(screen.getByRole('link', { name: 'Analytics' })).toHaveAttribute('href', '/analytics');
+    expect(screen.getByRole('link', { name: 'Finance & Analytics' })).toHaveAttribute('href', '/analytics'); // T114 (V6.1)
     expect(screen.getByRole('link', { name: 'Earnings' })).toHaveAttribute('href', '/earnings');
     // Active link (Home = /dashboard).
     const home = screen.getByRole('link', { name: 'Home' });

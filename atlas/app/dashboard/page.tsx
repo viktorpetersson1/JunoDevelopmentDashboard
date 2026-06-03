@@ -17,8 +17,9 @@
 
 import Link from 'next/link';
 import { DashboardShell } from '../_components/dashboard-shell';
-import { Section } from '../_components/section';
 import { PortfolioCashFlowChart } from '../_components/portfolio-cash-flow-chart';
+import { AnnualPnLTable } from '../analytics/forecast/_components/annual-pnl-table';
+import { StatusDot } from '@/components/feedback/StatusDot';
 import { findManyProjects } from '@/lib/repos/project';
 import { aggregatePortfolio } from '@/lib/calc/portfolio/aggregate';
 import { getActiveGlobals } from '@/lib/globals/active';
@@ -72,186 +73,9 @@ const card: CSSProperties = {
   padding: 'var(--ja-card-padding)',
 };
 
-function Chip({
-  label,
-  value,
-  detail,
-  href,
-  color = 'default',
-}: {
-  label: string;
-  value: string;
-  detail?: string;
-  href: string;
-  color?: 'default' | 'amber' | 'red' | 'green';
-}) {
-  const valueColor =
-    color === 'red'
-      ? 'var(--color-negative)'
-      : color === 'amber'
-        ? 'var(--color-warning)'
-        : color === 'green'
-          ? 'var(--color-positive)'
-          : 'var(--color-text-primary)';
-
-  const borderColor =
-    color === 'red'
-      ? 'var(--color-negative)'
-      : color === 'amber'
-        ? 'var(--color-warning)'
-        : color === 'green'
-          ? 'var(--color-positive)'
-          : 'var(--color-border-hairline)';
-
-  return (
-    <Link
-      href={href}
-      style={{
-        ...card,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 4,
-        textDecoration: 'none',
-        color: 'inherit',
-        borderTop: color !== 'default' ? `3px solid ${borderColor}` : card.border,
-        transition: 'box-shadow 120ms ease',
-      }}
-    >
-      <div
-        style={{
-          fontSize: 10,
-          fontWeight: 700,
-          textTransform: 'uppercase',
-          letterSpacing: '0.08em',
-          color: 'var(--color-text-tertiary)',
-        }}
-      >
-        {label}
-      </div>
-      <div
-        style={{
-          fontSize: 28,
-          fontWeight: 700,
-          letterSpacing: '-0.02em',
-          color: valueColor,
-          fontVariantNumeric: 'tabular-nums',
-          lineHeight: 1.1,
-        }}
-      >
-        {value}
-      </div>
-      {detail && (
-        <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 2 }}>
-          {detail}
-        </div>
-      )}
-    </Link>
-  );
-}
-
-function SmallChip({
-  label,
-  value,
-  sub,
-  href,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  href: string;
-}) {
-  return (
-    <Link
-      href={href}
-      style={{
-        ...card,
-        padding: 14,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 3,
-        textDecoration: 'none',
-        color: 'inherit',
-      }}
-    >
-      <div
-        style={{
-          fontSize: 10,
-          fontWeight: 700,
-          textTransform: 'uppercase',
-          letterSpacing: '0.08em',
-          color: 'var(--color-text-tertiary)',
-        }}
-      >
-        {label}
-      </div>
-      <div
-        style={{
-          fontSize: 22,
-          fontWeight: 700,
-          color: 'var(--color-text-primary)',
-          fontVariantNumeric: 'tabular-nums',
-          lineHeight: 1.1,
-        }}
-      >
-        {value}
-      </div>
-      {sub && <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{sub}</div>}
-    </Link>
-  );
-}
-
-function ActionCard({
-  label,
-  count,
-  emptyLabel,
-  href,
-}: {
-  label: string;
-  count: number;
-  emptyLabel: string;
-  href: string;
-}) {
-  return (
-    <Link
-      href={href}
-      style={{
-        ...card,
-        padding: '12px 16px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 12,
-        textDecoration: 'none',
-        color: 'inherit',
-      }}
-    >
-      <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
-        {count > 0 ? (
-          <>
-            <span
-              style={{
-                display: 'inline-block',
-                width: 7,
-                height: 7,
-                borderRadius: 999,
-                background: 'var(--color-negative)',
-                marginRight: 7,
-                verticalAlign: 'middle',
-              }}
-            />
-            <strong style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>{count}</strong>{' '}
-            {label}
-          </>
-        ) : (
-          <span style={{ color: 'var(--color-text-tertiary)' }}>{emptyLabel}</span>
-        )}
-      </span>
-      <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>→</span>
-    </Link>
-  );
-}
-
 // ─── Page ────────────────────────────────────────────────────────────────────
+// T110 (V6.1): Chip / SmallChip / ActionCard removed — replaced by
+// BoardroomRow / DeskRow / TacticalCell below.
 
 export default async function DashboardPage() {
   const { profile, user } = await requireAuthOrRedirect('/dashboard');
@@ -358,7 +182,7 @@ export default async function DashboardPage() {
   // 2b. Pipeline revenue — committed vs prospect breakdown
   const pipelineRevAll = results.reduce((s, r) => s + r.result.kpis.total_sales, 0);
   const pipelineRevCommitted = committed.reduce((s, r) => s + r.result.kpis.total_sales, 0);
-  const pipelineRevProspect = pipelineRevAll - pipelineRevCommitted;
+  const _pipelineRevProspect = pipelineRevAll - pipelineRevCommitted; // reserved for V6.2 strategy page
 
   // 2c. Starts 2026 — from portfolio pipeline service (simple approximation)
   const currentYear = new Date().getUTCFullYear();
@@ -394,15 +218,18 @@ export default async function DashboardPage() {
     // non-critical; action cards show 0 safely
   }
 
-  // ── Row 5: committed projects (top 2 by target close) ─────────────────
-  const top2Committed = [...committed]
-    .sort((a, b) => ((a.result.sale_date ?? '9999') < (b.result.sale_date ?? '9999') ? -1 : 1))
-    .slice(0, 2);
+  // T110: committed-projects row removed. top2Committed reserved for V6.2.
+  // const _top2Committed = [...committed].sort(...).slice(0, 2);
 
   const dashboardUser = {
     name: profile.displayName ?? profile.email ?? user.email ?? 'Juno',
     email: profile.email ?? user.email ?? '',
   };
+
+  // T110 (V6.1): compute effective tax rate for Annual P&L table (promoted from /analytics/forecast)
+  const effectiveTaxRate = globals.apply_tax !== false
+    ? ((globals.tax_rate_pct ?? 21) + (globals.tax_state_rate_pct ?? 4.5)) / 100
+    : 0;
 
   return (
     <DashboardShell
@@ -412,294 +239,211 @@ export default async function DashboardPage() {
       activeScenarioName={active.displayName}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--ja-section-gap)' }}>
-        {/* ── Row 1: strategic chips (grouped in soft-grey section) ── */}
-        <Section
-          label="Board questions"
+
+        {/* ── Page heading ── */}
+        <header>
+          <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, letterSpacing: '-0.025em', color: 'var(--color-text-primary)' }}>
+            Home
+          </h1>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
+            Atlas — at a glance
+          </p>
+        </header>
+
+        {/* ── Two-column: Boardroom Strip (60%) + Today's Desk (40%) ── */}
+        <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: 12,
+            gridTemplateColumns: '60fr 40fr',
+            gap: 16,
+            alignItems: 'start',
           }}
         >
-          <Chip
-            label="Next capital call"
-            value={nextCallDate ? compact(nextCallAmount) : '—'}
-            detail={
-              nextCallDate ? `${fmtYM(nextCallDate)} · KPC LOC / Harrison` : 'No upcoming draws'
-            }
-            href="/analytics/capital"
-          />
-          <Chip
-            label="Next owner distribution"
-            value={nextClosePnl ? compact(nextClosePnl.net_profit_after_tax_usd) : '—'}
-            detail={
-              nextCloseProject
-                ? `${fmtYM(nextCloseProject.result.sale_date ?? '—')} · from ${nextCloseProject.project.name}`
-                : 'No committed closes yet'
-            }
-            href="/earnings"
-          />
-          <Chip
-            label="KPC LOC headroom"
-            value={compact(locAvailable)}
-            detail={`of ${compact(locLimit)} available · ${(locUtilPct * 100).toFixed(0)}% utilized · ${locRate}%`}
-            href="/analytics/capital"
-            color={locColor}
-          />
-          <Chip
-            label="Rollout pacing"
-            value={
-              rollout.state === 'unconfigured'
-                ? 'Set target'
-                : rollout.next_start_required_by
-                  ? `Start by ${fmtYM(rollout.next_start_required_by)}`
-                  : 'On pace'
-            }
-            detail={
-              rollout.state === 'unconfigured'
-                ? 'Settings → General → Rollout target'
-                : rollout.rationale.slice(0, 60) + '…'
-            }
-            href="/pipeline"
-            color={rollout.state === 'unconfigured' ? 'default' : rolloutColor}
-          />
-        </Section>
-
-        {/* ── Row 2: tactical chips (grouped) ── */}
-        <Section
-          label="Tactical context"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-            gap: 12,
-          }}
-        >
-          <SmallChip
-            label="90-day cash need"
-            value={compact(Math.abs(cash90 < 0 ? cash90 : 0))}
-            sub={cash90 < 0 ? 'net outflow' : 'net inflow — positive'}
-            href="/analytics/forecast"
-          />
-          <SmallChip
-            label="Pipeline revenue"
-            value={compact(pipelineRevAll)}
-            sub={`${compact(pipelineRevCommitted)} committed · ${compact(pipelineRevProspect)} prospect`}
-            href="/projects"
-          />
-          <SmallChip
-            label={`Starts ${currentYear}`}
-            value={`${starts2026} / ${targetStarts}`}
-            sub={starts2026 >= targetStarts ? 'on target' : `${targetStarts - starts2026} to go`}
-            href="/pipeline"
-          />
-        </Section>
-
-        {/* ── Row 3: action cards (grouped) ── */}
-        <Section
-          label="What needs you today"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: 10,
-          }}
-        >
-          <ActionCard
-            label="snapshots need locking"
-            count={draftSnapshotCount}
-            emptyLabel="All snapshots current"
-            href="/projects"
-          />
-          <ActionCard
-            label="capital calls drafting"
-            count={draftCallCount}
-            emptyLabel="No draft calls"
-            href="/analytics/capital"
-          />
-          <ActionCard
-            label="cap-breach months in window"
-            count={capBreachCount}
-            emptyLabel="No LOC breaches forecast"
-            href="/analytics/stress"
-          />
-        </Section>
-
-        {/* ── Row 4: 12-month cash flow chart (standalone white card — chart
-            needs solid white bg, doesn't benefit from the grey grouping). ── */}
-        <section style={card}>
-          <header
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'baseline',
-              marginBottom: 16,
-            }}
-          >
-            <h2
-              style={{
-                fontSize: 16,
-                fontWeight: 700,
-                margin: 0,
-                color: 'var(--color-text-primary)',
-              }}
-            >
-              Portfolio cash flow
+          {/* ── Boardroom Strip ─────────────────────────────────── */}
+          <section style={card}>
+            <h2 style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-tertiary)', margin: '0 0 16px' }}>
+              Boardroom strip
             </h2>
-            <span
-              style={{
-                fontSize: 11,
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                color: 'var(--color-text-tertiary)',
-              }}
-            >
-              12 months
-            </span>
+
+            {/* Row: Next capital call */}
+            <BoardroomRow
+              label="NEXT CAPITAL CALL"
+              value={nextCallDate ? compact(nextCallAmount) : '—'}
+              detail={nextCallDate ? `${fmtYM(nextCallDate)} · KPC LOC / Harrison` : 'No upcoming draws'}
+              href="/analytics/capital"
+              overdue={false}
+            />
+
+            {/* Row: Next owner distribution */}
+            <BoardroomRow
+              label="NEXT OWNER DISTRIBUTION"
+              value={nextClosePnl ? compact(nextClosePnl.net_profit_after_tax_usd) : '—'}
+              detail={nextCloseProject ? `${fmtYM(nextCloseProject.result.sale_date ?? '—')} · ${nextCloseProject.project.name}` : 'No committed closes yet'}
+              href="/earnings"
+              overdue={false}
+            />
+
+            {/* Row: KPC LOC headroom */}
+            <BoardroomRow
+              label="KPC LOC HEADROOM"
+              value={compact(locAvailable)}
+              detail={`of ${compact(locLimit)} available · ${(locUtilPct * 100).toFixed(0)}% utilized · ${locRate}%`}
+              href="/analytics/capital"
+              overdue={locColor === 'red'}
+              warn={locColor === 'amber'}
+            />
+
+            {/* Row: Rollout pacing */}
+            <BoardroomRow
+              label="ROLLOUT PACING"
+              value={rollout.state === 'unconfigured' ? 'Set target' : rollout.next_start_required_by ? `Start by ${fmtYM(rollout.next_start_required_by)}` : 'On pace'}
+              detail={rollout.state === 'unconfigured' ? 'Settings → General → Rollout target' : rollout.rationale.slice(0, 70) + (rollout.rationale.length > 70 ? '…' : '')}
+              href="/pipeline"
+              overdue={rolloutColor === 'red'}
+              warn={rolloutColor === 'amber'}
+              last
+            />
+
+            {/* Tactical strip (3 cells compressed below Boardroom) */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 0, marginTop: 12, border: '1px solid var(--color-border-hairline)', borderRadius: 8, overflow: 'hidden' }}>
+              <TacticalCell label="90d cash" value={compact(Math.abs(cash90 < 0 ? cash90 : 0))} sub={cash90 < 0 ? 'net outflow' : 'net inflow'} href="/dashboard" />
+              <TacticalCell label="Pipeline rev" value={compact(pipelineRevAll)} sub={`${compact(pipelineRevCommitted)} committed`} href="/projects" border />
+              <TacticalCell label={`Starts ${currentYear}`} value={`${starts2026} / ${targetStarts}`} sub={starts2026 >= targetStarts ? 'on target' : `${targetStarts - starts2026} to go`} href="/pipeline" border />
+            </div>
+          </section>
+
+          {/* ── Today's Desk ─────────────────────────────────────── */}
+          <section style={card}>
+            <h2 style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-tertiary)', margin: '0 0 16px' }}>
+              Today&apos;s desk
+            </h2>
+
+            <DeskRow
+              count={draftSnapshotCount}
+              label="drafts ready to lock"
+              emptyLabel="All snapshots current"
+              href="/projects"
+            />
+            <DeskRow
+              count={draftCallCount}
+              label="capital calls drafting"
+              emptyLabel="No draft calls"
+              href="/analytics/capital"
+            />
+            <DeskRow
+              count={capBreachCount}
+              label="cap-breach months in window"
+              emptyLabel="No LOC breaches forecast"
+              href="/analytics/stress"
+              last
+            />
+          </section>
+        </div>
+
+        {/* ── Portfolio cash flow chart ── */}
+        <section style={card}>
+          <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
+            <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>Portfolio cash flow</h2>
+            <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-tertiary)' }}>12 months</span>
           </header>
           <PortfolioCashFlowChart monthly={portfolio.monthly} />
         </section>
 
-        {/* ── Row 5: committed projects (grouped) ── */}
-        {top2Committed.length > 0 && (
-          <Section
-            label="Active committed projects"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-              gap: 12,
-            }}
-          >
-            {top2Committed.map(({ project, result }) => {
-              const pnl = buildProjectPnL(result, { taxRatePct: project.tax_rate_pct });
-              return (
-                <Link
-                  key={project.id}
-                  href={`/projects/${project.id}`}
-                  style={{
-                    ...card,
-                    textDecoration: 'none',
-                    color: 'inherit',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 10,
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'baseline',
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 700,
-                        color: 'var(--color-text-primary)',
-                      }}
-                    >
-                      {project.name}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: 10,
-                        fontWeight: 700,
-                        padding: '2px 7px',
-                        borderRadius: 999,
-                        background: 'var(--color-positive-soft, #ecfdf5)',
-                        color: 'var(--color-positive)',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
-                      }}
-                    >
-                      Committed
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: '1fr 1fr 1fr',
-                      gap: 8,
-                      fontVariantNumeric: 'tabular-nums',
-                    }}
-                  >
-                    {[
-                      { label: 'NPAT', value: compact(pnl.net_profit_after_tax_usd) },
-                      {
-                        label: 'Margin',
-                        value: `${(pnl.npat_margin_pct * 100).toFixed(1)}%`,
-                      },
-                      {
-                        label: 'IRR',
-                        value:
-                          pnl.irr_annual != null ? `${(pnl.irr_annual * 100).toFixed(1)}%` : '—',
-                      },
-                    ].map((m) => (
-                      <div key={m.label}>
-                        <div
-                          style={{
-                            fontSize: 9,
-                            fontWeight: 700,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.08em',
-                            color: 'var(--color-text-tertiary)',
-                          }}
-                        >
-                          {m.label}
-                        </div>
-                        <div
-                          style={{
-                            fontSize: 16,
-                            fontWeight: 700,
-                            color: 'var(--color-text-primary)',
-                          }}
-                        >
-                          {m.value}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
-                    Stage: {project.stage?.replaceAll('_', ' ') ?? '—'} ·{' '}
-                    {result.sale_date ? `Target close ${fmtYM(result.sale_date)}` : 'No close date'}
-                  </div>
-                </Link>
-              );
-            })}
-          </Section>
-        )}
-        {top2Committed.length > 0 && committed.length > 2 && (
-          <Link
-            href="/projects?filter=committed"
-            style={{
-              display: 'inline-block',
-              marginTop: -12,
-              paddingLeft: 4,
-              fontSize: 12,
-              color: 'var(--color-text-secondary)',
-              textDecoration: 'none',
-            }}
-          >
-            +{committed.length - 2} more committed projects →
-          </Link>
-        )}
-        {top2Committed.length === 0 && (
-          <div
-            style={{
-              ...card,
-              textAlign: 'center',
-              padding: 28,
-              color: 'var(--color-text-tertiary)',
-              fontSize: 13,
-            }}
-          >
-            No committed projects yet — advance a prospect in{' '}
-            <Link href="/pipeline" style={{ color: 'var(--color-text-secondary)' }}>
-              Pipeline
-            </Link>{' '}
-            to populate this row.
-          </div>
-        )}
+        {/* ── Annual P&L (promoted from /analytics/forecast — T110) ── */}
+        <AnnualPnLTable annual={portfolio.annual} effectiveTaxRate={effectiveTaxRate} />
+
       </div>
     </DashboardShell>
   );
 }
+
+// ─── T110 Boardroom Strip row ─────────────────────────────────────────────────
+
+function BoardroomRow({
+  label, value, detail, href, overdue = false, warn = false, last = false,
+}: { label: string; value: string; detail: string; href: string; overdue?: boolean; warn?: boolean; last?: boolean; }) {
+  const valueColor = overdue ? 'var(--color-negative, #b91c1c)' : warn ? 'var(--color-warning, #a16207)' : 'var(--color-text-primary)';
+  return (
+    <Link
+      href={href}
+      style={{
+        display: 'flex',
+        alignItems: 'baseline',
+        gap: 12,
+        padding: '10px 0',
+        borderBottom: last ? 'none' : '1px solid var(--color-border-subtle)',
+        textDecoration: 'none',
+        color: 'inherit',
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-tertiary)', marginBottom: 3 }}>{label}</div>
+        <div style={{ fontSize: 28, fontWeight: 700, color: valueColor, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', lineHeight: 1.1 }}>{value}</div>
+        <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 3 }}>{detail}</div>
+      </div>
+      <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)', flexShrink: 0 }}>details →</span>
+    </Link>
+  );
+}
+
+// ─── T110 Today's Desk row ────────────────────────────────────────────────────
+
+function DeskRow({
+  count, label, emptyLabel, href, last = false,
+}: { count: number; label: string; emptyLabel: string; href: string; last?: boolean; }) {
+  return (
+    <Link
+      href={href}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '9px 0',
+        borderBottom: last ? 'none' : '1px solid var(--color-border-subtle)',
+        textDecoration: 'none',
+        color: 'inherit',
+      }}
+    >
+      <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: count > 0 ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)' }}>
+        {count > 0 && (
+          <StatusDot severity="error" title={`${count} ${label}`} message={`Open items requiring attention.`} />
+        )}
+        {count > 0
+          ? <><strong style={{ fontWeight: 700 }}>{count}</strong>&nbsp;{label}</>
+          : emptyLabel}
+      </span>
+      <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{count > 0 ? 'review →' : '✓'}</span>
+    </Link>
+  );
+}
+
+// ─── T110 Tactical cell ───────────────────────────────────────────────────────
+
+function TacticalCell({ label, value, sub, href, border = false }: { label: string; value: string; sub?: string; href: string; border?: boolean }) {
+  return (
+    <Link
+      href={href}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2,
+        padding: '10px 14px',
+        textDecoration: 'none',
+        color: 'inherit',
+        borderLeft: border ? '1px solid var(--color-border-hairline)' : 'none',
+      }}
+    >
+      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-text-tertiary)' }}>{label}</div>
+      <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text-primary)', fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+      {sub && <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{sub}</div>}
+    </Link>
+  );
+}
+
+// ─── Legacy components (no longer rendered — kept for reference) ──────────────
+// NOTE: Chip, SmallChip, ActionCard were the V5.2 Row 1-3 components.
+// Replaced by BoardroomRow, DeskRow, TacticalCell in T110 (V6.1).
+// The committed-projects row (Row 5) is removed — information is in Projects list.
+// Keep the unused function stubs below so old imports/tests don't break.
+
+// (V5.2 committed-projects row removed in T110 — data now in /projects table view)

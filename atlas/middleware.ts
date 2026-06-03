@@ -36,6 +36,8 @@ export async function middleware(request: NextRequest) {
     '/scenario': '/analytics/scenarios',
     '/risk': '/analytics/stress',
     '/risks': '/analytics/risks',
+    // T110 (V6.1): /analytics/forecast deleted — Annual P&L promoted to Home.
+    '/analytics/forecast': '/dashboard',
   };
   const pathname = request.nextUrl.pathname;
   const redirectTarget = ANALYTICS_REDIRECTS[pathname];

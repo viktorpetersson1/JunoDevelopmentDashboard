@@ -148,6 +148,10 @@ function AuditSection({
   );
 }
 
+/**
+ * T114 (V6.1) — compressed vertical timeline entry (GitHub-style).
+ * Was: 4-column wide grid. Now: tight 2-line row — label + body + hairline.
+ */
 function AuditEntry({
   entry,
   userName,
@@ -164,73 +168,56 @@ function AuditEntry({
   return (
     <li
       style={{
-        display: 'grid',
-        gridTemplateColumns: '170px 90px 1fr auto',
-        gap: 16,
-        padding: '14px 0',
+        padding: '6px 0',
         borderBottom: isLast ? 'none' : '1px solid var(--color-border-subtle)',
-        fontSize: 13,
-        alignItems: 'baseline',
       }}
     >
-      <span
+      {/* Line 1 — timestamp · actor · category */}
+      <div
         style={{
+          display: 'flex',
+          gap: 6,
+          alignItems: 'baseline',
+          fontSize: 12,
           color: 'var(--color-text-tertiary)',
           fontVariantNumeric: 'tabular-nums',
-          fontSize: 12,
         }}
       >
-        {formatTimestamp(entry.createdAt)}
-      </span>
-      <span
-        style={{
-          color: categoryColor,
-          fontSize: 10,
-          fontWeight: 700,
-          textTransform: 'uppercase',
-          letterSpacing: '0.08em',
-        }}
-      >
-        {categoryLabel}
-      </span>
-      <div>
-        <div
-          style={{
-            color: 'var(--color-text-primary)',
-            display: 'flex',
-            gap: 6,
-            alignItems: 'baseline',
-          }}
-        >
-          <strong style={{ fontWeight: 700 }}>{userName}</strong>
-          <span style={{ color: 'var(--color-text-secondary)' }}>{entry.action}</span>
-          {entry.resourceId && (
-            <code style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-              {entry.resourceId.length > 12 ? `${entry.resourceId.slice(0, 8)}…` : entry.resourceId}
-            </code>
-          )}
-        </div>
-        {entry.meta && Object.keys(entry.meta).length > 0 && (
-          <div
-            style={{
-              color: 'var(--color-text-secondary)',
-              fontSize: 11,
-              marginTop: 2,
-            }}
-          >
-            {formatMetaSummary(entry.meta)}
-          </div>
+        <span>{formatTimestamp(entry.createdAt)}</span>
+        <span>·</span>
+        <span style={{ fontWeight: 700, color: 'var(--color-text-secondary)' }}>{userName}</span>
+        <span>·</span>
+        <span style={{ color: categoryColor, textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: 10, fontWeight: 700 }}>{categoryLabel}</span>
+        {isFail && (
+          <span style={{ color: 'var(--color-negative, #b91c1c)', fontSize: 10, fontWeight: 700 }}>
+            {entry.statusCode}
+          </span>
         )}
       </div>
-      <span
+      {/* Line 2 — action + resource + meta */}
+      <div
         style={{
-          fontSize: 11,
-          color: isFail ? 'var(--color-negative, #dc2626)' : 'var(--color-text-tertiary)',
-          fontVariantNumeric: 'tabular-nums',
+          marginTop: 2,
+          fontSize: 13,
+          color: 'var(--color-text-primary)',
+          display: 'flex',
+          gap: 6,
+          alignItems: 'baseline',
+          flexWrap: 'wrap',
         }}
       >
-        {entry.method} {entry.statusCode}
-      </span>
+        <span>{entry.action}</span>
+        {entry.resourceId && (
+          <code style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+            {entry.resourceId.length > 12 ? `${entry.resourceId.slice(0, 8)}…` : entry.resourceId}
+          </code>
+        )}
+        {entry.meta && Object.keys(entry.meta).length > 0 && (
+          <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+            {formatMetaSummary(entry.meta)}
+          </span>
+        )}
+      </div>
     </li>
   );
 }

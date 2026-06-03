@@ -156,7 +156,7 @@ export const DEFAULT_SIDEBAR_SECTIONS: SidebarSection[] = [
       { href: '/projects', label: 'Projects', icon: <ProjectsIcon /> },
       { href: '/pipeline', label: 'Pipeline', icon: <PipelineIcon /> },
       { href: '/pricing', label: 'Pricing', icon: <PricingIcon /> },
-      { href: '/analytics', label: 'Analytics', icon: <AnalyticsIcon /> },
+      { href: '/analytics', label: 'Finance & Analytics', icon: <AnalyticsIcon /> },
       { href: '/earnings', label: 'Earnings', icon: <EarningsIcon /> },
     ],
   },
