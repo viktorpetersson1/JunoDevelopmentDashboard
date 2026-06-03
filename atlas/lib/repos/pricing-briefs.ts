@@ -20,6 +20,8 @@
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { ProjectPhase, StrategyBrief } from '@/lib/pricing/strategy-brief';
+import type { PerplexityCitation } from '@/lib/llm/perplexity-client';
+import type { PricingProvider } from '@/lib/pricing/provider';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Types
@@ -46,6 +48,9 @@ export interface PricingBriefView {
   appliedAt: string | null;
   appliedByUserId: string | null;
   generatedByUserId: string | null;
+  /** V6.1.5 — top-level Sonar citations[] (Hard Rule #6). Null on Anthropic-authored briefs. */
+  citations: PerplexityCitation[] | null;
+  llmProvider: PricingProvider;
   createdAt: string;
 }
 
@@ -68,11 +73,13 @@ interface PricingBriefRow {
   applied_at: string | null;
   applied_by_user_id: string | null;
   generated_by_user_id: string | null;
+  citations: PerplexityCitation[] | null;
+  llm_provider: string | null;
   created_at: string;
 }
 
 const ROW_SELECT =
-  'id, project_id, version, status, phase, recommended_launch_price_cents, recommended_psf_cents, expected_margin_pct, prob_weighted_margin_pct, one_line_thesis, brief, used_web_search, comp_count, data_gap, generation_error, applied_at, applied_by_user_id, generated_by_user_id, created_at';
+  'id, project_id, version, status, phase, recommended_launch_price_cents, recommended_psf_cents, expected_margin_pct, prob_weighted_margin_pct, one_line_thesis, brief, used_web_search, comp_count, data_gap, generation_error, applied_at, applied_by_user_id, generated_by_user_id, citations, llm_provider, created_at';
 
 function toView(row: PricingBriefRow): PricingBriefView {
   return {
@@ -99,6 +106,8 @@ function toView(row: PricingBriefRow): PricingBriefView {
     appliedAt: row.applied_at,
     appliedByUserId: row.applied_by_user_id,
     generatedByUserId: row.generated_by_user_id,
+    citations: row.citations ?? null,
+    llmProvider: (row.llm_provider as PricingProvider) ?? 'anthropic',
     createdAt: row.created_at,
   };
 }
@@ -238,6 +247,9 @@ export interface InsertBriefInput {
   dataGap: boolean;
   generationError: string | null;
   generatedByUserId: string | null;
+  /** V6.1.5 — comp-research citations[] + provider (T-PRC-3). */
+  citations?: PerplexityCitation[] | null;
+  llmProvider?: PricingProvider;
 }
 
 async function nextVersion(projectId: string): Promise<number> {
@@ -277,6 +289,8 @@ export async function insertBrief(input: InsertBriefInput): Promise<PricingBrief
     data_gap: input.dataGap,
     generation_error: input.generationError,
     generated_by_user_id: input.generatedByUserId,
+    citations: input.citations ?? null,
+    llm_provider: input.llmProvider ?? 'anthropic',
   };
 
   const { data, error } = await supabase

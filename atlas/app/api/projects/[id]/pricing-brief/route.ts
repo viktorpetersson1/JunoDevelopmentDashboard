@@ -231,6 +231,10 @@ export const POST = withErrorBoundary(async (_req: NextRequest, ctx: RouteContex
       sourceUrl: c.sourceUrl,
       source: 'other' as const,
       notes: `Auto-saved from brief — ${c.sourceName}${c.confidence === 'estimated' ? ' (AI-estimated)' : ''}`,
+      // V6.1.5 (T-PRC-2/3) stuck-listing provenance (Sonar path; undefined on Anthropic → defaults).
+      relistCount: c.relistCount ?? 0,
+      firstListedAt: c.firstListedAt ?? null,
+      currentDomDays: c.status !== 'closed' ? (c.domDays ?? null) : null,
     }));
   if (compsToSave.length > 0) {
     void bulkUpsertCompsIgnoreDupes(compsToSave).catch(() => {
@@ -247,6 +251,8 @@ export const POST = withErrorBoundary(async (_req: NextRequest, ctx: RouteContex
     dataGap: result.dataGap,
     generationError: result.error ?? null,
     generatedByUserId: user.id,
+    citations: result.citations ?? null,
+    llmProvider: result.llmProvider,
   });
 
   return created({ brief: inserted });

@@ -26,6 +26,12 @@ import {
   type ViewPremium,
   type TownProximity,
 } from './location-factors';
+// V6.1.5 (T-PRC-3) — Sonar brief synthesis (option-b dual-path)
+import { callPerplexity, PerplexityError, type PerplexityCitation } from '@/lib/llm/perplexity-client';
+import { StrategyBriefSchema } from '@/lib/llm/perplexity-schemas';
+import { StrategyBriefBodySchema, type BriefClassification, type StrategyBriefBody } from './schemas';
+import { pricingProvider, type PricingProvider } from './provider';
+import { SYSTEM_BASE_PROMPT, promptHash } from './prompts';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Inputs
@@ -83,6 +89,8 @@ export interface StrategyBrief {
     expectedMarginPct: number;
     probWeightedMarginPct: number;
     oneLineThesis: string;
+    /** V6.1.5 rider/maker classification (framework §3.3). Sonar path only. */
+    classification?: BriefClassification;
   };
 
   /** Section 1 — derived from cost stack; not from AI. */
@@ -199,6 +207,10 @@ export interface BriefGenerationResult {
   compCount: number;
   dataGap: boolean;
   error?: string;
+  /** V6.1.5 — top-level Sonar citations[] from the comp-research call (Hard Rule #6). */
+  citations?: PerplexityCitation[];
+  /** Which provider generated this brief ('anthropic' until the T-PRC-3 flip). */
+  llmProvider?: PricingProvider;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -668,6 +680,11 @@ export async function generateStrategyBrief(
   // 1. Deterministic breakeven math.
   const breakevens = computeBreakevens(facts, closingCosts);
 
+  // V6.1.5 — one correlation id per brief run, shared by the comp-research +
+  // brief-synthesis audit rows (pricing_llm_calls.run_id) on the Sonar path.
+  const runId = crypto.randomUUID();
+  const provider = pricingProvider();
+
   // 2. AI comp research.
   const compResearch = await researchComps(
     {
@@ -682,7 +699,8 @@ export async function generateStrategyBrief(
       isNc: facts.isNewConstruction,
       compWindowMonths: 18,
     },
-    anthropicApiKey
+    anthropicApiKey,
+    { runId }
   );
 
   // D-026(a) — combine library anchors + fresh web research, deduping by
@@ -714,47 +732,44 @@ export async function generateStrategyBrief(
         }
       : null;
 
-  // 3. Brief-generation Claude call.
+  // 3. Brief synthesis — Sonar (option-b flag) or the existing Anthropic call.
   const prompt = buildBriefPrompt(facts, closingCosts, breakevens, closedComps, activeComps);
-  const { text, ok, status } = await callClaudeForBrief(anthropicApiKey, prompt);
 
-  if (!ok || !text) {
-    return {
-      brief: buildFallbackBrief(
-        facts,
-        closingCosts,
-        breakevens,
-        compResearch.comps,
-        medianPsf,
-        rangePsf,
-        compResearch.narrativeSummary
-      ),
-      usedWebSearch: compResearch.usedWebSearch,
-      compCount: compResearch.comps.length,
-      dataGap: compResearch.dataGap,
-      error: `Brief generation API error (HTTP ${status})`,
-    };
-  }
+  const fallback = (error: string): BriefGenerationResult => ({
+    brief: buildFallbackBrief(
+      facts,
+      closingCosts,
+      breakevens,
+      compResearch.comps,
+      medianPsf,
+      rangePsf,
+      compResearch.narrativeSummary
+    ),
+    usedWebSearch: compResearch.usedWebSearch,
+    compCount: compResearch.comps.length,
+    dataGap: compResearch.dataGap,
+    error,
+    citations: compResearch.citations,
+    llmProvider: provider,
+  });
 
   let parsed: ParsedBriefBody;
-  try {
-    parsed = JSON.parse(extractJson(text)) as ParsedBriefBody;
-  } catch (err) {
-    return {
-      brief: buildFallbackBrief(
-        facts,
-        closingCosts,
-        breakevens,
-        compResearch.comps,
-        medianPsf,
-        rangePsf,
-        compResearch.narrativeSummary
-      ),
-      usedWebSearch: compResearch.usedWebSearch,
-      compCount: compResearch.comps.length,
-      dataGap: compResearch.dataGap,
-      error: `Brief JSON parse error: ${err instanceof Error ? err.message : 'unknown'}`,
-    };
+  if (provider === 'perplexity') {
+    // Fail-loud: a Sonar error → deterministic fallback brief, never an Anthropic
+    // retry (Hard Rule #2). The adapter already wrote a 'failed' audit row.
+    const sonar = await callBriefViaSonar(prompt, runId);
+    if (sonar.error || !sonar.parsed) {
+      return fallback(sonar.error ?? 'Sonar brief synthesis returned no data');
+    }
+    parsed = sonar.parsed;
+  } else {
+    const { text, ok, status } = await callClaudeForBrief(anthropicApiKey, prompt);
+    if (!ok || !text) return fallback(`Brief generation API error (HTTP ${status})`);
+    try {
+      parsed = JSON.parse(extractJson(text)) as ParsedBriefBody;
+    } catch (err) {
+      return fallback(`Brief JSON parse error: ${err instanceof Error ? err.message : 'unknown'}`);
+    }
   }
 
   // 4. Compose final brief — merge AI output with deterministic sections.
@@ -796,10 +811,113 @@ export async function generateStrategyBrief(
     usedWebSearch: compResearch.usedWebSearch,
     compCount: compResearch.comps.length,
     dataGap: compResearch.dataGap,
+    citations: compResearch.citations,
+    llmProvider: provider,
   };
 
   // (intentional reference to make sure tree-shaker keeps the helper.)
   void netAfterClosing;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// V6.1.5 (T-PRC-3) — Sonar brief synthesis
+//
+// No web search on this call (the brief synthesizes; comp research already
+// searched). Fail-loud: a Sonar error returns { error } and generateStrategyBrief
+// falls back to the deterministic placeholder brief — it NEVER retries Anthropic
+// (Hard Rule #2). The adapter already wrote a 'failed' pricing_llm_calls row.
+// ────────────────────────────────────────────────────────────────────────────
+
+async function callBriefViaSonar(
+  prompt: string,
+  runId: string
+): Promise<{ parsed?: ParsedBriefBody; error?: string }> {
+  try {
+    const hash = await promptHash(SYSTEM_BASE_PROMPT, prompt);
+    const result = await callPerplexity<unknown>({
+      systemPrompt: SYSTEM_BASE_PROMPT,
+      userPrompt: prompt,
+      model: 'sonar-pro',
+      responseSchema: StrategyBriefSchema,
+      callSite: 'strategy_brief',
+      runId,
+      promptHash: hash,
+    });
+    const validated = StrategyBriefBodySchema.safeParse(result.data);
+    if (!validated.success) {
+      return {
+        error: `Sonar brief failed schema validation: ${validated.error.issues[0]?.message ?? 'shape drift'}`,
+      };
+    }
+    return { parsed: mapBriefBodyToParsed(validated.data) };
+  } catch (e) {
+    const msg =
+      e instanceof PerplexityError
+        ? e.message
+        : e instanceof Error
+          ? e.message
+          : 'Sonar brief synthesis failed';
+    return { error: msg };
+  }
+}
+
+/**
+ * Map the validated Sonar brief body → ParsedBriefBody. The shapes mirror each
+ * other (StrategyBriefSchema mirrors ParsedBriefBody); this fills the optional
+ * margin/text fields that reconcileMath overwrites anyway, so the composed
+ * brief never carries undefined where the StrategyBrief type expects a value.
+ */
+function mapBriefBodyToParsed(body: StrategyBriefBody): ParsedBriefBody {
+  return {
+    recommendation: {
+      launchPriceUsd: body.recommendation.launchPriceUsd,
+      psfAtLaunch: body.recommendation.psfAtLaunch,
+      expectedMarginPct: body.recommendation.expectedMarginPct ?? 0,
+      probWeightedMarginPct: body.recommendation.probWeightedMarginPct ?? 0,
+      oneLineThesis: body.recommendation.oneLineThesis,
+      classification: body.recommendation.classification,
+    },
+    quickMath: body.quickMath.map((q) => ({
+      scenario: q.scenario,
+      exitUsd: q.exitUsd,
+      psf: q.psf,
+      netAfterClosingUsd: q.netAfterClosingUsd ?? 0,
+      profitUsd: q.profitUsd ?? 0,
+      marginPct: q.marginPct ?? 0,
+      read: q.read ?? '',
+    })),
+    compEvidenceNarrative: body.compEvidenceNarrative,
+    marketSentiment: body.marketSentiment,
+    reductionLadder: {
+      phases: body.reductionLadder.phases.map((p) => ({
+        label: p.label,
+        priceUsd: p.priceUsd,
+        psf: p.psf ?? 0,
+        trigger: p.trigger ?? '',
+        marginPct: p.marginPct ?? 0,
+        action: p.action ?? '',
+      })),
+      walkAwayFloor: body.reductionLadder.walkAwayFloor,
+    },
+    outcomeScenarios: {
+      scenarios: body.outcomeScenarios.scenarios.map((s) => ({
+        name: s.name,
+        description: s.description ?? '',
+        exitUsd: s.exitUsd,
+        marginPct: s.marginPct ?? 0,
+        probabilityPct: s.probabilityPct,
+      })),
+      probWeightedExpectedMarginPct: body.outcomeScenarios.probWeightedExpectedMarginPct,
+      probWeightedExpectedExitUsd: body.outcomeScenarios.probWeightedExpectedExitUsd,
+    },
+    risks: body.risks.map((r) => ({
+      risk: r.risk,
+      impact: r.impact ?? '',
+      mitigation: r.mitigation ?? '',
+    })),
+    whyThisNumber: body.whyThisNumber,
+    finalRecommendation: body.finalRecommendation,
+  };
 }
 
 // ────────────────────────────────────────────────────────────────────────────
