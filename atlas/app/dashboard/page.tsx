@@ -25,6 +25,7 @@ import { findManyProjects, findManyProjectsWithUuids } from '@/lib/repos/project
 import { aggregatePortfolio } from '@/lib/calc/portfolio/aggregate';
 import { buildCashSchedule } from '@/lib/treasury/portfolio-cash-schedule';
 import { buildSelfFundingTrajectory } from '@/lib/treasury/self-funding';
+import { buildDistributionForecast } from '@/lib/treasury/distribution-forecast';
 import { fetchCapTable } from '@/lib/repos/settings';
 import { getActiveGlobals } from '@/lib/globals/active';
 import { getActiveScenario } from '@/lib/scenarios/active';
@@ -98,19 +99,19 @@ export default async function DashboardPage() {
   const portfolio = aggregatePortfolio(projects, globals, active.scenario);
   const todayYM = serverMonthYM();
 
-  // T123 — Self-funding trajectory (5th Boardroom row). Reuses the same
-  // treasury pipeline as /analytics/self-funding so the row reconciles.
-  const selfFunding = buildSelfFundingTrajectory(
-    buildCashSchedule({
-      projects: projectsWithUuids,
-      globals,
-      scenario: active.scenario,
-      sources: treasurySources,
-      assignments: treasuryAssignments,
-      todayYM,
-    }),
-    capTable,
-  );
+  // T126 — ONE treasury schedule is the source of truth for the Boardroom
+  // strategic answers. No surface independently recomputes a treasury number:
+  // capital call, distribution, self-funding all read this same schedule.
+  const schedule = buildCashSchedule({
+    projects: projectsWithUuids,
+    globals,
+    scenario: active.scenario,
+    sources: treasurySources,
+    assignments: treasuryAssignments,
+    todayYM,
+  });
+  const selfFunding = buildSelfFundingTrajectory(schedule, capTable);
+  const distribution = buildDistributionForecast(schedule, capTable);
 
   // Run engine on every project; build per-project results once for all chips.
   const results = projects.map((p) => ({
@@ -123,33 +124,17 @@ export default async function DashboardPage() {
 
   // ── Row 1: strategic chips ─────────────────────────────────────────────
 
-  // 1a. Next capital call — first future month with debt_drawn > 0 (committed only)
-  let nextCallDate: string | null = null;
-  let nextCallAmount = 0;
-  for (const { result } of committed) {
-    for (let i = 0; i < result.monthly.dates.length; i++) {
-      const d = result.monthly.dates[i] ?? '';
-      const drawn = result.monthly.debt_drawn[i] ?? 0;
-      if (d >= todayYM && drawn > 0) {
-        if (!nextCallDate || d < nextCallDate) {
-          nextCallDate = d;
-          nextCallAmount = drawn;
-        }
-        break;
-      }
-    }
-  }
+  // 1a. Next capital call — first schedule month with a net draw (T126: reads
+  //     the cash schedule, NOT a separate committed-only loop, so the chip
+  //     reconciles with /analytics/cash-schedule exactly).
+  const nextCallRow = schedule.rows.find((r) => r.net_cash_need > 1) ?? null;
+  const nextCallDate = nextCallRow?.month ?? null;
+  const nextCallAmount = nextCallRow?.net_cash_need ?? 0;
 
-  // 1b. Next owner distribution — earliest committed project close × portfolio NPAT
-  const committedByClose = [...committed]
-    .filter((r) => r.result.sale_date != null)
-    .sort((a, b) => ((a.result.sale_date ?? '') < (b.result.sale_date ?? '') ? -1 : 1));
-  const nextCloseProject = committedByClose[0] ?? null;
-  const nextClosePnl = nextCloseProject
-    ? buildProjectPnL(nextCloseProject.result, {
-        taxRatePct: nextCloseProject.project.tax_rate_pct,
-      })
-    : null;
+  // 1b. Next owner distribution — first schedule month with a distribution
+  //     (T126: reads the distribution forecast, D-064 owner-tax model, so the
+  //     chip reconciles with /earnings).
+  const nextDistMonth = distribution.monthly.find((m) => m.total_distribution > 1) ?? null;
 
   // 1c. KPC LOC headroom (V6.2 T118: now reads from the versioned ledger repo
   // — respects is_current + is_archived filters. Fallback to V5.2-confirmed
@@ -288,40 +273,40 @@ export default async function DashboardPage() {
               Boardroom strip
             </h2>
 
-            {/* Row: Next capital call */}
+            {/* Row: Next capital call — T126: reads the cash schedule */}
             <BoardroomRow
               label="NEXT CAPITAL CALL"
               value={nextCallDate ? compact(nextCallAmount) : '—'}
-              detail={nextCallDate ? `${fmtYM(nextCallDate)} · KPC LOC / Harrison` : 'No upcoming draws'}
-              href="/analytics/capital"
+              detail={nextCallDate ? `${fmtYM(nextCallDate)} · portfolio draw across the funding stack` : 'No draws in the 36-month window'}
+              href="/analytics/cash-schedule"
               overdue={false}
             />
 
-            {/* Row: Next owner distribution */}
+            {/* Row: Next owner distribution — T126: reads the distribution forecast */}
             <BoardroomRow
               label="NEXT OWNER DISTRIBUTION"
-              value={nextClosePnl ? compact(nextClosePnl.net_profit_after_tax_usd) : '—'}
-              detail={nextCloseProject ? `${fmtYM(nextCloseProject.result.sale_date ?? '—')} · ${nextCloseProject.project.name}` : 'No committed closes yet'}
+              value={nextDistMonth ? compact(nextDistMonth.total_distribution) : '—'}
+              detail={nextDistMonth ? `${fmtYM(nextDistMonth.month)} · owner tax distribution at close` : 'No distributions in the 36-month window'}
               href="/earnings"
               overdue={false}
             />
 
-            {/* Row: KPC LOC headroom */}
+            {/* Row: KPC LOC headroom — T126: links to the LOC repayment page */}
             <BoardroomRow
               label="KPC LOC HEADROOM"
               value={compact(locAvailable)}
               detail={`of ${compact(locLimit)} available · ${(locUtilPct * 100).toFixed(0)}% utilized · ${locRate}%`}
-              href="/analytics/capital"
+              href="/analytics/loc"
               overdue={locColor === 'red'}
               warn={locColor === 'amber'}
             />
 
-            {/* Row: Rollout pacing */}
+            {/* Row: Rollout pacing — T126: links to the capacity solver */}
             <BoardroomRow
               label="ROLLOUT PACING"
               value={rollout.state === 'unconfigured' ? 'Set target' : rollout.next_start_required_by ? `Start by ${fmtYM(rollout.next_start_required_by)}` : 'On pace'}
               detail={rollout.state === 'unconfigured' ? 'Settings → General → Rollout target' : rollout.rationale.slice(0, 70) + (rollout.rationale.length > 70 ? '…' : '')}
-              href="/pipeline"
+              href="/pipeline/capacity"
               overdue={rolloutColor === 'red'}
               warn={rolloutColor === 'amber'}
             />
