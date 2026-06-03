@@ -1,0 +1,33 @@
+{
+  "_comment": "Recorded-shape Sonar comp_research response for the Big Bing SF lot (T-PRC-1 adapter test). `payload` is the model's JSON content; the test stringifies it into choices[0].message.content. Citations deliberately mix an object and a bare URL string to exercise both normaliseCitations branches.",
+  "id": "ppx-resp-bigbing-001",
+  "payload": {
+    "sub_cut_definition": "Sound-front NC, 5BR, >= 5,000 AG sqft (North Fork)",
+    "window_months": 24,
+    "data_gap_severity": "red",
+    "closed": [],
+    "active": [
+      {
+        "address": "Big Bing Sound-front, North Fork, NY",
+        "status": "active",
+        "price_usd": 13500000,
+        "ag_sqft": 7500,
+        "price_per_sqft": 1800,
+        "attributes": {
+          "construction": "new",
+          "waterfront": "sound",
+          "bedrooms": 5,
+          "pool": true,
+          "acreage": 1.6
+        },
+        "source_url": "https://www.compass.com/listing/big-bing"
+      }
+    ],
+    "framework_notes": "Zero closed in-sub-cut over 24 months. Adjacent bayfront NC anchor 3745 Nassau Point closed $1,455/sf. Triangulation + buyer-migration thesis required (red gap)."
+  },
+  "citations": [
+    { "url": "https://www.compass.com/listing/big-bing", "title": "Big Bing Sound-front" },
+    "https://www.zillow.com/homedetails/3745-nassau-point"
+  ],
+  "usage": { "prompt_tokens": 8000, "completion_tokens": 3000 }
+}

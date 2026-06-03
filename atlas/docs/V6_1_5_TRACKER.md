@@ -34,7 +34,7 @@
 |--------|-----------------|-----|-----|--------|-----------|------------------|
 | **§0** | ACK (`chore: ACK CLAUDE_CODE_INSTRUCTIONS_V6_1_5_PRICING`) — promote plan to `docs/`, add `ACK_V6_1_5.md` + this tracker | P0 | — | ✅ | _(this commit)_ | Plan promoted to `docs/`. ACK signed, §0a reconciliation confirmed (1/2/3 + DR-A/DR-B). Viktor pre-approved via kickoff ("Go"). |
 | **T-PRC-0** | Repo scan + audit register + seed `D-066`→`D-073` + cost-shadow methodology | P0 | — | ✅ | _(this commit)_ | [`pricing/V6_1_5_AUDIT.md`](pricing/V6_1_5_AUDIT.md): 3 pricing call sites inventoried (comp-researcher `max_uses:5`, location-classifier `max_uses:3`, strategy-brief no-search); all prose-parse, no `response_format`/Zod/citations. **Stop-and-ask check CLEAN** — no pricing Anthropic call outside `lib/pricing/*`. `D-066`→`D-073` seeded in `DECISIONS.md`. Cost-shadow **live A/B ⛔ BLOCKED-ON-VIKTOR** (no local key) — methodology + static estimate documented; live run is a Viktor-tick. No runtime code. |
-| **T-PRC-1** | Perplexity adapter `lib/llm/perplexity-client.ts` + `PERPLEXITY_API_KEY` + retire Anthropic from pricing (stub) + mig `0036` + audit-log repo + feature flag + vitest (happy + 401/429/500/timeout) | P0 | 0036 | ☐ | — | Foundation. Adapter consumes recorded fixtures (no live key needed for tests). Feature-flag **option (b)** per Gate 3. Mig `0036` → `pricing_llm_calls` + `pricing_briefs.{citations,llm_provider,llm_total_cost_usd}` (DR-A). Smoke script needs live key → Viktor-tick. |
+| **T-PRC-1** | Perplexity adapter + `PERPLEXITY_API_KEY` + mig `0036` + audit repo + feature flag + vitest | P0 | 0036 | ✅ | _(this commit)_ | **SHIPPED (foundation; Anthropic pricing path left LIVE — option b).** Adapter `lib/llm/perplexity-client.ts` (direct fetch, D-067): `response_format` json_schema, top-level `citations[]` (normalises both `string[]` and object forms), cost from §2.3, typed `PerplexityError`, §2.5 system-prompt search-guard, `AbortController` timeout. **Fail-loud, no fallback** — unit-proven: exactly one fetch, never hits anthropic; missing key = hard error. Audit repo `lib/repos/pricing-llm-calls.ts` (service-role insert, authenticated read). Provider flag `lib/pricing/provider.ts` (`PRICING_LLM_PROVIDER`, default `anthropic`). Schemas `lib/llm/perplexity-schemas.ts` (`CompResearchSchema`). Mig `0036` applied via MCP + on disk: `pricing_llm_calls` + `pricing_briefs.{citations,llm_provider,llm_total_cost_usd}` (DR-A; `llm_provider DEFAULT 'anthropic'` deviation — option-b). 10 vitest cases (happy + 401/429/500/timeout + missing-key + search-guard + non-JSON). `scripts/sonar-smoke.ts` (Viktor-tick). typecheck + lint + preflight clean; **555/555** (+10; golden 23/23). **Anthropic NOT yet removed from `lib/pricing/*`** (option-b → T-PRC-2/3). `PERPLEXITY_API_KEY` CF secret = Viktor-tick. D-067 resolved, D-073 adapter-done. |
 | **T-PRC-2** | Swap `researchComps` + `researchMarketActivity` → `sonar-pro`, citations[] persistence, comp provenance, source chips | P0 | 0037 | ☐ | — | Mig `0037` comps provenance + `pricing_briefs.buyer_migration_thesis`. Prompt files `system-base.md` + `comp-research-user.md`. Domain filter (Gate 2) default 6 + `PRICING_COMP_DOMAINS`. Regression fixtures: Big Bing / 6 GC / 84 SBR. **Touches client comp table → run `npm run build`.** |
 | **T-PRC-3** | Swap `generateStrategyBrief` (`callClaudeForBrief`) → `sonar-pro` + `response_format` JSON schema + citation chips + flag flip | P0 | — | ☐ | — | `StrategyBriefSchema` + Zod mirror. Brief render citation chips. Flip `PRICING_ENGINE_ENABLED=true` after Big Bing fixture passes. **Client render → `npm run build`.** Depends on T-PRC-2 (reads `pricing_briefs.citations`). |
 | **T-PRC-4** | Structured triangulation block for data-gap cases (`sonar-pro`) | P0 | — | ☐ | — | `triangulator.ts` fires only when `data_gap_severity != 'none'`. `TriangulationBlockSchema`. Big Bing SF (0 closed in-sub-cut) → anchors 3745 Nassau Point. Depends on T-PRC-3 (block is a brief field). |
@@ -78,13 +78,13 @@ Migration allocation: **0036** `pricing_llm_calls` + `pricing_briefs` citation/p
 [x] V6_1_5_AUDIT.md lists every Anthropic call site in lib/pricing/*
 [x] D-066 through D-073 placeholders in DECISIONS.md (rebased per §0a)
 [~] Cost shadow estimate documented (live A/B BLOCKED-ON-VIKTOR — no local key)
-[ ] PERPLEXITY_API_KEY added as Cloudflare Pages secret (Viktor confirms)
-[ ] Migration 0036 applied (pricing_llm_calls + pricing_briefs citation/provider/cost — DR-A)
-[ ] callPerplexity adapter implemented at lib/llm/perplexity-client.ts
-[ ] Adapter writes audit row on success AND failure
-[ ] Anthropic imports gone from lib/pricing/* (grep audit: zero matches)
-[ ] Vitest tests cover happy path + 401 + 429 + 500 + timeout
-[ ] System prompt validation: throws if "search/find/google" appears
+[ ] PERPLEXITY_API_KEY added as Cloudflare Pages secret (Viktor confirms — Viktor-tick)
+[x] Migration 0036 applied (pricing_llm_calls + pricing_briefs citation/provider/cost — DR-A)
+[x] callPerplexity adapter implemented at lib/llm/perplexity-client.ts
+[x] Adapter writes audit row on success AND failure
+[~] Anthropic imports gone from lib/pricing/* — deferred to T-PRC-2/3 per option (b); adapter ready
+[x] Vitest tests cover happy path + 401 + 429 + 500 + timeout (10 cases)
+[x] System prompt validation: throws on "search"/"google" (word-boundary; "find" omitted to avoid false positives on analytical language)
 
 ## Phase B — Sonar swap for comp research + brief (T-PRC-2, T-PRC-3)
 [ ] Migration 0037 applied (comps provenance + pricing_briefs.buyer_migration_thesis)
