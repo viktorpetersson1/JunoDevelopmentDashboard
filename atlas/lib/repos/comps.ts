@@ -216,6 +216,10 @@ export interface NewCompInput {
   source?: CompSource;
   notes?: string | null;
   createdBy?: string | null;
+  /** V6.1.5 (T-PRC-2) stuck-listing provenance (Sonar path). */
+  relistCount?: number | null;
+  firstListedAt?: string | null; // YYYY-MM-DD
+  currentDomDays?: number | null; // days-on-market for ACTIVE listings
 }
 
 function validateNewComp(input: NewCompInput): void {
@@ -258,6 +262,9 @@ export async function createComp(input: NewCompInput): Promise<CompView> {
       source_url: input.sourceUrl ?? null,
       source: input.source ?? 'manual',
       notes: input.notes ?? null,
+      relist_count: input.relistCount ?? 0,
+      first_listed_at: input.firstListedAt ?? null,
+      current_dom_days: input.currentDomDays ?? null,
       created_by: input.createdBy ?? null,
     })
     .select(SELECT_COLUMNS)
@@ -596,6 +603,9 @@ export async function bulkUpsertCompsIgnoreDupes(
     source_url: input.sourceUrl ?? null,
     source: input.source ?? 'manual',
     notes: input.notes ?? null,
+    relist_count: input.relistCount ?? 0,
+    first_listed_at: input.firstListedAt ?? null,
+    current_dom_days: input.currentDomDays ?? null,
     created_by: input.createdBy ?? null,
   }));
 

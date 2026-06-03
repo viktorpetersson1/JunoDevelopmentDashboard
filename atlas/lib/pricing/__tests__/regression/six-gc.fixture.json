@@ -1,0 +1,67 @@
+{
+  "_comment": "6 Great Circle Drive, Shelter Island. Sub-cut: Shelter Island non-WF NC 4BR 3,800-4,500 AG sqft. 3 closed in-sub-cut (no gap) → Rider. Anchor 16 Osprey Way $1,000/sf +21% NC premium → base ~$1,213-1,248/sf. Active ceiling 11 Sunnyside $1,375/sf, 9 Margarets $1,270/sf. §3.4 regression.",
+  "payload": {
+    "sub_cut_definition": "Shelter Island non-WF NC, 4BR, 3,800-4,500 AG sqft",
+    "window_months": 24,
+    "data_gap_severity": "none",
+    "closed": [
+      {
+        "address": "16 Osprey Way, Shelter Island, NY",
+        "status": "closed",
+        "price_usd": 4000000,
+        "ag_sqft": 4000,
+        "price_per_sqft": 1000,
+        "sale_date": "2025-03-10",
+        "attributes": { "construction": "new", "waterfront": "none", "bedrooms": 4 },
+        "source_url": "https://www.compass.com/listing/16-osprey-way"
+      },
+      {
+        "address": "22 Menantic Rd, Shelter Island, NY",
+        "status": "closed",
+        "price_usd": 4305000,
+        "ag_sqft": 4100,
+        "price_per_sqft": 1050,
+        "sale_date": "2024-12-05",
+        "attributes": { "construction": "new", "waterfront": "none", "bedrooms": 4 },
+        "source_url": "https://www.elliman.com/listing/22-menantic"
+      },
+      {
+        "address": "8 Smith St, Shelter Island, NY",
+        "status": "closed",
+        "price_usd": 3848000,
+        "ag_sqft": 3900,
+        "price_per_sqft": 986.67,
+        "sale_date": "2025-01-20",
+        "attributes": { "construction": "new", "waterfront": "none", "bedrooms": 4 },
+        "source_url": "https://www.corcoran.com/listing/8-smith-st"
+      }
+    ],
+    "active": [
+      {
+        "address": "11 Sunnyside Ave, Shelter Island, NY",
+        "status": "active",
+        "price_usd": 5912500,
+        "ag_sqft": 4300,
+        "price_per_sqft": 1375,
+        "dom_days": 60,
+        "attributes": { "construction": "new", "waterfront": "none", "bedrooms": 4 },
+        "source_url": "https://www.compass.com/listing/11-sunnyside"
+      },
+      {
+        "address": "9 Margarets Dr, Shelter Island, NY",
+        "status": "active",
+        "price_usd": 5461000,
+        "ag_sqft": 4300,
+        "price_per_sqft": 1270,
+        "dom_days": 120,
+        "attributes": { "construction": "new", "waterfront": "none", "bedrooms": 4 },
+        "source_url": "https://www.saunders.com/listing/9-margarets"
+      }
+    ],
+    "framework_notes": "3 closed in-sub-cut NC; strongest 16 Osprey Way $1,000/sf. Active ceiling 11 Sunnyside $1,375/sf, 9 Margarets $1,270/sf. Rider band ~$1,213-1,248/sf (Osprey +21% NC/finish premium)."
+  },
+  "citations": [
+    { "url": "https://www.compass.com/listing/16-osprey-way", "title": "16 Osprey Way" },
+    { "url": "https://www.compass.com/listing/11-sunnyside", "title": "11 Sunnyside Ave" }
+  ]
+}

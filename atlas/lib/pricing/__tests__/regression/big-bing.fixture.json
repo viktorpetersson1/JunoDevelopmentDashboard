@@ -1,0 +1,72 @@
+{
+  "_comment": "Big Bing North Fork — Sound-front 5BR NC. Sub-cut: Sound-front NC 5BR >=5,000 AG sqft. 0 closed in-sub-cut over 24mo → RED gap. Adjacent anchors present (3745 Nassau Point bayfront NC $1,455/sf; 5235 Bridge Ln inland resale $522/sf; 625 Park Ave bayfront NC ceiling $1,048/sf). 2 Sound-front actives at $1,800/sf. §3.4 regression.",
+  "payload": {
+    "sub_cut_definition": "Sound-front NC, 5BR, >= 5,000 AG sqft (North Fork)",
+    "window_months": 24,
+    "data_gap_severity": "red",
+    "closed": [
+      {
+        "address": "3745 Nassau Point Rd, Cutchogue, NY",
+        "status": "closed",
+        "price_usd": 7275000,
+        "ag_sqft": 5000,
+        "price_per_sqft": 1455,
+        "sale_date": "2025-06-01",
+        "attributes": { "construction": "new", "waterfront": "bay", "bedrooms": 5, "pool": true, "acreage": 1.1 },
+        "source_url": "https://www.compass.com/listing/3745-nassau-point"
+      },
+      {
+        "address": "5235 Bridge Ln, Cutchogue, NY",
+        "status": "closed",
+        "price_usd": 2088000,
+        "ag_sqft": 4000,
+        "price_per_sqft": 522,
+        "sale_date": "2024-11-15",
+        "attributes": { "construction": "resale", "waterfront": "none", "bedrooms": 4 },
+        "source_url": "https://www.zillow.com/homedetails/5235-bridge-ln"
+      },
+      {
+        "address": "625 Park Ave, Mattituck, NY",
+        "status": "closed",
+        "price_usd": 5240000,
+        "ag_sqft": 5000,
+        "price_per_sqft": 1048,
+        "sale_date": "2025-02-20",
+        "attributes": { "construction": "new", "waterfront": "bay", "bedrooms": 5 },
+        "source_url": "https://www.elliman.com/listing/625-park-ave"
+      }
+    ],
+    "active": [
+      {
+        "address": "Soundfront Bluff A, North Fork, NY",
+        "status": "active",
+        "price_usd": 13500000,
+        "ag_sqft": 7500,
+        "price_per_sqft": 1800,
+        "dom_days": 95,
+        "relist_count": 1,
+        "first_listed_at": "2025-09-01",
+        "attributes": { "construction": "new", "waterfront": "sound", "bedrooms": 5, "pool": true },
+        "source_url": "https://www.corcoran.com/listing/soundfront-bluff-a"
+      },
+      {
+        "address": "Soundview Bluff B, North Fork, NY",
+        "status": "active",
+        "price_usd": 11800000,
+        "ag_sqft": 6555,
+        "price_per_sqft": 1800,
+        "dom_days": 210,
+        "relist_count": 2,
+        "first_listed_at": "2025-04-01",
+        "attributes": { "construction": "new", "waterfront": "sound", "bedrooms": 5 },
+        "source_url": "https://www.saunders.com/listing/soundview-bluff-b"
+      }
+    ],
+    "framework_notes": "Zero closed in-sub-cut (Sound-front NC 5BR >=5,000sf) over 24 months. Adjacent bayfront NC anchor 3745 Nassau Point closed $1,455/sf; inland resale 5235 Bridge Ln $522/sf; bayfront NC ceiling 625 Park Ave $1,048/sf. Red gap -> triangulation + buyer-migration thesis required."
+  },
+  "citations": [
+    { "url": "https://www.compass.com/listing/3745-nassau-point", "title": "3745 Nassau Point Rd" },
+    { "url": "https://www.zillow.com/homedetails/5235-bridge-ln", "title": "5235 Bridge Ln" },
+    { "url": "https://www.corcoran.com/listing/soundfront-bluff-a", "title": "Soundfront Bluff A" }
+  ]
+}

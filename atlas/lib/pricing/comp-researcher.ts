@@ -21,6 +21,17 @@ import {
   type ViewPremium,
   type TownProximity,
 } from './location-factors';
+// ── V6.1.5 (T-PRC-2) — Perplexity Sonar path (option-b dual-path) ───────────
+import { callPerplexity, PerplexityError, type PerplexityCitation } from '@/lib/llm/perplexity-client';
+import { CompResearchSchema } from '@/lib/llm/perplexity-schemas';
+import { CompResearchDataSchema, type CompResearchData, type SonarComp } from './schemas';
+import { pricingProvider, compSearchDomains } from './provider';
+import {
+  renderTemplate,
+  promptHash,
+  SYSTEM_BASE_PROMPT,
+  COMP_RESEARCH_USER_TEMPLATE,
+} from './prompts';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Types
@@ -62,6 +73,9 @@ export interface ResearchedComp {
   psf: number;
   confidence: 'confirmed' | 'estimated';
   notes: string | null;
+  /** V6.1.5 stuck-listing signal — populated by the Sonar path only. */
+  relistCount?: number | null;
+  firstListedAt?: string | null; // YYYY-MM-DD
 }
 
 export interface CompResearchOutput {
@@ -72,6 +86,10 @@ export interface CompResearchOutput {
   narrativeSummary: string;
   usedWebSearch: boolean;
   error?: string;
+  /** V6.1.5 (Sonar path): top-level citations[], sub-cut definition, gap severity. */
+  citations?: PerplexityCitation[];
+  subCutDefinition?: string;
+  dataGapSeverity?: 'none' | 'amber' | 'red';
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -443,8 +461,15 @@ RULES:
  */
 export async function researchMarketActivity(
   input: MarketResearchInput,
-  apiKey: string
+  apiKey: string = '',
+  opts?: { runId?: string }
 ): Promise<CompResearchOutput> {
+  // V6.1.5 option-b: Sonar when the provider flag is 'perplexity'; else the
+  // existing Anthropic path stays live (default).
+  if (pricingProvider() === 'perplexity') {
+    return researchMarketActivityViaSonar(input, opts);
+  }
+
   // Attempt 1: live web search.
   try {
     const { text, ok, status } = await callAnthropic(
@@ -505,8 +530,15 @@ export async function researchMarketActivity(
 
 export async function researchComps(
   input: CompResearchInput,
-  apiKey: string
+  apiKey: string = '',
+  opts?: { runId?: string }
 ): Promise<CompResearchOutput> {
+  // V6.1.5 option-b: Sonar when the provider flag is 'perplexity'; else the
+  // existing Anthropic path stays live (default).
+  if (pricingProvider() === 'perplexity') {
+    return researchCompsViaSonar(input, opts);
+  }
+
   // ── Attempt 1: web_search beta ──────────────────────────────────────────
   try {
     const { text, ok, status } = await callAnthropic(
@@ -568,5 +600,208 @@ export async function researchComps(
       usedWebSearch: false,
       error: err instanceof Error ? err.message : 'Unknown error',
     };
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// V6.1.5 (T-PRC-2) — Perplexity Sonar implementation
+//
+// Fail-loud: a Sonar error surfaces in CompResearchOutput.error (the adapter
+// already wrote a 'failed' pricing_llm_calls row) and NEVER falls back to
+// Anthropic (Hard Rule #2). The caller surfaces a StatusDot (T-PRC-3 UI).
+// ────────────────────────────────────────────────────────────────────────────
+
+function windowDates(windowMonths: number): { after: string; before: string } {
+  const now = new Date();
+  const before = now.toISOString().slice(0, 10);
+  const past = new Date(now);
+  past.setMonth(past.getMonth() - windowMonths);
+  const after = past.toISOString().slice(0, 10);
+  return { after, before };
+}
+
+/**
+ * sound|bay|ocean|none|creek (Sonar) → comps waterfront class. 'ocean' → null
+ * (the comps enum has no ocean class — untag rather than mis-tag).
+ */
+function mapSonarWaterfront(w: string | undefined): WaterfrontType | null {
+  const m: Record<string, string> = {
+    sound: 'sound_front_bluff',
+    bay: 'bayfront',
+    creek: 'inlet',
+    none: 'inland',
+  };
+  return coerceWaterfrontType(w ? (m[w] ?? w) : null);
+}
+
+function deriveSourceName(url: string | undefined): string {
+  if (!url) return 'Sonar';
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, '');
+    const first = host.split('.')[0] ?? '';
+    return first ? first.charAt(0).toUpperCase() + first.slice(1) : 'Sonar';
+  } catch {
+    return 'Sonar';
+  }
+}
+
+function sonarCompToResearched(c: SonarComp): ResearchedComp {
+  const agSqft = c.ag_sqft;
+  const salePriceUsd = c.price_usd;
+  // Stop-and-ask rule: never trust the LLM's price_per_sqft — recompute from
+  // price_usd / ag_sqft and use the computed value.
+  const psf = agSqft > 0 ? Math.round((salePriceUsd / agSqft) * 100) / 100 : 0;
+  return {
+    address: c.address.trim(),
+    salePriceUsd,
+    agSqft,
+    closingDate: c.sale_date ?? null,
+    status: c.status === 'closed' ? 'closed' : 'active',
+    yearBuilt: null,
+    lotSizeAcres: c.attributes?.acreage ?? null,
+    waterfrontType: mapSonarWaterfront(c.attributes?.waterfront),
+    isNewConstruction: c.attributes?.construction === 'new',
+    domDays: c.dom_days ?? null,
+    sourceUrl: c.source_url ?? null,
+    sourceName: deriveSourceName(c.source_url),
+    psf,
+    // Sonar comps come from live web search with a verifiable source_url.
+    confidence: 'confirmed',
+    notes: null,
+    relistCount: c.relist_count ?? 0,
+    firstListedAt: c.first_listed_at ?? null,
+  };
+}
+
+function sonarErrorOutput(error: string): CompResearchOutput {
+  return {
+    comps: [],
+    dataGap: true,
+    confidence: 'low',
+    sourcesSearched: [],
+    narrativeSummary: 'Sonar comp research unavailable.',
+    usedWebSearch: false,
+    error,
+  };
+}
+
+function mapCompResearchData(
+  data: CompResearchData,
+  citations: PerplexityCitation[]
+): CompResearchOutput {
+  const comps = [...data.closed, ...data.active]
+    .map(sonarCompToResearched)
+    .filter((c) => c.address && c.agSqft > 0 && c.salePriceUsd > 0);
+  const closedCount = comps.filter((c) => c.status === 'closed').length;
+  const confidence: 'high' | 'medium' | 'low' =
+    closedCount >= 5 ? 'high' : closedCount >= 3 ? 'medium' : 'low';
+  const severity = data.data_gap_severity ?? (closedCount < 3 ? 'red' : 'none');
+  const sources = Array.from(
+    new Set(
+      citations.map((c) => {
+        try {
+          return new URL(c.url).hostname.replace(/^www\./, '');
+        } catch {
+          return c.url;
+        }
+      })
+    )
+  ).slice(0, 12);
+  return {
+    comps,
+    dataGap: closedCount < 3 || severity === 'red',
+    confidence,
+    sourcesSearched: sources,
+    narrativeSummary: data.framework_notes || 'Sonar comp research complete.',
+    usedWebSearch: true,
+    citations,
+    subCutDefinition: data.sub_cut_definition,
+    dataGapSeverity: severity,
+  };
+}
+
+async function researchCompsViaSonar(
+  input: CompResearchInput,
+  opts?: { runId?: string }
+): Promise<CompResearchOutput> {
+  const windowMonths = input.compWindowMonths ?? 24;
+  const runId = opts?.runId ?? crypto.randomUUID();
+  const userPrompt = renderTemplate(COMP_RESEARCH_USER_TEMPLATE, {
+    address: input.address,
+    ag_sqft: input.agSqft,
+    bedrooms: '', // CompResearchInput carries no bedroom count; the model infers from listings
+    waterfront: input.waterfrontType ?? 'unspecified (infer from the address)',
+    sub_cut_definition: input.subCutLabel,
+    window_months: windowMonths,
+  });
+  const hash = await promptHash(SYSTEM_BASE_PROMPT, COMP_RESEARCH_USER_TEMPLATE);
+  const { after, before } = windowDates(windowMonths);
+
+  try {
+    const result = await callPerplexity<unknown>({
+      systemPrompt: SYSTEM_BASE_PROMPT,
+      userPrompt,
+      model: 'sonar-pro',
+      responseSchema: CompResearchSchema,
+      searchDomainFilter: compSearchDomains(),
+      searchAfterDate: after,
+      searchBeforeDate: before,
+      callSite: 'comp_research',
+      runId,
+      promptHash: hash,
+    });
+    const parsed = CompResearchDataSchema.safeParse(result.data);
+    if (!parsed.success) {
+      return sonarErrorOutput(
+        `Sonar comp_research failed schema validation: ${parsed.error.issues[0]?.message ?? 'shape drift'}`
+      );
+    }
+    return mapCompResearchData(parsed.data, result.citations);
+  } catch (e) {
+    const msg =
+      e instanceof PerplexityError ? e.message : e instanceof Error ? e.message : 'Sonar comp research failed';
+    return sonarErrorOutput(msg);
+  }
+}
+
+async function researchMarketActivityViaSonar(
+  input: MarketResearchInput,
+  opts?: { runId?: string }
+): Promise<CompResearchOutput> {
+  const windowMonths = input.windowMonths ?? 12;
+  const runId = opts?.runId ?? crypto.randomUUID();
+  // Secondary "what's happening in this sub-market" research (narrative context,
+  // not band derivation). Thin inline user ask; the framework system prompt
+  // stays in the file (D-070). Broader recency than the subject comp pull.
+  const userPrompt = `Sample recent sales activity in this East End sub-market for narrative market context (not a specific subject property):
+
+- Sub-market: ${input.subCutLabel}
+
+Return up to ${input.maxClosed ?? 8} CLOSED sales from the last ${windowMonths} months and up to ${input.maxActive ?? 4} ACTIVE listings, as the comp_research JSON shape. Every comp needs a verifiable source_url. Set sub_cut_definition to the sub-market and window_months to ${windowMonths}.`;
+  const hash = await promptHash(SYSTEM_BASE_PROMPT, 'market-activity-v1');
+
+  try {
+    const result = await callPerplexity<unknown>({
+      systemPrompt: SYSTEM_BASE_PROMPT,
+      userPrompt,
+      model: 'sonar-pro',
+      responseSchema: CompResearchSchema,
+      searchDomainFilter: compSearchDomains(),
+      searchRecencyFilter: 'year',
+      callSite: 'comp_research',
+      runId,
+      promptHash: hash,
+    });
+    const parsed = CompResearchDataSchema.safeParse(result.data);
+    if (!parsed.success) {
+      return sonarErrorOutput(
+        `Sonar market-activity failed schema validation: ${parsed.error.issues[0]?.message ?? 'shape drift'}`
+      );
+    }
+    return mapCompResearchData(parsed.data, result.citations);
+  } catch (e) {
+    const msg =
+      e instanceof PerplexityError ? e.message : e instanceof Error ? e.message : 'Sonar market research failed';
+    return sonarErrorOutput(msg);
   }
 }

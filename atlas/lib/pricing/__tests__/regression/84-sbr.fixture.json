@@ -1,0 +1,46 @@
+{
+  "_comment": "84 South Bayfront Road, North Haven. Sub-cut: North Haven non-WF NC 4-5BR 4,500-5,500 AG sqft. 2 closed in-sub-cut (<3 → AMBER gap). Anchored within Amagansett SoH / North Haven non-WF NC band. Base $7.5M total @ ~5,000 AG sqft (12 Ferry Rd $1,500/sf). Market-Rider. §3.4 regression.",
+  "payload": {
+    "sub_cut_definition": "North Haven non-WF NC, 4-5BR, 4,500-5,500 AG sqft",
+    "window_months": 24,
+    "data_gap_severity": "amber",
+    "closed": [
+      {
+        "address": "12 Ferry Rd, North Haven, NY",
+        "status": "closed",
+        "price_usd": 7500000,
+        "ag_sqft": 5000,
+        "price_per_sqft": 1500,
+        "sale_date": "2025-04-01",
+        "attributes": { "construction": "new", "waterfront": "none", "bedrooms": 5 },
+        "source_url": "https://www.elliman.com/listing/12-ferry-rd"
+      },
+      {
+        "address": "30 Sunset Beach Rd, Amagansett, NY",
+        "status": "closed",
+        "price_usd": 7000000,
+        "ag_sqft": 4800,
+        "price_per_sqft": 1458.33,
+        "sale_date": "2024-10-12",
+        "attributes": { "construction": "new", "waterfront": "none", "bedrooms": 4 },
+        "source_url": "https://www.compass.com/listing/30-sunset-beach"
+      }
+    ],
+    "active": [
+      {
+        "address": "5 Actors Colony Rd, North Haven, NY",
+        "status": "active",
+        "price_usd": 8250000,
+        "ag_sqft": 5000,
+        "price_per_sqft": 1650,
+        "dom_days": 80,
+        "attributes": { "construction": "new", "waterfront": "none", "bedrooms": 5 },
+        "source_url": "https://www.corcoran.com/listing/5-actors-colony"
+      }
+    ],
+    "framework_notes": "2 closed in-sub-cut NC (12 Ferry Rd $1,500/sf; Amagansett SoH 30 Sunset Beach $1,458/sf). Amber gap (<3 closed). Base ~$7.5M total at 5,000 AG sqft. Market-Rider within North Haven non-WF NC band."
+  },
+  "citations": [
+    { "url": "https://www.elliman.com/listing/12-ferry-rd", "title": "12 Ferry Rd" }
+  ]
+}

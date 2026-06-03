@@ -24,3 +24,28 @@ export function pricingProvider(): PricingProvider {
 export function isSonarPricingEnabled(): boolean {
   return pricingProvider() === 'perplexity';
 }
+
+/**
+ * Comp-search domain allow-list for Sonar `search_domain_filter` (Gate 2).
+ * Default is the documented 6 (Saunders in for Sound-front presence; StreetEasy
+ * out — Manhattan-centric). Override at runtime via PRICING_COMP_DOMAINS
+ * (comma-separated) with no code change.
+ */
+export const DEFAULT_COMP_DOMAINS = [
+  'zillow.com',
+  'redfin.com',
+  'compass.com',
+  'douglaselliman.com',
+  'corcoran.com',
+  'saunders.com',
+];
+
+export function compSearchDomains(): string[] {
+  const env = process.env.PRICING_COMP_DOMAINS;
+  if (!env) return DEFAULT_COMP_DOMAINS;
+  const parsed = env
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return parsed.length > 0 ? parsed : DEFAULT_COMP_DOMAINS;
+}

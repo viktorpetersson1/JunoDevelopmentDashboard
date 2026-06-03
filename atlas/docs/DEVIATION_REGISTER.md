@@ -125,3 +125,17 @@ Plan of record: [`atlas/docs/CLAUDE_CODE_INSTRUCTIONS_V6_2.md`](CLAUDE_CODE_INST
   originally created for the ACK PR per §6; folded into a single
   sprint PR per §T087.3 instead of the two-PR sequence the doc
   suggested (Viktor's call, see earlier chat).
+
+## V6.1.5 — Pricing → Perplexity Sonar (3 Jun 2026)
+
+Tag (planned): `v6.1.5-pricing.0` · tracker: `V6_1_5_TRACKER.md` · plan: `CLAUDE_CODE_INSTRUCTIONS_V6_1_5_PRICING.md`.
+
+| #          | Deviation from plan                                                            | Status | Ticket   | Notes |
+| ---------- | ------------------------------------------------------------------------------ | ------ | -------- | ----- |
+| V6.1.5-001 | T115 v2 Sonar `research_comps` tool in `lib/ask-juno/tools.ts`                 | DEFERRED | T-PRC-6 | Plan §0a/§2.9 follow-up — Ask Juno gets a Sonar-backed comp tool at the close PR. Not yet filed in code. |
+| V6.1.5-002 | Prompts as edge-safe `.ts` modules with `{{var}}`, not `.md` with `${var}`     | DONE   | T-PRC-2 | CF Pages edge has no `fs`; raw-`.md` import needs a webpack loader (next.config change avoided). Intent of D-070 preserved (separate, versioned, hash-logged, Viktor-editable). Framework §3.1–3.3 verbatim. |
+| V6.1.5-003 | Option-b dual-path — Anthropic NOT removed from `lib/pricing/*` in T-PRC-1/2   | DONE   | T-PRC-1/2 | Gate-3 option (b): `researchComps`/`researchMarketActivity` branch on `PRICING_LLM_PROVIDER` (default `anthropic`), keeping the live path on Anthropic. The plan's "zero Anthropic imports" done-when completes after the T-PRC-3 verify+flip + a post-flip cleanup. |
+| V6.1.5-004 | `pricing_llm_calls.run_id` is a correlation id, NOT an FK to a brief           | DONE   | T-PRC-1 | Audit rows for a FAILED run must persist even when no brief row is ever inserted (the brief is written after the LLM chain). A hard FK would reject those rows. |
+| V6.1.5-005 | `pricing_briefs.llm_provider` DEFAULT `'anthropic'`, not the plan's `'perplexity'` | DONE | T-PRC-1 | Option-b: briefs are Anthropic-authored until the T-PRC-3 flip; defaulting `'perplexity'` would mislabel them. The Sonar write path sets `'perplexity'` explicitly. |
+| V6.1.5-006 | Citation persistence to `pricing_briefs.citations` + per-$/sqft source chips deferred | DEFERRED | T-PRC-3 | Comp research runs INSIDE `generateStrategyBrief`; the brief insert is the persistence point. T-PRC-2 surfaces `citations[]` on the comp-research output; T-PRC-3 (brief swap) persists them + renders chips. |
+| V6.1.5-007 | Migration 0037 did NOT add `comps.source_url`                                  | DONE   | T-PRC-2 | The column already existed on the original `comps` schema; 0037 added only `relist_count` / `first_listed_at` / `current_dom_days` + `pricing_briefs.buyer_migration_thesis`. |
