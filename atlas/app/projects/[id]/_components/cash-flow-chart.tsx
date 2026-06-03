@@ -43,6 +43,8 @@ interface ChartRow {
   financing: number;
   debtRepaid: number;
   cumulative: number;
+  /** V6.1 T106 — running senior+LOC debt outstanding (dashed overlay). */
+  debtOutstanding: number;
 }
 
 function buildRows(monthly: MonthlySeries): ChartRow[] {
@@ -56,6 +58,7 @@ function buildRows(monthly: MonthlySeries): ChartRow[] {
     financing: -r.financing,
     debtRepaid: -r.debt_repaid,
     cumulative: r.cumulative_net,
+    debtOutstanding: r.debt_outstanding,
   }));
 }
 
@@ -177,6 +180,16 @@ export function CashFlowChart({
               name="Cumulative net"
               stroke="#0d0d0d"
               strokeWidth={2}
+              dot={false}
+            />
+            {/* V6.1 T106 — debt outstanding overlay (monochrome dashed) */}
+            <Line
+              type="monotone"
+              dataKey="debtOutstanding"
+              name="Debt outstanding"
+              stroke="#4B4B48"
+              strokeWidth={1.5}
+              strokeDasharray="4 3"
               dot={false}
             />
           </ComposedChart>

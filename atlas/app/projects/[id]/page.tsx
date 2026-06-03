@@ -124,6 +124,7 @@ export default async function ProjectDetailPage({
       const debtSnapshot = debtSnapshotForMonth(result.monthly, serverMonthYM());
       tabContent = (
         <SummaryTab
+          project={enrichedProject}
           result={result}
           pnl={pnl}
           ownerEarnings={ownerEarnings}

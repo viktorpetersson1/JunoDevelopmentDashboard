@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { SummaryTab } from '../summary-tab';
-import type { ProjectResult } from '@/lib/calc/project/types';
+import type { ProjectInput, ProjectResult } from '@/lib/calc/project/types';
 import type { ProjectPnL, OwnerEarningRow } from '@/lib/finance/project-pnl';
 import type { RolloutTriggerResult } from '@/lib/finance/rollout-trigger';
 import type { DebtSnapshot } from '@/lib/finance/project-cashflow';
@@ -29,6 +29,26 @@ const RESULT = {
   monthly: { dates: ['2026-01'] },
   kpis: {},
 } as unknown as ProjectResult;
+
+// Minimal ProjectInput stub for the V6.1 T106 AssumptionsHero block.
+const PROJECT = {
+  id: 'p2',
+  name: '84 SBR',
+  villa_sqft_ag: 5_317,
+  villa_sqft_bg: 2_479,
+  villa_sqft: 7_796,
+  start_date: '2026-03',
+  program_months: 24,
+  land_cost_usd: 1_200_000,
+  build_cost_per_sqft: 380,
+  kingshaus_cost_per_sqft: 70,
+  soft_costs_lump_sum: 0,
+  senior_ltv_pct: 0.75,
+  interest_rate_apr: 0.085,
+  sale_price_per_sqft_override: 1_400,
+  target_margin: 0.2,
+  tax_rate_pct: 25,
+} as unknown as ProjectInput;
 
 // Self-consistent: 7.61 − (1.2+2.25+0.85+0.45+0.35) = 2.51 NPBT; 25% tax → 1.8825 NPAT.
 const PNL: ProjectPnL = {
@@ -85,6 +105,7 @@ describe('SummaryTab', () => {
   it('renders all 9 P&L lines + the Margin/IRR/MOIC row', () => {
     render(
       <SummaryTab
+        project={PROJECT}
         result={RESULT}
         pnl={PNL}
         ownerEarnings={null}
@@ -109,6 +130,7 @@ describe('SummaryTab', () => {
   it('renders the "Kingshaus"/"Prefab" stream as "Superstructure" (no legacy strings)', () => {
     const { container } = render(
       <SummaryTab
+        project={PROJECT}
         result={RESULT}
         pnl={PNL}
         ownerEarnings={null}
@@ -123,6 +145,7 @@ describe('SummaryTab', () => {
   it('shows closing costs as a memo, clearly not deducted', () => {
     render(
       <SummaryTab
+        project={PROJECT}
         result={RESULT}
         pnl={PNL}
         ownerEarnings={null}
@@ -136,6 +159,7 @@ describe('SummaryTab', () => {
   it('renders the owner-earnings split when provided (admin)', () => {
     render(
       <SummaryTab
+        project={PROJECT}
         result={RESULT}
         pnl={PNL}
         ownerEarnings={OWNERS}
@@ -152,6 +176,7 @@ describe('SummaryTab', () => {
   it('hides the owner-earnings split when not visible to the role', () => {
     render(
       <SummaryTab
+        project={PROJECT}
         result={RESULT}
         pnl={PNL}
         ownerEarnings={null}
@@ -165,6 +190,7 @@ describe('SummaryTab', () => {
   it('shows the "set target" prompt when rollout is unconfigured (scaffold-blocked)', () => {
     render(
       <SummaryTab
+        project={PROJECT}
         result={RESULT}
         pnl={PNL}
         ownerEarnings={null}
@@ -179,6 +205,7 @@ describe('SummaryTab', () => {
   it('shows the next-start date when rollout needs action', () => {
     render(
       <SummaryTab
+        project={PROJECT}
         result={RESULT}
         pnl={PNL}
         ownerEarnings={null}
@@ -192,6 +219,7 @@ describe('SummaryTab', () => {
   it('renders the "What we owe today" debt snapshot', () => {
     render(
       <SummaryTab
+        project={PROJECT}
         result={RESULT}
         pnl={PNL}
         ownerEarnings={null}

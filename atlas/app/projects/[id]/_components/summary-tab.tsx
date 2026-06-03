@@ -17,10 +17,11 @@
 import type { CSSProperties, ReactNode } from 'react';
 import Link from 'next/link';
 import { formatMoney } from '@/lib/utils/money';
-import type { ProjectResult } from '@/lib/calc/project/types';
+import type { ProjectInput, ProjectResult } from '@/lib/calc/project/types';
 import type { ProjectPnL, OwnerEarningRow } from '@/lib/finance/project-pnl';
 import type { RolloutTriggerResult, RolloutState } from '@/lib/finance/rollout-trigger';
 import type { DebtSnapshot } from '@/lib/finance/project-cashflow';
+import { AssumptionsHero } from './assumptions-hero';
 import { CashFlowChart } from './cash-flow-chart';
 import { MonthlyPnLTable } from './monthly-pnl-table';
 import { Section } from '@/app/_components/section';
@@ -45,12 +46,15 @@ const sectionLabel: CSSProperties = {
 const money = (usd: number) => formatMoney(usd * 100, { compact: true, precision: 2 });
 
 export function SummaryTab({
+  project,
   result,
   pnl,
   ownerEarnings,
   rollout,
   debtSnapshot,
 }: {
+  /** V6.1 T106 — used by the AssumptionsHero block (Excel parity). */
+  project: ProjectInput;
   result: ProjectResult;
   pnl: ProjectPnL;
   /** null = the viewing role can't see the per-owner split. */
@@ -60,6 +64,8 @@ export function SummaryTab({
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--ja-section-gap)' }}>
+      {/* T106 — Assumptions & key figures (Excel parity hero) above the 9-line P&L */}
+      <AssumptionsHero project={project} result={result} />
       <PnlHero pnl={pnl} />
       {/* T105 — Monthly P&L table below the 9-line hero */}
       <MonthlyPnLTable result={result} pnl={pnl} taxRatePct={pnl.tax_rate_pct} />

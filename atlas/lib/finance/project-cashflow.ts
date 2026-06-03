@@ -26,6 +26,10 @@ export interface CashFlowMonth {
   debt_repaid: number;
   // Overlay — running (inflows − outflows). Reconciles with the bars exactly.
   cumulative_net: number;
+  /** V6.1 T106 — running senior+LOC debt outstanding at end of month.
+   *  Reconciles with the "What we owe today" debt snapshot for the same month
+   *  (debtSnapshotForMonth reads m.debt_balance; same source). */
+  debt_outstanding: number;
 }
 
 const at = (a: number[], i: number): number => a[i] ?? 0;
@@ -57,6 +61,7 @@ export function buildProjectCashFlow(m: MonthlySeries): CashFlowMonth[] {
       financing,
       debt_repaid,
       cumulative_net: cum,
+      debt_outstanding: at(m.debt_balance, i),
     });
   }
   return rows;

@@ -63,6 +63,20 @@ describe('buildProjectCashFlow', () => {
     expect(rows[1]!.cumulative_net).toBe(1_200_000);
   });
 
+  it('debt_outstanding overlay reconciles with debtSnapshotForMonth (T106)', () => {
+    const m = series(6);
+    m.debt_balance[0] = 100_000;
+    m.debt_balance[3] = 850_000;
+    m.debt_balance[5] = 0;
+    const rows = buildProjectCashFlow(m);
+    expect(rows[0]!.debt_outstanding).toBe(100_000);
+    expect(rows[3]!.debt_outstanding).toBe(850_000);
+    expect(rows[5]!.debt_outstanding).toBe(0);
+    // The overlay value at month N === debtSnapshotForMonth(m, dates[N]).debt_outstanding
+    const snap = debtSnapshotForMonth(m, m.dates[3]!);
+    expect(rows[3]!.debt_outstanding).toBe(snap.debt_outstanding);
+  });
+
   it('ignores the equity series entirely (no equity flow on the output)', () => {
     const m = series(1);
     m.equity_drawn[0] = 5_000_000;
