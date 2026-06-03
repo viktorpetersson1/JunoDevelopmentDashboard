@@ -1,0 +1,388 @@
+/**
+ * Ask Juno tool definitions + server-side executors (V6.1 T115).
+ *
+ * Tool definitions follow the Anthropic Messages API `tools` format.
+ * Executors call repos / services directly with the authenticated user
+ * context — same gates as the API routes (Hard Rule #5).
+ *
+ * Deviation V6-07.a: Vercel AI SDK not in stack → using raw Anthropic
+ * Messages API `tools` parameter (same fetch pattern as comp-researcher.ts).
+ */
+
+import { findManyProjects, findCurrentProjectByKey, findCurrentProjectUuidByKey } from '@/lib/repos/project';
+import { findLatestLockedSnapshot } from '@/lib/repos/approval-snapshot';
+import { runProject } from '@/lib/calc/project/runProject';
+import { BASELINE_SCENARIO } from '@/lib/calc/baselines';
+import { buildProjectPnL } from '@/lib/finance/project-pnl';
+import { aggregatePortfolio } from '@/lib/calc/portfolio/aggregate';
+import { getActiveGlobals } from '@/lib/globals/active';
+import { listActualsByCategory } from '@/lib/services/actuals';
+import { createActualsEntry, type CreateActualsEntryInput } from '@/lib/services/actuals';
+import { insertRisk } from '@/lib/repos/project-risks';
+import { recordMutation } from '@/lib/services/audit';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import type { User } from '@supabase/supabase-js';
+
+// ── Tool definition shape (Anthropic tools format) ────────────────────────────
+
+export interface ToolDefinition {
+  name: string;
+  description: string;
+  input_schema: {
+    type: 'object';
+    properties: Record<string, unknown>;
+    required?: string[];
+  };
+}
+
+// ── Tool result ───────────────────────────────────────────────────────────────
+
+export interface ToolResult {
+  /** Data to pass back to Claude as the tool_result content. */
+  content: string;
+  /** Optional audit log id emitted by write tools. */
+  audit_log_id?: string | null;
+  /** True if this was a write action. */
+  is_write: boolean;
+}
+
+// ── READ tool definitions ─────────────────────────────────────────────────────
+
+export const TOOL_DEFINITIONS: ToolDefinition[] = [
+  {
+    name: 'list_projects',
+    description: 'List all active (non-archived) projects with key metrics (name, stage, status, total revenue, NPAT margin, sale date). Call this before answering any project-specific question.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        stage: { type: 'string', description: 'Optional stage filter: tbc | sourcing | pre_construction | construction | sales | sold' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'get_project_summary',
+    description: 'Get detailed summary for one project by its project_key (e.g. "p2", "84sbr"). Returns inputs, calc-engine KPIs, P&L, and 9-line margin breakdown.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        project_key: { type: 'string', description: 'The stable project slug (e.g. "p2")' },
+      },
+      required: ['project_key'],
+    },
+  },
+  {
+    name: 'get_dashboard_kpis',
+    description: 'Get portfolio-level KPIs: total pipeline revenue, LOC utilisation, rollout trigger, peak equity, committed vs prospect breakdown.',
+    input_schema: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+  },
+  {
+    name: 'search_actuals',
+    description: 'List recorded actual costs for a project grouped by category.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        project_key: { type: 'string', description: 'The project slug' },
+      },
+      required: ['project_key'],
+    },
+  },
+
+  // ── WRITE tool definitions ────────────────────────────────────────────────
+
+  {
+    name: 'create_project',
+    description: 'Create a new project. Defaults stage to "tbc". ALWAYS requires user confirmation — never auto-executes.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Project name (required)' },
+        purchase_date: { type: 'string', description: 'YYYY-MM start / purchase month' },
+        villa_sqft_ag: { type: 'number', description: 'Above-grade sqft (required)' },
+        land_cost_usd: { type: 'number', description: 'Land cost in USD (required)' },
+        construction_months: { type: 'number', description: 'Construction duration months' },
+        sales_months: { type: 'number', description: 'Sales period months' },
+        address: { type: 'string', description: 'Site address (optional)' },
+        build_cost_per_sqft: { type: 'number', description: 'Build $/sqft (optional, uses global default if null)' },
+      },
+      required: ['name', 'villa_sqft_ag', 'land_cost_usd'],
+    },
+  },
+  {
+    name: 'update_project',
+    description: 'Update one or more fields on an existing project. ALWAYS requires user confirmation.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        project_key: { type: 'string', description: 'The project slug to update' },
+        purchase_date: { type: 'string' },
+        villa_sqft_ag: { type: 'number' },
+        land_cost_usd: { type: 'number' },
+        build_cost_per_sqft: { type: 'number' },
+        soft_costs_lump_sum: { type: 'number' },
+        senior_ltv_pct: { type: 'number', description: 'As decimal, e.g. 0.75 for 75%' },
+        interest_rate_apr: { type: 'number', description: 'As decimal' },
+        sale_price_override_usd: { type: 'number' },
+        target_margin: { type: 'number', description: 'As decimal, e.g. 0.20 for 20%' },
+        tax_rate_pct: { type: 'number' },
+      },
+      required: ['project_key'],
+    },
+  },
+  {
+    name: 'create_actuals_entry',
+    description: 'Log one actual cost entry for a project. Auto-executes when amount ≤ $10,000 and no locked snapshot.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        project_key: { type: 'string', description: 'The project slug' },
+        entry_date: { type: 'string', description: 'YYYY-MM-DD' },
+        category: { type: 'string', description: 'land | build | soft | kingshaus | financing | other' },
+        line_item: { type: 'string', description: 'Description of the cost' },
+        amount_usd: { type: 'number', description: 'Amount in USD (positive)' },
+        vendor: { type: 'string', description: 'Optional vendor name' },
+        invoice_ref: { type: 'string', description: 'Optional invoice reference' },
+      },
+      required: ['project_key', 'entry_date', 'category', 'line_item', 'amount_usd'],
+    },
+  },
+  {
+    name: 'create_risk',
+    description: 'Log a qualitative risk for a project. Auto-executes (no monetary impact).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        project_key: { type: 'string' },
+        risk: { type: 'string', description: 'Risk description (max 500 chars)' },
+        severity: { type: 'string', description: 'low | medium | high | critical' },
+        mitigation: { type: 'string', description: 'Optional mitigation plan' },
+      },
+      required: ['project_key', 'risk'],
+    },
+  },
+];
+
+// ── Executor ──────────────────────────────────────────────────────────────────
+
+let cachedOrgId: string | null = null;
+async function resolveOrgId(): Promise<string> {
+  if (cachedOrgId) return cachedOrgId;
+  const supabase = createSupabaseServerClient();
+  const { data } = await supabase.schema('atlas').from('orgs').select('id').limit(1).single();
+  const id = (data as { id: string } | null)?.id ?? '00000000-0000-0000-0000-000000000000';
+  cachedOrgId = id;
+  return id;
+}
+
+/**
+ * Execute a single tool call. Returns a ToolResult.
+ * Throws on hard failures (unknown tool, execution error).
+ */
+export async function executeTool(
+  toolName: string,
+  args: Record<string, unknown>,
+  user: User,
+): Promise<ToolResult> {
+  switch (toolName) {
+    // ── READ tools ────────────────────────────────────────────────────────────
+
+    case 'list_projects': {
+      const opts = args.stage ? { stage: args.stage as string } : {};
+      const { projects } = await findManyProjects({ ...opts, limit: 100 });
+      const { globals } = await getActiveGlobals();
+      const rows = projects.map((p) => {
+        const r = runProject(p, globals, BASELINE_SCENARIO);
+        const pnl = buildProjectPnL(r, { taxRatePct: p.tax_rate_pct });
+        return {
+          id: p.id,
+          name: p.name,
+          stage: p.stage,
+          status: p.status,
+          address: p.address,
+          total_sales_usd: Math.round(r.kpis.total_sales),
+          npat_usd: Math.round(pnl.net_profit_after_tax_usd),
+          npat_margin_pct: (pnl.npat_margin_pct * 100).toFixed(1) + '%',
+          sale_date: r.sale_date,
+          irr: r.kpis.irr_annual != null ? (r.kpis.irr_annual * 100).toFixed(1) + '%' : null,
+        };
+      });
+      return { content: JSON.stringify({ projects: rows, count: rows.length }), is_write: false };
+    }
+
+    case 'get_project_summary': {
+      const key = String(args.project_key ?? '');
+      const project = await findCurrentProjectByKey(key);
+      if (!project) return { content: `Project "${key}" not found.`, is_write: false };
+      const { globals } = await getActiveGlobals();
+      const result = runProject(project, globals, BASELINE_SCENARIO);
+      const pnl = buildProjectPnL(result, { taxRatePct: project.tax_rate_pct });
+      return {
+        content: JSON.stringify({
+          project_key: project.id,
+          name: project.name,
+          address: project.address,
+          stage: project.stage,
+          status: project.status,
+          start_date: result.start_date,
+          sale_date: result.sale_date,
+          inputs: {
+            villa_sqft_ag: project.villa_sqft_ag,
+            villa_sqft_bg: project.villa_sqft_bg,
+            land_cost_usd: project.land_cost_usd,
+            build_cost_per_sqft: project.build_cost_per_sqft,
+            soft_costs_lump_sum: project.soft_costs_lump_sum,
+            senior_ltv_pct: project.senior_ltv_pct,
+            interest_rate_apr: project.interest_rate_apr,
+          },
+          kpis: {
+            total_sales_usd: Math.round(result.kpis.total_sales),
+            gross_profit_usd: Math.round(result.kpis.gross_profit),
+            npat_usd: Math.round(pnl.net_profit_after_tax_usd),
+            npat_margin_pct: (pnl.npat_margin_pct * 100).toFixed(1) + '%',
+            irr_annual: result.kpis.irr_annual != null ? (result.kpis.irr_annual * 100).toFixed(1) + '%' : null,
+            moic: result.kpis.moic.toFixed(2) + 'x',
+            peak_debt_usd: Math.round(result.kpis.peak_debt),
+            total_interest_usd: Math.round(result.kpis.total_interest),
+          },
+        }),
+        is_write: false,
+      };
+    }
+
+    case 'get_dashboard_kpis': {
+      const { projects } = await findManyProjects({ limit: 100 });
+      const { globals } = await getActiveGlobals();
+      const portfolio = aggregatePortfolio(projects, globals, BASELINE_SCENARIO);
+      const k = portfolio.kpis;
+      return {
+        content: JSON.stringify({
+          active_projects: k.active_project_count,
+          total_pipeline_revenue_usd: Math.round(projects.reduce((s, p) => {
+            const r = runProject(p, globals, BASELINE_SCENARIO);
+            return s + r.kpis.total_sales;
+          }, 0)),
+          peak_equity_usd: Math.round(k.peak_equity_required),
+          max_debt_usd: Math.round(k.max_debt_outstanding),
+          total_equity_called_usd: Math.round(k.total_equity_called),
+        }),
+        is_write: false,
+      };
+    }
+
+    case 'search_actuals': {
+      const key = String(args.project_key ?? '');
+      const uuid = await findCurrentProjectUuidByKey(key);
+      if (!uuid) return { content: `Project "${key}" not found.`, is_write: false };
+      const { byCategory, totalCents } = await listActualsByCategory(uuid);
+      return {
+        content: JSON.stringify({
+          project_key: key,
+          total_usd: (totalCents / 100).toFixed(2),
+          by_category: byCategory.map((c) => ({
+            category: c.category,
+            total_usd: (c.totalCents / 100).toFixed(2),
+            entry_count: c.entries.length,
+          })),
+        }),
+        is_write: false,
+      };
+    }
+
+    // ── WRITE tools ───────────────────────────────────────────────────────────
+
+    case 'create_actuals_entry': {
+      const key = String(args.project_key ?? '');
+      const uuid = await findCurrentProjectUuidByKey(key);
+      if (!uuid) throw new Error(`Project "${key}" not found`);
+
+      const amountCents = Math.round((Number(args.amount_usd) || 0) * 100);
+      const input: CreateActualsEntryInput = {
+        projectId: uuid,
+        entryDate: String(args.entry_date ?? ''),
+        category: (args.category as CreateActualsEntryInput['category']) ?? 'other',
+        lineItem: String(args.line_item ?? ''),
+        amountCents,
+        vendor: args.vendor ? String(args.vendor) : null,
+        invoiceRef: args.invoice_ref ? String(args.invoice_ref) : null,
+        notes: null,
+        source: 'api',
+      };
+
+      const result = await createActualsEntry(input, user);
+      const orgId = await resolveOrgId();
+      const auditId = await recordMutation({
+        orgId,
+        userId: user.id,
+        route: 'service:create_actuals_entry',
+        method: 'POST',
+        statusCode: 201,
+        source: 'ask_juno_agent',
+        after: { actualsId: result.id, amountCents, category: input.category, lineItem: input.lineItem },
+      });
+
+      return {
+        content: JSON.stringify({ success: true, id: result.id, audit_log_id: auditId }),
+        audit_log_id: auditId,
+        is_write: true,
+      };
+    }
+
+    case 'create_risk': {
+      const key = String(args.project_key ?? '');
+      const uuid = await findCurrentProjectUuidByKey(key);
+      if (!uuid) throw new Error(`Project "${key}" not found`);
+
+      const riskId = await insertRisk({
+        projectId: uuid,
+        risk: String(args.risk ?? '').slice(0, 500),
+        severity: (args.severity as 'low' | 'medium' | 'high' | 'critical') ?? 'medium',
+        mitigation: args.mitigation ? String(args.mitigation) : null,
+        status: 'open',
+        createdBy: user.id,
+      });
+
+      const orgId = await resolveOrgId();
+      const auditId = await recordMutation({
+        orgId,
+        userId: user.id,
+        route: 'service:create_risk',
+        method: 'POST',
+        statusCode: 201,
+        source: 'ask_juno_agent',
+        after: { riskId, projectId: uuid, risk: args.risk },
+      });
+
+      return {
+        content: JSON.stringify({ success: true, id: riskId, audit_log_id: auditId }),
+        audit_log_id: auditId,
+        is_write: true,
+      };
+    }
+
+    case 'create_project':
+    case 'update_project': {
+      // These always go through the confirmation flow — they should never
+      // reach executeTool directly. If they do, it means the caller bypassed
+      // the risk classifier (which should have rejected auto-execute).
+      throw new Error(`Tool '${toolName}' must be executed via user confirmation, not auto-execute`);
+    }
+
+    default:
+      throw new Error(`Unknown tool: ${toolName}`);
+  }
+}
+
+/**
+ * Check whether the target project has a locked approval snapshot.
+ * Used by the risk classifier for write tools that take a project_key.
+ */
+export async function projectHasLockedSnapshot(projectKey: string): Promise<boolean> {
+  const uuid = await findCurrentProjectUuidByKey(projectKey);
+  if (!uuid) return false;
+  const snap = await findLatestLockedSnapshot(uuid);
+  return snap !== null;
+}

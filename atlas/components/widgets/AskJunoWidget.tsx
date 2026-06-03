@@ -21,16 +21,30 @@
  * globally rather than per-page.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { JunoMark } from '@/components/brand';
 
 type Mode = 'question' | 'suggest';
 
+interface ConfirmationCard {
+  tool_name: string;
+  tool_use_id?: string;
+  tool_args: Record<string, unknown>;
+  preamble?: string;
+  reason: string;
+}
+
 interface ChatMessage {
-  role: 'user' | 'assistant' | 'system';
+  role: 'user' | 'assistant' | 'system' | 'tool_status' | 'confirmation';
   text: string;
   ts: number;
+  /** Present when role === 'confirmation' — the pending proposal card. */
+  confirmation?: ConfirmationCard;
+  /** Present when role === 'tool_status' — the tool being executed. */
+  tool_name?: string;
+  /** Audit log id after successful write. */
+  audit_log_id?: string | null;
 }
 
 const PANEL_WIDTH = 400;
@@ -47,6 +61,75 @@ export function AskJunoWidget() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  /** Handle file upload for T116 ingest. */
+  const onFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = ''; // reset so same file can be re-selected
+
+    const statusMsg: ChatMessage = { role: 'tool_status', text: `Uploading ${file.name}…`, ts: Date.now() };
+    setMessages((m) => [...m, statusMsg]);
+    setPending(true);
+
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/ask-juno/ingest', { method: 'POST', body: form });
+      const json = await res.json().catch(() => null) as {
+        data?: {
+          type?: string; text?: string; file_name?: string; confidence?: number;
+          by_category?: Record<string, { count: number; total_usd: number }>;
+          total_items?: number; total_usd?: number; warnings?: string[]; uncategorized_count?: number;
+          line_items?: unknown[];
+        };
+        error?: { message?: string };
+      } | null;
+
+      if (!res.ok) {
+        setMessages((m) => m.map((msg) => msg === statusMsg
+          ? { ...msg, role: 'system' as const, text: json?.error?.message ?? `Upload failed (HTTP ${res.status})` }
+          : msg));
+        return;
+      }
+
+      const d = json?.data;
+      if (d?.type === 'ingest_error') {
+        setMessages((m) => m.map((msg) => msg === statusMsg
+          ? { ...msg, role: 'system' as const, text: d.text ?? 'Extraction failed' }
+          : msg));
+        return;
+      }
+
+      if (d?.type === 'ingest_proposal') {
+        const categories = Object.entries(d.by_category ?? {})
+          .map(([cat, v]) => `${v.count} items → ${cat} $${Math.round(v.total_usd).toLocaleString()}`)
+          .join('\n');
+        const summaryText = [
+          `📄 ${d.file_name} — ${d.total_items} items · $${Math.round(d.total_usd ?? 0).toLocaleString()} · confidence ${Math.round((d.confidence ?? 0) * 100)}%`,
+          categories,
+          d.uncategorized_count ? `${d.uncategorized_count} items uncategorised` : null,
+          d.warnings?.length ? `Warnings: ${d.warnings.join('; ')}` : null,
+        ].filter(Boolean).join('\n');
+
+        setMessages((m) => m.map((msg) => msg === statusMsg
+          ? { ...msg, role: 'assistant' as const, text: summaryText + '\n\nReview in the Actuals tab to commit — go to the project and use Import CSV.' }
+          : msg));
+        return;
+      }
+
+      setMessages((m) => m.map((msg) => msg === statusMsg
+        ? { ...msg, role: 'system' as const, text: d?.text ?? 'Unexpected response from ingest' }
+        : msg));
+    } catch (err) {
+      setMessages((m) => m.map((msg) => msg === statusMsg
+        ? { ...msg, role: 'system' as const, text: `Upload error: ${err instanceof Error ? err.message : 'Network error'}` }
+        : msg));
+    } finally {
+      setPending(false);
+    }
+  }, []);
 
   // Hide on auth pages.
   const hidden = useMemo(
@@ -89,59 +172,160 @@ export function AskJunoWidget() {
     return () => window.removeEventListener('atlas:open-ask-juno', onOpen);
   }, []);
 
+  /** Call the ask-juno agent with full conversation history. */
+  const callAgent = useCallback(async (
+    userText: string,
+    history: ChatMessage[],
+    confirmedTool?: ConfirmationCard,
+  ) => {
+    setPending(true);
+    try {
+      // Build Anthropic-compatible messages from history (user + assistant only).
+      const anthropicMessages = history
+        .filter((m) => m.role === 'user' || m.role === 'assistant')
+        .map((m) => ({ role: m.role, content: m.text }));
+
+      const body: Record<string, unknown> = {
+        messages: anthropicMessages,
+        pathname,
+      };
+
+      if (confirmedTool) {
+        body.confirmed_tool = {
+          name: confirmedTool.tool_name,
+          args: confirmedTool.tool_args,
+          tool_use_id: confirmedTool.tool_use_id,
+        };
+      }
+
+      const res = await fetch('/api/ask-juno', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const detail = await res.json().catch(() => null) as { error?: { message?: string } } | null;
+        const errText = detail?.error?.message ?? `Request failed (HTTP ${res.status}).`;
+        setMessages((m) => [...m, { role: 'system', text: errText, ts: Date.now() }]);
+        return;
+      }
+
+      const json = await res.json() as {
+        data?: {
+          type?: string;
+          text?: string;
+          tool_name?: string;
+          tool_use_id?: string;
+          tool_args?: Record<string, unknown>;
+          preamble?: string;
+          reason?: string;
+          audit_log_id?: string | null;
+        };
+      };
+      const d = json.data;
+
+      if (!d) { setMessages((m) => [...m, { role: 'system', text: '(empty response)', ts: Date.now() }]); return; }
+
+      if (d.type === 'reply' || d.type === 'error') {
+        setMessages((m) => [...m, { role: 'assistant', text: d.text ?? '(no reply)', ts: Date.now() }]);
+        return;
+      }
+
+      if (d.type === 'pending_confirmation' && d.tool_name && d.tool_args) {
+        // Show preamble (if any) + the proposal card.
+        const newMsgs: ChatMessage[] = [];
+        if (d.preamble) newMsgs.push({ role: 'assistant', text: d.preamble, ts: Date.now() });
+        newMsgs.push({
+          role: 'confirmation',
+          text: '',
+          ts: Date.now(),
+          confirmation: {
+            tool_name: d.tool_name,
+            tool_use_id: d.tool_use_id,
+            tool_args: d.tool_args,
+            preamble: d.preamble,
+            reason: d.reason ?? '',
+          },
+        });
+        setMessages((m) => [...m, ...newMsgs]);
+        return;
+      }
+
+      if (d.type === 'tool_executed') {
+        setMessages((m) => [...m, {
+          role: 'assistant',
+          text: d.text ?? 'Done.',
+          ts: Date.now(),
+          audit_log_id: d.audit_log_id,
+          tool_name: d.tool_name,
+        }]);
+        return;
+      }
+
+      // Fallback.
+      setMessages((m) => [...m, { role: 'assistant', text: d.text ?? '(no reply)', ts: Date.now() }]);
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : 'Network error.';
+      setMessages((m) => [...m, { role: 'system', text: `Couldn't reach Juno: ${errMsg}`, ts: Date.now() }]);
+    } finally {
+      setPending(false);
+    }
+  }, [pathname]);
+
   const onSend = useCallback(async () => {
     const trimmed = input.trim();
     if (!trimmed || pending) return;
 
     const userMsg: ChatMessage = { role: 'user', text: trimmed, ts: Date.now() };
-    setMessages((m) => [...m, userMsg]);
+    const updatedHistory = [...messages, userMsg];
+    setMessages(updatedHistory);
     setInput('');
-    setPending(true);
 
-    try {
-      const endpoint = mode === 'suggest' ? '/api/suggestions' : '/api/ask-juno';
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: trimmed,
-          // Pass the current pathname so server-side handlers can scope
-          // context (e.g. "user is on /projects/p2 — they probably mean
-          // this project").
-          pathname,
-        }),
-      });
-
-      if (!res.ok) {
-        const detail = await res.json().catch(() => ({ error: { message: `HTTP ${res.status}` } }));
-        const errText =
-          (detail as { error?: { message?: string } })?.error?.message ??
-          `Request failed (HTTP ${res.status}).`;
-        setMessages((m) => [...m, { role: 'system', text: errText, ts: Date.now() }]);
-        return;
+    if (mode === 'suggest') {
+      // Suggest mode still goes to the existing /api/suggestions queue.
+      setPending(true);
+      try {
+        const res = await fetch('/api/suggestions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: trimmed, pathname }),
+        });
+        const json = await res.json().catch(() => null) as { data?: { id?: string } } | null;
+        const reply = json?.data?.id ? 'Your suggestion has been queued for review.' : 'Sent — admin will review.';
+        setMessages((m) => [...m, { role: 'assistant', text: reply, ts: Date.now() }]);
+      } catch (err) {
+        setMessages((m) => [...m, { role: 'system', text: `Couldn't queue suggestion: ${err instanceof Error ? err.message : 'Network error'}`, ts: Date.now() }]);
+      } finally {
+        setPending(false);
       }
-
-      const json = (await res.json()) as {
-        data?: { reply?: string; status?: string; id?: string };
-      };
-      const reply =
-        json.data?.reply ??
-        (mode === 'suggest'
-          ? json.data?.id
-            ? 'Your suggestion has been queued for review.'
-            : 'Sent — admin will review.'
-          : '(empty response)');
-      setMessages((m) => [...m, { role: 'assistant', text: reply, ts: Date.now() }]);
-    } catch (err) {
-      const errMsg = err instanceof Error ? err.message : 'Network error.';
-      setMessages((m) => [
-        ...m,
-        { role: 'system', text: `Couldn't reach Juno: ${errMsg}`, ts: Date.now() },
-      ]);
-    } finally {
-      setPending(false);
+      return;
     }
-  }, [input, pending, mode, pathname]);
+
+    await callAgent(trimmed, updatedHistory);
+  }, [input, pending, mode, pathname, messages, callAgent]);
+
+  /** User clicked Confirm on a proposal card. */
+  const onConfirm = useCallback(async (card: ConfirmationCard) => {
+    // Replace the confirmation card with a "executing…" status row.
+    setMessages((m) => m.map((msg) =>
+      msg.confirmation === card
+        ? { ...msg, role: 'tool_status' as const, tool_name: card.tool_name, confirmation: undefined, text: `Executing ${card.tool_name}…` }
+        : msg
+    ));
+    // Build history up to (not including) the confirmation card.
+    const history = messages.filter((m) => m.role === 'user' || m.role === 'assistant');
+    await callAgent('', history, card);
+  }, [messages, callAgent]);
+
+  /** User clicked Cancel on a proposal card. */
+  const onCancel = useCallback((card: ConfirmationCard) => {
+    setMessages((m) => m.map((msg) =>
+      msg.confirmation === card
+        ? { ...msg, role: 'system' as const, confirmation: undefined, text: `Cancelled: ${card.tool_name}` }
+        : msg
+    ));
+  }, []);
 
   function onKeyInInput(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     // Enter to send, Shift+Enter for newline (matches Slack/ChatGPT convention).
@@ -318,7 +502,7 @@ export function AskJunoWidget() {
         >
           {messages.length === 0 && <EmptyState mode={mode} pathname={pathname} />}
           {messages.map((m, i) => (
-            <MessageRow key={i} message={m} />
+            <MessageRow key={i} message={m} onConfirm={onConfirm} onCancel={onCancel} />
           ))}
           {pending && <ThinkingRow />}
         </div>
@@ -334,6 +518,14 @@ export function AskJunoWidget() {
             alignItems: 'flex-end',
           }}
         >
+          {/* Hidden file input for T116 ingest */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,.pdf,.docx"
+            onChange={onFileChange}
+            style={{ display: 'none' }}
+          />
           <textarea
             ref={inputRef}
             value={input}
@@ -341,7 +533,7 @@ export function AskJunoWidget() {
             onKeyDown={onKeyInInput}
             placeholder={
               mode === 'question'
-                ? 'Ask about projects, KPIs, or framework…'
+                ? 'Ask about projects, KPIs, or upload a file…'
                 : 'Propose a change for an admin to review…'
             }
             rows={2}
@@ -360,6 +552,24 @@ export function AskJunoWidget() {
               boxSizing: 'border-box',
             }}
           />
+          {mode === 'question' && (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={pending}
+              aria-label="Upload file (CSV or PDF)"
+              title="Upload CSV / PDF for extraction"
+              style={{
+                width: 36, height: 36, fontSize: 16, border: 'var(--ja-card-border)',
+                borderRadius: 8, background: 'var(--color-surface-base)',
+                cursor: pending ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0, color: 'var(--color-text-tertiary)',
+              }}
+            >
+              📎
+            </button>
+          )}
           <button
             type="button"
             onClick={onSend}
@@ -454,7 +664,30 @@ function EmptyState({ mode, pathname }: { mode: Mode; pathname: string }) {
   );
 }
 
-function MessageRow({ message }: { message: ChatMessage }) {
+function MessageRow({
+  message,
+  onConfirm,
+  onCancel,
+}: {
+  message: ChatMessage;
+  onConfirm: (card: ConfirmationCard) => void;
+  onCancel: (card: ConfirmationCard) => void;
+}) {
+  // Confirmation card (T115 §2.5 proposal card pattern).
+  if (message.role === 'confirmation' && message.confirmation) {
+    return <ConfirmationCardRow card={message.confirmation} onConfirm={onConfirm} onCancel={onCancel} />;
+  }
+
+  // Tool execution status.
+  if (message.role === 'tool_status') {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+        <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-warning, #a16207)', display: 'inline-block' }} />
+        {message.text}
+      </div>
+    );
+  }
+
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
   return (
@@ -490,6 +723,79 @@ function MessageRow({ message }: { message: ChatMessage }) {
         }}
       >
         {message.text}
+        {message.audit_log_id && (
+          <div style={{ marginTop: 4, fontSize: 10, color: 'var(--color-text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
+            audit: {message.audit_log_id.slice(0, 8)}…
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** T115 §2.5 — Confirmation card (proposal card the user clicks to approve). */
+function ConfirmationCardRow({
+  card,
+  onConfirm,
+  onCancel,
+}: {
+  card: ConfirmationCard;
+  onConfirm: (c: ConfirmationCard) => void;
+  onCancel: (c: ConfirmationCard) => void;
+}) {
+  const [confirming, setConfirming] = React.useState(false);
+  const TOOL_LABELS: Record<string, string> = {
+    create_project: 'Create project',
+    update_project: 'Update project',
+    create_actuals_entry: 'Log actuals entry',
+    create_risk: 'Log risk',
+  };
+  const label = TOOL_LABELS[card.tool_name] ?? card.tool_name;
+
+  return (
+    <div
+      style={{
+        background: 'var(--color-surface-base)',
+        border: '1px solid var(--color-border-hairline)',
+        borderRadius: 10,
+        padding: 14,
+        fontSize: 13,
+        maxWidth: '90%',
+      }}
+    >
+      <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--color-text-primary)' }}>
+        Ask Juno proposes: {label}
+      </div>
+      <ul style={{ margin: '0 0 10px', padding: '0 0 0 16px', fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
+        {Object.entries(card.tool_args).map(([k, v]) => (
+          <li key={k}><strong>{k.replace(/_/g, ' ')}:</strong> {String(v)}</li>
+        ))}
+      </ul>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button
+          type="button"
+          disabled={confirming}
+          onClick={() => { setConfirming(true); onConfirm(card); }}
+          style={{
+            padding: '5px 14px', fontSize: 12, fontWeight: 700, borderRadius: 6,
+            background: 'var(--color-accent-lime, #ddec65)', border: '1px solid var(--color-accent-lime-pressed)',
+            cursor: confirming ? 'wait' : 'pointer', color: '#0d0d0d',
+          }}
+        >
+          {confirming ? 'Executing…' : 'Confirm'}
+        </button>
+        <button
+          type="button"
+          disabled={confirming}
+          onClick={() => onCancel(card)}
+          style={{
+            padding: '5px 14px', fontSize: 12, borderRadius: 6,
+            background: 'none', border: '1px solid var(--color-border-hairline)',
+            cursor: 'pointer', color: 'var(--color-text-secondary)',
+          }}
+        >
+          Cancel
+        </button>
       </div>
     </div>
   );
