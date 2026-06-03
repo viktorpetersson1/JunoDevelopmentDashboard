@@ -46,6 +46,7 @@ function scheduleFromConcurrency(
     net_cash_need: 0,
     net_cash_in: 0,
     net_profit_after_tax: 0,
+    net_equity_drawn: 0,
     by_source: {
       [source.id]: {
         source_id: source.id,

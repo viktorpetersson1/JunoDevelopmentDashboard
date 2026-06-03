@@ -41,6 +41,7 @@ function scheduleFromBalances(balances: number[]): CashSchedule {
       net_cash_need: delta > 0 ? delta : 0,
       net_cash_in: delta < 0 ? -delta : 0,
       net_profit_after_tax: 0,
+      net_equity_drawn: 0,
       by_source: {
         'src-kpc': {
           source_id: 'src-kpc',

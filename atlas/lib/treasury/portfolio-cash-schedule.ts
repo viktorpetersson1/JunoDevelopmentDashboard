@@ -77,6 +77,8 @@ export interface CashScheduleRow {
   net_cash_in: number;
   /** Sum of project NPAT recognised this month (for the distribution forecast in T125). */
   net_profit_after_tax: number;
+  /** Sum of project equity drawn this month (for the self-funding trajectory in T123). */
+  net_equity_drawn: number;
   /** Per-source breakdown. */
   by_source: Record<string, SourceMonthlySlice>;
   /** Unallocated draws — project wanted to draw $X but no source had headroom. */
@@ -225,6 +227,7 @@ export function buildCashSchedule(args: BuildCashScheduleInput): CashSchedule {
     let netCashNeed = 0;
     let netCashIn = 0;
     let netNpat = 0;
+    let netEquityDrawn = 0;
     let unallocated = 0;
     // Per-source: which projects had ANY active debt this month.
     const activeProjectsBySource = new Map<string, Set<string>>();
@@ -242,6 +245,7 @@ export function buildCashSchedule(args: BuildCashScheduleInput): CashSchedule {
 
       netCashNeed += draw;
       netCashIn += sale + repay;
+      netEquityDrawn += result.monthly.equity_drawn[idx] ?? 0;
 
       // NPAT recognition — only the sale month, post-tax. Cheap heuristic for
       // T125: use the project's total gross profit minus tax in the sale
@@ -353,6 +357,7 @@ export function buildCashSchedule(args: BuildCashScheduleInput): CashSchedule {
       net_cash_need: netCashNeed,
       net_cash_in: netCashIn,
       net_profit_after_tax: netNpat,
+      net_equity_drawn: netEquityDrawn,
       by_source: sliceById,
       unallocated_draws_usd: unallocated,
       notes,

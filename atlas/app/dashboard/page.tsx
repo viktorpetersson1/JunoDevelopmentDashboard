@@ -20,9 +20,12 @@ import { DashboardShell } from '../_components/dashboard-shell';
 import { PortfolioCashFlowChart } from '../_components/portfolio-cash-flow-chart';
 import { AnnualPnLTable } from '../analytics/forecast/_components/annual-pnl-table';
 import { StatusDot } from '@/components/feedback/StatusDot';
-import { findActiveKpcLoc } from '@/lib/repos/capital-sources';
-import { findManyProjects } from '@/lib/repos/project';
+import { findActiveKpcLoc, findActiveCapitalSources, findAllAssignments } from '@/lib/repos/capital-sources';
+import { findManyProjects, findManyProjectsWithUuids } from '@/lib/repos/project';
 import { aggregatePortfolio } from '@/lib/calc/portfolio/aggregate';
+import { buildCashSchedule } from '@/lib/treasury/portfolio-cash-schedule';
+import { buildSelfFundingTrajectory } from '@/lib/treasury/self-funding';
+import { fetchCapTable } from '@/lib/repos/settings';
 import { getActiveGlobals } from '@/lib/globals/active';
 import { getActiveScenario } from '@/lib/scenarios/active';
 import { buildProjectPnL } from '@/lib/finance/project-pnl';
@@ -82,10 +85,32 @@ export default async function DashboardPage() {
   const { profile, user } = await requireAuthOrRedirect('/dashboard');
   const { projects } = await findManyProjects({ limit: 100 });
 
-  const [active, globalsCtx] = await Promise.all([getActiveScenario(), getActiveGlobals()]);
+  const [active, globalsCtx, projectsWithUuids, treasurySources, treasuryAssignments, capTable] =
+    await Promise.all([
+      getActiveScenario(),
+      getActiveGlobals(),
+      findManyProjectsWithUuids({ limit: 100 }),
+      findActiveCapitalSources(),
+      findAllAssignments(),
+      fetchCapTable(),
+    ]);
   const globals = globalsCtx.globals;
   const portfolio = aggregatePortfolio(projects, globals, active.scenario);
   const todayYM = serverMonthYM();
+
+  // T123 — Self-funding trajectory (5th Boardroom row). Reuses the same
+  // treasury pipeline as /analytics/self-funding so the row reconciles.
+  const selfFunding = buildSelfFundingTrajectory(
+    buildCashSchedule({
+      projects: projectsWithUuids,
+      globals,
+      scenario: active.scenario,
+      sources: treasurySources,
+      assignments: treasuryAssignments,
+      todayYM,
+    }),
+    capTable,
+  );
 
   // Run engine on every project; build per-project results once for all chips.
   const results = projects.map((p) => ({
@@ -299,6 +324,26 @@ export default async function DashboardPage() {
               href="/pipeline"
               overdue={rolloutColor === 'red'}
               warn={rolloutColor === 'amber'}
+            />
+
+            {/* Row: Self-funding trajectory (T123) */}
+            <BoardroomRow
+              label="SELF-FUNDING TRAJECTORY"
+              value={
+                selfFunding.insufficient_data
+                  ? '—'
+                  : selfFunding.self_funding_year
+                    ? selfFunding.self_funding_year
+                    : 'Beyond 36mo'
+              }
+              detail={
+                selfFunding.insufficient_data
+                  ? 'No project NPAT recognised in window yet'
+                  : selfFunding.self_funding_year
+                    ? `Retained NPAT ≥ equity need in FY ${selfFunding.self_funding_year}`
+                    : 'Retained NPAT below equity need across the window'
+              }
+              href="/analytics/self-funding"
               last
             />
 

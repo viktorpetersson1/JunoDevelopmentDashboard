@@ -23,6 +23,7 @@ export type AnalyticsTabKey =
   | 'capital'
   | 'cash-schedule'
   | 'loc'
+  | 'self-funding'
   | 'waterfall'
   | 'sensitivity'
   | 'scenarios'
@@ -39,6 +40,7 @@ export const ANALYTICS_TABS: readonly TabDef[] = [
   { key: 'capital', label: 'Capital', href: '/analytics/capital' },
   { key: 'cash-schedule', label: 'Cash schedule', href: '/analytics/cash-schedule' },
   { key: 'loc', label: 'LOC repayment', href: '/analytics/loc' },
+  { key: 'self-funding', label: 'Self-funding', href: '/analytics/self-funding' },
   { key: 'waterfall', label: 'Waterfall', href: '/analytics/waterfall' },
   { key: 'sensitivity', label: 'Sensitivity', href: '/analytics/sensitivity' },
   { key: 'scenarios', label: 'Scenarios', href: '/analytics/scenarios' },
