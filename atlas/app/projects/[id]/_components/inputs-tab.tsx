@@ -15,6 +15,7 @@ import {
   townProximityLabel,
 } from '@/lib/pricing/location-factors';
 import { InputsEditor } from './inputs-editor-modal';
+import { CapitalSourcesEditor } from './capital-sources-editor';
 
 interface KV {
   label: string;
@@ -191,6 +192,8 @@ export function InputsTab({
         <Card title="Revenue" rows={revenue} />
         <Card title="Sales lifecycle" rows={sales} />
       </div>
+      {/* V6.2 T119 — per-project capital sources funding stack */}
+      <CapitalSourcesEditor projectKey={projectKey} isEditor={isEditor} />
     </div>
   );
 }
