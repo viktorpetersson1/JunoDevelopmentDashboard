@@ -419,7 +419,7 @@ export function ScenarioClient({
           <h1
             style={{ fontSize: 24, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}
           >
-            Scenarios
+            Finance &amp; Analytics — Scenarios
           </h1>
           <p style={{ margin: '4px 0 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
             What-if analysis on the portfolio model. Tweak the inputs, hit Apply to see KPIs, Save

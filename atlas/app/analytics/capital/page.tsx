@@ -99,7 +99,7 @@ export default async function CapitalOverviewPage() {
           <h1
             style={{ fontSize: 24, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}
           >
-            Capital
+            Finance &amp; Analytics — Capital
           </h1>
           <p style={{ margin: '4px 0 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
             Portfolio-wide capital pressure — KPC LOC, senior debt, owner equity calls.

@@ -57,7 +57,7 @@ export default async function SensitivityPage() {
           <h1
             style={{ fontSize: 24, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}
           >
-            Sensitivity
+            Finance &amp; Analytics — Sensitivity
           </h1>
           <p style={{ margin: '4px 0 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
             How portfolio profit-before-tax moves when each input is perturbed one at a time. Bars

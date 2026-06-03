@@ -148,7 +148,7 @@ export default async function RiskPage({
           <h1
             style={{ fontSize: 24, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}
           >
-            Stress test
+            Finance &amp; Analytics — Stress test
           </h1>
           <p style={{ margin: '4px 0 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
             Monte Carlo across all four scenario drivers — triangular distributions per INVENTORY

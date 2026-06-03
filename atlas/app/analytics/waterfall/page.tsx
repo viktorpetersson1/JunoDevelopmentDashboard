@@ -142,7 +142,7 @@ export default async function WaterfallPage() {
           <h1
             style={{ fontSize: 24, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}
           >
-            Owner waterfall
+            Finance &amp; Analytics — Owner waterfall
           </h1>
           <p style={{ margin: '4px 0 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
             How portfolio cash flow distributes across the cap table — 5-tier European waterfall,

@@ -13,6 +13,11 @@
 import Link from 'next/link';
 import type { CSSProperties } from 'react';
 
+// T110 (V6.1) fix-pack: `forecast` removed — Annual P&L promoted to Home.
+// `forecast` retained as a TypeScript union member because existing pages
+// pass `activeKey="forecast"` literals via the type system, but the tab strip
+// no longer renders it (and the middleware 301-redirects /analytics/forecast
+// → /dashboard regardless).
 export type AnalyticsTabKey =
   | 'forecast'
   | 'capital'
@@ -29,7 +34,6 @@ interface TabDef {
 }
 
 export const ANALYTICS_TABS: readonly TabDef[] = [
-  { key: 'forecast', label: 'Forecast', href: '/analytics/forecast' },
   { key: 'capital', label: 'Capital', href: '/analytics/capital' },
   { key: 'waterfall', label: 'Waterfall', href: '/analytics/waterfall' },
   { key: 'sensitivity', label: 'Sensitivity', href: '/analytics/sensitivity' },
@@ -64,7 +68,7 @@ function tabStyle(active: boolean): CSSProperties {
 
 export function AnalyticsTabs({ activeKey }: { activeKey: AnalyticsTabKey }) {
   return (
-    <nav aria-label="Analytics sections" style={navStyle}>
+    <nav aria-label="Finance & Analytics sections" style={navStyle}>
       {ANALYTICS_TABS.map((t) => (
         <Link key={t.key} href={t.href} style={tabStyle(t.key === activeKey)}>
           {t.label}
