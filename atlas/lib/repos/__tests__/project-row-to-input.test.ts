@@ -31,6 +31,7 @@ const BASE_ROW: ProjectRow = {
   build_cost_per_sqft_cents: 43_700, // $437
   soft_costs_lump_sum_cents: 0,
   soft_costs_breakdown: null,
+  cost_breakdown: null,
   lender_name: 'Harrison Capital',
   senior_ltv_bps: 7500, // 75%
   interest_rate_bps: 1000, // 10%

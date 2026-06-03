@@ -105,6 +105,10 @@ export function buildColumnPatch(patch: UpdateProjectInput): Record<string, unkn
     c.target_margin_bps = patch.target_margin == null ? null : bps(patch.target_margin);
   // Tax (% → bps; 25 → 2500)
   if (patch.tax_rate_pct !== undefined) c.tax_rate_bps = Math.round(patch.tax_rate_pct * 100);
+  // V6.1 T107 — cost_breakdown JSONB (nullable). Pattern mirrors other_fees:
+  // pass through verbatim when the key is present in the patch (incl. null
+  // to clear). Engine NEVER reads this column (Hard Rule #2).
+  if (patch.cost_breakdown !== undefined) c.cost_breakdown = patch.cost_breakdown;
 
   return c;
 }

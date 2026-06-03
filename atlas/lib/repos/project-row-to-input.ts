@@ -10,6 +10,7 @@
  */
 import { fromCents } from '@/lib/utils/money';
 import type { ProjectInput, SoftCostsBreakdown, BuildCostCurve } from '@/lib/calc/project/types';
+import type { CostBreakdown } from '@/lib/services/project-schema';
 import {
   coerceWaterfrontType,
   coerceViewPremium,
@@ -54,6 +55,13 @@ export interface ProjectRow {
   soft_costs_lump_sum_cents: number;
   /** Map of {key: cents}; converted to {key: dollars} for the engine. */
   soft_costs_breakdown: Record<string, number> | null;
+  /**
+   * V6.1 T107 — optional structured cost breakdown per category. Engine reads
+   * only the lump-sum fields (Hard Rule #2); this column is intentionally
+   * untouched by projectRowToInput. The Inputs editor reads/writes it via
+   * the typed atlas.projects column directly.
+   */
+  cost_breakdown: CostBreakdown | null;
 
   lender_name: string | null;
   senior_ltv_bps: number;
@@ -182,5 +190,10 @@ export function projectRowToInput(row: ProjectRow): ProjectInput {
       row.actual_sale_price_cents === null ? null : fromCents(row.actual_sale_price_cents),
 
     build_cost_curve: row.build_cost_curve as BuildCostCurve | null,
+
+    // V6.1 T107 — passthrough only. The engine does NOT read this; we type
+    // the column for the Inputs editor and Summary tab. Stored as USD on
+    // disk (Zod schema enforces `amount_usd`), so no cents/dollars conversion.
+    cost_breakdown: row.cost_breakdown,
   };
 }

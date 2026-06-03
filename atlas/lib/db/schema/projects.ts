@@ -77,6 +77,14 @@ export const projects = atlas.table(
       .default(0),
     /** Opaque per CLAUDE.md §10.5 — not queryable filter. */
     softCostsBreakdown: jsonb('soft_costs_breakdown'),
+    /**
+     * V6.1 T107 — optional itemised cost breakdown grouped by category
+     * (construction / superstructure / soft / financing). Validated by Zod
+     * at the application layer; engine reads only lump-sum fields
+     * (Hard Rule #2 — this column is invisible to runProject).
+     * Opaque per CLAUDE.md §10.5.
+     */
+    costBreakdown: jsonb('cost_breakdown'),
 
     // ── Financing ────────────────────────────────────────────────────────
     lenderName: text('lender_name'),

@@ -27,6 +27,28 @@ export interface SoftCostsBreakdown {
 }
 
 /**
+ * V6.1 T107 — structured cost breakdown (one entry per category). Carried
+ * on ProjectInput as a passthrough for the Inputs editor; the calc engine
+ * NEVER reads this (Hard Rule #2 — engine reads only the lump-sum fields
+ * like `build_cost_per_sqft` and `soft_costs_lump_sum`). Authoritative
+ * schema lives in `lib/services/project-schema.ts` as `CostBreakdownSchema`;
+ * this interface intentionally mirrors its inferred shape to keep the calc
+ * types module free of Zod/service-layer imports.
+ */
+export interface CostBreakdownLineItem {
+  label: string;
+  amount_usd: number;
+  note?: string;
+  status?: 'estimate' | 'committed' | 'paid';
+}
+export interface CostBreakdownShape {
+  construction?: CostBreakdownLineItem[];
+  superstructure?: CostBreakdownLineItem[];
+  soft?: CostBreakdownLineItem[];
+  financing?: CostBreakdownLineItem[];
+}
+
+/**
  * Project input — matches vanilla shape after state.js normalisation.
  * The calc engine reads legacy mirror fields (`start_date`, `villa_sqft`,
  * `program_months`) plus the modern field set. Snapshot script
@@ -73,6 +95,12 @@ export interface ProjectInput {
   kingshaus_cost_per_sqft?: number | null;
   soft_costs_lump_sum?: number;
   soft_costs?: SoftCostsBreakdown | null;
+  /**
+   * V6.1 T107 — itemised cost breakdown per category. Engine NEVER reads
+   * this; only the Inputs editor + Summary tab consume it. Optional and
+   * nullable so existing fixtures + serialised inputs stay compatible.
+   */
+  cost_breakdown?: CostBreakdownShape | null;
 
   // Financing
   lender_name?: string | null;

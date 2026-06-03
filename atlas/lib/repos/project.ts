@@ -46,6 +46,7 @@ const SELECT_COLUMNS = [
   'build_cost_per_sqft_cents',
   'soft_costs_lump_sum_cents',
   'soft_costs_breakdown',
+  'cost_breakdown',
   'lender_name',
   'senior_ltv_bps',
   'interest_rate_bps',

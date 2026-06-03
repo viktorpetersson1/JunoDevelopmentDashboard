@@ -79,6 +79,33 @@ export type CreateProjectInput = z.infer<typeof CreateProjectSchema>;
 // new per-project values and risk the golden master (Hard Rule #2). Surfaced
 // to Viktor rather than fabricated. `start_date` is also omitted — it is a
 // derived mirror of purchase_date (no column); editing purchase_date drives it.
+// ─────────────────────────────────────────────────────────────────────────────
+// CostBreakdown JSONB (V6.1 T107)
+//
+// Optional line-item breakdown per cost category. When present and non-empty,
+// the UI shows it (and the Summary tab's 9-line P&L can expand to show
+// itemized lines). The calc engine reads ONLY the lump-sum fields
+// (build_cost_per_sqft, soft_costs_lump_sum, etc.) — never the breakdown —
+// per Hard Rule #2 (engine untouched).
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CostLineItemSchema = z.object({
+  label: z.string().trim().min(1, 'Label required').max(80),
+  amount_usd: z.number(), // sign convention: positive
+  note: z.string().trim().max(200).optional(),
+  status: z.enum(['estimate', 'committed', 'paid']).optional(),
+});
+
+export const CostBreakdownSchema = z.object({
+  construction: z.array(CostLineItemSchema).optional(),
+  superstructure: z.array(CostLineItemSchema).optional(),
+  soft: z.array(CostLineItemSchema).optional(),
+  financing: z.array(CostLineItemSchema).optional(),
+});
+
+export type CostLineItem = z.infer<typeof CostLineItemSchema>;
+export type CostBreakdown = z.infer<typeof CostBreakdownSchema>;
+
 export const UpdateProjectSchema = z
   .object({
     // Schedule
@@ -105,6 +132,9 @@ export const UpdateProjectSchema = z
     target_margin: z.number().min(0).max(2).nullable(),
     // Tax (%)
     tax_rate_pct: z.number().min(0).max(100),
+    // Cost breakdown (V6.1 T107) — optional itemised breakdown per category.
+    // Validated by Zod here; engine never reads it (Hard Rule #2).
+    cost_breakdown: CostBreakdownSchema.nullable(),
   })
   .partial()
   .refine((d) => Object.keys(d).length > 0, {
