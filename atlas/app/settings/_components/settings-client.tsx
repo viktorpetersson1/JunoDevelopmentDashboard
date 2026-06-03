@@ -20,6 +20,7 @@ export type SettingsTab =
   | 'cap-table'
   | 'owners'
   | 'general'
+  | 'capital-sources'
   | 'history'
   | 'suggestions';
 
@@ -33,6 +34,7 @@ const ALL_TABS: {
   { id: 'general', label: 'General', minRole: 'super_admin' },
   { id: 'cap-table', label: 'Cap Table', minRole: 'super_admin' },
   { id: 'owners', label: 'Owners', minRole: 'super_admin' },
+  { id: 'capital-sources', label: 'Capital Sources', minRole: 'super_admin' },
   { id: 'history', label: 'History', minRole: 'super_admin' },
   { id: 'suggestions', label: 'Suggestions', minRole: 'editor' },
 ];

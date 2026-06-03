@@ -20,20 +20,22 @@ import { ProfileTab } from './_components/profile-tab';
 import { CapTableTab } from './_components/cap-table-tab';
 import { OwnersTab } from './_components/owners-tab';
 import { GeneralTab } from './_components/general-tab';
+import { CapitalSourcesTab } from './_components/capital-sources-tab';
 import { LinkTab } from './_components/link-tab';
 import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
 import { hasRole } from '@/lib/auth/requireRole';
 import { fetchCapTable, fetchAllProfiles } from '@/lib/repos/settings';
 import { getActiveGlobals } from '@/lib/globals/active';
+import { findActiveCapitalSources } from '@/lib/repos/capital-sources';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const runtime = 'edge';
 
-const TABS = ['profile', 'general', 'cap-table', 'owners', 'history', 'suggestions'] as const;
+const TABS = ['profile', 'general', 'cap-table', 'owners', 'capital-sources', 'history', 'suggestions'] as const;
 type SettingsTab = (typeof TABS)[number];
 
-const ADMIN_ONLY: SettingsTab[] = ['general', 'cap-table', 'owners', 'history'];
+const ADMIN_ONLY: SettingsTab[] = ['general', 'cap-table', 'owners', 'capital-sources', 'history'];
 const EDITOR_PLUS: SettingsTab[] = ['suggestions'];
 
 export default async function SettingsPage({ searchParams }: { searchParams: { tab?: string } }) {
@@ -55,10 +57,11 @@ export default async function SettingsPage({ searchParams }: { searchParams: { t
   }
 
   // Parallel fetch only what the active tab needs.
-  const [capTable, allProfiles, activeGlobals] = await Promise.all([
+  const [capTable, allProfiles, activeGlobals, capitalSources] = await Promise.all([
     tab === 'cap-table' ? fetchCapTable() : Promise.resolve(null),
     tab === 'owners' ? fetchAllProfiles() : Promise.resolve(null),
     tab === 'general' ? getActiveGlobals() : Promise.resolve(null),
+    tab === 'capital-sources' ? findActiveCapitalSources() : Promise.resolve(null),
   ]);
 
   const dashboardUser = {
@@ -99,6 +102,9 @@ export default async function SettingsPage({ searchParams }: { searchParams: { t
       break;
     case 'owners':
       tabContent = <OwnersTab profiles={allProfiles ?? []} currentUserId={user.id} />;
+      break;
+    case 'capital-sources':
+      tabContent = <CapitalSourcesTab sources={capitalSources ?? []} />;
       break;
     case 'history':
       tabContent = (

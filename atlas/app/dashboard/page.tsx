@@ -20,6 +20,7 @@ import { DashboardShell } from '../_components/dashboard-shell';
 import { PortfolioCashFlowChart } from '../_components/portfolio-cash-flow-chart';
 import { AnnualPnLTable } from '../analytics/forecast/_components/annual-pnl-table';
 import { StatusDot } from '@/components/feedback/StatusDot';
+import { findActiveKpcLoc } from '@/lib/repos/capital-sources';
 import { findManyProjects } from '@/lib/repos/project';
 import { aggregatePortfolio } from '@/lib/calc/portfolio/aggregate';
 import { getActiveGlobals } from '@/lib/globals/active';
@@ -125,22 +126,19 @@ export default async function DashboardPage() {
       })
     : null;
 
-  // 1c. KPC LOC headroom
+  // 1c. KPC LOC headroom (V6.2 T118: now reads from the versioned ledger repo
+  // — respects is_current + is_archived filters. Fallback to V5.2-confirmed
+  // defaults if no kpc_loc source is configured yet.)
   let locLimit = 6_000_000;
   let locDrawn = 0;
   let locRate = 6;
   try {
-    const supabase = createSupabaseServerClient();
-    const { data } = await supabase
-      .schema('atlas')
-      .from('capital_sources')
-      .select('limit_usd, drawn_usd, interest_rate_pct')
-      .eq('source_kind', 'kpc_loc')
-      .maybeSingle();
-    if (data) {
-      locLimit = Number(data.limit_usd ?? 6_000_000);
-      locDrawn = Number(data.drawn_usd ?? 0);
-      locRate = Number(data.interest_rate_pct ?? 6);
+    const kpc = await findActiveKpcLoc();
+    if (kpc) {
+      locLimit = kpc.limitUsd;
+      locDrawn = kpc.drawnUsd;
+      // Repo returns interestRatePct as a DECIMAL (0.06); chip wants percent (6).
+      locRate = (kpc.interestRatePct ?? 0.06) * 100;
     }
   } catch {
     // fallback to confirmed values

@@ -13,3 +13,5 @@ export * from './approval-snapshots';
 export * from './markets';
 export * from './comps';
 export * from './pricing-runs';
+// V6.2 T118 — Capital Sources versioned ledger + per-project assignments.
+export * from './capital-sources';
