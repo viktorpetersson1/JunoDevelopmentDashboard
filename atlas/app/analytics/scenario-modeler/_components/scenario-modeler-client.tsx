@@ -29,6 +29,7 @@ import { runProject } from '@/lib/calc/project/runProject';
 import { buildCashSchedule } from '@/lib/treasury/portfolio-cash-schedule';
 import { solveStartCapacity } from '@/lib/treasury/start-capacity';
 import { buildSelfFundingTrajectory } from '@/lib/treasury/self-funding';
+import { buildDistributionForecast } from '@/lib/treasury/distribution-forecast';
 import { computeRolloutTrigger } from '@/lib/finance/rollout-trigger';
 import { buildProjectPnL } from '@/lib/finance/project-pnl';
 
@@ -130,6 +131,9 @@ export function ScenarioModelerClient(props: Props) {
     const startCap = solveStartCapacity(schedule);
     const selfFund = buildSelfFundingTrajectory(schedule, capTable);
 
+    const dist = buildDistributionForecast(schedule, capTable);
+    const nextDist = dist.monthly.find((m) => m.total_distribution > 1) ?? null;
+
     const rollout = computeRolloutTrigger({
       projects: projects.map((p) => {
         const r = runProject(p.input, globals, scenario);
@@ -146,7 +150,7 @@ export function ScenarioModelerClient(props: Props) {
       today_month: todayYM,
     });
 
-    return { callRow, locHeadroomNow, hasLoc: kpc !== null, startCap, selfFund, rollout };
+    return { callRow, locHeadroomNow, hasLoc: kpc !== null, startCap, selfFund, rollout, nextDist };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debounced, projects, globals, sources, assignments, capTable, todayYM]);
 
@@ -321,9 +325,8 @@ export function ScenarioModelerClient(props: Props) {
         />
         <AnswerRow
           label="NEXT OWNER DISTRIBUTION"
-          value="Pending"
-          detail="Distribution forecast ships in T125 (blocked on owner↔account links)"
-          muted
+          value={a.nextDist ? compact(a.nextDist.total_distribution) : 'None'}
+          detail={a.nextDist ? `${fmtYM(a.nextDist.month)} · owner tax distribution at project close` : 'No distributions in the 36-month window'}
         />
         <AnswerRow
           label="KPC LOC HEADROOM"
