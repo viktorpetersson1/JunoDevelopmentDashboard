@@ -29,7 +29,7 @@ export async function middleware(request: NextRequest) {
   // These are permanent redirects; they keep old bookmarks alive and prevent
   // any lingering cf-pages cache from serving a 404.
   const ANALYTICS_REDIRECTS: Record<string, string> = {
-    '/cashflow': '/analytics/forecast',
+    '/cashflow': '/dashboard',
     '/capital': '/analytics/capital',
     '/waterfall': '/analytics/waterfall',
     '/sensitivity': '/analytics/sensitivity',

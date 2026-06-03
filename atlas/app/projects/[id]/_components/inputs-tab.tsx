@@ -4,7 +4,7 @@
  * Read-only echo of the project record the calc engine consumed. Lets owners
  * audit "what numbers went into this run" without diving into the DB.
  *
- * Edit affordance ships with the New Project Wizard (T065 follow-up).
+ * Edit affordance ships via InputsEditor (V6.1 T104) — see usage below.
  */
 
 import { formatMoney } from '@/lib/utils/money';

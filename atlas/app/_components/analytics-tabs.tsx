@@ -59,8 +59,9 @@ function tabStyle(active: boolean): CSSProperties {
     marginBottom: -1, // overlap the border for the active underline
     borderBottom: active ? '2px solid var(--color-text-primary)' : '2px solid transparent',
     color: active ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
+    // T103.8 two-weight discipline: 700 active, 400 inactive (was 600/500).
     fontSize: 13,
-    fontWeight: active ? 600 : 500,
+    fontWeight: active ? 700 : 400,
     textDecoration: 'none',
     transition: 'color 120ms ease, border-color 120ms ease',
   };

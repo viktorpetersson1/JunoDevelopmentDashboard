@@ -11,6 +11,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { toCents } from '@/lib/utils/money';
 import type { User } from '@supabase/supabase-js';
 import { CreateProjectSchema, type CreateProjectInput } from './project-schema';
+import { recordMutation } from './audit';
 
 // Re-export so existing imports of CreateProjectSchema / CreateProjectInput
 // from '@/lib/services/project' still resolve.
@@ -138,11 +139,39 @@ export async function createProject(
     throw new Error(`createProject insert failed: ${error.message}`);
   }
 
+  // V6.1 fix-pack (QA finding HIGH): every write API has an audit row.
+  // Hard Rule #5 / §3b E1.4 / §3b E9: audit is the single source of truth.
+  // Best-effort: never block project creation on audit failure.
+  try {
+    const orgId = await resolveOrgId();
+    await recordMutation({
+      orgId,
+      userId: user.id,
+      route: `service:create_project:${data.project_key as string}`,
+      method: 'POST',
+      statusCode: 201,
+      source: 'ui',
+      before: null,
+      after: { projectId: data.id, projectKey: data.project_key, version: data.version },
+    });
+  } catch {
+    // best-effort
+  }
+
   return {
     id: data.id as string,
     projectKey: data.project_key as string,
     version: data.version as number,
   };
+}
+
+let cachedOrgId: string | null = null;
+async function resolveOrgId(): Promise<string> {
+  if (cachedOrgId) return cachedOrgId;
+  const supabase = createSupabaseServerClient();
+  const { data } = await supabase.schema('atlas').from('orgs').select('id').limit(1).single();
+  cachedOrgId = (data as { id: string } | null)?.id ?? '00000000-0000-0000-0000-000000000000';
+  return cachedOrgId;
 }
 
 export class ProjectKeyCollisionError extends Error {
