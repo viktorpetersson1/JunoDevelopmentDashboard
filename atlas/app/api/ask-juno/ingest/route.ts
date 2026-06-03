@@ -25,8 +25,9 @@ import { parseCsv } from '@/lib/csv/parse';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-export const runtime = 'nodejs';
-export const maxDuration = 60;
+// Edge runtime — CF Pages Functions are edge-only. Web FormData + Buffer.from
+// (via nodejs_compat) + Anthropic fetch all work under Workers.
+export const runtime = 'edge';
 
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
 

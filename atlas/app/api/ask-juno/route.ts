@@ -39,9 +39,10 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-// Node runtime — tool execution may need DB + file I/O beyond Edge limits.
-export const runtime = 'nodejs';
-export const maxDuration = 60;
+// Edge runtime — CF Pages Functions are edge-only (D-017 / D-018 preflight
+// guards). LLM calls are network I/O, not CPU; Workers' time-budget is fine.
+// nodejs_compat (V5.2 D-017) makes Buffer / process available.
+export const runtime = 'edge';
 
 // ── Request schema ────────────────────────────────────────────────────────────
 

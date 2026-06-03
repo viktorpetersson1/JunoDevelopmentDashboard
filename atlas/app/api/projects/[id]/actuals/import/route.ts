@@ -15,8 +15,9 @@
  *                   of "rollback" the plan calls for), write a single audit
  *                   log row with source='csv_import' + batch metadata.
  *
- * E1-gated: requireAuth → requireEditor → Zod → audit. nodejs runtime —
- * the LLM call exceeds Edge timeouts.
+ * E1-gated: requireAuth → requireEditor → Zod → audit. Edge runtime —
+ * CF Pages Functions are edge-only (D-017/D-018 preflight). Anthropic
+ * fetch + FormData both work fine under Workers.
  *
  * Failure modes:
  *   - File > 5 MB                        → 413 FILE_TOO_LARGE
@@ -44,7 +45,9 @@ import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-export const runtime = 'nodejs';
+// Edge runtime — CF Pages Functions are edge-only (D-017/D-018 preflight gates).
+// Web FormData + Anthropic fetch all work under Workers.
+export const runtime = 'edge';
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB hard cap (§T108 stop-and-ask #1)
 const MAX_ROWS = 1000;                  // Sanity cap; plan says >5MB rejects anyway
