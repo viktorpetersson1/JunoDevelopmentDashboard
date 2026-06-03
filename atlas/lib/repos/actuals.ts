@@ -119,6 +119,37 @@ export async function insertActualsEntry(row: InsertActualsRow): Promise<string>
   return data.id as string;
 }
 
+/**
+ * Batch insert. Single supabase `.insert([...])` call — Postgres treats it as
+ * one statement, so a constraint violation aborts the whole batch (the
+ * spirit of "rollback" required by V6.1 T108 §5).
+ *
+ * Throws on any error; caller surfaces the verbatim message.
+ */
+export async function bulkInsertActualsEntries(rows: InsertActualsRow[]): Promise<string[]> {
+  if (rows.length === 0) return [];
+  const supabase = createSupabaseServerClient();
+  const payload = rows.map((row) => ({
+    project_id: row.projectId,
+    entry_date: row.entryDate,
+    category: row.category,
+    line_item: row.lineItem,
+    amount_cents: row.amountCents,
+    vendor: row.vendor ?? null,
+    invoice_ref: row.invoiceRef ?? null,
+    notes: row.notes ?? null,
+    source: row.source ?? 'csv',
+    created_by: row.createdBy,
+  }));
+  const { data, error } = await supabase
+    .schema('atlas')
+    .from('actuals_entries')
+    .insert(payload)
+    .select('id');
+  if (error) throw new Error(`bulkInsertActualsEntries: ${error.message}`);
+  return (data ?? []).map((d) => d.id as string);
+}
+
 export async function archiveActualsEntry(entryId: string): Promise<void> {
   const supabase = createSupabaseServerClient();
   const { error } = await supabase

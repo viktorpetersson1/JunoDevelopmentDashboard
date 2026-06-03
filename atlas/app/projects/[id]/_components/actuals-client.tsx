@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/Button';
 import { formatMoney } from '@/lib/utils/money';
 import type { ActualsByCategory } from '@/lib/services/actuals';
 import type { ActualsCategory, ActualsEntryView } from '@/lib/repos/actuals';
+import { ActualsImporter } from './actuals-importer-modal';
 
 const CATEGORY_LABELS: Record<ActualsCategory, string> = {
   land: 'Land',
@@ -80,9 +81,13 @@ export function ActualsClient({
           </p>
         </div>
         {isEditor && projectUuid && (
-          <Button variant="primary" size="sm" onClick={() => setAddOpen(true)}>
-            + Add entry
-          </Button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {/* V6.1 T108 — smart CSV import */}
+            <ActualsImporter projectKey={projectKey} isEditor={isEditor} />
+            <Button variant="primary" size="sm" onClick={() => setAddOpen(true)}>
+              + Add entry
+            </Button>
+          </div>
         )}
       </header>
 
