@@ -16,7 +16,11 @@
 import { DashboardShell } from '../_components/dashboard-shell';
 import { PipelineBoard, type StageGroup } from './_components/pipeline-board';
 import { GoalTracker, InFlight, CandidateFunnel } from './_components/velocity-sections';
-import { findManyProjects } from '@/lib/repos/project';
+import { findManyProjects, findManyProjectsWithUuids } from '@/lib/repos/project';
+import { findActiveCapitalSources, findAllAssignments } from '@/lib/repos/capital-sources';
+import { buildCashSchedule } from '@/lib/treasury/portfolio-cash-schedule';
+import { solveStartCapacity, type StartCapacityResult } from '@/lib/treasury/start-capacity';
+import { getActiveScenario } from '@/lib/scenarios/active';
 import { runProject } from '@/lib/calc/project/runProject';
 import { BASELINE_GLOBALS, BASELINE_SCENARIO } from '@/lib/calc/baselines';
 import { getActiveGlobals } from '@/lib/globals/active';
@@ -44,10 +48,30 @@ const STAGES: { key: string; label: string; description: string }[] = [
 
 export default async function PipelinePage() {
   const { profile, user } = await requireAuthOrRedirect('/pipeline');
-  const [{ projects }, globalsCtx] = await Promise.all([
-    findManyProjects({ limit: 200 }),
-    getActiveGlobals(),
-  ]);
+  const [{ projects }, globalsCtx, projectsWithUuids, sources, assignments, active] =
+    await Promise.all([
+      findManyProjects({ limit: 200 }),
+      getActiveGlobals(),
+      findManyProjectsWithUuids({ limit: 100 }),
+      findActiveCapitalSources(),
+      findAllAssignments(),
+      getActiveScenario(),
+    ]);
+
+  // T122 — Start Capacity Solver chip. Reuses the SAME treasury pipeline as
+  // /pipeline/capacity so the chip integer reconciles with the solver page.
+  const now = new Date();
+  const todayYM = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+  const capacity = solveStartCapacity(
+    buildCashSchedule({
+      projects: projectsWithUuids,
+      globals: globalsCtx.globals,
+      scenario: active.scenario,
+      sources,
+      assignments,
+      todayYM,
+    }),
+  );
 
   // Run the calc engine once per project (expected start/sell + KPIs).
   const inputs: VelocityInputProject[] = projects.map((p) => ({
@@ -122,6 +146,9 @@ export default async function PipelinePage() {
             {goal.planYears}-year velocity plan · {currentYear}–{currentYear + goal.planYears - 1} ·
             target {goal.startsPerYear} starts &amp; {goal.sellsPerYear} sells per year
           </p>
+          <div style={{ marginTop: 12 }}>
+            <CapacityChip capacity={capacity} />
+          </div>
         </header>
 
         <GoalTracker report={report} isEditor={hasRole(profile, ['super_admin', 'editor'])} />
@@ -156,6 +183,48 @@ export default async function PipelinePage() {
 function Divider() {
   return (
     <div aria-hidden style={{ height: 1, background: 'var(--color-border-hairline, #c8c8c5)' }} />
+  );
+}
+
+/** T122 — Start Capacity chip. Links through to /pipeline/capacity. Shows the
+ *  integer when the covenant is configured; an actionable "set up" hint when
+ *  it isn't (BLOCKED-ON-VIKTOR — never invents the cap). */
+function CapacityChip({ capacity }: { capacity: StartCapacityResult }) {
+  const configured = capacity.state !== 'unconfigured';
+  const n = capacity.max_concurrent_starts_now;
+  const tone = !configured
+    ? 'var(--color-text-tertiary)'
+    : n > 0
+      ? 'var(--color-positive, #15803d)'
+      : 'var(--color-negative, #b91c1c)';
+
+  return (
+    <a
+      href="/pipeline/capacity"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '6px 12px',
+        border: 'var(--ja-card-border)',
+        borderRadius: 999,
+        background: 'var(--ja-card-bg)',
+        textDecoration: 'none',
+        fontSize: 12,
+        color: 'var(--color-text-secondary)',
+      }}
+    >
+      <span style={{ fontWeight: 700, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: 11 }}>
+        Capacity
+      </span>
+      {configured ? (
+        <span style={{ color: tone, fontWeight: 700 }}>
+          {n} more {n === 1 ? 'start' : 'starts'} now
+        </span>
+      ) : (
+        <span style={{ color: tone }}>Set up covenant →</span>
+      )}
+    </a>
   );
 }
 

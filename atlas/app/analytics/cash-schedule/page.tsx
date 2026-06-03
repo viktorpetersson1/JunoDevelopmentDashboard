@@ -17,50 +17,15 @@ import { DashboardShell } from '../../_components/dashboard-shell';
 import { AnalyticsTabs } from '../../_components/analytics-tabs';
 import { CashScheduleTable } from './_components/cash-schedule-table';
 import { findManyProjectsWithUuids } from '@/lib/repos/project';
-import { findActiveCapitalSources } from '@/lib/repos/capital-sources';
+import { findActiveCapitalSources, findAllAssignments } from '@/lib/repos/capital-sources';
 import { buildCashSchedule } from '@/lib/treasury/portfolio-cash-schedule';
 import { getActiveGlobals } from '@/lib/globals/active';
 import { getActiveScenario } from '@/lib/scenarios/active';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const runtime = 'edge';
-
-interface AssignmentRow {
-  id: string;
-  project_id: string;
-  capital_source_id: string;
-  priority: number;
-  created_at: string;
-}
-
-async function findAllAssignments(): Promise<
-  Array<{
-    id: string;
-    projectId: string;
-    capitalSourceId: string;
-    priority: number;
-    createdAt: string;
-  }>
-> {
-  const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase
-    .schema('atlas')
-    .from('capital_source_assignments')
-    .select('id, project_id, capital_source_id, priority, created_at')
-    .order('project_id', { ascending: true })
-    .order('priority', { ascending: true });
-  if (error) throw new Error(`findAllAssignments: ${error.message}`);
-  return ((data as unknown as AssignmentRow[]) ?? []).map((r) => ({
-    id: r.id,
-    projectId: r.project_id,
-    capitalSourceId: r.capital_source_id,
-    priority: r.priority,
-    createdAt: r.created_at,
-  }));
-}
 
 /** Current month as YYYY-MM from the server clock. The aggregator is pure
  *  (it takes today as an argument), so the impurity is isolated here. */

@@ -198,6 +198,29 @@ interface AssignmentRow {
   created_at: string;
 }
 
+/**
+ * Find ALL assignments across every project, ordered by project then priority.
+ * Used by the portfolio-wide treasury surfaces (cash schedule, LOC repayment,
+ * capacity solver) so they share one fetch shape instead of re-implementing it.
+ */
+export async function findAllAssignments(): Promise<AssignmentView[]> {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .schema('atlas')
+    .from('capital_source_assignments')
+    .select('id, project_id, capital_source_id, priority, created_at')
+    .order('project_id', { ascending: true })
+    .order('priority', { ascending: true });
+  if (error) throw new Error(`findAllAssignments: ${error.message}`);
+  return ((data as unknown as AssignmentRow[]) ?? []).map((row) => ({
+    id: row.id,
+    projectId: row.project_id,
+    capitalSourceId: row.capital_source_id,
+    priority: row.priority,
+    createdAt: row.created_at,
+  }));
+}
+
 /** Find assignments for a project, ordered by priority (lower drawn first). */
 export async function findAssignmentsForProject(projectUuid: string): Promise<AssignmentView[]> {
   const supabase = createSupabaseServerClient();
