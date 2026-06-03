@@ -15,7 +15,9 @@ import { TimelineTab } from './_components/timeline-tab';
 import { CapitalTab } from './_components/capital-tab';
 import { ActualsTab } from './_components/actuals-tab';
 import { SalesTab } from './_components/sales-tab';
+import { SalesEditorModal } from './_components/sales-editor-modal';
 import { RisksTab } from './_components/risks-tab';
+import { findRisksByProject } from '@/lib/repos/project-risks';
 import { ActivityTab } from './_components/activity-tab';
 import { InputsTab } from './_components/inputs-tab';
 import { PricingStrategyTab } from './_components/pricing-strategy-tab';
@@ -174,15 +176,41 @@ export default async function ProjectDetailPage({
       );
       break;
     }
-    case 'sales':
-      tabContent = <SalesTab project={project} result={result} />;
+    case 'sales': {
+      const isEditorForSales = hasRole(profile, ['super_admin', 'editor']);
+      tabContent = (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {isEditorForSales && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <SalesEditorModal
+                projectKey={params.id}
+                project={project}
+                isEditor={isEditorForSales}
+              />
+            </div>
+          )}
+          <SalesTab project={project} result={result} />
+        </div>
+      );
       break;
+    }
     case 'risks': {
       const risksProjectUuid = await findCurrentProjectUuidByKey(params.id);
       const latestLocked = risksProjectUuid
         ? await findLatestLockedSnapshot(risksProjectUuid)
         : null;
-      tabContent = <RisksTab result={result} latestLockedSnapshot={latestLocked} />;
+      const risksList = risksProjectUuid
+        ? await findRisksByProject(risksProjectUuid)
+        : [];
+      tabContent = (
+        <RisksTab
+          result={result}
+          latestLockedSnapshot={latestLocked}
+          risks={risksList}
+          isEditor={hasRole(profile, ['super_admin', 'editor'])}
+          projectKey={params.id}
+        />
+      );
       break;
     }
     case 'activity': {

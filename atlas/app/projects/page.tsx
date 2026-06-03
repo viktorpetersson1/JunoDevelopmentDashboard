@@ -13,6 +13,7 @@ import { findManyProjects } from '@/lib/repos/project';
 import { runProject } from '@/lib/calc/project/runProject';
 import { BASELINE_GLOBALS, BASELINE_SCENARIO } from '@/lib/calc/baselines';
 import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
+import { hasRole } from '@/lib/auth/requireRole';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -42,5 +43,11 @@ export default async function ProjectsListPage() {
     email: profile.email ?? user.email ?? '',
   };
 
-  return <ProjectsListClient rows={rows} user={dashboardUser} />;
+  return (
+    <ProjectsListClient
+      rows={rows}
+      user={dashboardUser}
+      isEditor={hasRole(profile, ['super_admin', 'editor'])}
+    />
+  );
 }

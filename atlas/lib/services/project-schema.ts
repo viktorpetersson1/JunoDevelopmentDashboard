@@ -26,9 +26,10 @@ export const CreateProjectSchema = z.object({
   market_id: z.string().default('default'),
   asset_type: z.string().default('villa'),
   status: z.enum(['pipeline', 'committed']).default('pipeline'),
+  // V6.1 T109: new projects land in 'tbc' by default until promoted to committed.
   stage: z
-    .enum(['sourcing', 'pre_construction', 'construction', 'sales', 'sold', 'archived'])
-    .default('sourcing'),
+    .enum(['tbc', 'sourcing', 'pre_construction', 'construction', 'sales', 'sold', 'archived'])
+    .default('tbc'),
 
   // Location factors (D-025b) — all optional; drive AI comp matching + brief.
   waterfront_type: z.enum(WATERFRONT_TYPES).optional().nullable(),

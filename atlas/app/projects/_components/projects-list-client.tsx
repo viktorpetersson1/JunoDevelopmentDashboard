@@ -37,6 +37,7 @@ export interface ProjectRowVM {
 
 const STAGE_FILTERS: { id: string; label: string }[] = [
   { id: 'all', label: 'All' },
+  { id: 'tbc', label: 'TBC' },       // V6.1 T109: new default stage
   { id: 'sourcing', label: 'Sourcing' },
   { id: 'pre_construction', label: 'Pre-construction' },
   { id: 'construction', label: 'Construction' },
@@ -58,9 +59,12 @@ function marginTone(margin: number): string {
 export function ProjectsListClient({
   rows: initialRows,
   user,
+  isEditor = false,
 }: {
   rows: ProjectRowVM[];
   user: SidebarUser;
+  /** V6.1 T109 — hides create button for viewer-role users. */
+  isEditor?: boolean;
 }) {
   const router = useRouter();
   const [stageFilter, setStageFilter] = useState<string>('all');
@@ -122,9 +126,11 @@ export function ProjectsListClient({
               All active and pipeline projects
             </p>
           </div>
-          <Button variant="primary" onClick={() => router.push('/projects/new')}>
-            + New project
-          </Button>
+          {isEditor && (
+            <Button variant="primary" onClick={() => router.push('/projects/new')}>
+              + New project
+            </Button>
+          )}
         </div>
 
         {/* Filter row */}

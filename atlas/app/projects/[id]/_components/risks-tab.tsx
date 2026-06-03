@@ -17,6 +17,8 @@ import { KPITile } from '@/components/data/KPITile';
 import { formatMoney } from '@/lib/utils/money';
 import type { ProjectResult } from '@/lib/calc/project/types';
 import type { ApprovalSnapshotView } from '@/lib/repos/approval-snapshot';
+import type { ProjectRiskView } from '@/lib/repos/project-risks';
+import { RisksClient } from './risks-client';
 
 // Thresholds mirror public/data.js::BASELINE_GLOBALS risk_* keys (snapshot
 // 2026-05-10). Hard-coded until Globals interface adds them — see header.
@@ -94,9 +96,16 @@ function snapshotAgeRow(latestLocked: ApprovalSnapshotView | null): RiskRow {
 export function RisksTab({
   result,
   latestLockedSnapshot = null,
+  risks = [],
+  isEditor = false,
+  projectKey,
 }: {
   result: ProjectResult;
   latestLockedSnapshot?: ApprovalSnapshotView | null;
+  /** V6.1 T109 — pre-loaded project risks for the CRUD section. */
+  risks?: ProjectRiskView[];
+  isEditor?: boolean;
+  projectKey: string;
 }) {
   const k = result.kpis;
   const irrAnnual = k.irr_annual ?? 0;
@@ -228,6 +237,9 @@ export function RisksTab({
           </tbody>
         </table>
       </section>
+
+      {/* V6.1 T109 — qualitative risk register CRUD */}
+      <RisksClient projectKey={projectKey} risks={risks} isEditor={isEditor} />
     </div>
   );
 }

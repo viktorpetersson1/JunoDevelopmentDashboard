@@ -82,8 +82,8 @@ export function ActualsClient({
         </div>
         {isEditor && projectUuid && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {/* V6.1 T108 — smart CSV import */}
-            <ActualsImporter projectKey={projectKey} isEditor={isEditor} />
+            {/* V6.1 T108 — smart CSV import (stub until T108 ships) */}
+            <ActualsImporter projectKey={projectKey} projectUuid={projectUuid} onClose={() => {}} />
             <Button variant="primary" size="sm" onClick={() => setAddOpen(true)}>
               + Add entry
             </Button>
@@ -117,11 +117,12 @@ export function ActualsClient({
               <Th align="left">Vendor</Th>
               <Th align="left">Invoice</Th>
               <Th align="right">Amount</Th>
+              {isEditor && <Th align="right">{''}</Th>}
             </tr>
           </thead>
           <tbody>
             {flatEntries.map((e) => (
-              <EntryRow key={e.id} entry={e} />
+              <EntryRow key={e.id} entry={e} isEditor={isEditor} />
             ))}
           </tbody>
         </table>
@@ -138,7 +139,21 @@ export function ActualsClient({
   );
 }
 
-function EntryRow({ entry }: { entry: ActualsEntryView }) {
+function EntryRow({ entry, isEditor }: { entry: ActualsEntryView; isEditor: boolean }) {
+  const router = useRouter();
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    if (!confirm(`Delete "${entry.lineItem}"? This cannot be undone.`)) return;
+    setDeleting(true);
+    try {
+      await fetch(`/api/actuals/${entry.id}`, { method: 'DELETE' });
+      router.refresh();
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <tr>
       <Td muted>{entry.entryDate}</Td>
@@ -171,6 +186,19 @@ function EntryRow({ entry }: { entry: ActualsEntryView }) {
       >
         {formatMoney(entry.amountCents, { precision: 2 })}
       </td>
+      {isEditor && (
+        <td style={{ padding: '8px 0 8px 8px', borderBottom: '1px solid var(--color-border-subtle)', textAlign: 'right' }}>
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            title="Delete entry"
+            style={{ fontSize: 13, background: 'none', border: 'none', cursor: deleting ? 'wait' : 'pointer',
+              color: 'var(--color-negative, #b91c1c)', padding: '0 4px', lineHeight: 1 }}
+          >
+            ×
+          </button>
+        </td>
+      )}
     </tr>
   );
 }
