@@ -27,6 +27,7 @@ export type AnalyticsTabKey =
   | 'waterfall'
   | 'sensitivity'
   | 'scenarios'
+  | 'scenario-modeler'
   | 'stress'
   | 'risks';
 
@@ -44,6 +45,7 @@ export const ANALYTICS_TABS: readonly TabDef[] = [
   { key: 'waterfall', label: 'Waterfall', href: '/analytics/waterfall' },
   { key: 'sensitivity', label: 'Sensitivity', href: '/analytics/sensitivity' },
   { key: 'scenarios', label: 'Scenarios', href: '/analytics/scenarios' },
+  { key: 'scenario-modeler', label: 'Modeler', href: '/analytics/scenario-modeler' },
   { key: 'stress', label: 'Stress', href: '/analytics/stress' },
   { key: 'risks', label: 'Risks', href: '/analytics/risks' },
 ] as const;

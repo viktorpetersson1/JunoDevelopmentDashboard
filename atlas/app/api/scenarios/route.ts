@@ -29,6 +29,7 @@ const PostBodySchema = z.object({
   margin_override: z.number().min(0).max(1).nullable().default(null),
   timing_shift_months: z.number().int().min(-36).max(36).default(0),
   excluded_project_ids: z.array(z.string().uuid()).default([]),
+  starts_per_year_override: z.number().int().min(0).max(50).nullable().default(null),
 });
 
 export const GET = withErrorBoundary(async () => {
@@ -63,6 +64,7 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
       margin_override: parsed.data.margin_override,
       timing_shift_months: parsed.data.timing_shift_months,
       excluded_project_ids: parsed.data.excluded_project_ids,
+      starts_per_year_override: parsed.data.starts_per_year_override,
     },
     user.id
   );

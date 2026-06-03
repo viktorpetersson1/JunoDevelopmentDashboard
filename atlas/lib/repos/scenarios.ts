@@ -25,6 +25,9 @@ export interface ScenarioView extends Scenario {
   margin_override: number | null;
   timing_shift_months: number;
   excluded_project_ids: string[];
+  /** V6.2 T124 — optional starts/year for the Scenario Modeler. Null = use the
+   *  org velocity target. Persistence-only; NOT a calc-engine input. */
+  starts_per_year_override: number | null;
   createdBy: string | null;
   createdAt: string;
   updatedBy: string | null;
@@ -42,6 +45,7 @@ interface ScenarioRow {
   margin_override: number | string | null;
   timing_shift_months: number;
   excluded_project_ids: string[];
+  starts_per_year_override: number | null;
   created_by: string | null;
   created_at: string;
   updated_by: string | null;
@@ -49,7 +53,7 @@ interface ScenarioRow {
 }
 
 const ROW_SELECT =
-  'id, name, class, locked, interest_rate_delta_bps, build_cost_multiplier, sale_price_multiplier, margin_override, timing_shift_months, excluded_project_ids, created_by, created_at, updated_by, updated_at';
+  'id, name, class, locked, interest_rate_delta_bps, build_cost_multiplier, sale_price_multiplier, margin_override, timing_shift_months, excluded_project_ids, starts_per_year_override, created_by, created_at, updated_by, updated_at';
 
 export async function findManyScenarios(): Promise<ScenarioView[]> {
   const supabase = createSupabaseServerClient();
@@ -84,6 +88,8 @@ export interface ScenarioInput {
   margin_override: number | null;
   timing_shift_months: number;
   excluded_project_ids: string[];
+  /** V6.2 T124 — optional starts/year. Null = use org velocity target. */
+  starts_per_year_override?: number | null;
 }
 
 export async function insertScenario(
@@ -155,6 +161,8 @@ function normalize(row: ScenarioRow): ScenarioView {
     margin_override: row.margin_override == null ? null : Number(row.margin_override),
     timing_shift_months: row.timing_shift_months,
     excluded_project_ids: row.excluded_project_ids ?? [],
+    starts_per_year_override:
+      row.starts_per_year_override == null ? null : Number(row.starts_per_year_override),
     createdBy: row.created_by,
     createdAt: row.created_at,
     updatedBy: row.updated_by,

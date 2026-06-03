@@ -29,6 +29,7 @@ const PatchBodySchema = z.object({
   margin_override: z.number().min(0).max(1).nullable().optional(),
   timing_shift_months: z.number().int().min(-36).max(36).optional(),
   excluded_project_ids: z.array(z.string().uuid()).optional(),
+  starts_per_year_override: z.number().int().min(0).max(50).nullable().optional(),
 });
 
 export const GET = withErrorBoundary(async (_req: NextRequest, ctx: { params: { id: string } }) => {
