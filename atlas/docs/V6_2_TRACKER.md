@@ -31,7 +31,7 @@
 | **T124** | Scenario Modeler — 5 sliders + real-time recompute of all 6 strategic answers  | P0  | 0035        | ✅     | _(this commit)_ | **SHIPPED.** Migration 0035 applied (adds `starts_per_year_override` to `atlas.scenarios`; repo + POST/PATCH Zod schemas extended). New `/analytics/scenario-modeler` — Server Component fetches projects+inputs / sources / assignments / cap table / globals / active scenario, hands them to a client island. **Client-side live recompute** (200ms-debounced) per plan §T124.2: 5 sliders (sale ×, build ×, rate Δ, timing shift, starts/year) → builds a `Scenario` → `buildCashSchedule` + `runProject` + `solveStartCapacity` + `buildSelfFundingTrajectory` + `computeRolloutTrigger` ALL IN THE BROWSER (same pure fns the dedicated pages use → reconciles by construction). 6 answers as a BoardroomRow-style strip. Save → POST `/api/scenarios`; "Save & activate" → also POST `/api/scenarios/active`. New "Modeler" analytics sub-tab. **Verified with a real `next build`** (client/server boundary clean — the calc/treasury fns are pure, `import type` for repo types is erased). `D-063` logged; deviation V6-17. typecheck + lint + preflight + build clean; 530/530 tests, golden 23/23. ⚠ 6th answer (distribution forecast) shows "Pending" until T125; starts/year is persisted but doesn't flow into the existing-project recompute. |
 | **T125** | Distribution Forecast page (replaces V5.2 `/earnings` placeholder)             | P0  | —           | ✅     | _(this commit)_ | **SHIPPED (VB-3 workaround).** Pure `buildDistributionForecast(schedule, capTable, opts?)` in `lib/treasury/distribution-forecast.ts` — per-owner monthly + annual distributions from the T120 schedule's recognised NPAT. **D-062 consistency:** distribution = owner TAX distribution (`NPAT × share × tax_rate`), so the annual total ≡ self-funding `annual_distributions` (reconciliation test passes). Supersedes the literal "100% by bps" spec per Viktor's confirmed "owner tax only". `/earnings` replaces the V5.2 placeholder: hero (FY total / your share / rate), 36-mo monthly column chart, annual per-owner table. **§2.7 visibility:** super_admin sees all owners; a logged-in owner matched by **email** (`resolveOwnerByEmail` — VB-3 workaround until owner↔auth links land) sees own row + total; everyone else sees the portfolio total + "Pending account". Unlinked owners render "pending account" in the admin view. Also wired the **Scenario Modeler's 6th answer** (was "Pending") to the live next-distribution. 10 unit tests (incl. self-funding reconciliation + email match). `D-064` logged; deviation V6-18. typecheck + lint + preflight + build clean; 540/540 tests, golden 23/23. ⚠ Forward-only window (no trailing history); full per-owner enforcement still wants the real VB-3 `user_id` link. |
 | **T126** | Boardroom Strip wiring + reconciliation tests (3 invariants)                   | P0  | —           | ✅     | _(this commit)_ | **SHIPPED.** Dashboard Boardroom refactored to the "no surface independently recomputes" rule: builds ONE `buildCashSchedule` and derives **Next capital call** (first `net_cash_need>0` row — was a separate committed-only engine loop) + **Next owner distribution** (`buildDistributionForecast` next month — was `buildProjectPnL` of the next close) from it. Re-pointed all 5 row hrefs: capital call→`/analytics/cash-schedule`, distribution→`/earnings`, LOC headroom→`/analytics/loc`, rollout→`/pipeline/capacity`, self-funding→`/analytics/self-funding`. New `lib/treasury/__tests__/reconciliation.test.ts` (5 tests, 3 invariants): (1) LOC repayment `outstanding[M]` ≡ schedule `kpc_loc.balance_eom[M]`; (2) distribution `annual[FY].total` ≡ self-funding `annual_distributions[FY]`; (3) self-funding `annual_equity_need[FY]` ≡ Σ schedule `net_equity_drawn` over FY + next-capital-call ≡ first net-draw row. `D-065` logged; deviation V6-19. typecheck + lint + preflight + build clean; 545/545 tests, golden 23/23. |
-| **T127** | Closing PR: DECISIONS + DEVIATION_REGISTER + tag `v6.2.0`                      | P0  | —           | ☐      | —               | Decision IDs **D-057 → D-065**. Migration 0036 reserved/spare.                                                                                   |
+| **T127** | Closing PR: DECISIONS + DEVIATION_REGISTER + tag `v6.2.0`                      | P0  | —           | ✅     | _(this commit)_ | **CLOSED.** DECISIONS `D-057 → D-065` all present; DEVIATION_REGISTER rows `V6-11 → V6-20` for T118–T127. Acceptance checklist (§5) verified below — all boxes met, with 3 documented BLOCKED-ON-VIKTOR caveats (VB-1 LOC covenant, VB-2 Harrison facility, VB-3 owner links) shipped as functional scaffolds. Migrations 0000–0032 untouched; only 0033/0034/0035 added (0036 reserved/unused). No new UI libs. Tag `v6.2.0` pushed. Deviation V6-20. |
 
 Migration allocation: **0033** capital_sources extras (T118) · **0034** capital_source_assignments (T118) · **0035** scenarios `starts_per_year_override` (T124) · **0036** spare/unallocated.
 
@@ -61,6 +61,72 @@ None of VB-1/VB-2/VB-3 block T118 *kickoff* (schema scaffolds + repo can ship wi
 ## Definition of done — every ticket (V6.2 §6.5)
 
 1. Merged to `main` · 2. CI green · 3. **Preflight green** (NEW per V6.1 lesson — catches CF Pages edge-runtime drift) · 4. Verified on https://juno-atlas.pages.dev · 5. `DEVIATION_REGISTER.md` updated · 6. `DECISIONS.md` updated where applicable · 7. Audit-log spot-check on new write paths · 8. For covenant code: written formula in JSDoc + golden test (Hard Rule #6).
+
+---
+
+## V6.2 close-out — acceptance checklist (T127, verified 3 Jun 2026)
+
+Tag **`v6.2.0`**. All 10 tickets (T118–T127) shipped + deployed. **545 tests** (golden 23/23 untouched), typecheck + lint + preflight + `next build` clean on the closing commit.
+
+```
+## Part 1 — Capital Sources ledger (T118, T119)
+[x] Settings → Capital Sources lists all facilities with versioning
+[x] Super-admin can add / edit / archive a capital source
+[x] Each edit writes a new version + audit log row
+[x] Project Inputs editor has Capital sources section with drag-reorder
+[x] Default assignment = [kpc_loc] for back-compat baselines
+
+## Part 1 — 36-month cash schedule (T120)
+[x] /analytics/cash-schedule renders 36 months × all active sources
+[x] Per-source breakdown sums to per-project totals (parity tested)
+[x] Covenant breaches surface as red StatusDots with formulas in popover
+[~] KPC LOC + Harrison Senior breakdowns are SEPARATE columns — mechanism ships
+    one column per active source; Harrison row not seeded (VB-2, BLOCKED-ON-VIKTOR)
+
+## Part 1 — KPC LOC repayment + Start capacity (T121, T122)
+[x] /analytics/loc shows first-paydown + full-clearance dates
+[x] Timeline chart annotates paydown and clearance
+[x] /pipeline/capacity shows max_concurrent_starts_now integer + month
+    (state 'unconfigured' until VB-1 LOC covenant entered — never invented)
+[x] Pipeline page links to the capacity surface (Capacity chip)
+
+## Part 2 — Self-funding trajectory (T123)
+[x] /analytics/self-funding renders 2 annual bar series + self-funding line
+[x] Hero shows "Self-funding by {year}" or "Insufficient data"
+[x] Boardroom Strip gains a 5th row for self-funding
+
+## Part 2 — Scenario Modeler (T124)
+[x] 5 sliders recompute all 6 strategic answers in real-time (client-side)
+[x] Save writes to atlas.scenarios; "Save & activate" flips the active cookie
+[x] Migration 0035 adds starts_per_year_override
+
+## Part 2 — Distribution Forecast (T125)
+[x] /earnings replaces V5.2 placeholder
+[x] Super-admin sees all owner rows
+[x] Logged-in owner sees own row + total only (matched by email — VB-3 workaround)
+[x] Un-linked owners show as "Pending account"
+
+## Part 2 — Boardroom wiring (T126)
+[x] All 5 Boardroom rows link to V6.2 surfaces
+[x] Reconciliation tests pass (3 invariants)
+[x] No surface independently recomputes any treasury number
+
+## Hard Rules + housekeeping
+[x] golden 23/23 green on every commit (engine untouched)
+[x] No new UI libraries (package.json unchanged — recharts pre-existed)
+[x] Migrations 0000-0032 unchanged; only 0033/0034/0035 added (0036 reserved/unused)
+[x] DECISIONS.md has D-057 through D-065
+[x] DEVIATION_REGISTER.md has rows for T118-T127 (V6-11 → V6-20)
+[x] Tag v6.2.0 pushed to origin
+[x] Mobile (375px) still deferred — explicit in scope
+```
+
+**Open BLOCKED-ON-VIKTOR items (functional scaffolds shipped, no invented numbers):**
+- **VB-1** — KPC LOC `covenant_max_concurrent_projects`: `/pipeline/capacity` shows "Insufficient data" until entered in Settings → Capital Sources. Goes live with no code change.
+- **VB-2** — Harrison Senior facility terms: cash schedule renders a separate column the moment a super-admin adds the source.
+- **VB-3** — owner↔Supabase `user_id` links: `/earnings` uses email matching meanwhile; super-admin view is fully functional.
+
+**Decision policy confirmed by Viktor (3 Jun):** owner distributions = **owner tax only** (D-062/D-064) — the one distribution policy across self-funding + distribution forecast + Boardroom.
 
 ---
 
