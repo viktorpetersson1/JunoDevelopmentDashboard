@@ -21,6 +21,7 @@ import type { CSSProperties } from 'react';
 export type AnalyticsTabKey =
   | 'forecast'
   | 'capital'
+  | 'cash-schedule'
   | 'waterfall'
   | 'sensitivity'
   | 'scenarios'
@@ -35,6 +36,7 @@ interface TabDef {
 
 export const ANALYTICS_TABS: readonly TabDef[] = [
   { key: 'capital', label: 'Capital', href: '/analytics/capital' },
+  { key: 'cash-schedule', label: 'Cash schedule', href: '/analytics/cash-schedule' },
   { key: 'waterfall', label: 'Waterfall', href: '/analytics/waterfall' },
   { key: 'sensitivity', label: 'Sensitivity', href: '/analytics/sensitivity' },
   { key: 'scenarios', label: 'Scenarios', href: '/analytics/scenarios' },

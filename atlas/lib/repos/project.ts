@@ -141,6 +141,39 @@ export async function findManyProjects(
 }
 
 /**
+ * V6.2 T120 — Fetch current projects with their DB uuid alongside the
+ * ProjectInput shape. The treasury aggregator needs uuids for the
+ * capital-source assignment lookup; this avoids N round-trips via
+ * findCurrentProjectUuidByKey.
+ */
+export async function findManyProjectsWithUuids(
+  opts: ListProjectsOptions = {},
+): Promise<Array<{ uuid: string; input: ProjectInput }>> {
+  const supabase = createSupabaseServerClient();
+  const limit = Math.min(Math.max(opts.limit ?? 100, 1), 200);
+
+  let query = supabase
+    .schema('atlas')
+    .from('projects')
+    .select(SELECT_COLUMNS)
+    .eq('is_current', true)
+    .eq('is_archived', false)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (opts.stage) query = query.eq('stage', opts.stage);
+  if (opts.status) query = query.eq('status', opts.status);
+
+  const { data, error } = await query;
+  if (error) throw new Error(`findManyProjectsWithUuids: ${error.message}`);
+
+  return ((data as unknown as ProjectRow[]) ?? []).map((row) => ({
+    uuid: row.id,
+    input: projectRowToInput(row),
+  }));
+}
+
+/**
  * Fetch the current (non-archived) version of one project by its stable key.
  * Returns null when not found.
  */
