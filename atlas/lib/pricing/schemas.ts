@@ -49,3 +49,114 @@ export const CompResearchDataSchema = z.object({
 export type SonarComp = z.infer<typeof SonarCompSchema>;
 export type SonarWaterfront = NonNullable<z.infer<typeof SonarCompAttributesSchema>['waterfront']>;
 export type CompResearchData = z.infer<typeof CompResearchDataSchema>;
+
+// ── V6.1.5 (T-PRC-3) — strategy brief synthesis (mirrors StrategyBriefSchema) ──
+// Validates the Sonar brief-synthesis response before it is mapped into the
+// existing ParsedBriefBody / StrategyBrief shape. Lenient (defaults on arrays +
+// strings, optional margins) because reconcileMath recomputes the arithmetic
+// server-side and breakevens/comps are merged in by generateStrategyBrief.
+
+export const BriefClassificationSchema = z.enum([
+  'rider',
+  'stretch_rider',
+  'market_maker',
+  'market_rider',
+]);
+
+const BriefRecommendationSchema = z.object({
+  launchPriceUsd: z.number(),
+  psfAtLaunch: z.number(),
+  expectedMarginPct: z.number().optional(),
+  probWeightedMarginPct: z.number().optional(),
+  oneLineThesis: z.string(),
+  classification: BriefClassificationSchema.optional(),
+});
+
+const QuickMathRowSchema = z.object({
+  scenario: z.string(),
+  exitUsd: z.number(),
+  psf: z.number(),
+  netAfterClosingUsd: z.number().optional(),
+  profitUsd: z.number().optional(),
+  marginPct: z.number().optional(),
+  read: z.string().optional(),
+});
+
+const MarketIndicatorSchema = z.object({
+  indicator: z.string(),
+  reading: z.string(),
+  implication: z.string(),
+});
+
+const ReductionPhaseSchema = z.object({
+  label: z.string(),
+  priceUsd: z.number(),
+  psf: z.number().optional(),
+  trigger: z.string().optional(),
+  marginPct: z.number().optional(),
+  action: z.string().optional(),
+});
+
+const OutcomeScenarioSchema = z.object({
+  name: z.string(),
+  description: z.string().optional(),
+  exitUsd: z.number(),
+  marginPct: z.number().optional(),
+  probabilityPct: z.number(),
+});
+
+const RiskItemSchema = z.object({
+  risk: z.string(),
+  impact: z.string().optional(),
+  mitigation: z.string().optional(),
+});
+
+export const StrategyBriefBodySchema = z.object({
+  recommendation: BriefRecommendationSchema,
+  quickMath: z.array(QuickMathRowSchema).default([]),
+  compEvidenceNarrative: z.string().default(''),
+  marketSentiment: z
+    .object({
+      indicators: z.array(MarketIndicatorSchema).default([]),
+      overallRead: z.string().default(''),
+    })
+    .default({ indicators: [], overallRead: '' }),
+  reductionLadder: z
+    .object({
+      phases: z.array(ReductionPhaseSchema).default([]),
+      walkAwayFloor: z
+        .object({
+          priceUsd: z.number().default(0),
+          psf: z.number().default(0),
+          marginPct: z.number().default(0),
+          action: z.string().default(''),
+        })
+        .default({ priceUsd: 0, psf: 0, marginPct: 0, action: '' }),
+    })
+    .default({ phases: [], walkAwayFloor: { priceUsd: 0, psf: 0, marginPct: 0, action: '' } }),
+  outcomeScenarios: z
+    .object({
+      scenarios: z.array(OutcomeScenarioSchema).default([]),
+      probWeightedExpectedMarginPct: z.number().default(0),
+      probWeightedExpectedExitUsd: z.number().default(0),
+    })
+    .default({ scenarios: [], probWeightedExpectedMarginPct: 0, probWeightedExpectedExitUsd: 0 }),
+  risks: z.array(RiskItemSchema).default([]),
+  whyThisNumber: z
+    .object({
+      headline: z.string().default(''),
+      whyNotHigher: z.array(z.string()).default([]),
+      whyNotLower: z.array(z.string()).default([]),
+    })
+    .default({ headline: '', whyNotHigher: [], whyNotLower: [] }),
+  finalRecommendation: z
+    .object({
+      icFraming: z.string().default(''),
+      nextSteps: z.array(z.string()).default([]),
+    })
+    .default({ icFraming: '', nextSteps: [] }),
+  triangulation_block: z.unknown().optional(),
+});
+
+export type BriefClassification = z.infer<typeof BriefClassificationSchema>;
+export type StrategyBriefBody = z.infer<typeof StrategyBriefBodySchema>;

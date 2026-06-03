@@ -75,6 +75,161 @@ export const CompResearchSchema = {
   },
 } as const;
 
-// StrategyBriefSchema       → added in T-PRC-3
+/**
+ * Strategy brief synthesis (strategy-brief.ts → `sonar-pro`, no web search).
+ *
+ * IMPORTANT (deviation V6.1.5-008): this mirrors the EXISTING `ParsedBriefBody`
+ * shape (the AI-generated subset of `StrategyBrief`), NOT the plan's literal
+ * StrategyBriefSchema field names (low/best/high, day0/60/120/180, bear/base/bull).
+ * Reason: `generateStrategyBrief` already composes the brief from this shape +
+ * deterministic breakevens + researched comps, then `reconcileMath` fixes the
+ * arithmetic, and `insertBrief` + the render consume it. Mirroring the existing
+ * shape keeps all of that untouched (option-b). The plan's NEW additions are
+ * folded in: `recommendation.classification` (rider/maker) + `triangulation_block`
+ * (populated by T-PRC-4). Breakevens + comp arrays are merged server-side, so
+ * they are NOT in this schema.
+ */
+export const StrategyBriefSchema = {
+  type: 'object',
+  required: [
+    'recommendation',
+    'quickMath',
+    'compEvidenceNarrative',
+    'marketSentiment',
+    'reductionLadder',
+    'outcomeScenarios',
+    'risks',
+    'whyThisNumber',
+    'finalRecommendation',
+  ],
+  properties: {
+    recommendation: {
+      type: 'object',
+      required: ['launchPriceUsd', 'psfAtLaunch', 'oneLineThesis'],
+      properties: {
+        launchPriceUsd: { type: 'integer' },
+        psfAtLaunch: { type: 'integer' },
+        expectedMarginPct: { type: 'number' }, // margin at the ask (server recomputes)
+        probWeightedMarginPct: { type: 'number' },
+        oneLineThesis: { type: 'string' },
+        // V6.1.5 — rider/maker classification (framework §3.3). New vs the Anthropic path.
+        classification: {
+          type: 'string',
+          enum: ['rider', 'stretch_rider', 'market_maker', 'market_rider'],
+        },
+      },
+    },
+    quickMath: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          scenario: { type: 'string' },
+          exitUsd: { type: 'integer' },
+          psf: { type: 'integer' },
+          netAfterClosingUsd: { type: 'integer' },
+          profitUsd: { type: 'integer' },
+          marginPct: { type: 'number' },
+          read: { type: 'string' },
+        },
+      },
+    },
+    compEvidenceNarrative: { type: 'string' },
+    marketSentiment: {
+      type: 'object',
+      properties: {
+        indicators: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              indicator: { type: 'string' },
+              reading: { type: 'string' },
+              implication: { type: 'string' },
+            },
+          },
+        },
+        overallRead: { type: 'string' },
+      },
+    },
+    reductionLadder: {
+      type: 'object',
+      properties: {
+        phases: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              label: { type: 'string' }, // Day 0 / 60 / 120 / 180
+              priceUsd: { type: 'integer' },
+              psf: { type: 'integer' },
+              trigger: { type: 'string' },
+              marginPct: { type: 'number' },
+              action: { type: 'string' },
+            },
+          },
+        },
+        walkAwayFloor: {
+          type: 'object',
+          properties: {
+            priceUsd: { type: 'integer' },
+            psf: { type: 'integer' },
+            marginPct: { type: 'number' },
+            action: { type: 'string' },
+          },
+        },
+      },
+    },
+    outcomeScenarios: {
+      type: 'object',
+      properties: {
+        scenarios: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+              description: { type: 'string' },
+              exitUsd: { type: 'integer' },
+              marginPct: { type: 'number' },
+              probabilityPct: { type: 'number' },
+            },
+          },
+        },
+        probWeightedExpectedMarginPct: { type: 'number' },
+        probWeightedExpectedExitUsd: { type: 'integer' },
+      },
+    },
+    risks: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          risk: { type: 'string' },
+          impact: { type: 'string' },
+          mitigation: { type: 'string' },
+        },
+      },
+    },
+    whyThisNumber: {
+      type: 'object',
+      properties: {
+        headline: { type: 'string' },
+        whyNotHigher: { type: 'array', items: { type: 'string' } },
+        whyNotLower: { type: 'array', items: { type: 'string' } },
+      },
+    },
+    finalRecommendation: {
+      type: 'object',
+      properties: {
+        icFraming: { type: 'string' },
+        nextSteps: { type: 'array', items: { type: 'string' } },
+      },
+    },
+    // Populated by T-PRC-4 when data_gap_severity != 'none'; free-form here.
+    triangulation_block: { type: 'object' },
+  },
+} as const;
+
 // TriangulationBlockSchema  → added in T-PRC-4
 // BuyerMigrationThesisSchema → added in T-PRC-5
