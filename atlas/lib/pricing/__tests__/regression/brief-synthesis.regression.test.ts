@@ -63,26 +63,57 @@ function briefBody(classification: string, launchPriceUsd: number, psf: number) 
   };
 }
 
+const TRIANGULATION_BLOCK = {
+  in_sub_cut_closed_count: 0,
+  in_sub_cut_active_count: 2,
+  adjacent_sub_cut_closed_count: 1,
+  adjacent_sub_cut_definition: 'Adjacent bayfront NC',
+  primary_anchor: {
+    address: '3745 Nassau Point Rd',
+    price_per_sqft: 1455,
+    role: 'anchor',
+    why_chosen: 'Closest bayfront NC.',
+  },
+  secondary_anchors: [],
+  derived_band: { low: 1100, best: 1450, high: 1800, per_sqft_or_total: 'per_sqft' },
+  band_derivation_logic: 'Anchored to the adjacent bayfront NC closed set.',
+  gap_severity: 'red',
+  unresolved_questions: ['Does the buyer substitute from bayfront?'],
+};
+
+// comp research + (on a data gap) triangulation both use callSite 'comp_research';
+// the triangulation call is distinguished by its prompt.
 function mockChain(comp: CompFixture, brief: unknown): void {
   callMock.mockImplementation(async (input) => {
-    if (input.callSite === 'comp_research') {
+    if (input.callSite === 'strategy_brief') {
       return {
-        data: comp.payload,
-        citations: comp.citations,
-        rawResponseId: 'comp',
-        inputTokens: 8000,
-        outputTokens: 3000,
-        costUsd: 0.069,
+        data: brief,
+        citations: [],
+        rawResponseId: 'brief',
+        inputTokens: 5000,
+        outputTokens: 2000,
+        costUsd: 0.045,
+        latencyMs: 100,
+      };
+    }
+    if (input.userPrompt.includes('Data-gap triangulation')) {
+      return {
+        data: TRIANGULATION_BLOCK,
+        citations: [],
+        rawResponseId: 'tri',
+        inputTokens: 4000,
+        outputTokens: 1500,
+        costUsd: 0.034,
         latencyMs: 100,
       };
     }
     return {
-      data: brief,
-      citations: [],
-      rawResponseId: 'brief',
-      inputTokens: 5000,
-      outputTokens: 2000,
-      costUsd: 0.045,
+      data: comp.payload,
+      citations: comp.citations,
+      rawResponseId: 'comp',
+      inputTokens: 8000,
+      outputTokens: 3000,
+      costUsd: 0.069,
       latencyMs: 100,
     };
   });
@@ -128,7 +159,7 @@ afterEach(() => {
 });
 
 describe('T-PRC-3 brief synthesis regression — classification via Sonar', () => {
-  it('Big Bing SF → Market-Maker; citations carried; provider=perplexity; 2 Sonar calls', async () => {
+  it('Big Bing SF → Market-Maker; triangulation fires (red gap); citations; 3 Sonar calls', async () => {
     mockChain(bigBing as CompFixture, briefBody('market_maker', 10_875_000, 1450));
     const r = await generateStrategyBrief(facts({ villaSqftAg: 7500, waterfrontType: 'sound_front_bluff' }), cc, '');
     expect(r.error).toBeUndefined();
@@ -136,21 +167,27 @@ describe('T-PRC-3 brief synthesis regression — classification via Sonar', () =
     expect(r.llmProvider).toBe('perplexity');
     expect(r.citations?.length ?? 0).toBeGreaterThan(0); // from the comp-research call
     expect(r.brief.compEvidence.closedComps.length).toBeGreaterThan(0);
-    expect(callMock).toHaveBeenCalledTimes(2); // comp_research + strategy_brief
+    // red gap → triangulation fires + attaches (T-PRC-4)
+    expect(r.brief.triangulationBlock?.gap_severity).toBe('red');
+    expect(r.brief.triangulationBlock?.primary_anchor?.address).toContain('3745 Nassau Point');
+    expect(callMock).toHaveBeenCalledTimes(3); // comp_research + triangulation + strategy_brief
   });
 
-  it('6 GC → Rider', async () => {
+  it('6 GC → Rider; no triangulation (gap=none)', async () => {
     mockChain(sixGc as CompFixture, briefBody('rider', 4_992_000, 1248));
     const r = await generateStrategyBrief(facts({ villaSqftAg: 4000, subMarketLabel: 'Shelter Island' }), cc, '');
     expect(r.error).toBeUndefined();
     expect(r.brief.recommendation.classification).toBe('rider');
+    expect(r.brief.triangulationBlock).toBeUndefined();
+    expect(callMock).toHaveBeenCalledTimes(2); // comp_research + strategy_brief (no triangulation)
   });
 
-  it('84 SBR → Market-Rider', async () => {
+  it('84 SBR → Market-Rider; triangulation fires (amber gap)', async () => {
     mockChain(eightFourSbr as CompFixture, briefBody('market_rider', 7_500_000, 1500));
     const r = await generateStrategyBrief(facts({ villaSqftAg: 5000, subMarketLabel: 'North Haven' }), cc, '');
     expect(r.error).toBeUndefined();
     expect(r.brief.recommendation.classification).toBe('market_rider');
+    expect(r.brief.triangulationBlock).toBeDefined();
   });
 
   it('Sonar brief failure → deterministic fallback + error, never an Anthropic retry', async () => {

@@ -31,6 +31,7 @@ import type {
 import { CompProvenanceBadge } from '@/app/pricing/_components/comp-provenance-badge';
 import type { ResearchedComp } from '@/lib/pricing/comp-researcher';
 import type { PerplexityCitation } from '@/lib/llm/perplexity-client';
+import type { TriangulationBlock } from '@/lib/pricing/schemas';
 
 /** D-026(c): map an AI-research comp to a provenance bucket for the badge. */
 function researchedCompProvenance(c: ResearchedComp): 'ai_live' | 'ai_estimated' {
@@ -542,6 +543,9 @@ function BriefRenderer({
         <FailedRecommendationCard />
       )}
 
+      {/* V6.1.5 (T-PRC-4) — triangulation block sits above the brief proper on a data gap. */}
+      {brief.triangulationBlock && <TriangulationSection block={brief.triangulationBlock} />}
+
       {/* Breakeven thresholds are deterministic — always reliable. */}
       <BreakevenThresholds thresholds={brief.breakevenThresholds} />
 
@@ -669,6 +673,99 @@ function SourcesSection({
           </li>
         ))}
       </ol>
+    </Card>
+  );
+}
+
+// ── Triangulation (V6.1.5 T-PRC-4 — data-gap reconciliation) ────────────────
+
+function TriangulationSection({ block }: { block: TriangulationBlock }) {
+  const band = block.derived_band;
+  const isTotal = band.per_sqft_or_total === 'total';
+  const fmtBand = (n: number | undefined): string =>
+    n == null ? '—' : isTotal ? usd(n, { compact: true }) : `$${Math.round(n).toLocaleString()}/SF`;
+  return (
+    <Card>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+        }}
+      >
+        <SectionEyebrow label="Triangulation — data gap" />
+        <Badge color={block.gap_severity === 'red' ? 'negative' : 'warning'}>
+          {block.gap_severity} gap
+        </Badge>
+      </div>
+      <div style={{ marginTop: 8, fontSize: 13, color: 'var(--color-text-secondary, #6b7280)' }}>
+        In-sub-cut closed {block.in_sub_cut_closed_count} · active {block.in_sub_cut_active_count}
+        {block.adjacent_sub_cut_definition
+          ? ` · adjacent sub-cut: ${block.adjacent_sub_cut_definition}`
+          : ''}
+      </div>
+      {block.primary_anchor && (
+        <div style={{ marginTop: 10, fontSize: 14, color: 'var(--color-text-primary, #111)' }}>
+          <strong>Primary anchor:</strong> {block.primary_anchor.address} — $
+          {Math.round(block.primary_anchor.price_per_sqft).toLocaleString()}/SF
+          {block.primary_anchor.why_chosen ? ` — ${block.primary_anchor.why_chosen}` : ''}
+        </div>
+      )}
+      {block.secondary_anchors.length > 0 && (
+        <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 13 }}>
+          {block.secondary_anchors.map((a) => (
+            <li key={a.address}>
+              {a.address} — ${Math.round(a.price_per_sqft).toLocaleString()}/SF
+              {a.role ? ` (${a.role})` : ''}
+            </li>
+          ))}
+        </ul>
+      )}
+      <div
+        style={{
+          marginTop: 12,
+          fontSize: 15,
+          fontWeight: 700,
+          fontVariantNumeric: 'tabular-nums',
+          color: 'var(--color-text-primary, #111)',
+        }}
+      >
+        Derived band: {fmtBand(band.low)} / {fmtBand(band.best)} / {fmtBand(band.high)}
+      </div>
+      {block.band_derivation_logic && (
+        <p
+          style={{
+            margin: '8px 0 0',
+            fontSize: 13,
+            lineHeight: 1.5,
+            color: 'var(--color-text-primary, #111)',
+          }}
+        >
+          {block.band_derivation_logic}
+        </p>
+      )}
+      {block.unresolved_questions.length > 0 && (
+        <div style={{ marginTop: 12 }}>
+          <div
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              color: 'var(--color-text-tertiary, #767b84)',
+            }}
+          >
+            Unresolved — partner reconciliation
+          </div>
+          <ul style={{ margin: '4px 0 0', paddingLeft: 18, fontSize: 13 }}>
+            {block.unresolved_questions.map((q) => (
+              <li key={q}>{q}</li>
+            ))}
+          </ul>
+        </div>
+      )}
     </Card>
   );
 }

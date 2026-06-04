@@ -29,9 +29,15 @@ import {
 // V6.1.5 (T-PRC-3) — Sonar brief synthesis (option-b dual-path)
 import { callPerplexity, PerplexityError, type PerplexityCitation } from '@/lib/llm/perplexity-client';
 import { StrategyBriefSchema } from '@/lib/llm/perplexity-schemas';
-import { StrategyBriefBodySchema, type BriefClassification, type StrategyBriefBody } from './schemas';
+import {
+  StrategyBriefBodySchema,
+  type BriefClassification,
+  type StrategyBriefBody,
+  type TriangulationBlock,
+} from './schemas';
 import { pricingProvider, type PricingProvider } from './provider';
 import { SYSTEM_BASE_PROMPT, promptHash } from './prompts';
+import { runTriangulation } from './triangulator';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Inputs
@@ -155,6 +161,9 @@ export interface StrategyBrief {
     icFraming: string;
     nextSteps: string[];
   };
+
+  /** V6.1.5 (T-PRC-4) — structured triangulation for data-gap cases. Sonar path only. */
+  triangulationBlock?: TriangulationBlock;
 }
 
 export interface QuickMathRow {
@@ -732,19 +741,44 @@ export async function generateStrategyBrief(
         }
       : null;
 
+  // 2b. V6.1.5 (T-PRC-4) — structured triangulation when comp research flags a
+  // data gap (closed in-sub-cut < 3). Sonar reasoning call; failure is non-fatal
+  // (block stays undefined, brief proceeds). Sonar path only.
+  let triangulationBlock: TriangulationBlock | undefined;
+  if (
+    provider === 'perplexity' &&
+    compResearch.dataGapSeverity &&
+    compResearch.dataGapSeverity !== 'none'
+  ) {
+    const tri = await runTriangulation(
+      {
+        subjectSummary: `${facts.name} — ${facts.address}, ${facts.villaSqftAg.toLocaleString()} AG sqft, ${facts.isNewConstruction ? 'new construction' : 'resale'}`,
+        subCutDefinition: compResearch.subCutDefinition ?? facts.subMarketLabel,
+        gapSeverity: compResearch.dataGapSeverity,
+        closedComps,
+        activeComps,
+      },
+      runId
+    );
+    if (tri.block) triangulationBlock = tri.block;
+  }
+
   // 3. Brief synthesis — Sonar (option-b flag) or the existing Anthropic call.
   const prompt = buildBriefPrompt(facts, closingCosts, breakevens, closedComps, activeComps);
 
   const fallback = (error: string): BriefGenerationResult => ({
-    brief: buildFallbackBrief(
-      facts,
-      closingCosts,
-      breakevens,
-      compResearch.comps,
-      medianPsf,
-      rangePsf,
-      compResearch.narrativeSummary
-    ),
+    brief: {
+      ...buildFallbackBrief(
+        facts,
+        closingCosts,
+        breakevens,
+        compResearch.comps,
+        medianPsf,
+        rangePsf,
+        compResearch.narrativeSummary
+      ),
+      triangulationBlock,
+    },
     usedWebSearch: compResearch.usedWebSearch,
     compCount: compResearch.comps.length,
     dataGap: compResearch.dataGap,
@@ -798,6 +832,7 @@ export async function generateStrategyBrief(
     risks: parsed.risks ?? [],
     whyThisNumber: parsed.whyThisNumber ?? { headline: '', whyNotHigher: [], whyNotLower: [] },
     finalRecommendation: parsed.finalRecommendation ?? { icFraming: '', nextSteps: [] },
+    triangulationBlock,
   };
 
   // 5. Reconcile arithmetic. LLMs (Claude included) are unreliable on
