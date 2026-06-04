@@ -17,7 +17,10 @@
 export type PricingProvider = 'anthropic' | 'perplexity';
 
 export function pricingProvider(): PricingProvider {
-  return process.env.PRICING_LLM_PROVIDER === 'perplexity' ? 'perplexity' : 'anthropic';
+  // .trim() is load-bearing: CF Pages secrets set via `wrangler pages secret put`
+  // with a piped value can carry a trailing newline ("perplexity\n"), which would
+  // silently fail the `=== 'perplexity'` check and leave the path on Anthropic.
+  return process.env.PRICING_LLM_PROVIDER?.trim() === 'perplexity' ? 'perplexity' : 'anthropic';
 }
 
 /** True once the pricing path is wired to Perplexity Sonar (T-PRC-3 flip). */

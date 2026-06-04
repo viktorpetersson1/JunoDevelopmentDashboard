@@ -162,7 +162,9 @@ function normalizeCitations(body: PerplexityResponseBody): PerplexityCitation[] 
 export async function callPerplexity<T>(
   input: PerplexityCallInput
 ): Promise<PerplexityCallResult<T>> {
-  const apiKey = process.env.PERPLEXITY_API_KEY;
+  // .trim() guards against a trailing newline from a `wrangler pages secret put`
+  // piped value — an Authorization header with a stray "\n" 401s (or throws).
+  const apiKey = process.env.PERPLEXITY_API_KEY?.trim();
   if (!apiKey) {
     // Hard error on a missing key (§2.4) — never a silent skip.
     throw new PerplexityError({
