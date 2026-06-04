@@ -255,5 +255,53 @@ export const LocationClassificationSchema = {
   },
 } as const;
 
-// TriangulationBlockSchema  → added in T-PRC-4
+/**
+ * Triangulation block (triangulator.ts → `sonar-pro`). Fired when comp research
+ * returns data_gap_severity != 'none' (closed in-sub-cut < 3). Structures the
+ * data-gap reconciliation: which anchors, the adjacent sub-cut, the derived band,
+ * and the unresolved questions surfaced to the partner for human reconciliation.
+ */
+export const TriangulationBlockSchema = {
+  type: 'object',
+  required: [
+    'in_sub_cut_closed_count',
+    'in_sub_cut_active_count',
+    'derived_band',
+    'band_derivation_logic',
+    'gap_severity',
+  ],
+  properties: {
+    in_sub_cut_closed_count: { type: 'integer' },
+    in_sub_cut_active_count: { type: 'integer' },
+    adjacent_sub_cut_closed_count: { type: 'integer' },
+    adjacent_sub_cut_definition: { type: 'string' },
+    primary_anchor: { $ref: '#/$defs/Anchor' },
+    secondary_anchors: { type: 'array', items: { $ref: '#/$defs/Anchor' } }, // 1-3
+    derived_band: {
+      type: 'object',
+      properties: {
+        low: { type: 'number' },
+        best: { type: 'number' },
+        high: { type: 'number' },
+        per_sqft_or_total: { type: 'string', enum: ['per_sqft', 'total'] },
+      },
+    },
+    band_derivation_logic: { type: 'string' }, // 1 paragraph
+    gap_severity: { type: 'string', enum: ['amber', 'red'] },
+    unresolved_questions: { type: 'array', items: { type: 'string' } }, // surfaced to the partner
+  },
+  $defs: {
+    Anchor: {
+      type: 'object',
+      required: ['address', 'price_per_sqft'],
+      properties: {
+        address: { type: 'string' },
+        price_per_sqft: { type: 'number' },
+        role: { type: 'string' },
+        why_chosen: { type: 'string' },
+      },
+    },
+  },
+} as const;
+
 // BuyerMigrationThesisSchema → added in T-PRC-5

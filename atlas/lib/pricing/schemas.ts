@@ -160,3 +160,35 @@ export const StrategyBriefBodySchema = z.object({
 
 export type BriefClassification = z.infer<typeof BriefClassificationSchema>;
 export type StrategyBriefBody = z.infer<typeof StrategyBriefBodySchema>;
+
+// ── V6.1.5 (T-PRC-4) — triangulation block (mirrors TriangulationBlockSchema) ──
+
+const TriangulationAnchorSchema = z.object({
+  address: z.string(),
+  price_per_sqft: z.number(),
+  role: z.string().optional(),
+  why_chosen: z.string().optional(),
+});
+
+export const TriangulationBlockDataSchema = z.object({
+  in_sub_cut_closed_count: z.number().int(),
+  in_sub_cut_active_count: z.number().int(),
+  adjacent_sub_cut_closed_count: z.number().int().optional(),
+  adjacent_sub_cut_definition: z.string().optional(),
+  primary_anchor: TriangulationAnchorSchema.optional(),
+  secondary_anchors: z.array(TriangulationAnchorSchema).default([]),
+  derived_band: z
+    .object({
+      low: z.number().optional(),
+      best: z.number().optional(),
+      high: z.number().optional(),
+      per_sqft_or_total: z.enum(['per_sqft', 'total']).optional(),
+    })
+    .default({}),
+  band_derivation_logic: z.string(),
+  gap_severity: z.enum(['amber', 'red']),
+  unresolved_questions: z.array(z.string()).default([]),
+});
+
+export type TriangulationAnchor = z.infer<typeof TriangulationAnchorSchema>;
+export type TriangulationBlock = z.infer<typeof TriangulationBlockDataSchema>;
