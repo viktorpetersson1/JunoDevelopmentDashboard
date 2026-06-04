@@ -304,4 +304,39 @@ export const TriangulationBlockSchema = {
   },
 } as const;
 
-// BuyerMigrationThesisSchema → added in T-PRC-5
+/**
+ * Buyer-migration thesis (buyer-migration-thesis.ts → `sonar-reasoning-pro`, the
+ * only CoT call). Fired when closed in-sub-cut < 3 (red gap) OR the draft
+ * classification is market_maker: would the adjacent-sub-cut buyer realistically
+ * substitute at the proposed midpoint? A 'rejected' outcome downshifts a
+ * Market-Maker classification to Stretch-Rider with the walkback midpoint.
+ */
+export const BuyerMigrationThesisSchema = {
+  type: 'object',
+  required: ['thesis_outcome', 'reasoning', 'recommended_classification'],
+  properties: {
+    thesis_outcome: { type: 'string', enum: ['supported', 'rejected', 'inconclusive'] },
+    proposed_midpoint_per_sqft: { type: 'number' },
+    adjacent_sub_cut_median_per_sqft: { type: 'number' },
+    premium_vs_adjacent_pct: { type: 'number' },
+    named_comps_supporting: { type: 'array', items: { $ref: '#/$defs/ThesisComp' } },
+    named_comps_against: { type: 'array', items: { $ref: '#/$defs/ThesisComp' } },
+    reasoning: { type: 'string' }, // 1-3 paragraphs
+    recommended_classification: {
+      type: 'string',
+      enum: ['stretch_rider', 'market_maker', 'rider'],
+    },
+    walkback: { type: 'string' }, // if rejected — the midpoint that WOULD be supported
+  },
+  $defs: {
+    ThesisComp: {
+      type: 'object',
+      required: ['address', 'price_per_sqft'],
+      properties: {
+        address: { type: 'string' },
+        price_per_sqft: { type: 'number' },
+        why: { type: 'string' },
+      },
+    },
+  },
+} as const;

@@ -192,3 +192,25 @@ export const TriangulationBlockDataSchema = z.object({
 
 export type TriangulationAnchor = z.infer<typeof TriangulationAnchorSchema>;
 export type TriangulationBlock = z.infer<typeof TriangulationBlockDataSchema>;
+
+// ── V6.1.5 (T-PRC-5) — buyer-migration thesis (mirrors BuyerMigrationThesisSchema) ──
+
+const ThesisCompSchema = z.object({
+  address: z.string(),
+  price_per_sqft: z.number(),
+  why: z.string().optional(),
+});
+
+export const BuyerMigrationThesisDataSchema = z.object({
+  thesis_outcome: z.enum(['supported', 'rejected', 'inconclusive']),
+  proposed_midpoint_per_sqft: z.number().optional(),
+  adjacent_sub_cut_median_per_sqft: z.number().optional(),
+  premium_vs_adjacent_pct: z.number().optional(),
+  named_comps_supporting: z.array(ThesisCompSchema).default([]),
+  named_comps_against: z.array(ThesisCompSchema).default([]),
+  reasoning: z.string(),
+  recommended_classification: z.enum(['stretch_rider', 'market_maker', 'rider']),
+  walkback: z.string().optional(),
+});
+
+export type BuyerMigrationThesis = z.infer<typeof BuyerMigrationThesisDataSchema>;
