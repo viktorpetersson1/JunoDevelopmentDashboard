@@ -558,6 +558,9 @@ function BriefRenderer({
       {/* Comp evidence is partly real (comps came from research) — show always. */}
       <CompEvidence evidence={brief.compEvidence} />
 
+      {/* V6.1.5 (T-PRC-6) — stuck-listing tracker (in-sub-cut actives sitting unsold). */}
+      <StuckListings comps={brief.compEvidence.activeComps} />
+
       {hasMarketSentiment && <MarketSentiment sentiment={brief.marketSentiment} />}
       {hasReductionLadder && <ReductionLadder ladder={brief.reductionLadder} />}
       {hasScenarios && <OutcomeScenarios scenarios={brief.outcomeScenarios} />}
@@ -768,6 +771,39 @@ function TriangulationSection({ block }: { block: TriangulationBlock }) {
           </ul>
         </div>
       )}
+    </Card>
+  );
+}
+
+// ── Stuck listings (V6.1.5 T-PRC-6 — DOM > 180 or relist >= 2) ──────────────
+
+function StuckListings({ comps }: { comps: ResearchedComp[] }) {
+  const stuck = comps.filter((c) => (c.domDays ?? 0) > 180 || (c.relistCount ?? 0) >= 2);
+  if (stuck.length === 0) return null;
+  return (
+    <Card>
+      <SectionEyebrow label="Stuck listings" />
+      <div style={{ marginTop: 8, fontSize: 13, color: 'var(--color-text-secondary, #6b7280)' }}>
+        In-sub-cut actives sitting unsold (DOM &gt; 180 or re-listed ≥ 2×) — a soft-market signal.
+      </div>
+      <ul
+        style={{
+          margin: '8px 0 0',
+          padding: 0,
+          listStyle: 'none',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+        }}
+      >
+        {stuck.map((c) => (
+          <li key={c.address} style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
+            {c.address} · {c.domDays != null ? `${c.domDays} DOM` : 'DOM n/a'} ·{' '}
+            {c.relistCount ? `${c.relistCount}× relist` : 'no relist'} ·{' '}
+            {usd(c.salePriceUsd, { compact: true })}
+          </li>
+        ))}
+      </ul>
     </Card>
   );
 }

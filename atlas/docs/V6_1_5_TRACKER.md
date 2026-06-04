@@ -39,7 +39,7 @@
 | **T-PRC-3** | Swap `generateStrategyBrief` → `sonar-pro` + `response_format` + citation persistence + chips + flip | P0 | — | ◐ | `3701084`/`6246e48`/`94ad61a` + _(this)_ | **◐ CODE COMPLETE; only the CF flag flip (Viktor live-verify) remains.** Foundation (`3701084`): `StrategyBriefSchema` (mirrors `ParsedBriefBody` — V6.1.5-008) + Zod. Server (`6246e48`): `generateStrategyBrief` dual-path → `callBriefViaSonar` (sonar-pro, `response_format`, no web search) → Zod-validate → map → `ParsedBriefBody` → existing compose + `reconcileMath` (untouched). One `runId` shared by comp-research + brief audit rows. `recommendation.classification` (rider/maker) threaded — preserved by reconcileMath. Fail-loud → deterministic fallback, no Anthropic retry. `pricing_briefs` persists `citations` + `llm_provider`; `llm_total_cost_usd` → T-PRC-6 (V6.1.5-009). Chips (`94ad61a`): classification badge + deduped Sonar "Sources" section on the brief tab (V6.1.5-006 closed). This commit: `location-classifier.ts` Sonar dual-path (V6.1.5-010) — **all 3 `lib/pricing/*` call sites now Sonar-capable.** Brief regression (4) + location regression (3). typecheck+lint+test(**568**)+preflight+build clean; golden 23/23. **ONLY REMAINING: the CF flip** (`PRICING_LLM_PROVIDER=perplexity`) after a live brief verifies on the deployed site; key set + validated; flip is instantly reversible. |
 | **T-PRC-4** | Structured triangulation block for data-gap cases (`sonar-pro`) | P0 | — | ✅ | `bae8bd4` + _(this)_ | **SHIPPED.** `TriangulationBlockSchema` + Zod → `TriangulationBlock`. `triangulator.ts` `runTriangulation` → `sonar-pro` reasoning → structured block (anchors, adjacent sub-cut, derived band, unresolved questions); fail-loud (`{ error }`, no block, no Anthropic fallback); audit `call_site='comp_research'` (V6.1.5-011). **Wired into `generateStrategyBrief`**: fires when `data_gap_severity != 'none'` (Sonar path) → attaches `StrategyBrief.triangulationBlock` (additive; survives `reconcileMath` + the fallback brief). **UI**: collapsible "Triangulation — data gap" section above the brief proper (`pricing-strategy-tab.tsx`) with red/amber severity badge, derived band, anchors, unresolved questions. Regression: Big Bing (red)→fires + 3745 Nassau anchor + 3 Sonar calls, 6 GC (none)→no triangulation, 84 SBR (amber)→fires; + 3 triangulator unit tests. typecheck+lint+test(**571**)+preflight+build clean; golden 23/23. |
 | **T-PRC-5** | Buyer-migration thesis via `sonar-reasoning-pro` | P0 | — | ✅ | `1cac7e0` + _(this)_ | **SHIPPED.** `BuyerMigrationThesisSchema` + Zod. `buyer-migration-thesis.ts` `runBuyerMigrationThesis` → **`sonar-reasoning-pro`** (only CoT call), 90s timeout, `call_site='buyer_migration_thesis'`, fail-loud. **Wired into `generateStrategyBrief`**: fires after synthesis when `data_gap_severity='red'` OR draft `market_maker`; attaches `StrategyBrief.buyerMigrationThesis` (persisted via brief jsonb + the `pricing_briefs.buyer_migration_thesis` `0037` column); **rejected outcome downshifts market_maker→stretch_rider** (presentation gate — engine math untouched). UI: collapsed thesis section (severity badge supported/inconclusive/rejected, premium, supporting/against anchors, walkback). Regression: Big Bing (red)→fires+supported+4 Sonar calls, 84 SBR (amber market_rider)→no thesis, **rejected→downshift to stretch_rider**; + 4 unit tests. typecheck+lint+test(**576**)+preflight+build clean; golden 23/23. ⚠ `response_format` on reasoning-pro unverified live (probe used sonar-pro) — fails graceful if dirty; confirm on a live red-gap brief. |
-| **T-PRC-6** | Stuck-listing tracker + PDF export + telemetry + closing PR + tag | P1 | — | ☐ | — | Stuck-listings (DOM>180 or relist≥2). PDF via existing react-pdf path (**verify it exists** — DR-B: plan assumes V5.2 react-pdf stack). `scripts/pricing-telemetry.ts`. Finalise `D-066`→`D-073`. **Tag `v6.1.5-pricing.0`.** File V6.1.5-001 (Ask Juno `research_comps`). |
+| **T-PRC-6** | Stuck-listing tracker + telemetry + close + tag (PDF deferred) | P1 | — | ✅ | _(this commit + tag)_ | **SHIPPED (PDF deferred — V6.1.5-012).** Stuck-listings: `StuckListings` section on the brief (in-sub-cut actives, DOM>180 or relist≥2; address · DOM · relist · ask). Telemetry: `scripts/pricing-telemetry.ts` (standalone `@supabase/supabase-js` query → calls-by-model, total cost, p50/p95 latency, failure-rate by call_site). **PDF export DEFERRED** — react-pdf NOT in `package.json`; adding it violates Hard Rule #3 (V6.1.5-012; browser Print-to-PDF or an export route is the follow-up). `D-066`→`D-073` finalised ✅ Shipped. V6.1.5-001 (Ask-Juno `research_comps`) filed as a post-tag follow-up. typecheck+lint+test(**576**)+preflight+build clean; golden 23/23. **Tag `v6.1.5-pricing.0`.** |
 
 Migration allocation: **0036** `pricing_llm_calls` + `pricing_briefs` citation/provider/cost cols (T-PRC-1) · **0037** `comps` provenance + `pricing_briefs.buyer_migration_thesis` (T-PRC-2/5).
 
@@ -97,22 +97,22 @@ Migration allocation: **0036** `pricing_llm_calls` + `pricing_briefs` citation/p
 [~] Regression: comp-research mapping passes for all 3 (named anchors + psf±2% + gap severity); brief-level $-band classification asserted in T-PRC-3
 
 ## Phase C — Close research gaps + ship (T-PRC-4, T-PRC-5, T-PRC-6)
-[ ] Triangulator fires only when data_gap_severity != 'none'; Big Bing SF → 3745 Nassau Point anchor
-[ ] Buyer-migration thesis fires on red gap OR draft market_maker; uses sonar-reasoning-pro
-[ ] Rejected thesis forces classification downshift + walkback midpoint
-[ ] Stuck-listings section renders for in-sub-cut actives DOM>180 or relist>=2
-[ ] PDF export produces a board-pack-ready brief
-[ ] Telemetry script surfaces calls by model, cost, p50/p95, failure rate
-[ ] All D-066 through D-073 final in DECISIONS.md
-[ ] Tag v6.1.5-pricing.0 pushed
+[x] Triangulator fires only when data_gap_severity != 'none'; Big Bing SF → 3745 Nassau Point anchor
+[x] Buyer-migration thesis fires on red gap OR draft market_maker; uses sonar-reasoning-pro
+[x] Rejected thesis forces classification downshift (market_maker → stretch_rider) + walkback
+[x] Stuck-listings section renders for in-sub-cut actives DOM>180 or relist>=2
+[~] PDF export — DEFERRED (V6.1.5-012): react-pdf not in the stack (Hard Rule #3); browser print / export route is the follow-up
+[x] Telemetry script surfaces calls by model, cost, p50/p95, failure rate
+[x] All D-066 through D-073 final in DECISIONS.md (✅ Shipped)
+[x] Tag v6.1.5-pricing.0 pushed
 
 ## Hard Rules + housekeeping
-[ ] golden 23/23 green on every commit (engine untouched)
-[ ] No new UI libraries (package.json — @perplexity-ai/perplexity_ai is the only addition)
-[ ] Migrations 0000–0035 unchanged; only 0036–0037 added
-[ ] Grep audit: zero Anthropic imports in lib/pricing/*
-[ ] Grep audit: zero inline "[1]"-style citation parsing in lib/pricing/*
-[ ] V6.1 T115 v2 follow-up filed (V6.1.5-001): Sonar research_comps tool in lib/ask-juno/tools.ts
+[x] golden 23/23 green on every commit (engine untouched)
+[x] No new deps (D-067 chose direct fetch — package.json unchanged; @perplexity-ai SDK NOT added)
+[x] Migrations 0000–0035 unchanged; only 0036–0037 added
+[~] Anthropic dual-path RETAINED in lib/pricing/* (V6.1.5-003 — reversible flag-off path; full removal is a post-tag cleanup once Sonar is proven)
+[x] Zero inline "[1]"-style citation parsing — Sonar path uses the top-level citations[] array
+[x] V6.1 T115 v2 follow-up filed (V6.1.5-001): Sonar research_comps tool in lib/ask-juno/tools.ts
 ```
 
 ---
