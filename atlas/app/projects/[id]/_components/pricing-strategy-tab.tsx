@@ -30,11 +30,20 @@ import type {
 } from '@/lib/pricing/strategy-brief';
 import { CompProvenanceBadge } from '@/app/pricing/_components/comp-provenance-badge';
 import type { ResearchedComp } from '@/lib/pricing/comp-researcher';
+import type { PerplexityCitation } from '@/lib/llm/perplexity-client';
 
 /** D-026(c): map an AI-research comp to a provenance bucket for the badge. */
 function researchedCompProvenance(c: ResearchedComp): 'ai_live' | 'ai_estimated' {
   return c.confidence === 'confirmed' ? 'ai_live' : 'ai_estimated';
 }
+
+/** V6.1.5 — rider/maker classification labels (framework §3.3). */
+const CLASSIFICATION_LABEL: Record<string, string> = {
+  rider: 'Rider',
+  stretch_rider: 'Stretch Rider',
+  market_maker: 'Market-Maker',
+  market_rider: 'Market-Rider',
+};
 
 // ────────────────────────────────────────────────────────────────────────────
 // Formatters
@@ -210,6 +219,8 @@ export function PricingStrategyTab({
       {/* The brief */}
       <BriefRenderer
         brief={currentBrief.brief}
+        citations={currentBrief.citations}
+        llmProvider={currentBrief.llmProvider}
         isApplied={isApplied}
         hasError={hasError}
         isEditor={isEditor}
@@ -478,6 +489,8 @@ function ActionBar({
 
 function BriefRenderer({
   brief,
+  citations,
+  llmProvider,
   isApplied,
   hasError,
   isEditor,
@@ -485,6 +498,8 @@ function BriefRenderer({
   onApply,
 }: {
   brief: StrategyBrief;
+  citations: PerplexityCitation[] | null;
+  llmProvider?: 'anthropic' | 'perplexity';
   isApplied: boolean;
   hasError: boolean;
   isEditor: boolean;
@@ -543,6 +558,7 @@ function BriefRenderer({
       {hasRisks && <RisksSection risks={brief.risks} />}
       {hasWhy && <WhyThisNumber section={brief.whyThisNumber} />}
       {hasFinalRec && <FinalRecommendation section={brief.finalRecommendation} />}
+      <SourcesSection citations={citations} provider={llmProvider} />
     </div>
   );
 }
@@ -596,6 +612,64 @@ function FailedRecommendationCard() {
         may have been deprecated again — flag it and the fallback chain needs a bump.
       </p>
     </div>
+  );
+}
+
+// ── Sources (V6.1.5 — Sonar citations, Hard Rule #6) ────────────────────────
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
+
+function SourcesSection({
+  citations,
+  provider,
+}: {
+  citations: PerplexityCitation[] | null;
+  provider?: 'anthropic' | 'perplexity';
+}) {
+  if (!citations || citations.length === 0) return null;
+  const seen = new Set<string>();
+  const unique = citations.filter((c) => {
+    if (!c.url || seen.has(c.url)) return false;
+    seen.add(c.url);
+    return true;
+  });
+  if (unique.length === 0) return null;
+  return (
+    <Card>
+      <SectionEyebrow label={provider === 'perplexity' ? 'Sources · Perplexity Sonar' : 'Sources'} />
+      <ol
+        style={{
+          margin: '10px 0 0',
+          paddingLeft: 18,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+        }}
+      >
+        {unique.map((c) => (
+          <li key={c.url} style={{ fontSize: 12, lineHeight: 1.5 }}>
+            <a
+              href={c.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                color: 'var(--color-accent-base, #131313)',
+                textDecoration: 'underline',
+                wordBreak: 'break-all',
+              }}
+            >
+              {c.title || hostOf(c.url)}
+            </a>
+          </li>
+        ))}
+      </ol>
+    </Card>
   );
 }
 
@@ -660,7 +734,14 @@ function Recommendation({
             launch · {psfFmt(rec.psfAtLaunch)}
           </div>
         </div>
-        {isApplied && <Badge color="positive">Applied to financial model</Badge>}
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          {rec.classification && (
+            <Badge color="neutral">
+              {CLASSIFICATION_LABEL[rec.classification] ?? rec.classification}
+            </Badge>
+          )}
+          {isApplied && <Badge color="positive">Applied to financial model</Badge>}
+        </div>
       </div>
 
       <p
