@@ -34,10 +34,12 @@ import {
   type BriefClassification,
   type StrategyBriefBody,
   type TriangulationBlock,
+  type BuyerMigrationThesis,
 } from './schemas';
 import { pricingProvider, type PricingProvider } from './provider';
 import { SYSTEM_BASE_PROMPT, promptHash } from './prompts';
 import { runTriangulation } from './triangulator';
+import { runBuyerMigrationThesis } from './buyer-migration-thesis';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Inputs
@@ -164,6 +166,9 @@ export interface StrategyBrief {
 
   /** V6.1.5 (T-PRC-4) — structured triangulation for data-gap cases. Sonar path only. */
   triangulationBlock?: TriangulationBlock;
+
+  /** V6.1.5 (T-PRC-5) — buyer-migration thesis (sonar-reasoning-pro). Sonar path only. */
+  buyerMigrationThesis?: BuyerMigrationThesis;
 }
 
 export interface QuickMathRow {
@@ -806,6 +811,36 @@ export async function generateStrategyBrief(
     }
   }
 
+  // 3b. V6.1.5 (T-PRC-5) — buyer-migration thesis on a red gap OR a draft
+  // Market-Maker classification (sonar-reasoning-pro). A 'rejected' outcome
+  // downshifts Market-Maker → Stretch-Rider (a presentation gate — the engine
+  // math is untouched, Hard Rule #1).
+  let buyerMigrationThesis: BuyerMigrationThesis | undefined;
+  if (
+    provider === 'perplexity' &&
+    (compResearch.dataGapSeverity === 'red' ||
+      parsed.recommendation.classification === 'market_maker')
+  ) {
+    const bmt = await runBuyerMigrationThesis(
+      {
+        subjectSummary: `${facts.name} — ${facts.address}, ${facts.villaSqftAg.toLocaleString()} AG sqft, ${facts.isNewConstruction ? 'new construction' : 'resale'}`,
+        subCutDefinition: compResearch.subCutDefinition ?? facts.subMarketLabel,
+        proposedMidpointPerSqft: parsed.recommendation.psfAtLaunch,
+        closedComps,
+      },
+      runId
+    );
+    if (bmt.thesis) {
+      buyerMigrationThesis = bmt.thesis;
+      if (
+        bmt.thesis.thesis_outcome === 'rejected' &&
+        parsed.recommendation.classification === 'market_maker'
+      ) {
+        parsed.recommendation.classification = 'stretch_rider';
+      }
+    }
+  }
+
   // 4. Compose final brief — merge AI output with deterministic sections.
   const briefBeforeReconcile: StrategyBrief = {
     recommendation: parsed.recommendation,
@@ -833,6 +868,7 @@ export async function generateStrategyBrief(
     whyThisNumber: parsed.whyThisNumber ?? { headline: '', whyNotHigher: [], whyNotLower: [] },
     finalRecommendation: parsed.finalRecommendation ?? { icFraming: '', nextSteps: [] },
     triangulationBlock,
+    buyerMigrationThesis,
   };
 
   // 5. Reconcile arithmetic. LLMs (Claude included) are unreliable on

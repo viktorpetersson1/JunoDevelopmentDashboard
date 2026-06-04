@@ -31,7 +31,7 @@ import type {
 import { CompProvenanceBadge } from '@/app/pricing/_components/comp-provenance-badge';
 import type { ResearchedComp } from '@/lib/pricing/comp-researcher';
 import type { PerplexityCitation } from '@/lib/llm/perplexity-client';
-import type { TriangulationBlock } from '@/lib/pricing/schemas';
+import type { TriangulationBlock, BuyerMigrationThesis } from '@/lib/pricing/schemas';
 
 /** D-026(c): map an AI-research comp to a provenance bucket for the badge. */
 function researchedCompProvenance(c: ResearchedComp): 'ai_live' | 'ai_estimated' {
@@ -545,6 +545,8 @@ function BriefRenderer({
 
       {/* V6.1.5 (T-PRC-4) — triangulation block sits above the brief proper on a data gap. */}
       {brief.triangulationBlock && <TriangulationSection block={brief.triangulationBlock} />}
+      {/* V6.1.5 (T-PRC-5) — buyer-migration thesis (collapsed by default). */}
+      {brief.buyerMigrationThesis && <BuyerMigrationSection thesis={brief.buyerMigrationThesis} />}
 
       {/* Breakeven thresholds are deterministic — always reliable. */}
       <BreakevenThresholds thresholds={brief.breakevenThresholds} />
@@ -766,6 +768,88 @@ function TriangulationSection({ block }: { block: TriangulationBlock }) {
           </ul>
         </div>
       )}
+    </Card>
+  );
+}
+
+// ── Buyer-migration thesis (V6.1.5 T-PRC-5 — collapsed by default) ──────────
+
+function BuyerMigrationSection({ thesis }: { thesis: BuyerMigrationThesis }) {
+  const color =
+    thesis.thesis_outcome === 'supported'
+      ? 'positive'
+      : thesis.thesis_outcome === 'rejected'
+        ? 'negative'
+        : 'warning';
+  const psf = (n: number | undefined): string =>
+    n == null ? '—' : `$${Math.round(n).toLocaleString()}/SF`;
+  const anchorList = (comps: BuyerMigrationThesis['named_comps_supporting'], label: string) =>
+    comps.length > 0 ? (
+      <div style={{ marginTop: 10 }}>
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            color: 'var(--color-text-tertiary, #767b84)',
+          }}
+        >
+          {label}
+        </div>
+        <ul style={{ margin: '4px 0 0', paddingLeft: 18, fontSize: 13 }}>
+          {comps.map((c) => (
+            <li key={c.address}>
+              {c.address} — {psf(c.price_per_sqft)}
+              {c.why ? ` — ${c.why}` : ''}
+            </li>
+          ))}
+        </ul>
+      </div>
+    ) : null;
+  return (
+    <Card>
+      <details>
+        <summary
+          style={{
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+          }}
+        >
+          <SectionEyebrow label="Buyer-migration thesis" />
+          <Badge color={color}>{thesis.thesis_outcome}</Badge>
+        </summary>
+        <div style={{ marginTop: 10 }}>
+          {thesis.premium_vs_adjacent_pct != null && (
+            <div style={{ fontSize: 13, color: 'var(--color-text-secondary, #6b7280)' }}>
+              Proposed {psf(thesis.proposed_midpoint_per_sqft)} · adjacent median{' '}
+              {psf(thesis.adjacent_sub_cut_median_per_sqft)} · premium{' '}
+              {Math.round(thesis.premium_vs_adjacent_pct)}%
+            </div>
+          )}
+          <p
+            style={{
+              margin: '10px 0 0',
+              fontSize: 14,
+              lineHeight: 1.5,
+              color: 'var(--color-text-primary, #111)',
+            }}
+          >
+            {thesis.reasoning}
+          </p>
+          {anchorList(thesis.named_comps_supporting, 'Supporting')}
+          {anchorList(thesis.named_comps_against, 'Against')}
+          {thesis.thesis_outcome === 'rejected' && thesis.walkback && (
+            <p style={{ margin: '10px 0 0', fontSize: 13, color: 'var(--color-warning, #a16207)' }}>
+              <strong>Walkback:</strong> {thesis.walkback}
+            </p>
+          )}
+        </div>
+      </details>
     </Card>
   );
 }

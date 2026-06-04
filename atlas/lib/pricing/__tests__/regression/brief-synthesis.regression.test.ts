@@ -81,8 +81,23 @@ const TRIANGULATION_BLOCK = {
   unresolved_questions: ['Does the buyer substitute from bayfront?'],
 };
 
+const THESIS_BLOCK = {
+  thesis_outcome: 'supported',
+  proposed_midpoint_per_sqft: 1450,
+  adjacent_sub_cut_median_per_sqft: 1455,
+  premium_vs_adjacent_pct: -0.3,
+  named_comps_supporting: [
+    { address: '3745 Nassau Point Rd', price_per_sqft: 1455, why: 'Adjacent bayfront NC anchor.' },
+  ],
+  named_comps_against: [],
+  reasoning: 'A bayfront NC buyer substitutes to Sound-front at ~parity.',
+  recommended_classification: 'market_maker',
+  walkback: '',
+};
+
 // comp research + (on a data gap) triangulation both use callSite 'comp_research';
-// the triangulation call is distinguished by its prompt.
+// the triangulation call is distinguished by its prompt. The thesis uses its own
+// callSite 'buyer_migration_thesis'.
 function mockChain(comp: CompFixture, brief: unknown): void {
   callMock.mockImplementation(async (input) => {
     if (input.callSite === 'strategy_brief') {
@@ -93,6 +108,17 @@ function mockChain(comp: CompFixture, brief: unknown): void {
         inputTokens: 5000,
         outputTokens: 2000,
         costUsd: 0.045,
+        latencyMs: 100,
+      };
+    }
+    if (input.callSite === 'buyer_migration_thesis') {
+      return {
+        data: THESIS_BLOCK,
+        citations: [],
+        rawResponseId: 'bmt',
+        inputTokens: 6000,
+        outputTokens: 2500,
+        costUsd: 0.032,
         latencyMs: 100,
       };
     }
@@ -170,7 +196,9 @@ describe('T-PRC-3 brief synthesis regression — classification via Sonar', () =
     // red gap → triangulation fires + attaches (T-PRC-4)
     expect(r.brief.triangulationBlock?.gap_severity).toBe('red');
     expect(r.brief.triangulationBlock?.primary_anchor?.address).toContain('3745 Nassau Point');
-    expect(callMock).toHaveBeenCalledTimes(3); // comp_research + triangulation + strategy_brief
+    // red gap → buyer-migration thesis fires (T-PRC-5); supported → no downshift
+    expect(r.brief.buyerMigrationThesis?.thesis_outcome).toBe('supported');
+    expect(callMock).toHaveBeenCalledTimes(4); // comp + triangulation + brief + thesis
   });
 
   it('6 GC → Rider; no triangulation (gap=none)', async () => {
@@ -188,6 +216,65 @@ describe('T-PRC-3 brief synthesis regression — classification via Sonar', () =
     expect(r.error).toBeUndefined();
     expect(r.brief.recommendation.classification).toBe('market_rider');
     expect(r.brief.triangulationBlock).toBeDefined();
+  });
+
+  it('rejected thesis downshifts Market-Maker → Stretch-Rider (T-PRC-5 presentation gate)', async () => {
+    callMock.mockImplementation(async (input) => {
+      if (input.callSite === 'strategy_brief') {
+        return {
+          data: briefBody('market_maker', 13_000_000, 1733),
+          citations: [],
+          rawResponseId: 'brief',
+          inputTokens: 1,
+          outputTokens: 1,
+          costUsd: 0,
+          latencyMs: 1,
+        };
+      }
+      if (input.callSite === 'buyer_migration_thesis') {
+        return {
+          data: {
+            thesis_outcome: 'rejected',
+            reasoning: 'Premium too high vs the adjacent median.',
+            recommended_classification: 'stretch_rider',
+            walkback: 'A midpoint of $1,250/sf would be supported.',
+            named_comps_supporting: [],
+            named_comps_against: [],
+          },
+          citations: [],
+          rawResponseId: 'bmt',
+          inputTokens: 1,
+          outputTokens: 1,
+          costUsd: 0,
+          latencyMs: 1,
+        };
+      }
+      if (input.userPrompt.includes('Data-gap triangulation')) {
+        return {
+          data: TRIANGULATION_BLOCK,
+          citations: [],
+          rawResponseId: 'tri',
+          inputTokens: 1,
+          outputTokens: 1,
+          costUsd: 0,
+          latencyMs: 1,
+        };
+      }
+      return {
+        data: (bigBing as CompFixture).payload,
+        citations: (bigBing as CompFixture).citations,
+        rawResponseId: 'comp',
+        inputTokens: 1,
+        outputTokens: 1,
+        costUsd: 0,
+        latencyMs: 1,
+      };
+    });
+    const r = await generateStrategyBrief(facts({ villaSqftAg: 7500 }), cc, '');
+    expect(r.error).toBeUndefined();
+    expect(r.brief.buyerMigrationThesis?.thesis_outcome).toBe('rejected');
+    // downshifted from market_maker (draft) → stretch_rider (presentation gate)
+    expect(r.brief.recommendation.classification).toBe('stretch_rider');
   });
 
   it('Sonar brief failure → deterministic fallback + error, never an Anthropic retry', async () => {

@@ -291,6 +291,8 @@ export async function insertBrief(input: InsertBriefInput): Promise<PricingBrief
     generated_by_user_id: input.generatedByUserId,
     citations: input.citations ?? null,
     llm_provider: input.llmProvider ?? 'anthropic',
+    // V6.1.5 (T-PRC-5) — dedicated queryable column (also lives in the brief jsonb).
+    buyer_migration_thesis: input.brief.buyerMigrationThesis ?? null,
   };
 
   const { data, error } = await supabase
