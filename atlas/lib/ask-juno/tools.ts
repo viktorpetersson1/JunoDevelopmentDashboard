@@ -21,6 +21,7 @@ import { createActualsEntry, type CreateActualsEntryInput } from '@/lib/services
 import { insertRisk } from '@/lib/repos/project-risks';
 import { recordMutation } from '@/lib/services/audit';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { researchComps } from '@/lib/pricing/comp-researcher';
 import type { User } from '@supabase/supabase-js';
 
 // ── Tool definition shape (Anthropic tools format) ────────────────────────────
@@ -89,6 +90,29 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
         project_key: { type: 'string', description: 'The project slug' },
       },
       required: ['project_key'],
+    },
+  },
+  {
+    // V6.1.5-001 — wraps the live Perplexity Sonar comp researcher.
+    name: 'research_comps',
+    description:
+      'Research comparable sales (closed + active) for a subject property via the live pricing comp engine. Returns the comp set with $/sqft + verifiable source URLs, the sub-cut definition, data-gap severity, and a narrative. Use for "what are the comps for X" / "pull comps near Y". Read-only — auto-executes. May take 15-30s.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        address: {
+          type: 'string',
+          description: 'Subject property address (e.g. "84 South Bayfront Rd, North Haven, NY")',
+        },
+        sub_cut_label: {
+          type: 'string',
+          description: 'Human sub-market / sub-cut label (e.g. "North Haven non-WF NC")',
+        },
+        ag_sqft: { type: 'number', description: 'Above-grade square footage of the subject' },
+        is_nc: { type: 'boolean', description: 'New construction? Defaults true.' },
+        comp_window_months: { type: 'number', description: 'Lookback window in months (default 24)' },
+      },
+      required: ['address', 'sub_cut_label', 'ag_sqft'],
     },
   },
 
@@ -287,6 +311,46 @@ export async function executeTool(
             total_usd: (c.totalCents / 100).toFixed(2),
             entry_count: c.entries.length,
           })),
+        }),
+        is_write: false,
+      };
+    }
+
+    case 'research_comps': {
+      // V6.1.5-001 — live Sonar comp research (researchComps branches on
+      // PRICING_LLM_PROVIDER; perplexity is live in prod). The apiKey is only
+      // used by the dormant Anthropic path; the Sonar path reads its own key.
+      const research = await researchComps(
+        {
+          address: String(args.address ?? ''),
+          subCutLabel: String(args.sub_cut_label ?? ''),
+          agSqft: Number(args.ag_sqft) || 0,
+          isNc: args.is_nc !== undefined ? Boolean(args.is_nc) : true,
+          compWindowMonths:
+            args.comp_window_months != null ? Number(args.comp_window_months) : undefined,
+        },
+        process.env.ANTHROPIC_API_KEY ?? '',
+      );
+      return {
+        content: JSON.stringify({
+          sub_cut: research.subCutDefinition ?? String(args.sub_cut_label ?? ''),
+          data_gap_severity: research.dataGapSeverity ?? (research.dataGap ? 'red' : 'none'),
+          confidence: research.confidence,
+          used_web_search: research.usedWebSearch,
+          comps: research.comps.slice(0, 25).map((c) => ({
+            address: c.address,
+            status: c.status,
+            price_usd: c.salePriceUsd,
+            ag_sqft: c.agSqft,
+            psf: c.psf,
+            closing_date: c.closingDate,
+            waterfront: c.waterfrontType,
+            new_construction: c.isNewConstruction,
+            source_url: c.sourceUrl,
+          })),
+          sources: (research.citations ?? []).map((x) => x.url),
+          narrative: research.narrativeSummary,
+          error: research.error ?? null,
         }),
         is_write: false,
       };

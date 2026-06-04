@@ -317,7 +317,7 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
     const toolResults: Array<{ tool_use_id: string; content: string }> = [];
 
     for (const tu of toolUseBlocks) {
-      const isReadTool = ['list_projects', 'get_project_summary', 'get_dashboard_kpis', 'search_actuals'].includes(tu.name);
+      const isReadTool = ['list_projects', 'get_project_summary', 'get_dashboard_kpis', 'search_actuals', 'research_comps'].includes(tu.name);
 
       if (isReadTool) {
         try {
