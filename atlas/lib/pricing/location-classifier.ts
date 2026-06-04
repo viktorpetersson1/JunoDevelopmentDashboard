@@ -29,6 +29,14 @@ import {
   type ViewPremium,
   type TownProximity,
 } from './location-factors';
+// V6.1.5 (V6.1.5-010) — Sonar location-classifier path (option-b dual-path)
+import { callPerplexity, PerplexityError } from '@/lib/llm/perplexity-client';
+import { LocationClassificationSchema } from '@/lib/llm/perplexity-schemas';
+import { pricingProvider } from './provider';
+import { promptHash } from './prompts';
+
+const LOCATION_SYSTEM_PROMPT =
+  'You are a real estate location analyst for the East End of Long Island (Hamptons, North Fork, Shelter Island), NY. Return only the requested JSON object — no prose outside it.';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Types
@@ -243,7 +251,8 @@ async function callAnthropic(
  */
 export async function classifyLocation(
   input: LocationClassifyInput,
-  apiKey: string
+  apiKey: string = '',
+  opts?: { runId?: string }
 ): Promise<LocationClassification> {
   // 1. Geocode for coordinates + town (best-effort; helps the model + UI).
   let coords: { lat: number; lng: number } | null =
@@ -260,6 +269,11 @@ export async function classifyLocation(
   }
 
   const prompt = buildPrompt(input, coords, city);
+
+  // V6.1.5 option-b: Sonar when PRICING_LLM_PROVIDER=perplexity; else Anthropic.
+  if (pricingProvider() === 'perplexity') {
+    return classifyLocationViaSonar(prompt, city, opts?.runId);
+  }
 
   // 2. Web-search attempt.
   try {
@@ -317,6 +331,59 @@ export async function classifyLocation(
       usedWebSearch: false,
       geocodedCity: city,
       error: err instanceof Error ? err.message : 'Unknown error',
+    };
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// V6.1.5 (V6.1.5-010) — Sonar location classifier
+//
+// Reuses buildPrompt (as the user message) + parseLocationClassification (all
+// the coercion). Fail-loud: a Sonar error returns an all-null classification
+// with `error` set — the route's auto-detect catch degrades gracefully (the
+// brief proceeds with whatever factors already exist). No Anthropic fallback.
+// ────────────────────────────────────────────────────────────────────────────
+
+async function classifyLocationViaSonar(
+  prompt: string,
+  city: string | null,
+  runId: string = crypto.randomUUID()
+): Promise<LocationClassification> {
+  try {
+    const hash = await promptHash(LOCATION_SYSTEM_PROMPT, prompt);
+    const result = await callPerplexity<unknown>({
+      systemPrompt: LOCATION_SYSTEM_PROMPT,
+      userPrompt: prompt,
+      model: 'sonar-pro',
+      responseSchema: LocationClassificationSchema,
+      callSite: 'location_classifier',
+      runId,
+      promptHash: hash,
+    });
+    // result.data is the guaranteed-shape JSON object; reuse the existing parser
+    // (coerceWaterfrontType / coerceViewPremium / coerceTownProximity + null guards).
+    return parseLocationClassification(JSON.stringify(result.data), {
+      usedWebSearch: true,
+      geocodedCity: city,
+    });
+  } catch (e) {
+    const msg =
+      e instanceof PerplexityError
+        ? e.message
+        : e instanceof Error
+          ? e.message
+          : 'Sonar location classifier failed';
+    return {
+      waterfrontType: null,
+      viewPremium: null,
+      townProximity: null,
+      lotSizeAcres: null,
+      yearBuilt: null,
+      confidence: 'low',
+      reasoning: '',
+      usedWebSearch: false,
+      geocodedCity: city,
+      error: msg,
     };
   }
 }

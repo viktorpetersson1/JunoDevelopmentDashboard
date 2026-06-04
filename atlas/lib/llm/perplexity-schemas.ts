@@ -231,5 +231,29 @@ export const StrategyBriefSchema = {
   },
 } as const;
 
+/**
+ * Location classifier (location-classifier.ts → `sonar-pro`). Uses the comps
+ * waterfront vocabulary (sound_front_bluff/bayfront/inlet/inland) — NOT the
+ * comp-research enum — because `parseLocationClassification` coerces against it.
+ * lot_size_acres / year_built are nullable (the model returns null when it can't
+ * verify the parcel). Only confidence + reasoning are required.
+ */
+export const LocationClassificationSchema = {
+  type: 'object',
+  required: ['confidence', 'reasoning'],
+  properties: {
+    waterfront_type: {
+      type: 'string',
+      enum: ['sound_front_bluff', 'bayfront', 'inlet', 'inland'],
+    },
+    view_premium: { type: 'string', enum: ['none', 'partial', 'full'] },
+    town_proximity: { type: 'string', enum: ['walkable', 'short_drive', 'remote'] },
+    lot_size_acres: { type: ['number', 'null'] },
+    year_built: { type: ['integer', 'null'] },
+    confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
+    reasoning: { type: 'string' },
+  },
+} as const;
+
 // TriangulationBlockSchema  → added in T-PRC-4
 // BuyerMigrationThesisSchema → added in T-PRC-5
