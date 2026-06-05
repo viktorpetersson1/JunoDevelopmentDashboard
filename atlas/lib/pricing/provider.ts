@@ -30,17 +30,33 @@ export function isSonarPricingEnabled(): boolean {
 
 /**
  * Comp-search domain allow-list for Sonar `search_domain_filter` (Gate 2).
- * Default is the documented 6 (Saunders in for Sound-front presence; StreetEasy
- * out — Manhattan-centric). Override at runtime via PRICING_COMP_DOMAINS
- * (comma-separated) with no code change.
+ *
+ * Perplexity caps this at 20 domains (root domains auto-match subdomains).
+ * The original 6 (zillow/redfin/compass/elliman/corcoran/saunders) structurally
+ * EXCLUDED the dominant East End luxury-NC sources that the prompts themselves
+ * name — Sotheby's, Bespoke, Out East — so Sonar could never search where the
+ * best Hamptons comps actually live (V6.1.5-014, the "84 SBR research is thin"
+ * report). Broadened to 11 targeted East End sources: 3 national aggregators
+ * (authoritative closed/sold records) + the 8 brokerages/portals that carry
+ * East End luxury NC inventory. Still well under the 20 cap, all on-topic
+ * (the docs warn against diluting with off-topic domains, not against breadth).
+ * Override at runtime via PRICING_COMP_DOMAINS (comma-separated), no code change.
  */
 export const DEFAULT_COMP_DOMAINS = [
+  // National aggregators — authoritative closed/sold sale records
   'zillow.com',
   'redfin.com',
-  'compass.com',
+  'realtor.com',
+  // East End / Hamptons luxury brokerages (the dominant NC listing sources)
   'douglaselliman.com',
   'corcoran.com',
+  'compass.com',
   'saunders.com',
+  'sothebysrealty.com',
+  'bespokerealestate.com',
+  'bhsusa.com',
+  // Hamptons-specific listings portal
+  'outeast.com',
 ];
 
 export function compSearchDomains(): string[] {
