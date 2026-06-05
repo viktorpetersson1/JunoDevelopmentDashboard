@@ -201,29 +201,16 @@ export function PricingStrategyTab({
 
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
 
-      {hasError && (
-        <div
-          style={{
-            fontSize: 13,
-            padding: '10px 14px',
-            background: 'var(--color-warning-soft, #fefce8)',
-            border: '1px solid #fde047',
-            borderRadius: 8,
-            color: 'var(--color-warning, #a16207)',
-          }}
-        >
-          ⚠ Generation partially failed: {currentBrief.generationError}. The recommendation below
-          uses fallback values. Refresh to try again.
-        </div>
-      )}
-
-      {/* The brief */}
+      {/* The brief. The per-brief generationError is surfaced INSIDE the brief
+          (folded into the unavailable-recommendation card, or a quiet one-line
+          note when a usable rec exists) — never as a second stacked banner. */}
       <BriefRenderer
         brief={currentBrief.brief}
         citations={currentBrief.citations}
         llmProvider={currentBrief.llmProvider}
         isApplied={isApplied}
         hasError={hasError}
+        generationError={currentBrief.generationError}
         isEditor={isEditor}
         applying={applying}
         onApply={() => handleApply(currentBrief.id)}
@@ -494,6 +481,7 @@ function BriefRenderer({
   llmProvider,
   isApplied,
   hasError,
+  generationError,
   isEditor,
   applying,
   onApply,
@@ -503,6 +491,7 @@ function BriefRenderer({
   llmProvider?: 'anthropic' | 'perplexity';
   isApplied: boolean;
   hasError: boolean;
+  generationError?: string | null;
   isEditor: boolean;
   applying: boolean;
   onApply: () => void;
@@ -530,6 +519,7 @@ function BriefRenderer({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {hasError && hasUsableRecommendation && <PartialErrorNote detail={generationError} />}
       {hasUsableRecommendation ? (
         <Recommendation
           rec={brief.recommendation}
@@ -540,7 +530,7 @@ function BriefRenderer({
           onApply={onApply}
         />
       ) : (
-        <FailedRecommendationCard />
+        <FailedRecommendationCard detail={generationError} />
       )}
 
       {/* V6.1.5 (T-PRC-4) — triangulation block sits above the brief proper on a data gap. */}
@@ -574,52 +564,92 @@ function BriefRenderer({
 
 // ── Failed-recommendation card ──────────────────────────────────────────────
 
-function FailedRecommendationCard() {
+function FailedRecommendationCard({ detail }: { detail?: string | null }) {
   return (
-    <div
-      style={{
-        background: 'var(--color-warning-soft, #fefce8)',
-        border: '1px solid #fde047',
-        borderRadius: 'var(--ja-card-radius)',
-        padding: 'var(--ja-card-padding)',
-      }}
-    >
-      <div
-        style={{
-          fontSize: 11,
-          fontWeight: 700,
-          textTransform: 'uppercase',
-          letterSpacing: '0.06em',
-          color: 'var(--color-warning, #a16207)',
-        }}
-      >
-        Recommendation unavailable
+    <Card>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span
+          aria-hidden="true"
+          style={{
+            width: 7,
+            height: 7,
+            borderRadius: 999,
+            background: 'var(--color-warning, #a16207)',
+            flex: '0 0 auto',
+          }}
+        />
+        <SectionEyebrow label="Recommendation unavailable" />
       </div>
       <h2
         style={{
-          margin: '6px 0 0',
-          fontSize: 20,
+          margin: '8px 0 0',
+          fontSize: 18,
           fontWeight: 700,
           color: 'var(--color-text-primary, #111)',
           letterSpacing: '-0.02em',
         }}
       >
-        The AI recommendation engine could not complete a fresh analysis.
+        The market analysis didn’t finish this run.
       </h2>
       <p
         style={{
-          margin: '10px 0 0',
+          margin: '8px 0 0',
           fontSize: 13,
           color: 'var(--color-text-secondary, #6b7280)',
           lineHeight: 1.6,
           maxWidth: 720,
         }}
       >
-        Cost stack and breakeven thresholds below are still accurate — they are computed
-        deterministically from the project land + build cost assumptions. Hit{' '}
-        <strong>Refresh</strong> at the top to retry. If this keeps happening, the Anthropic model
-        may have been deprecated again — flag it and the fallback chain needs a bump.
+        The cost stack and breakeven thresholds below are exact — they’re computed directly from the
+        project’s land and build costs, not the AI. Only the market read needs another pass; hit{' '}
+        <strong style={{ fontWeight: 600, color: 'var(--color-text-primary, #111)' }}>Refresh</strong>{' '}
+        at the top to retry.
       </p>
+      {detail && (
+        <p
+          style={{
+            margin: '8px 0 0',
+            fontSize: 12,
+            color: 'var(--color-text-tertiary, #767b84)',
+            lineHeight: 1.5,
+          }}
+        >
+          {detail}
+        </p>
+      )}
+    </Card>
+  );
+}
+
+/**
+ * Quiet one-line notice for the rare case where a usable recommendation exists
+ * but generation hit a partial error. A small dot + muted text — never a banner.
+ */
+function PartialErrorNote({ detail }: { detail?: string | null }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 7,
+        fontSize: 12,
+        color: 'var(--color-text-tertiary, #767b84)',
+        padding: '0 2px',
+      }}
+    >
+      <span
+        aria-hidden="true"
+        style={{
+          width: 6,
+          height: 6,
+          borderRadius: 999,
+          background: 'var(--color-warning, #a16207)',
+          flex: '0 0 auto',
+        }}
+      />
+      <span>
+        Generated with a partial error{detail ? `: ${detail}` : ''}. Refresh to regenerate.
+      </span>
     </div>
   );
 }
@@ -1187,17 +1217,25 @@ function CompEvidence({ evidence }: { evidence: StrategyBrief['compEvidence'] })
       {evidence.dataGap && (
         <div
           style={{
-            fontSize: 11,
-            padding: '4px 8px',
-            background: 'var(--color-negative-soft, #fef2f2)',
-            border: '1px solid #fca5a5',
-            color: 'var(--color-negative, #b91c1c)',
-            borderRadius: 6,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 7,
+            fontSize: 12,
+            color: 'var(--color-text-tertiary, #767b84)',
             marginBottom: 10,
-            display: 'inline-block',
           }}
         >
-          ⚠ Fewer than 3 closed comps in sub-cut — less reliable
+          <span
+            aria-hidden="true"
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: 999,
+              background: 'var(--color-negative, #b91c1c)',
+              flex: '0 0 auto',
+            }}
+          />
+          Fewer than 3 closed comps in sub-cut — less reliable
         </div>
       )}
       {evidence.narrativeSummary && (
@@ -1394,8 +1432,8 @@ function ReductionLadder({ ladder }: { ladder: StrategyBrief['reductionLadder'] 
           style={{
             marginTop: 8,
             padding: '12px 14px',
-            background: 'var(--color-negative-soft, #fef2f2)',
-            border: '1px solid #fca5a5',
+            background: 'var(--color-surface-sunken, #f4f4f2)',
+            border: '1px solid var(--color-border-hairline, #c8c8c5)',
             borderRadius: 8,
           }}
         >
@@ -1411,6 +1449,9 @@ function ReductionLadder({ ladder }: { ladder: StrategyBrief['reductionLadder'] 
             <div>
               <div
                 style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
                   fontSize: 11,
                   fontWeight: 700,
                   textTransform: 'uppercase',
@@ -1418,6 +1459,16 @@ function ReductionLadder({ ladder }: { ladder: StrategyBrief['reductionLadder'] 
                   color: 'var(--color-negative, #b91c1c)',
                 }}
               >
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: 999,
+                    background: 'var(--color-negative, #b91c1c)',
+                    flex: '0 0 auto',
+                  }}
+                />
                 Walk-away floor
               </div>
               <div
@@ -1924,6 +1975,13 @@ function ReadBadge({ read }: { read: string }) {
   return <Badge color={color}>{read}</Badge>;
 }
 
+/**
+ * Atlas-standard status badge: a small severity DOT + monochrome uppercase
+ * label. No fills, no coloured borders — colour is carried only by the 6px dot,
+ * so a screen full of statuses stays calm and near-monochrome (the platform
+ * "near-black + single accent" aesthetic). Dot hues come from the shared
+ * StatusDot palette (token-based). Replaces the old filled raw-hex pills.
+ */
 function Badge({
   color,
   children,
@@ -1931,31 +1989,36 @@ function Badge({
   color: 'positive' | 'warning' | 'negative' | 'neutral';
   children: React.ReactNode;
 }) {
-  const palette = {
-    positive: { bg: '#ecfdf5', border: '#6ee7b7', text: '#065f46' },
-    warning: { bg: '#fefce8', border: '#fde047', text: '#713f12' },
-    negative: { bg: '#fef2f2', border: '#fca5a5', text: '#991b1b' },
-    neutral: {
-      bg: 'var(--color-surface-base, #fff)',
-      border: 'var(--color-border-hairline, #c8c8c5)',
-      text: 'var(--color-text-tertiary, #767b84)',
-    },
+  const dot: Record<typeof color, string> = {
+    positive: 'var(--color-positive, #15803d)',
+    warning: 'var(--color-warning, #a16207)',
+    negative: 'var(--color-negative, #b91c1c)',
+    neutral: 'var(--color-text-quaternary, #9aa0a6)',
   };
-  const p = palette[color];
   return (
     <span
       style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 5,
         fontSize: 10,
         fontWeight: 700,
-        padding: '2px 7px',
-        borderRadius: 999,
-        background: p.bg,
-        border: `1px solid ${p.border}`,
-        color: p.text,
+        color: 'var(--color-text-tertiary, #767b84)',
         textTransform: 'uppercase',
         letterSpacing: '0.05em',
+        whiteSpace: 'nowrap',
       }}
     >
+      <span
+        aria-hidden="true"
+        style={{
+          width: 6,
+          height: 6,
+          borderRadius: 999,
+          background: dot[color],
+          flex: '0 0 auto',
+        }}
+      />
       {children}
     </span>
   );
@@ -1968,27 +2031,41 @@ function ErrorBanner({ message, onDismiss }: { message: string; onDismiss: () =>
       style={{
         fontSize: 13,
         padding: '10px 14px',
-        background: 'var(--color-negative-soft, #fef2f2)',
-        border: '1px solid #fca5a5',
+        background: 'var(--color-surface-raised, #fff)',
+        border: '1px solid var(--color-border-hairline, #c8c8c5)',
         borderRadius: 8,
-        color: 'var(--color-negative, #b91c1c)',
+        color: 'var(--color-text-primary, #111)',
         display: 'flex',
         justifyContent: 'space-between',
         gap: 12,
         alignItems: 'center',
       }}
     >
-      <span>{message}</span>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+        <span
+          aria-hidden="true"
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: 999,
+            background: 'var(--color-negative, #b91c1c)',
+            flex: '0 0 auto',
+          }}
+        />
+        {message}
+      </span>
       <button
         type="button"
         onClick={onDismiss}
+        aria-label="Dismiss"
         style={{
           background: 'none',
           border: 'none',
-          color: 'var(--color-negative, #b91c1c)',
+          color: 'var(--color-text-tertiary, #767b84)',
           cursor: 'pointer',
           fontSize: 14,
           padding: 0,
+          lineHeight: 1,
         }}
       >
         ✕
