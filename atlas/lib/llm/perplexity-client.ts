@@ -53,6 +53,14 @@ export interface PerplexityCallInput {
   runId: string; // correlation id for the audit log
   promptHash: string; // hash of the prompt file used (reproducibility)
   timeoutMs?: number; // default 60_000 (buyer-migration thesis can pass 90_000)
+  /**
+   * Sampling temperature. Defaults to 0 for run-to-run determinism — a pricing
+   * brief must not swing $1M on identical inputs (V6.1.5-016). Live web search
+   * still adds some retrieval variance, but pinning temperature removes the
+   * LLM-sampling component so identical inputs converge. Override only for a
+   * call that genuinely needs sampling diversity.
+   */
+  temperature?: number;
 }
 
 export interface PerplexityCitation {
@@ -209,6 +217,10 @@ export async function callPerplexity<T>(
       type: 'json_schema',
       json_schema: { name: input.callSite, schema: input.responseSchema },
     },
+    // Determinism (V6.1.5-016): 0 unless a caller opts into sampling, so a brief
+    // doesn't swing on identical inputs. Web-search retrieval adds residual
+    // variance; pinning temperature removes the sampling component.
+    temperature: input.temperature ?? 0,
   };
   if (input.searchDomainFilter?.length) body.search_domain_filter = input.searchDomainFilter;
   if (input.searchRecencyFilter) body.search_recency_filter = input.searchRecencyFilter;

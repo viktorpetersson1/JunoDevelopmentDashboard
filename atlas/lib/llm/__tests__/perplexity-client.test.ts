@@ -107,6 +107,7 @@ describe('callPerplexity', () => {
     const sent = JSON.parse(init.body as string);
     expect(sent.response_format.type).toBe('json_schema');
     expect(sent.response_format.json_schema.name).toBe('comp_research');
+    expect(sent.temperature).toBe(0); // V6.1.5-016 — determinism default
     expect(sent.search_domain_filter).toEqual(['zillow.com', 'compass.com']);
     // V6.1.5-015: callers pass ISO; the adapter converts to Perplexity's
     // required %m/%d/%Y (MM/DD/YYYY) — ISO 8601 is rejected with HTTP 400.
