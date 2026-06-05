@@ -127,6 +127,19 @@ function computeCostUsd(model: SonarModel, inputTokens: number, outputTokens: nu
 }
 
 /**
+ * Perplexity's search_after/before_date_filter require US `%m/%d/%Y`
+ * (MM/DD/YYYY) — passing ISO 8601 is rejected with HTTP 400
+ * `invalid_date_format` (this silently zero'd comp research until 5 Jun 2026,
+ * V6.1.5-015). Callers pass ISO `YYYY-MM-DD` (the documented input contract);
+ * we convert at the wire boundary. A non-ISO value passes through untouched so
+ * a pre-formatted date still works.
+ */
+function toPerplexityDate(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso.trim());
+  return m ? `${m[2]}/${m[3]}/${m[1]}` : iso;
+}
+
+/**
  * Citations are a top-level array (Hard Rule #6). Perplexity has returned them
  * historically as `string[]` (URLs) and more recently as `search_results`
  * objects ({ url, title, ... }). Normalise both; never parse `[1]` markers.
@@ -199,8 +212,8 @@ export async function callPerplexity<T>(
   };
   if (input.searchDomainFilter?.length) body.search_domain_filter = input.searchDomainFilter;
   if (input.searchRecencyFilter) body.search_recency_filter = input.searchRecencyFilter;
-  if (input.searchAfterDate) body.search_after_date_filter = input.searchAfterDate;
-  if (input.searchBeforeDate) body.search_before_date_filter = input.searchBeforeDate;
+  if (input.searchAfterDate) body.search_after_date_filter = toPerplexityDate(input.searchAfterDate);
+  if (input.searchBeforeDate) body.search_before_date_filter = toPerplexityDate(input.searchBeforeDate);
   if (input.webSearchOptionsCount != null) {
     // Field name provisional pending live-API verification (Viktor-tick). Unset
     // by default for comp research (no result cap — that is the whole point).

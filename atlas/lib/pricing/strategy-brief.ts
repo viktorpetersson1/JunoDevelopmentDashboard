@@ -913,6 +913,10 @@ async function callBriefViaSonar(
       callSite: 'strategy_brief',
       runId,
       promptHash: hash,
+      // Brief synthesis is the heaviest Sonar call (largest structured output +
+      // open-web reasoning) and timed out at the 60s default on 5 Jun 2026
+      // (V6.1.5-015). Give it the same headroom as the buyer-migration thesis.
+      timeoutMs: 120_000,
     });
     const validated = StrategyBriefBodySchema.safeParse(result.data);
     if (!validated.success) {

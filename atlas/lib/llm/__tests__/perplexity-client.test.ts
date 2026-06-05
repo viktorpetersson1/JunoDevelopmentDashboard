@@ -108,8 +108,10 @@ describe('callPerplexity', () => {
     expect(sent.response_format.type).toBe('json_schema');
     expect(sent.response_format.json_schema.name).toBe('comp_research');
     expect(sent.search_domain_filter).toEqual(['zillow.com', 'compass.com']);
-    expect(sent.search_after_date_filter).toBe('2024-06-03');
-    expect(sent.search_before_date_filter).toBe('2026-06-03');
+    // V6.1.5-015: callers pass ISO; the adapter converts to Perplexity's
+    // required %m/%d/%Y (MM/DD/YYYY) — ISO 8601 is rejected with HTTP 400.
+    expect(sent.search_after_date_filter).toBe('06/03/2024');
+    expect(sent.search_before_date_filter).toBe('06/03/2026');
     expect(sent.messages[0].role).toBe('system');
     expect(sent.messages[1].role).toBe('user');
   });
