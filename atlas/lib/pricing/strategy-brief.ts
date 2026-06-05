@@ -235,7 +235,12 @@ function computeBreakevens(
   facts: ProjectFactsForBrief,
   closingCosts: ClosingCostAssumptions
 ): StrategyBrief['breakevenThresholds'] {
-  const buildCost = facts.buildCostPerSqftUsd * facts.villaSqftAg;
+  // Build cost is on TOTAL sqft (above-grade + basement), matching the core
+  // financial engine (construction-costs.ts: villa_sqft = ag + bg). Using AG
+  // only understated build by the whole basement and overstated the margin
+  // (V6.1.5-017). The $/SF figures below still divide by AG — $/SF is quoted on
+  // above-grade living area (the comp convention), only the cost basis is total.
+  const buildCost = facts.buildCostPerSqftUsd * (facts.villaSqftAg + facts.villaSqftBg);
   const totalDevCost =
     facts.landCostUsd +
     buildCost +
@@ -500,7 +505,7 @@ ${phaseFraming}
 
 == COST STACK (deterministic; use these as-is) ==
 Land cost: $${facts.landCostUsd.toLocaleString()}
-Build cost: $${facts.buildCostPerSqftUsd}/SF × ${facts.villaSqftAg.toLocaleString()} SF = $${(facts.buildCostPerSqftUsd * facts.villaSqftAg).toLocaleString()}
+Build cost: $${facts.buildCostPerSqftUsd}/SF × ${(facts.villaSqftAg + facts.villaSqftBg).toLocaleString()} SF total (above-grade + basement) = $${(facts.buildCostPerSqftUsd * (facts.villaSqftAg + facts.villaSqftBg)).toLocaleString()}
 Soft costs: $${facts.softCostsLumpSumUsd.toLocaleString()}
 TOTAL DEV COST: $${breakevens.totalDevCostUsd.toLocaleString()}
 Closing costs at sale: ${(cc.variablePct * 100).toFixed(1)}% variable (agent + transfer tax) + $${cc.fixedUsd.toLocaleString()} fixed (attorney + proration + title/misc)
