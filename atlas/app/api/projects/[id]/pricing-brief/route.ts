@@ -24,6 +24,7 @@ import { listBriefs, insertBrief } from '@/lib/repos/pricing-briefs';
 import {
   bulkUpsertCompsIgnoreDupes,
   findAnchorComps,
+  findActiveCompsForSubCuts,
   type NewCompInput,
   type CompView,
 } from '@/lib/repos/comps';
@@ -160,6 +161,28 @@ export const POST = withErrorBoundary(async (_req: NextRequest, ctx: RouteContex
     }
   }
 
+  // V6.1.5-018 — load the PERSISTED in-sub-cut comp set. A refresh derives the
+  // brief from these (deterministic, no web call); only when the library is too
+  // thin (<3 closed) do we bootstrap with a live research below.
+  const subCutKey = mapMarketIdToSubCutKey(project.market ?? 'default');
+  const storedClosed = await findAnchorComps({
+    subCutKey,
+    waterfrontType: loc.waterfrontType ?? null,
+    agSqft: project.villa_sqft_ag,
+    limit: 12,
+    minAnchors: 3,
+  })
+    .then((rows) => rows.map(libraryCompToResearched))
+    .catch(() => []);
+  const storedActive = await findActiveCompsForSubCuts([subCutKey])
+    .then((rows) =>
+      rows
+        .map(libraryCompToResearched)
+        .filter((c) => c.waterfrontType === (loc.waterfrontType ?? null))
+    )
+    .catch(() => []);
+  const storedClosedCount = storedClosed.filter((c) => c.status === 'closed').length;
+
   const facts: ProjectFactsForBrief = {
     projectId: uuid,
     projectKey: ctx.params.id,
@@ -184,19 +207,9 @@ export const POST = withErrorBoundary(async (_req: NextRequest, ctx: RouteContex
     waterfrontType: loc.waterfrontType,
     viewPremium: loc.viewPremium,
     townProximity: loc.townProximity,
-    // D-026(a) — pull library anchors for this sub-cut + waterfront + sqft band
-    // so the AI uses verified comps instead of re-discovering them. Returns
-    // [] when fewer than 3 matching anchors are available (library still
-    // shallow); the AI falls back to pure web search in that case.
-    libraryAnchors: await findAnchorComps({
-      subCutKey: mapMarketIdToSubCutKey(project.market ?? 'default'),
-      waterfrontType: loc.waterfrontType ?? null,
-      agSqft: project.villa_sqft_ag,
-      limit: 8,
-      minAnchors: 3,
-    })
-      .then((rows) => rows.map(libraryCompToResearched))
-      .catch(() => []),
+    // V6.1.5-018 — the persisted in-sub-cut closed comps (hoisted above) double
+    // as the library anchors the brief prompt treats as primary.
+    libraryAnchors: storedClosed,
     phase,
   };
 
@@ -205,12 +218,21 @@ export const POST = withErrorBoundary(async (_req: NextRequest, ctx: RouteContex
     fixedUsd: globals.closing_cost_fixed_usd ?? 24_500,
   };
 
-  const result = await generateStrategyBrief(facts, closingCosts, apiKey);
+  // V6.1.5-018 — deterministic refresh when the library has ≥3 closed in-sub-cut
+  // comps; otherwise bootstrap with a live research (which persists comps below
+  // so the next refresh is stable). The launch price is engine-derived either way.
+  const result = await generateStrategyBrief(
+    facts,
+    closingCosts,
+    apiKey,
+    storedClosedCount >= 3
+      ? { storedComps: { closed: storedClosed, active: storedActive } }
+      : undefined
+  );
 
   // D-026: auto-save AI-researched comps to the library. Closed + active comps
   // get persisted with source='ai_research' so the /pricing dashboard can render
   // market intelligence. Dupes are silently skipped — unique indexes guard.
-  const subCutKey = mapMarketIdToSubCutKey(project.market ?? 'default');
   const compsToSave: NewCompInput[] = [
     ...result.brief.compEvidence.closedComps,
     ...result.brief.compEvidence.activeComps,

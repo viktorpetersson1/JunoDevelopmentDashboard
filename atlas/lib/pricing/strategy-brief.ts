@@ -18,7 +18,7 @@
  * Persistence is handled by the caller (api route) via lib/repos/pricing-briefs.
  */
 
-import { researchComps, type ResearchedComp } from './comp-researcher';
+import { researchComps, type ResearchedComp, type CompResearchOutput } from './comp-researcher';
 import {
   subjectLocationLines,
   LOCATION_PROMPT_GUIDANCE,
@@ -40,6 +40,7 @@ import { pricingProvider, type PricingProvider } from './provider';
 import { SYSTEM_BASE_PROMPT, promptHash } from './prompts';
 import { runTriangulation } from './triangulator';
 import { runBuyerMigrationThesis } from './buyer-migration-thesis';
+import { deriveRecommendation, type DerivedRecommendation } from './derive-recommendation';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Inputs
@@ -99,6 +100,10 @@ export interface StrategyBrief {
     oneLineThesis: string;
     /** V6.1.5 rider/maker classification (framework §3.3). Sonar path only. */
     classification?: BriefClassification;
+    /** V6.1.5-018 — engine-derived $/SF band (deterministic; null when not derivable). */
+    band?: { low: number; best: number; high: number };
+    /** V6.1.5-018 — one-line explanation of the deterministic price derivation. */
+    derivationBasis?: string;
   };
 
   /** Section 1 — derived from cost stack; not from AI. */
@@ -434,8 +439,25 @@ function buildBriefPrompt(
   cc: ClosingCostAssumptions,
   breakevens: StrategyBrief['breakevenThresholds'],
   closedComps: ResearchedComp[],
-  activeComps: ResearchedComp[]
+  activeComps: ResearchedComp[],
+  committed: DerivedRecommendation | null
 ): string {
+  // V6.1.5-018 — when the engine could derive a launch price from closed comp
+  // evidence, the LLM does NOT choose the number; it narrates around the
+  // committed value. Injected as its own block so the model can't drift.
+  const committedBlock =
+    committed && committed.basePsf > 0
+      ? `== COMMITTED LAUNCH PRICE (engine-derived — DO NOT change) ==
+The launch price is set DETERMINISTICALLY by the engine from the strongest in-sub-cut closed NC comp — you do NOT choose it. Set these fields to EXACTLY:
+- recommendation.launchPriceUsd = ${committed.launchPriceUsd}
+- recommendation.psfAtLaunch = ${committed.basePsf}
+- recommendation.classification = "${committed.classification}"
+Band ($/SF AG): floor ${committed.band.low} / launch ${committed.band.best} / ceiling ${committed.band.high}.${committed.anchor ? ` Anchor: ${committed.anchor.address}.` : ''}
+Derivation: ${committed.basis}
+reductionLadder.phases[0].priceUsd (Day 0) MUST equal the launch price. Your job is the THESIS + narrative explaining why this number and band — not to propose a different one.
+
+`
+      : '';
   const compsLines = (label: string, list: ResearchedComp[]) =>
     list.length === 0
       ? `${label}: NONE FOUND`
@@ -521,7 +543,7 @@ ${compsLines('CLOSED COMPS', closedComps)}
 
 ${compsLines('ACTIVE LISTINGS (CEILING)', activeComps)}
 
-== HOW TO REASON ==
+${committedBlock}== HOW TO REASON ==
 1. Start from the comp evidence, but FIRST filter to the subject's waterfront class (see LOCATION FACTORS). Use the SAME-class closed $/SF median + range as your defensible floor; use off-class comps only after adjusting their $/SF toward the subject's class, and never let a higher-class (e.g. bayfront) comp inflate an inland subject's median.
 2. Layer the project's design premium: ~10–15% above comp median for genuine NC + design pedigree.
 3. Stay below the stuck-ceiling: any listing that's been 18+ months at >breakeven is a warning sign.
@@ -611,7 +633,11 @@ CRITICAL RULES:
 - Output ONLY the JSON object. No markdown fences. No commentary.
 
 ARITHMETIC NOTE:
-For every field where you provide an exit price (recommendation.launchPriceUsd, quickMath.exitUsd, reductionLadder.phases[].priceUsd, outcomeScenarios.scenarios[].exitUsd, walkAwayFloor.priceUsd) the server WILL OVERRIDE your marginPct / netAfterClosingUsd / profitUsd values with a deterministic computation. So put your best-guess numbers in those fields but do not stress the arithmetic — focus on getting the prices and scenarios right. Probability values are kept as-is, margins are recomputed.`;
+For every field where you provide an exit price (recommendation.launchPriceUsd, quickMath.exitUsd, reductionLadder.phases[].priceUsd, outcomeScenarios.scenarios[].exitUsd, walkAwayFloor.priceUsd) the server WILL OVERRIDE your marginPct / netAfterClosingUsd / profitUsd values with a deterministic computation. So put your best-guess numbers in those fields but do not stress the arithmetic — focus on getting the prices and scenarios right. Probability values are kept as-is, margins are recomputed.${
+    committedBlock
+      ? ' IMPORTANT: when a COMMITTED LAUNCH PRICE block is present above, recommendation.launchPriceUsd / psfAtLaunch / classification are ALSO overridden by the engine — set them to exactly the committed values and write the narrative to match.'
+      : ''
+  }`;
 }
 
 interface ParsedBriefBody {
@@ -691,10 +717,50 @@ async function callClaudeForBrief(
 // Public entry point
 // ────────────────────────────────────────────────────────────────────────────
 
+/**
+ * V6.1.5-018 — synthesize a CompResearchOutput from a persisted comp set, so a
+ * "refresh" reuses stored comps with NO live web call (the number stays stable).
+ * Citations are reconstructed from the comps' own source URLs.
+ */
+function compResearchFromStored(stored: {
+  closed: ResearchedComp[];
+  active: ResearchedComp[];
+}): CompResearchOutput {
+  const comps = [...stored.closed, ...stored.active];
+  const closedCount = stored.closed.length;
+  const citations = Array.from(
+    new Map(
+      comps
+        .filter((c) => c.sourceUrl)
+        .map((c) => [c.sourceUrl as string, { url: c.sourceUrl as string, title: c.sourceName }])
+    ).values()
+  );
+  return {
+    comps,
+    dataGap: closedCount < 3,
+    confidence: closedCount >= 5 ? 'high' : closedCount >= 3 ? 'medium' : 'low',
+    sourcesSearched: [],
+    narrativeSummary: 'Comp set from the stored library — no live re-search this run.',
+    usedWebSearch: false,
+    citations,
+    dataGapSeverity: closedCount >= 3 ? 'none' : closedCount >= 1 ? 'amber' : 'red',
+  };
+}
+
 export async function generateStrategyBrief(
   facts: ProjectFactsForBrief,
   closingCosts: ClosingCostAssumptions,
-  anthropicApiKey: string
+  anthropicApiKey: string,
+  opts?: {
+    /**
+     * V6.1.5-018 — when provided, the brief is derived from this PERSISTED comp
+     * set with NO live web research (deterministic "refresh"). When omitted, the
+     * brief researches comps live (first generation / "update comps from market").
+     */
+    storedComps?: { closed: ResearchedComp[]; active: ResearchedComp[] };
+    riderThresholdPct?: number;
+    stretchThresholdPct?: number;
+  }
 ): Promise<BriefGenerationResult> {
   // 1. Deterministic breakeven math.
   const breakevens = computeBreakevens(facts, closingCosts);
@@ -704,23 +770,29 @@ export async function generateStrategyBrief(
   const runId = crypto.randomUUID();
   const provider = pricingProvider();
 
-  // 2. AI comp research.
-  const compResearch = await researchComps(
-    {
-      address: facts.address,
-      subCutLabel: facts.subMarketLabel,
-      agSqft: facts.villaSqftAg,
-      lotSizeAcres: facts.lotSizeAcres,
-      yearBuilt: facts.yearBuilt,
-      waterfrontType: facts.waterfrontType,
-      viewPremium: facts.viewPremium,
-      townProximity: facts.townProximity,
-      isNc: facts.isNewConstruction,
-      compWindowMonths: 18,
-    },
-    anthropicApiKey,
-    { runId }
-  );
+  // V6.1.5-018 — a "refresh" reuses the stored comp set (no web call, so the
+  // number is stable); only "update comps from market" researches live.
+  const useStored = !!opts?.storedComps;
+
+  // 2. Comp set — stored (deterministic) or live web research.
+  const compResearch: CompResearchOutput = opts?.storedComps
+    ? compResearchFromStored(opts.storedComps)
+    : await researchComps(
+        {
+          address: facts.address,
+          subCutLabel: facts.subMarketLabel,
+          agSqft: facts.villaSqftAg,
+          lotSizeAcres: facts.lotSizeAcres,
+          yearBuilt: facts.yearBuilt,
+          waterfrontType: facts.waterfrontType,
+          viewPremium: facts.viewPremium,
+          townProximity: facts.townProximity,
+          isNc: facts.isNewConstruction,
+          compWindowMonths: 18,
+        },
+        anthropicApiKey,
+        { runId }
+      );
 
   // D-026(a) — combine library anchors + fresh web research, deduping by
   // address so the AI doesn't double-count a comp it both saw in the anchor
@@ -751,11 +823,32 @@ export async function generateStrategyBrief(
         }
       : null;
 
+  // 2a. V6.1.5-018 — DETERMINISTIC launch price. Derived from the comp set via
+  // the framework (strongest in-sub-cut closed NC ± thresholds), NOT chosen by
+  // the LLM — so the same comps always yield the same number. `basePsf === 0`
+  // means there's no closed in-sub-cut NC evidence to anchor on; in that case we
+  // leave the LLM/triangulation path to handle the data gap.
+  const derived = deriveRecommendation(
+    closedComps,
+    activeComps,
+    {
+      villaSqftAg: facts.villaSqftAg,
+      waterfrontType: facts.waterfrontType,
+      isNewConstruction: facts.isNewConstruction,
+    },
+    {
+      riderThresholdPct: opts?.riderThresholdPct,
+      stretchThresholdPct: opts?.stretchThresholdPct,
+    }
+  );
+
   // 2b. V6.1.5 (T-PRC-4) — structured triangulation when comp research flags a
   // data gap (closed in-sub-cut < 3). Sonar reasoning call; failure is non-fatal
-  // (block stays undefined, brief proceeds). Sonar path only.
+  // (block stays undefined, brief proceeds). Sonar path only — skipped on a
+  // stored-comps refresh (no web calls there; V6.1.5-018).
   let triangulationBlock: TriangulationBlock | undefined;
   if (
+    !useStored &&
     provider === 'perplexity' &&
     compResearch.dataGapSeverity &&
     compResearch.dataGapSeverity !== 'none'
@@ -774,7 +867,7 @@ export async function generateStrategyBrief(
   }
 
   // 3. Brief synthesis — Sonar (option-b flag) or the existing Anthropic call.
-  const prompt = buildBriefPrompt(facts, closingCosts, breakevens, closedComps, activeComps);
+  const prompt = buildBriefPrompt(facts, closingCosts, breakevens, closedComps, activeComps, derived);
 
   const fallback = (error: string): BriefGenerationResult => ({
     brief: {
@@ -816,12 +909,28 @@ export async function generateStrategyBrief(
     }
   }
 
+  // 3a. V6.1.5-018 — lock the headline to the engine-derived number. When the
+  // engine could anchor on closed evidence (basePsf > 0), the launch price /
+  // psf / classification / band come from `derived`, NOT the LLM — whatever the
+  // model wrote is discarded. reconcileMath (below) then computes the margin
+  // from this locked price. When basePsf is 0 (no closed in-sub-cut NC comps),
+  // we keep the LLM's number + the data-gap path.
+  if (derived.basePsf > 0) {
+    parsed.recommendation.launchPriceUsd = derived.launchPriceUsd;
+    parsed.recommendation.psfAtLaunch = derived.basePsf;
+    parsed.recommendation.classification = derived.classification;
+    parsed.recommendation.band = derived.band;
+    parsed.recommendation.derivationBasis = derived.basis;
+  }
+
   // 3b. V6.1.5 (T-PRC-5) — buyer-migration thesis on a red gap OR a draft
   // Market-Maker classification (sonar-reasoning-pro). A 'rejected' outcome
   // downshifts Market-Maker → Stretch-Rider (a presentation gate — the engine
-  // math is untouched, Hard Rule #1).
+  // math is untouched, Hard Rule #1). Skipped on a stored-comps refresh (no web
+  // calls there; V6.1.5-018) and when the engine already locked a non-maker class.
   let buyerMigrationThesis: BuyerMigrationThesis | undefined;
   if (
+    !useStored &&
     provider === 'perplexity' &&
     (compResearch.dataGapSeverity === 'red' ||
       parsed.recommendation.classification === 'market_maker')
