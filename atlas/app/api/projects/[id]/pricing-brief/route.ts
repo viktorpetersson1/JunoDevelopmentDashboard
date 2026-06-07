@@ -36,6 +36,7 @@ import {
   stageToPhase,
   type ProjectFactsForBrief,
 } from '@/lib/pricing/strategy-brief';
+import { diffCompSets, summarizeChange } from '@/lib/pricing/comp-set-diff';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -61,9 +62,15 @@ export const GET = withErrorBoundary(async (_req: NextRequest, ctx: RouteContext
 // POST — generate vN+1
 // ────────────────────────────────────────────────────────────────────────────
 
-export const POST = withErrorBoundary(async (_req: NextRequest, ctx: RouteContext) => {
+export const POST = withErrorBoundary(async (req: NextRequest, ctx: RouteContext) => {
   const { user, profile } = await requireAuth();
   requireEditor(profile);
+
+  // V6.1.5-018 — `forceResearch` is the "Update comps from market" path: pull
+  // fresh web comps even when the stored library is deep. Default (plain
+  // "Refresh") re-derives deterministically from stored comps.
+  const body = (await req.json().catch(() => ({}))) as { forceResearch?: boolean };
+  const forceResearch = body?.forceResearch === true;
 
   const project = await findCurrentProjectByKey(ctx.params.id);
   if (!project) return notFound(`Project "${ctx.params.id}" not found`, 'PROJECT_NOT_FOUND');
@@ -221,14 +228,28 @@ export const POST = withErrorBoundary(async (_req: NextRequest, ctx: RouteContex
   // V6.1.5-018 — deterministic refresh when the library has ≥3 closed in-sub-cut
   // comps; otherwise bootstrap with a live research (which persists comps below
   // so the next refresh is stable). The launch price is engine-derived either way.
+  const useStored = storedClosedCount >= 3 && !forceResearch;
   const result = await generateStrategyBrief(
     facts,
     closingCosts,
     apiKey,
-    storedClosedCount >= 3
-      ? { storedComps: { closed: storedClosed, active: storedActive } }
-      : undefined
+    useStored ? { storedComps: { closed: storedClosed, active: storedActive } } : undefined
   );
+
+  // V6.1.5-018 (Phase 2) — on an "Update comps" pull, diff the freshly-researched
+  // set against what was stored so we can tell the user what actually changed.
+  const compChange = forceResearch
+    ? diffCompSets(
+        [...storedClosed, ...storedActive].map((c) => ({
+          address: c.address,
+          psf: c.psf,
+          status: c.status,
+        })),
+        [...result.brief.compEvidence.closedComps, ...result.brief.compEvidence.activeComps].map(
+          (c) => ({ address: c.address, psf: c.psf, status: c.status })
+        )
+      )
+    : null;
 
   // D-026: auto-save AI-researched comps to the library. Closed + active comps
   // get persisted with source='ai_research' so the /pricing dashboard can render
@@ -277,7 +298,10 @@ export const POST = withErrorBoundary(async (_req: NextRequest, ctx: RouteContex
     llmProvider: result.llmProvider,
   });
 
-  return created({ brief: inserted });
+  return created({
+    brief: inserted,
+    compChange: compChange ? { ...compChange, summary: summarizeChange(compChange) } : null,
+  });
 });
 
 // ────────────────────────────────────────────────────────────────────────────

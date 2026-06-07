@@ -106,8 +106,10 @@ export function PricingStrategyTab({
 }) {
   const router = useRouter();
   const [generating, startGenerating] = useTransition();
+  const [updating, startUpdating] = useTransition();
   const [applying, startApplying] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [compNote, setCompNote] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
 
   const handleGenerate = useCallback(() => {
@@ -127,6 +129,35 @@ export function PricingStrategyTab({
         router.refresh();
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Network error during generation');
+      }
+    });
+  }, [projectKey, router]);
+
+  // V6.1.5-018 — "Update comps from market": the ONLY action that pulls fresh
+  // web comps. A plain Refresh re-derives deterministically from stored comps;
+  // this re-researches and surfaces what changed (the price only moves if comps did).
+  const handleUpdateComps = useCallback(() => {
+    setError(null);
+    setCompNote(null);
+    startUpdating(async () => {
+      try {
+        const res = await fetch(`/api/projects/${projectKey}/pricing-brief`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ forceResearch: true }),
+        });
+        const json = (await res.json().catch(() => null)) as {
+          error?: { message: string };
+          compChange?: { summary?: string } | null;
+        } | null;
+        if (!res.ok) {
+          setError(json?.error?.message ?? `Update failed (HTTP ${res.status})`);
+          return;
+        }
+        if (json?.compChange?.summary) setCompNote(json.compChange.summary);
+        router.refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Network error during comp update');
       }
     });
   }, [projectKey, router]);
@@ -188,10 +219,12 @@ export function PricingStrategyTab({
         briefHistory={briefHistory}
         isEditor={isEditor}
         generating={generating}
+        updating={updating}
         applying={applying}
         showHistory={showHistory}
         onToggleHistory={() => setShowHistory((s) => !s)}
         onGenerate={handleGenerate}
+        onUpdateComps={handleUpdateComps}
         onApply={handleApply}
       />
 
@@ -200,6 +233,31 @@ export function PricingStrategyTab({
       )}
 
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
+
+      {compNote && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 7,
+            fontSize: 12,
+            color: 'var(--color-text-tertiary, #767b84)',
+            padding: '0 2px',
+          }}
+        >
+          <span
+            aria-hidden="true"
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: 999,
+              background: 'var(--color-positive, #15803d)',
+              flex: '0 0 auto',
+            }}
+          />
+          {compNote}
+        </div>
+      )}
 
       {/* The brief. The per-brief generationError is surfaced INSIDE the brief
           (folded into the unavailable-recommendation card, or a quiet one-line
@@ -368,20 +426,24 @@ function ActionBar({
   briefHistory,
   isEditor,
   generating,
+  updating,
   applying,
   showHistory,
   onToggleHistory,
   onGenerate,
+  onUpdateComps,
   onApply,
 }: {
   brief: PricingBriefView;
   briefHistory: PricingBriefView[];
   isEditor: boolean;
   generating: boolean;
+  updating: boolean;
   applying: boolean;
   showHistory: boolean;
   onToggleHistory: () => void;
   onGenerate: () => void;
+  onUpdateComps: () => void;
   onApply: (id: string) => void;
 }) {
   // Apply button moved INTO the Recommendation hero card. This bar is just
@@ -448,24 +510,48 @@ function ActionBar({
         )}
       </div>
       {isEditor && (
-        <button
-          type="button"
-          onClick={onGenerate}
-          disabled={generating}
-          style={{
-            fontSize: 12,
-            fontWeight: 400,
-            padding: '6px 12px',
-            borderRadius: 8,
-            border: '1px solid var(--color-border-hairline, #c8c8c5)',
-            background: 'var(--color-surface-base, #fff)',
-            color: 'var(--color-text-primary, #111)',
-            cursor: generating ? 'wait' : 'pointer',
-            opacity: generating ? 0.6 : 1,
-          }}
-        >
-          {generating ? 'Refreshing…' : 'Refresh'}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {/* Refresh re-derives the SAME number from the stored comps (stable). */}
+          <button
+            type="button"
+            onClick={onGenerate}
+            disabled={generating || updating}
+            title="Re-derive the recommendation from the stored comps (stable — the number only moves if the comps change)"
+            style={{
+              fontSize: 12,
+              fontWeight: 400,
+              padding: '6px 12px',
+              borderRadius: 8,
+              border: '1px solid var(--color-border-hairline, #c8c8c5)',
+              background: 'var(--color-surface-base, #fff)',
+              color: 'var(--color-text-primary, #111)',
+              cursor: generating ? 'wait' : 'pointer',
+              opacity: generating || updating ? 0.6 : 1,
+            }}
+          >
+            {generating ? 'Refreshing…' : 'Refresh'}
+          </button>
+          {/* The only action that pulls fresh web comps. */}
+          <button
+            type="button"
+            onClick={onUpdateComps}
+            disabled={updating || generating}
+            title="Pull fresh comps from the market — the price moves only if the comps materially changed"
+            style={{
+              fontSize: 12,
+              fontWeight: 400,
+              padding: '6px 12px',
+              borderRadius: 8,
+              border: '1px solid var(--color-border-hairline, #c8c8c5)',
+              background: 'var(--color-surface-base, #fff)',
+              color: 'var(--color-text-primary, #111)',
+              cursor: updating ? 'wait' : 'pointer',
+              opacity: updating || generating ? 0.6 : 1,
+            }}
+          >
+            {updating ? 'Updating comps…' : 'Update comps from market'}
+          </button>
+        </div>
       )}
     </div>
   );
@@ -980,6 +1066,18 @@ function Recommendation({
           >
             launch · {psfFmt(rec.psfAtLaunch)}
           </div>
+          {rec.band && rec.band.high > rec.band.low && (
+            <div
+              style={{
+                marginTop: 2,
+                fontSize: 12,
+                color: 'var(--color-text-tertiary, #767b84)',
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              Band {psfFmt(rec.band.low)} – {psfFmt(rec.band.high)} AG
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
           {rec.classification && (
@@ -1002,6 +1100,19 @@ function Recommendation({
       >
         {thesis}
       </p>
+
+      {rec.derivationBasis && (
+        <p
+          style={{
+            margin: '8px 0 0',
+            fontSize: 12,
+            color: 'var(--color-text-tertiary, #767b84)',
+            lineHeight: 1.5,
+          }}
+        >
+          {rec.derivationBasis}
+        </p>
+      )}
 
       <div
         style={{
