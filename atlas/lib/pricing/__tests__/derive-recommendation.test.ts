@@ -106,4 +106,53 @@ describe('deriveRecommendation', () => {
     const r = deriveRecommendation([comp({ address: 'A', psf: 1000 })], [], FACTS);
     expect(r.classification).toBe('rider');
   });
+
+  // ── V6.1.5-019 — documented premium ──────────────────────────────────────
+
+  it('applies a documented premium to the launch and classifies via thresholds', () => {
+    const closed = [comp({ address: 'A', psf: 1000 })];
+    const r10 = deriveRecommendation(closed, [], FACTS, { premiumPct: 10, premiumBasis: '3.25-ac lot' });
+    expect(r10.basePsf).toBe(1100);
+    expect(r10.launchPriceUsd).toBe(1100 * 5317);
+    expect(r10.classification).toBe('rider'); // ≤15%
+    expect(r10.basis).toContain('+10%');
+    expect(r10.basis).toContain('3.25-ac lot');
+
+    const r20 = deriveRecommendation(closed, [], FACTS, { premiumPct: 20, premiumBasis: 'x' });
+    expect(r20.basePsf).toBe(1200);
+    expect(r20.classification).toBe('stretch_rider'); // 15–30%
+
+    const r35 = deriveRecommendation(closed, [], FACTS, { premiumPct: 35, premiumBasis: 'x' });
+    expect(r35.classification).toBe('market_maker'); // >30%
+  });
+
+  it('keeps the band ordered when the premium pushes the launch above the ceiling', () => {
+    const r = deriveRecommendation(
+      [comp({ address: 'A', psf: 1000 })],
+      [comp({ address: 'X', psf: 1050, status: 'active' })],
+      FACTS,
+      { premiumPct: 10, premiumBasis: 'spec-up' }
+    );
+    expect(r.band.best).toBe(1100);
+    expect(r.band.high).toBe(1100); // high never below best
+    expect(r.band.low).toBe(1000);
+  });
+
+  it('clamps the premium to [-20, 50] and supports a documented discount', () => {
+    const closed = [comp({ address: 'A', psf: 1000 })];
+    const rBig = deriveRecommendation(closed, [], FACTS, { premiumPct: 80, premiumBasis: 'x' });
+    expect(rBig.basePsf).toBe(1500); // clamped to +50
+
+    const rDisc = deriveRecommendation(closed, [], FACTS, { premiumPct: -10 });
+    expect(rDisc.basePsf).toBe(900);
+    expect(rDisc.band.low).toBe(900); // low never above best
+    expect(rDisc.classification).toBe('rider');
+    expect(rDisc.basis).toContain('-10%');
+  });
+
+  it('premium derivation stays deterministic (same inputs → identical result)', () => {
+    const a = deriveRecommendation(CLOSED, ACTIVE, FACTS, { premiumPct: 7, premiumBasis: 'lot' });
+    const b = deriveRecommendation(CLOSED, ACTIVE, FACTS, { premiumPct: 7, premiumBasis: 'lot' });
+    expect(b).toEqual(a);
+  });
 });

@@ -760,6 +760,9 @@ export async function generateStrategyBrief(
     storedComps?: { closed: ResearchedComp[]; active: ResearchedComp[] };
     riderThresholdPct?: number;
     stretchThresholdPct?: number;
+    /** V6.1.5-019 — documented premium vs the closed anchor (see deriveRecommendation). */
+    premiumPct?: number | null;
+    premiumBasis?: string | null;
   }
 ): Promise<BriefGenerationResult> {
   // 1. Deterministic breakeven math.
@@ -839,6 +842,8 @@ export async function generateStrategyBrief(
     {
       riderThresholdPct: opts?.riderThresholdPct,
       stretchThresholdPct: opts?.stretchThresholdPct,
+      premiumPct: opts?.premiumPct,
+      premiumBasis: opts?.premiumBasis,
     }
   );
 

@@ -91,10 +91,24 @@ export function deriveRecommendation(
   closed: RecommendationComp[],
   active: RecommendationComp[],
   facts: DeriveFacts,
-  opts?: { riderThresholdPct?: number; stretchThresholdPct?: number }
+  opts?: {
+    riderThresholdPct?: number;
+    stretchThresholdPct?: number;
+    /**
+     * V6.1.5-019 — documented premium above the closed anchor (§3.3: pricing
+     * above the strongest closed NC requires NAMED premium attributes). E.g. 7
+     * → launch at anchor × 1.07. Deterministic: stored per project, so every
+     * refresh applies the same premium. Clamped to [-20, 50]; classification
+     * still flows from the thresholds (≤15 rider · ≤30 stretch · >30 maker).
+     */
+    premiumPct?: number | null;
+    /** The documented justification, echoed into the derivation basis. */
+    premiumBasis?: string | null;
+  }
 ): DerivedRecommendation {
   const riderPct = opts?.riderThresholdPct ?? DEFAULT_RIDER_PCT;
   const stretchPct = opts?.stretchThresholdPct ?? DEFAULT_STRETCH_PCT;
+  const premiumPct = Math.max(-20, Math.min(50, opts?.premiumPct ?? 0));
   const ag = facts.villaSqftAg > 0 ? facts.villaSqftAg : 0;
 
   // Same waterfront class (P2). NC primary (P3): when the subject is NC, anchor
@@ -136,10 +150,15 @@ export function deriveRecommendation(
   const closedPsfs = inSubCutClosed.map((c) => c.psf);
   const weakestClosedPsf = Math.min(...closedPsfs);
 
-  const bestPsf = Math.round(anchorPsf); // launch as a price-taker at the strongest closed NC
-  const lowPsf = Math.round(weakestClosedPsf);
+  // Launch at the strongest closed NC, shifted by the documented premium when
+  // one is recorded (V6.1.5-019). premiumPct = 0 → pure price-taker.
+  const bestPsf = Math.round(anchorPsf * (1 + premiumPct / 100));
+  const lowPsf = Math.round(Math.min(weakestClosedPsf, bestPsf));
   const highPsf = Math.round(
-    ceilingComp ? Math.max(anchorPsf, ceilingComp.psf) : anchorPsf * (1 + riderPct / 100)
+    Math.max(
+      bestPsf,
+      ceilingComp ? Math.max(anchorPsf, ceilingComp.psf) : anchorPsf * (1 + riderPct / 100)
+    )
   );
 
   const launchPriceUsd = Math.round(bestPsf * ag);
@@ -153,9 +172,17 @@ export function deriveRecommendation(
   const ceilingNote = ceilingComp
     ? ` Ceiling ${fmtPsf(highPsf)} from active listing ${ceilingComp.address}.`
     : '';
+  const premiumNote =
+    premiumPct !== 0
+      ? ` Documented ${premiumPct > 0 ? 'premium' : 'discount'} ${premiumPct > 0 ? '+' : ''}${premiumPct}% vs anchor${
+          opts?.premiumBasis ? ` — ${opts.premiumBasis}` : ''
+        }.`
+      : '';
   const basis =
-    `Launch at the strongest in-sub-cut closed NC comp: ${anchorComp.address} (${fmtPsf(bestPsf)}). ` +
-    `${closedCount} closed / ${activeCount} active in sub-cut; floor ${fmtPsf(lowPsf)}.${ceilingNote}`;
+    (premiumPct !== 0
+      ? `Launch ${fmtPsf(bestPsf)} = anchor ${anchorComp.address} (${fmtPsf(Math.round(anchorPsf))}) ${premiumPct > 0 ? '+' : ''}${premiumPct}%.`
+      : `Launch at the strongest in-sub-cut closed NC comp: ${anchorComp.address} (${fmtPsf(bestPsf)}).`) +
+    ` ${closedCount} closed / ${activeCount} active in sub-cut; floor ${fmtPsf(lowPsf)}.${ceilingNote}${premiumNote}`;
 
   return {
     basePsf: bestPsf,

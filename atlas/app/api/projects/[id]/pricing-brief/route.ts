@@ -18,6 +18,7 @@ import {
   findCurrentProjectByKey,
   findCurrentProjectUuidByKey,
   updateProjectLocationFactors,
+  getProjectPricingPremium,
   type ProjectLocationFactorsPatch,
 } from '@/lib/repos/project';
 import { listBriefs, insertBrief } from '@/lib/repos/pricing-briefs';
@@ -228,13 +229,18 @@ export const POST = withErrorBoundary(async (req: NextRequest, ctx: RouteContext
   // V6.1.5-018 — deterministic refresh when the library has ≥3 closed in-sub-cut
   // comps; otherwise bootstrap with a live research (which persists comps below
   // so the next refresh is stable). The launch price is engine-derived either way.
+  // V6.1.5-019 — documented premium (deterministic; recorded per project).
+  const premium = await getProjectPricingPremium(uuid).catch(() => ({
+    premiumPct: null,
+    premiumBasis: null,
+  }));
+
   const useStored = storedClosedCount >= 3 && !forceResearch;
-  const result = await generateStrategyBrief(
-    facts,
-    closingCosts,
-    apiKey,
-    useStored ? { storedComps: { closed: storedClosed, active: storedActive } } : undefined
-  );
+  const result = await generateStrategyBrief(facts, closingCosts, apiKey, {
+    ...(useStored ? { storedComps: { closed: storedClosed, active: storedActive } } : {}),
+    premiumPct: premium.premiumPct,
+    premiumBasis: premium.premiumBasis,
+  });
 
   // V6.1.5-018 (Phase 2) — on an "Update comps" pull, diff the freshly-researched
   // set against what was stored so we can tell the user what actually changed.

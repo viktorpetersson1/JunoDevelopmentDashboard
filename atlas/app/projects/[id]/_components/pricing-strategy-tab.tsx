@@ -88,12 +88,15 @@ export function PricingStrategyTab({
   projectKey,
   currentBrief,
   briefHistory,
+  premium,
   isEditor,
   hasAddress,
 }: {
   projectKey: string;
   currentBrief: PricingBriefView | null;
   briefHistory: PricingBriefView[];
+  /** V6.1.5-019 — documented premium vs the closed anchor (null = price-taker). */
+  premium?: { premiumPct: number | null; premiumBasis: string | null };
   isEditor: boolean;
   /**
    * T090 — true when the project has a real street address. When false the
@@ -230,6 +233,16 @@ export function PricingStrategyTab({
 
       {showHistory && briefHistory.length > 1 && (
         <BriefHistory briefs={briefHistory} currentId={currentBrief.id} />
+      )}
+
+      {isEditor && (
+        <PremiumControl
+          projectKey={projectKey}
+          premium={premium ?? { premiumPct: null, premiumBasis: null }}
+          disabled={generating || updating}
+          onSaved={handleGenerate}
+          onError={setError}
+        />
       )}
 
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
@@ -413,6 +426,168 @@ function EmptyState({
       {error && (
         <p style={{ fontSize: 13, color: 'var(--color-negative, #b91c1c)', margin: 0 }}>{error}</p>
       )}
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// V6.1.5-019 — documented premium control (editor-only, quiet inline row)
+// ────────────────────────────────────────────────────────────────────────────
+
+function PremiumControl({
+  projectKey,
+  premium,
+  disabled,
+  onSaved,
+  onError,
+}: {
+  projectKey: string;
+  premium: { premiumPct: number | null; premiumBasis: string | null };
+  disabled: boolean;
+  onSaved: () => void;
+  onError: (msg: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [pct, setPct] = useState<string>(premium.premiumPct != null ? String(premium.premiumPct) : '');
+  const [basis, setBasis] = useState<string>(premium.premiumBasis ?? '');
+  const [saving, startSaving] = useTransition();
+
+  const save = useCallback(
+    (clear: boolean) => {
+      startSaving(async () => {
+        try {
+          const body = clear
+            ? { premiumPct: null, premiumBasis: null }
+            : { premiumPct: Number(pct), premiumBasis: basis.trim() || null };
+          if (!clear && (!Number.isFinite(body.premiumPct) || pct.trim() === '')) {
+            onError('Premium must be a number (percent vs the closed anchor).');
+            return;
+          }
+          const res = await fetch(`/api/projects/${projectKey}/pricing-premium`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+          const json = (await res.json().catch(() => null)) as {
+            error?: { message: string };
+          } | null;
+          if (!res.ok) {
+            onError(json?.error?.message ?? `Premium update failed (HTTP ${res.status})`);
+            return;
+          }
+          setEditing(false);
+          // Re-derive the brief with the new premium (deterministic refresh).
+          onSaved();
+        } catch (e) {
+          onError(e instanceof Error ? e.message : 'Network error saving the premium');
+        }
+      });
+    },
+    [projectKey, pct, basis, onSaved, onError]
+  );
+
+  const textBtn: React.CSSProperties = {
+    background: 'none',
+    border: 'none',
+    padding: 0,
+    color: 'var(--color-text-secondary, #6b7280)',
+    cursor: 'pointer',
+    fontSize: 12,
+    textDecoration: 'underline',
+  };
+
+  if (!editing) {
+    const hasPremium = premium.premiumPct != null && premium.premiumPct !== 0;
+    return (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 7,
+          fontSize: 12,
+          color: 'var(--color-text-tertiary, #767b84)',
+          padding: '0 2px',
+          flexWrap: 'wrap',
+        }}
+      >
+        <span
+          aria-hidden="true"
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: 999,
+            background: hasPremium
+              ? 'var(--color-warning, #a16207)'
+              : 'var(--color-text-quaternary, #9aa0a6)',
+            flex: '0 0 auto',
+          }}
+        />
+        <span>
+          {hasPremium
+            ? `Documented premium ${premium.premiumPct! > 0 ? '+' : ''}${premium.premiumPct}% vs closed anchor${premium.premiumBasis ? ` — ${premium.premiumBasis}` : ''}`
+            : 'Price-taker — launch anchors to the strongest closed comp (no premium)'}
+        </span>
+        <button type="button" style={textBtn} disabled={disabled} onClick={() => setEditing(true)}>
+          {hasPremium ? 'Edit' : 'Set premium'}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        fontSize: 12,
+        color: 'var(--color-text-secondary, #6b7280)',
+        padding: '0 2px',
+        flexWrap: 'wrap',
+      }}
+    >
+      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+        Premium
+        <input
+          type="number"
+          value={pct}
+          min={-20}
+          max={50}
+          step={0.5}
+          onChange={(e) => setPct(e.target.value)}
+          style={{
+            width: 64,
+            fontSize: 12,
+            padding: '4px 6px',
+            border: '1px solid var(--color-border-hairline, #c8c8c5)',
+            borderRadius: 6,
+          }}
+        />
+        %
+      </label>
+      <input
+        type="text"
+        value={basis}
+        placeholder="Documented basis — named premium attributes (required for a premium)"
+        onChange={(e) => setBasis(e.target.value)}
+        style={{
+          flex: '1 1 280px',
+          minWidth: 220,
+          fontSize: 12,
+          padding: '4px 8px',
+          border: '1px solid var(--color-border-hairline, #c8c8c5)',
+          borderRadius: 6,
+        }}
+      />
+      <button type="button" style={textBtn} disabled={saving} onClick={() => save(false)}>
+        {saving ? 'Saving…' : 'Save'}
+      </button>
+      <button type="button" style={textBtn} disabled={saving} onClick={() => save(true)}>
+        Clear
+      </button>
+      <button type="button" style={textBtn} disabled={saving} onClick={() => setEditing(false)}>
+        Cancel
+      </button>
     </div>
   );
 }

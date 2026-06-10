@@ -27,6 +27,7 @@ import {
   findCurrentProjectByKey,
   findCurrentProjectUuidByKey,
   findManyProjects,
+  getProjectPricingPremium,
 } from '@/lib/repos/project';
 import { findCapitalCallsByProject } from '@/lib/repos/capital-call';
 import {
@@ -263,15 +264,23 @@ export default async function ProjectDetailPage({
       // are kept around in case we need to roll back; the new flow only
       // reads from atlas.pricing_briefs.
       const pricingProjectUuid = await findCurrentProjectUuidByKey(params.id);
-      const [currentBrief, briefHistory] = pricingProjectUuid
-        ? await Promise.all([findCurrentBrief(pricingProjectUuid), listBriefs(pricingProjectUuid)])
-        : [null, []];
+      const [currentBrief, briefHistory, pricingPremium] = pricingProjectUuid
+        ? await Promise.all([
+            findCurrentBrief(pricingProjectUuid),
+            listBriefs(pricingProjectUuid),
+            getProjectPricingPremium(pricingProjectUuid).catch(() => ({
+              premiumPct: null,
+              premiumBasis: null,
+            })),
+          ])
+        : [null, [], { premiumPct: null, premiumBasis: null }];
 
       tabContent = (
         <PricingStrategyTab
           projectKey={params.id}
           currentBrief={currentBrief}
           briefHistory={briefHistory}
+          premium={pricingPremium}
           isEditor={hasRole(profile, ['super_admin', 'editor'])}
           hasAddress={Boolean(
             project.address &&

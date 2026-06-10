@@ -251,6 +251,60 @@ export async function updateProjectLocationFactors(
   if (error) throw new Error(`updateProjectLocationFactors: ${error.message}`);
 }
 
+// ── V6.1.5-019 — documented pricing premium (deterministic engine input) ─────
+
+export interface ProjectPricingPremium {
+  premiumPct: number | null;
+  premiumBasis: string | null;
+}
+
+/** Read the documented premium for the current project row (null = price-taker). */
+export async function getProjectPricingPremium(
+  projectUuid: string
+): Promise<ProjectPricingPremium> {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .schema('atlas')
+    .from('projects')
+    .select('pricing_premium_pct, pricing_premium_basis')
+    .eq('id', projectUuid)
+    .eq('is_current', true)
+    .eq('is_archived', false)
+    .maybeSingle();
+  if (error) throw new Error(`getProjectPricingPremium: ${error.message}`);
+  const row = data as {
+    pricing_premium_pct: number | string | null;
+    pricing_premium_basis: string | null;
+  } | null;
+  return {
+    premiumPct: row?.pricing_premium_pct != null ? Number(row.pricing_premium_pct) : null,
+    premiumBasis: row?.pricing_premium_basis ?? null,
+  };
+}
+
+/**
+ * Persist the documented premium. Like updateProjectLocationFactors this is a
+ * pricing-engine input, not a financial edit — no version bump, no re-approval.
+ */
+export async function updateProjectPricingPremium(
+  projectUuid: string,
+  premium: ProjectPricingPremium
+): Promise<void> {
+  const supabase = createSupabaseServerClient();
+  const { error } = await supabase
+    .schema('atlas')
+    .from('projects')
+    .update({
+      pricing_premium_pct: premium.premiumPct,
+      pricing_premium_basis: premium.premiumBasis,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', projectUuid)
+    .eq('is_current', true)
+    .eq('is_archived', false);
+  if (error) throw new Error(`updateProjectPricingPremium: ${error.message}`);
+}
+
 /**
  * Fetch a specific row by its uuid id (historical version lookup; used for
  * snapshot audit drilldown in W1.5).
