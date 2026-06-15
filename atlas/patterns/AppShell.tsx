@@ -121,6 +121,14 @@ const SettingsIcon = () => (
   </svg>
 );
 
+/** Ask Juno icon — twin sparkles, evoking the agentic assistant. */
+const AskJunoIcon = () => (
+  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+    <path d="M9 3l1.4 3.6L14 8l-3.6 1.4L9 13 7.6 9.4 4 8l3.6-1.4L9 3z" strokeLinejoin="round" />
+    <path d="M15 12.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8z" strokeLinejoin="round" />
+  </svg>
+);
+
 // ─── Juno Logo ────────────────────────────────────────────────────────────────
 
 const JunoLogo = () => (
@@ -153,6 +161,7 @@ export const DEFAULT_SIDEBAR_SECTIONS: SidebarSection[] = [
     // the single divider before Notifications/Settings.
     items: [
       { href: '/dashboard', label: 'Home', icon: <OverviewIcon /> },
+      { href: '/agent', label: 'Ask Juno', icon: <AskJunoIcon /> },
       { href: '/projects', label: 'Projects', icon: <ProjectsIcon /> },
       { href: '/pipeline', label: 'Pipeline', icon: <PipelineIcon /> },
       { href: '/pricing', label: 'Pricing', icon: <PricingIcon /> },

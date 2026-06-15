@@ -82,7 +82,7 @@ export const POST = withErrorBoundary(async (req: NextRequest, ctx: RouteContext
       return;
     }
     if (TERMINAL.has(cur.status)) {
-      emit({ type: 'run', status: cur.status, currentStep: cur.currentStep, costSpent: cur.costSpentUsd });
+      emit({ type: 'run', status: cur.status, currentStep: cur.currentStep, costSpent: cur.costSpentUsd, goal: cur.goal });
       if (cur.status === 'completed') {
         const synth = (await getStepsService(runId)).find((s) => s.type === 'synthesize' && s.status === 'done');
         emit({ type: 'done', answer: resultStr(synth?.result, 'answer') || '(no answer)', costSpent: cur.costSpentUsd });
@@ -111,6 +111,7 @@ export const POST = withErrorBoundary(async (req: NextRequest, ctx: RouteContext
         status: cur!.status,
         currentStep: cur!.currentStep,
         costSpent: await sumAgentCostUsd(runId),
+        goal: cur!.goal,
       });
 
       // Reconstruct prior tool results from durable rows (resumable across batches).

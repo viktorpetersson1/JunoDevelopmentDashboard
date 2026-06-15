@@ -14,8 +14,9 @@ describe('AppShell', () => {
     expect(screen.getByRole('main', { name: 'Page content' })).toHaveTextContent('BODY');
   });
 
-  it('renders default sidebar sections (T098: 6 primary + 2 account, no section labels)', () => {
+  it('renders default sidebar sections (7 primary + 2 account, no section labels)', () => {
     // T098 — nav collapsed from 15 items / 3 labelled sections to 6+2 / no labels.
+    // AJ-8 (Ask Juno v2): + "Ask Juno" under Home → 7 primary.
     render(
       <AppShell activeHref="/dashboard" scenario="base" onScenarioChange={() => {}}>
         x
@@ -24,8 +25,9 @@ describe('AppShell', () => {
     // No section labels in the simplified nav.
     expect(screen.queryByText('PORTFOLIO')).not.toBeInTheDocument();
     expect(screen.queryByText('WORKSPACE')).not.toBeInTheDocument();
-    // Primary 6 items present.
+    // Primary items present (incl. the new Ask Juno entry, AJ-8).
     expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/dashboard');
+    expect(screen.getByRole('link', { name: 'Ask Juno' })).toHaveAttribute('href', '/agent');
     expect(screen.getByRole('link', { name: 'Finance & Analytics' })).toHaveAttribute('href', '/analytics'); // T114 (V6.1)
     expect(screen.getByRole('link', { name: 'Earnings' })).toHaveAttribute('href', '/earnings');
     // Active link (Home = /dashboard).
@@ -55,9 +57,9 @@ describe('AppShell', () => {
   });
 
   it('exports DEFAULT_SIDEBAR_SECTIONS + DEFAULT_USER constants', () => {
-    // T098: 2 sections (6 primary + 2 account), no labels.
+    // 2 sections (7 primary incl. Ask Juno [AJ-8] + 2 account), no labels.
     expect(DEFAULT_SIDEBAR_SECTIONS).toHaveLength(2);
-    expect(DEFAULT_SIDEBAR_SECTIONS[0]?.items).toHaveLength(6);
+    expect(DEFAULT_SIDEBAR_SECTIONS[0]?.items).toHaveLength(7);
     expect(DEFAULT_SIDEBAR_SECTIONS[1]?.items).toHaveLength(2);
     expect(DEFAULT_USER.name).toBe('Viktor Petersson');
   });

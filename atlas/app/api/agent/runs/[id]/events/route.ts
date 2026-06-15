@@ -36,7 +36,7 @@ export const GET = withErrorBoundary(async (_req, ctx: RouteContext) => {
   if (!run) return notFound(`Run "${ctx.params.id}" not found`, 'RUN_NOT_FOUND');
 
   return sseStream(async (emit: Emit) => {
-    emit({ type: 'run', status: run.status, currentStep: run.currentStep, costSpent: run.costSpentUsd });
+    emit({ type: 'run', status: run.status, currentStep: run.currentStep, costSpent: run.costSpentUsd, goal: run.goal });
 
     const steps = (await getStepsForUser(run.id)).sort((a, b) => a.idx - b.idx);
     if (run.plan) {

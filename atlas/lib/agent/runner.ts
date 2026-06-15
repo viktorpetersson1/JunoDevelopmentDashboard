@@ -36,7 +36,7 @@ export function readToolDefinitions(): ToolDefinition[] {
 // ── SSE event protocol ────────────────────────────────────────────────────────
 
 export type AgentEvent =
-  | { type: 'run'; status: string; currentStep: number; costSpent: number }
+  | { type: 'run'; status: string; currentStep: number; costSpent: number; goal: string }
   | { type: 'plan'; summary: string; steps: Array<{ idx: number; tool: string | null; type: string; why?: string }> }
   | { type: 'step_start'; idx: number; tool: string | null; stepType: string }
   | { type: 'step_done'; idx: number; summary: string; costSpent: number }
