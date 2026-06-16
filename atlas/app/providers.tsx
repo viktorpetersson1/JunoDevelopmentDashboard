@@ -8,11 +8,12 @@
  * without any new tokens needed. Light remains the default; system
  * override is auto-detected and respected live (no reload required).
  *
- * V4.1 — Hosts the global AskJunoWidget so the floating launcher + right-
- * docked panel are available on every authenticated page. The widget
- * hides itself on /sign-in + /sign-up via usePathname.
+ * V4.1 — Hosts the global Ask Juno launcher so the floating bottom-right entry +
+ * docked panel are available on every authenticated page (hidden on /sign-in,
+ * /sign-up, /cleanup). AJ-10 (Ask Juno v2): the launcher now opens the v2 run
+ * console (AskJunoLauncher → AgentRunPanel), replacing the v1 chat widget.
  *
- * Why a separate file: `ThemeProvider` + `AskJunoWidget` both need React
+ * Why a separate file: `ThemeProvider` + the launcher both need React
  * context / state, so the 'use client' boundary lives here. The root
  * layout stays a Server Component (per Next.js 14 conventions) and just
  * renders this wrapper.
@@ -20,7 +21,7 @@
 
 import { ThemeProvider } from 'next-themes';
 import type { ReactNode } from 'react';
-import { AskJunoWidget } from '@/components/widgets/AskJunoWidget';
+import { AskJunoLauncher } from '@/components/widgets/ask-juno-launcher';
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
@@ -33,7 +34,7 @@ export function Providers({ children }: { children: ReactNode }) {
       disableTransitionOnChange
     >
       {children}
-      <AskJunoWidget />
+      <AskJunoLauncher />
     </ThemeProvider>
   );
 }
