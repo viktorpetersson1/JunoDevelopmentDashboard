@@ -222,13 +222,14 @@ export function AgentRunPanel() {
   }, []);
 
   const drive = useCallback(
-    async (firstContinue = false) => {
-      if (!runId) return;
+    async (idArg?: string, firstContinue = false) => {
+      const rid = idArg ?? runId;
+      if (!rid) return;
       setBusy(true);
       try {
         let first = firstContinue;
         for (;;) {
-          const res = await fetch(`/api/agent/runs/${runId}/advance`, {
+          const res = await fetch(`/api/agent/runs/${rid}/advance`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(first ? { continue: true } : {}),
@@ -279,7 +280,7 @@ export function AgentRunPanel() {
         return;
       }
       await consumeSse(res, applyEvent);
-      if (statusRef.current === 'running' || statusRef.current === 'planning') void driveRef.current();
+      if (statusRef.current === 'running' || statusRef.current === 'planning') void driveRef.current(saved);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -309,6 +310,10 @@ export function AgentRunPanel() {
         localStorage.setItem(LS_KEY, id);
         setRunId(id);
         setStatus('planning');
+        // Drive immediately with the new id — do NOT rely on a busy-gated effect
+        // (startRun holds busy=true, which would otherwise block the first
+        // advance and leave the run stuck at "Planning").
+        void driveRef.current(id);
       } catch (err) {
         setNote(err instanceof Error ? err.message : 'network error');
         setBusy(false);
@@ -316,12 +321,6 @@ export function AgentRunPanel() {
     },
     [goal, resetTranscript]
   );
-
-  // Kick off driving once a freshly-created run id is set.
-  useEffect(() => {
-    if (runId && status === 'planning' && !busy && steps.size === 0 && !answer) void drive();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runId]);
 
   const openRun = useCallback(
     async (id: string) => {
@@ -331,7 +330,7 @@ export function AgentRunPanel() {
       const res = await fetch(`/api/agent/runs/${id}/events`);
       if (res.ok) {
         await consumeSse(res, applyEvent);
-        if (statusRef.current === 'running' || statusRef.current === 'planning') void driveRef.current();
+        if (statusRef.current === 'running' || statusRef.current === 'planning') void driveRef.current(id);
       }
     },
     [resetTranscript, applyEvent]
@@ -583,7 +582,7 @@ export function AgentRunPanel() {
                 : `Reached the ${pauseReason.replace(/_/g, ' ')} checkpoint. Continue this run?`}
             </span>
             {!pauseReason.includes('hard') && (
-              <button type="button" onClick={() => void drive(true)} disabled={busy} style={{ ...CTA, padding: '8px 16px', opacity: busy ? 0.6 : 1 }}>
+              <button type="button" onClick={() => void drive(undefined, true)} disabled={busy} style={{ ...CTA, padding: '8px 16px', opacity: busy ? 0.6 : 1 }}>
                 Continue
               </button>
             )}
