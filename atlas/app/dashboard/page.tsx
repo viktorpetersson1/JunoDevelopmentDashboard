@@ -32,6 +32,7 @@ import { getActiveGlobals } from '@/lib/globals/active';
 import { getActiveScenario } from '@/lib/scenarios/active';
 import { buildProjectPnL } from '@/lib/finance/project-pnl';
 import { computeRolloutTrigger } from '@/lib/finance/rollout-trigger';
+import { rolloutChip } from '@/lib/finance/rollout-chip';
 import { getCommitmentTier } from '@/lib/projects/commitment-tier';
 import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -165,12 +166,9 @@ export default async function DashboardPage() {
     project_time_to_npat_months: globals.project_time_to_npat_months ?? 18,
     today_month: todayYM,
   });
-  const rolloutColor: 'green' | 'amber' | 'red' =
-    rollout.state === 'overdue' || rollout.state === 'red'
-      ? 'red'
-      : rollout.state === 'amber'
-        ? 'amber'
-        : 'green';
+  // T132 (V7 alert hygiene): presentation via the pure rolloutChip() mapper —
+  // never a past "start by" date, never red-on-stale, unconfigured = prompt.
+  const { value: rolloutValue, detail: rolloutDetail, color: rolloutColor } = rolloutChip(rollout);
 
   // ── Row 2: tactical chips ──────────────────────────────────────────────
 
@@ -302,11 +300,11 @@ export default async function DashboardPage() {
               warn={locConfigured && locColor === 'amber'}
             />
 
-            {/* Row: Rollout pacing — T126: links to the capacity solver */}
+            {/* Row: Rollout pacing — T132: never a past date, never red-on-stale. */}
             <BoardroomRow
               label="ROLLOUT PACING"
-              value={rollout.state === 'unconfigured' ? 'Set target' : rollout.next_start_required_by ? `Start by ${fmtYM(rollout.next_start_required_by)}` : 'On pace'}
-              detail={rollout.state === 'unconfigured' ? 'Settings → General → Rollout target' : rollout.rationale.slice(0, 70) + (rollout.rationale.length > 70 ? '…' : '')}
+              value={rolloutValue}
+              detail={rolloutDetail}
               href="/pipeline/capacity"
               overdue={rolloutColor === 'red'}
               warn={rolloutColor === 'amber'}
