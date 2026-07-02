@@ -23,7 +23,11 @@ vi.mock('@/lib/llm/perplexity-client', () => ({
   PerplexityError: class PerplexityError extends Error {},
 }));
 
-import { researchComps, type CompResearchInput, type ResearchedComp } from '@/lib/pricing/comp-researcher';
+import {
+  researchComps,
+  type CompResearchInput,
+  type ResearchedComp,
+} from '@/lib/pricing/comp-researcher';
 import { callPerplexity } from '@/lib/llm/perplexity-client';
 
 const callMock = vi.mocked(callPerplexity);

@@ -71,7 +71,11 @@ export function SummaryTab({
       <MonthlyPnLTable result={result} pnl={pnl} taxRatePct={pnl.tax_rate_pct} />
       <RolloutPacing rollout={rollout} />
       {ownerEarnings && <OwnerEarnings rows={ownerEarnings} npat={pnl.net_profit_after_tax_usd} />}
-      <CashFlowChart monthly={result.monthly} startDate={result.start_date} saleDate={result.sale_date} />
+      <CashFlowChart
+        monthly={result.monthly}
+        startDate={result.start_date}
+        saleDate={result.sale_date}
+      />
       <Section
         label="Project status"
         style={{

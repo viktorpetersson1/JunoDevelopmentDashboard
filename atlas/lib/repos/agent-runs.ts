@@ -279,7 +279,11 @@ export interface NewStep {
 }
 
 /** Persist the plan + its pending steps in one go (planning step output). */
-export async function setPlanAndSteps(runId: string, plan: unknown, steps: NewStep[]): Promise<void> {
+export async function setPlanAndSteps(
+  runId: string,
+  plan: unknown,
+  steps: NewStep[]
+): Promise<void> {
   const supabase = createSupabaseServiceRoleClient();
   await updateRun(runId, { plan, status: 'running' });
   if (steps.length === 0) return;
@@ -305,7 +309,11 @@ export async function markStepRunning(step: AgentStepView): Promise<void> {
   const { error } = await supabase
     .schema('atlas')
     .from('agent_steps')
-    .update({ status: 'running', started_at: new Date().toISOString(), attempts: step.attempts + 1 })
+    .update({
+      status: 'running',
+      started_at: new Date().toISOString(),
+      attempts: step.attempts + 1,
+    })
     .eq('id', step.id);
   if (error) throw new Error(`markStepRunning: ${error.message}`);
 }

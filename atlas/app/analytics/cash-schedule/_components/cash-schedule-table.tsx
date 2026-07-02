@@ -30,7 +30,20 @@ function fmtUsd(n: number): string {
 
 function fmtMonth(ym: string): string {
   const [y, m] = ym.split('-');
-  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const MONTHS = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
   return `${MONTHS[Number(m ?? 1) - 1]} '${y?.slice(2) ?? ''}`;
 }
 
@@ -47,16 +60,29 @@ export function CashScheduleTable({ schedule }: { schedule: CashSchedule }) {
         padding: 'var(--ja-card-padding)',
       }}
     >
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
-        <h2 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
+      <header
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'baseline',
+          marginBottom: 12,
+        }}
+      >
+        <h2
+          style={{ fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}
+        >
           Monthly schedule
         </h2>
         <button
           type="button"
           onClick={() => setShowBalances((b) => !b)}
           style={{
-            fontSize: 11, background: 'none', border: 'none', cursor: 'pointer',
-            color: 'var(--color-text-tertiary)', padding: '2px 6px',
+            fontSize: 11,
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            color: 'var(--color-text-tertiary)',
+            padding: '2px 6px',
           }}
         >
           {showBalances ? 'Hide balance + headroom' : 'Show balance + headroom'}
@@ -75,9 +101,15 @@ export function CashScheduleTable({ schedule }: { schedule: CashSchedule }) {
         >
           <thead>
             <tr>
-              <Th sticky="left" left={0} width={84}>Month</Th>
-              <Th align="right" width={86}>Cash need</Th>
-              <Th align="right" width={86}>Cash in</Th>
+              <Th sticky="left" left={0} width={84}>
+                Month
+              </Th>
+              <Th align="right" width={86}>
+                Cash need
+              </Th>
+              <Th align="right" width={86}>
+                Cash in
+              </Th>
               {sourceIds.map((sourceId) => {
                 const s = schedule.sources[sourceId]!;
                 const colSpan = showBalances ? 4 : 2;
@@ -93,25 +125,55 @@ export function CashScheduleTable({ schedule }: { schedule: CashSchedule }) {
                       padding: '6px 8px',
                     }}
                   >
-                    <div style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>{s.sourceName}</div>
-                    <div style={{ fontSize: 10, fontWeight: 400, color: 'var(--color-text-tertiary)', marginTop: 2 }}>
-                      {SOURCE_KIND_LABELS[s.sourceKind] ?? s.sourceKind} · ${(s.limitUsd / 1_000_000).toFixed(1)}M
-                      {s.covenantMaxLtcPct != null && ` · LTC ≤${(s.covenantMaxLtcPct * 100).toFixed(0)}%`}
-                      {s.covenantMaxConcurrentProjects != null && ` · ≤${s.covenantMaxConcurrentProjects} proj`}
+                    <div style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                      {s.sourceName}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 400,
+                        color: 'var(--color-text-tertiary)',
+                        marginTop: 2,
+                      }}
+                    >
+                      {SOURCE_KIND_LABELS[s.sourceKind] ?? s.sourceKind} · $
+                      {(s.limitUsd / 1_000_000).toFixed(1)}M
+                      {s.covenantMaxLtcPct != null &&
+                        ` · LTC ≤${(s.covenantMaxLtcPct * 100).toFixed(0)}%`}
+                      {s.covenantMaxConcurrentProjects != null &&
+                        ` · ≤${s.covenantMaxConcurrentProjects} proj`}
                     </div>
                   </th>
                 );
               })}
-              <Th sticky="right" right={0} width={70}>Notes</Th>
+              <Th sticky="right" right={0} width={70}>
+                Notes
+              </Th>
             </tr>
             <tr>
-              <th style={{ ...thBase, position: 'sticky', left: 0, background: 'var(--ja-card-bg)', zIndex: 2 }} />
+              <th
+                style={{
+                  ...thBase,
+                  position: 'sticky',
+                  left: 0,
+                  background: 'var(--ja-card-bg)',
+                  zIndex: 2,
+                }}
+              />
               <th style={thBase} />
               <th style={thBase} />
               {sourceIds.map((sourceId) => (
                 <SubHeaders key={sourceId} showBalances={showBalances} />
               ))}
-              <th style={{ ...thBase, position: 'sticky', right: 0, background: 'var(--ja-card-bg)', zIndex: 2 }} />
+              <th
+                style={{
+                  ...thBase,
+                  position: 'sticky',
+                  right: 0,
+                  background: 'var(--ja-card-bg)',
+                  zIndex: 2,
+                }}
+              />
             </tr>
           </thead>
           <tbody>
@@ -126,7 +188,9 @@ export function CashScheduleTable({ schedule }: { schedule: CashSchedule }) {
                     <span style={{ color: labelColor }}>{fmtMonth(row.month)}</span>
                   </Td>
                   <Td align="right">{fmtUsd(row.net_cash_need)}</Td>
-                  <Td align="right" muted>{fmtUsd(row.net_cash_in)}</Td>
+                  <Td align="right" muted>
+                    {fmtUsd(row.net_cash_in)}
+                  </Td>
                   {sourceIds.map((sourceId) => {
                     const slice = row.by_source[sourceId]!;
                     const sourceHasBreach = row.notes.some((n) => n.source_id === sourceId);
@@ -161,9 +225,10 @@ export function CashScheduleTable({ schedule }: { schedule: CashSchedule }) {
       </div>
 
       <p style={{ margin: '10px 0 0', fontSize: 10, color: 'var(--color-text-tertiary)' }}>
-        Drawn = USD drawn from source this month · Repaid = USD paid down · Bal = outstanding at end of month ·
-        H/r = remaining headroom (limit − balance). Allocation: priority order; KPC LOC drawn first when unassigned.
-        Sums match `aggregatePortfolio` per-project totals (golden test).
+        Drawn = USD drawn from source this month · Repaid = USD paid down · Bal = outstanding at end
+        of month · H/r = remaining headroom (limit − balance). Allocation: priority order; KPC LOC
+        drawn first when unassigned. Sums match `aggregatePortfolio` per-project totals (golden
+        test).
       </p>
     </section>
   );
@@ -174,12 +239,53 @@ export function CashScheduleTable({ schedule }: { schedule: CashSchedule }) {
 function SubHeaders({ showBalances }: { showBalances: boolean }) {
   return (
     <>
-      <th style={{ ...thBase, textAlign: 'right', borderLeft: '2px solid var(--color-border-hairline)', fontSize: 10, fontWeight: 400, color: 'var(--color-text-tertiary)' }}>Drawn</th>
-      <th style={{ ...thBase, textAlign: 'right', fontSize: 10, fontWeight: 400, color: 'var(--color-text-tertiary)' }}>Repaid</th>
+      <th
+        style={{
+          ...thBase,
+          textAlign: 'right',
+          borderLeft: '2px solid var(--color-border-hairline)',
+          fontSize: 10,
+          fontWeight: 400,
+          color: 'var(--color-text-tertiary)',
+        }}
+      >
+        Drawn
+      </th>
+      <th
+        style={{
+          ...thBase,
+          textAlign: 'right',
+          fontSize: 10,
+          fontWeight: 400,
+          color: 'var(--color-text-tertiary)',
+        }}
+      >
+        Repaid
+      </th>
       {showBalances && (
         <>
-          <th style={{ ...thBase, textAlign: 'right', fontSize: 10, fontWeight: 400, color: 'var(--color-text-tertiary)' }}>Bal</th>
-          <th style={{ ...thBase, textAlign: 'right', fontSize: 10, fontWeight: 400, color: 'var(--color-text-tertiary)' }}>H/r</th>
+          <th
+            style={{
+              ...thBase,
+              textAlign: 'right',
+              fontSize: 10,
+              fontWeight: 400,
+              color: 'var(--color-text-tertiary)',
+            }}
+          >
+            Bal
+          </th>
+          <th
+            style={{
+              ...thBase,
+              textAlign: 'right',
+              fontSize: 10,
+              fontWeight: 400,
+              color: 'var(--color-text-tertiary)',
+            }}
+          >
+            H/r
+          </th>
         </>
       )}
     </>

@@ -98,23 +98,20 @@ function toView(row: PricingLlmCallRow): PricingLlmCallView {
  */
 export async function insertPricingLlmCall(input: InsertPricingLlmCallInput): Promise<void> {
   const supabase = createSupabaseServiceRoleClient();
-  const { error } = await supabase
-    .schema('atlas')
-    .from('pricing_llm_calls')
-    .insert({
-      run_id: input.runId,
-      call_site: input.callSite,
-      model: input.model,
-      status: input.status,
-      http_status: input.httpStatus,
-      error_message: input.errorMessage,
-      latency_ms: input.latencyMs,
-      input_tokens: input.inputTokens,
-      output_tokens: input.outputTokens,
-      cost_usd: input.costUsd,
-      citations_cnt: input.citationsCnt,
-      prompt_hash: input.promptHash,
-    });
+  const { error } = await supabase.schema('atlas').from('pricing_llm_calls').insert({
+    run_id: input.runId,
+    call_site: input.callSite,
+    model: input.model,
+    status: input.status,
+    http_status: input.httpStatus,
+    error_message: input.errorMessage,
+    latency_ms: input.latencyMs,
+    input_tokens: input.inputTokens,
+    output_tokens: input.outputTokens,
+    cost_usd: input.costUsd,
+    citations_cnt: input.citationsCnt,
+    prompt_hash: input.promptHash,
+  });
   if (error) throw new Error(`insertPricingLlmCall: ${error.message}`);
 }
 

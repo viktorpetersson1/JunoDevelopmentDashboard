@@ -15,7 +15,11 @@
  */
 
 import { useState } from 'react';
-import { buildProjectPnLMonthly, type MonthlyPnLRow, type ProjectPnL } from '@/lib/finance/project-pnl';
+import {
+  buildProjectPnLMonthly,
+  type MonthlyPnLRow,
+  type ProjectPnL,
+} from '@/lib/finance/project-pnl';
 import { projectWindow } from '@/lib/charts/project-window';
 import type { ProjectResult } from '@/lib/calc/project/types';
 
@@ -35,7 +39,20 @@ function fmtMonth(ym: string): string {
   const parts = ym.split('-');
   const y = parts[0]?.slice(2) ?? '';
   const m = Number(parts[1] ?? 1);
-  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const MONTHS = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
   return `${MONTHS[m - 1] ?? ''} '${y}`;
 }
 
@@ -50,15 +67,45 @@ interface Line {
 
 function makeLines(taxRatePct: number): Line[] {
   return [
-    { label: 'Gross revenue',        field: 'gross_revenue_usd',           kind: 'revenue',  totalField: 'gross_revenue_usd' },
-    { label: '− Land',               field: 'land_usd',                    kind: 'cost',     totalField: 'land_usd' },
-    { label: '− Hard construction',  field: 'hard_construction_usd',       kind: 'cost',     totalField: 'hard_construction_usd' },
-    { label: '− Soft costs',         field: 'soft_costs_usd',              kind: 'cost',     totalField: 'soft_costs_usd' },
-    { label: '− Superstructure',     field: 'superstructure_usd',          kind: 'cost',     totalField: 'superstructure_usd' },
-    { label: '− Financing cost',     field: 'financing_cost_usd',          kind: 'cost',     totalField: 'financing_cost_usd' },
-    { label: 'Net profit before tax',field: 'net_profit_before_tax_usd',   kind: 'subtotal', totalField: 'net_profit_before_tax_usd' },
-    { label: `− Tax (${taxRatePct}%)`,field: 'tax_usd',                   kind: 'cost',     totalField: 'tax_usd' },
-    { label: 'Net profit after tax', field: 'net_profit_after_tax_usd',    kind: 'total',    totalField: 'net_profit_after_tax_usd' },
+    {
+      label: 'Gross revenue',
+      field: 'gross_revenue_usd',
+      kind: 'revenue',
+      totalField: 'gross_revenue_usd',
+    },
+    { label: '− Land', field: 'land_usd', kind: 'cost', totalField: 'land_usd' },
+    {
+      label: '− Hard construction',
+      field: 'hard_construction_usd',
+      kind: 'cost',
+      totalField: 'hard_construction_usd',
+    },
+    { label: '− Soft costs', field: 'soft_costs_usd', kind: 'cost', totalField: 'soft_costs_usd' },
+    {
+      label: '− Superstructure',
+      field: 'superstructure_usd',
+      kind: 'cost',
+      totalField: 'superstructure_usd',
+    },
+    {
+      label: '− Financing cost',
+      field: 'financing_cost_usd',
+      kind: 'cost',
+      totalField: 'financing_cost_usd',
+    },
+    {
+      label: 'Net profit before tax',
+      field: 'net_profit_before_tax_usd',
+      kind: 'subtotal',
+      totalField: 'net_profit_before_tax_usd',
+    },
+    { label: `− Tax (${taxRatePct}%)`, field: 'tax_usd', kind: 'cost', totalField: 'tax_usd' },
+    {
+      label: 'Net profit after tax',
+      field: 'net_profit_after_tax_usd',
+      kind: 'total',
+      totalField: 'net_profit_after_tax_usd',
+    },
   ];
 }
 
@@ -75,12 +122,12 @@ export function MonthlyPnLTable({
 }) {
   const [showFull, setShowFull] = useState(false);
   const rows = buildProjectPnLMonthly(result.monthly, { taxRatePct });
-  const win  = projectWindow(result.monthly, result.start_date, result.sale_date);
+  const win = projectWindow(result.monthly, result.start_date, result.sale_date);
   const visible: MonthlyPnLRow[] = showFull ? rows : rows.slice(win.startIdx, win.endIdx + 1);
   const lines = makeLines(taxRatePct);
 
   const LABEL_W = 200;
-  const COL_W   = 72;
+  const COL_W = 72;
   const TOTAL_W = 88;
 
   const cellBase: React.CSSProperties = {

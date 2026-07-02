@@ -47,7 +47,7 @@ describe('cost model', () => {
   it('estimates on max output (fails safe) and trues up to actuals', () => {
     // sonnet 3/15 per M: 10k in + 4096 out estimate
     const est = estimateCostUsd('claude-sonnet-4-6', 10_000, 4096);
-    expect(est).toBeCloseTo(10_000 / 1e6 * 3 + 4096 / 1e6 * 15, 4);
+    expect(est).toBeCloseTo((10_000 / 1e6) * 3 + (4096 / 1e6) * 15, 4);
     // actuals smaller than the max-output estimate
     const act = actualCostUsd('claude-sonnet-4-6', 10_000, 800);
     expect(act).toBeLessThan(est);

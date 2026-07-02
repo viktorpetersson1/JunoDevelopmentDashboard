@@ -54,12 +54,20 @@ export const CreateCapitalSourceSchema = z.object({
   sourceName: z.string().trim().min(1).max(120),
   limitUsd: z.number().positive('limit_usd must be > 0'),
   drawnUsd: z.number().min(0).optional(),
-  interestRatePct: PercentDecimal,           // decimal 0–1 (0.06 = 6%)
+  interestRatePct: PercentDecimal, // decimal 0–1 (0.06 = 6%)
   notes: z.string().max(1000).nullable().optional(),
-  covenantMaxLtcPct: LtcDecimal,             // decimal 0–1 (0.75 = 75%)
+  covenantMaxLtcPct: LtcDecimal, // decimal 0–1 (0.75 = 75%)
   covenantMaxConcurrentProjects: z.number().int().min(0).nullable().optional(),
-  drawWindowStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
-  drawWindowEndDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  drawWindowStartDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable()
+    .optional(),
+  drawWindowEndDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable()
+    .optional(),
   priorityOrder: z.number().int().min(0).max(100).optional(),
 });
 
@@ -89,7 +97,7 @@ export type UpdateCapitalSourceInput = z.infer<typeof UpdateCapitalSourceSchema>
  */
 export async function createCapitalSource(
   input: CreateCapitalSourceInput,
-  user: User,
+  user: User
 ): Promise<{ id: string; version: number }> {
   const parsed = CreateCapitalSourceSchema.parse(input);
 
@@ -100,7 +108,7 @@ export async function createCapitalSource(
     parsed.drawWindowEndDate < parsed.drawWindowStartDate
   ) {
     throw new CapitalSourceValidationError(
-      'draw_window_end_date must be on or after draw_window_start_date',
+      'draw_window_end_date must be on or after draw_window_start_date'
     );
   }
 
@@ -146,7 +154,7 @@ export async function createCapitalSource(
 export async function updateCapitalSource(
   id: string,
   patch: UpdateCapitalSourceInput,
-  user: User,
+  user: User
 ): Promise<{ id: string; version: number }> {
   const parsed = UpdateCapitalSourceSchema.parse(patch);
 
@@ -155,7 +163,7 @@ export async function updateCapitalSource(
 
   if (!current.isCurrent) {
     throw new CapitalSourceValidationError(
-      `Cannot update non-current version of capital source ${id}. Update the current version instead.`,
+      `Cannot update non-current version of capital source ${id}. Update the current version instead.`
     );
   }
 
@@ -186,7 +194,7 @@ export async function updateCapitalSource(
     merged.drawWindowEndDate < merged.drawWindowStartDate
   ) {
     throw new CapitalSourceValidationError(
-      'draw_window_end_date must be on or after draw_window_start_date',
+      'draw_window_end_date must be on or after draw_window_start_date'
     );
   }
 
@@ -278,7 +286,7 @@ export type SetAssignmentsInput = z.infer<typeof SetAssignmentsSchema>;
 export async function setProjectAssignments(
   projectUuid: string,
   input: SetAssignmentsInput,
-  user: User,
+  user: User
 ): Promise<void> {
   const parsed = SetAssignmentsSchema.parse(input);
   await setAssignments(projectUuid, parsed.sourceIds, user.id);
@@ -292,7 +300,11 @@ export async function setProjectAssignments(
       method: 'PUT',
       statusCode: 200,
       source: 'ui',
-      after: { projectId: projectUuid, sourceIds: parsed.sourceIds, count: parsed.sourceIds.length },
+      after: {
+        projectId: projectUuid,
+        sourceIds: parsed.sourceIds,
+        count: parsed.sourceIds.length,
+      },
     });
   } catch {
     // best-effort

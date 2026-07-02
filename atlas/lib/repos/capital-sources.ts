@@ -96,10 +96,7 @@ function toView(row: CapitalSourceRow): CapitalSourceView {
     sourceName: row.source_name,
     limitUsd,
     drawnUsd,
-    interestRatePct:
-      row.interest_rate_pct === null
-        ? null
-        : Number(row.interest_rate_pct) / 100, // numeric column stores pct; convert to decimal
+    interestRatePct: row.interest_rate_pct === null ? null : Number(row.interest_rate_pct) / 100, // numeric column stores pct; convert to decimal
     notes: row.notes,
     // V6.2 stores covenant_max_ltc_pct as a decimal already (5,3 → 0.750 fits).
     covenantMaxLtcPct: row.covenant_max_ltc_pct === null ? null : Number(row.covenant_max_ltc_pct),
@@ -275,7 +272,7 @@ export interface InsertCapitalSourceVersionInput {
  * Caller is responsible for the role gate (super_admin only).
  */
 export async function insertCapitalSourceVersion(
-  input: InsertCapitalSourceVersionInput,
+  input: InsertCapitalSourceVersionInput
 ): Promise<{ id: string; version: number }> {
   const supabase = createSupabaseServerClient();
 
@@ -310,8 +307,7 @@ export async function insertCapitalSourceVersion(
     source_name: input.sourceName,
     limit_usd: input.limitUsd,
     drawn_usd: input.drawnUsd ?? 0,
-    interest_rate_pct:
-      input.interestRatePct == null ? null : input.interestRatePct * 100, // decimal → pct for the column
+    interest_rate_pct: input.interestRatePct == null ? null : input.interestRatePct * 100, // decimal → pct for the column
     notes: input.notes ?? null,
     covenant_max_ltc_pct: input.covenantMaxLtcPct ?? null,
     covenant_max_concurrent_projects: input.covenantMaxConcurrentProjects ?? null,
@@ -369,7 +365,7 @@ export async function archiveCapitalSource(id: string): Promise<void> {
 export async function setAssignments(
   projectUuid: string,
   sourceIds: string[],
-  createdBy: string,
+  createdBy: string
 ): Promise<void> {
   const supabase = createSupabaseServerClient();
 

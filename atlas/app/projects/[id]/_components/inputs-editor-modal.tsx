@@ -43,12 +43,13 @@ const COST_GROUPS: Array<{ key: CostGroupKey; label: string }> = [
   { key: 'financing', label: 'Financing' },
 ];
 
-const COST_STATUS_OPTIONS: Array<{ value: '' | 'estimate' | 'committed' | 'paid'; label: string }> = [
-  { value: '', label: '—' },
-  { value: 'estimate', label: 'Estimate' },
-  { value: 'committed', label: 'Committed' },
-  { value: 'paid', label: 'Paid' },
-];
+const COST_STATUS_OPTIONS: Array<{ value: '' | 'estimate' | 'committed' | 'paid'; label: string }> =
+  [
+    { value: '', label: '—' },
+    { value: 'estimate', label: 'Estimate' },
+    { value: 'committed', label: 'Committed' },
+    { value: 'paid', label: 'Paid' },
+  ];
 
 /** Empty-but-typed cost breakdown — every group present so editors can add
  *  lines without an undefined-key dance. */
@@ -82,7 +83,8 @@ function compactCostBreakdown(bd: CostBreakdown | null): CostBreakdown | null {
   let anyPresent = false;
   for (const { key } of COST_GROUPS) {
     const lines = (bd[key] ?? []).filter(
-      (l) => (l.label?.trim().length ?? 0) > 0 || (Number.isFinite(l.amount_usd) && l.amount_usd !== 0)
+      (l) =>
+        (l.label?.trim().length ?? 0) > 0 || (Number.isFinite(l.amount_usd) && l.amount_usd !== 0)
     );
     if (lines.length > 0) {
       // Normalise: trim strings, drop empty status/note before send.
@@ -299,9 +301,10 @@ export function InputsEditor({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(toPayload(form)),
       });
-      const json = (await res.json().catch(() => null)) as
-        | { data?: unknown; error?: { code?: string; message?: string } }
-        | null;
+      const json = (await res.json().catch(() => null)) as {
+        data?: unknown;
+        error?: { code?: string; message?: string };
+      } | null;
 
       if (!res.ok) {
         const code = json?.error?.code;
@@ -378,76 +381,190 @@ export function InputsEditor({
               onChange={(v) => set('purchase_date', v as Str)}
               error={fieldErrors.purchase_date}
             />
-            <Field label="Sourcing" name="sourcing_months" kind="integer" min={0} suffix="mo"
-              value={form.sourcing_months} onChange={(v) => set('sourcing_months', v as Num)}
-              error={fieldErrors.sourcing_months} />
-            <Field label="Permitting / pre-con" name="permitting" kind="integer" min={0} suffix="mo"
+            <Field
+              label="Sourcing"
+              name="sourcing_months"
+              kind="integer"
+              min={0}
+              suffix="mo"
+              value={form.sourcing_months}
+              onChange={(v) => set('sourcing_months', v as Num)}
+              error={fieldErrors.sourcing_months}
+            />
+            <Field
+              label="Permitting / pre-con"
+              name="permitting"
+              kind="integer"
+              min={0}
+              suffix="mo"
               value={form.permitting_preconstruction_months}
               onChange={(v) => set('permitting_preconstruction_months', v as Num)}
-              error={fieldErrors.permitting_preconstruction_months} />
-            <Field label="Construction" name="construction_months" kind="integer" min={0} suffix="mo"
-              value={form.construction_months} onChange={(v) => set('construction_months', v as Num)}
-              error={fieldErrors.construction_months} />
-            <Field label="Sales" name="sales_months" kind="integer" min={0} suffix="mo"
-              value={form.sales_months} onChange={(v) => set('sales_months', v as Num)}
-              error={fieldErrors.sales_months} />
+              error={fieldErrors.permitting_preconstruction_months}
+            />
+            <Field
+              label="Construction"
+              name="construction_months"
+              kind="integer"
+              min={0}
+              suffix="mo"
+              value={form.construction_months}
+              onChange={(v) => set('construction_months', v as Num)}
+              error={fieldErrors.construction_months}
+            />
+            <Field
+              label="Sales"
+              name="sales_months"
+              kind="integer"
+              min={0}
+              suffix="mo"
+              value={form.sales_months}
+              onChange={(v) => set('sales_months', v as Num)}
+              error={fieldErrors.sales_months}
+            />
           </Section>
 
           <Section title="Villa">
-            <Field label="Sqft above grade" name="villa_sqft_ag" kind="integer" min={1} suffix="sqft"
-              required value={form.villa_sqft_ag} onChange={(v) => set('villa_sqft_ag', v as Num)}
-              error={fieldErrors.villa_sqft_ag} />
-            <Field label="Sqft below grade" name="villa_sqft_bg" kind="integer" min={0} suffix="sqft"
-              value={form.villa_sqft_bg} onChange={(v) => set('villa_sqft_bg', v as Num)}
-              error={fieldErrors.villa_sqft_bg} />
+            <Field
+              label="Sqft above grade"
+              name="villa_sqft_ag"
+              kind="integer"
+              min={1}
+              suffix="sqft"
+              required
+              value={form.villa_sqft_ag}
+              onChange={(v) => set('villa_sqft_ag', v as Num)}
+              error={fieldErrors.villa_sqft_ag}
+            />
+            <Field
+              label="Sqft below grade"
+              name="villa_sqft_bg"
+              kind="integer"
+              min={0}
+              suffix="sqft"
+              value={form.villa_sqft_bg}
+              onChange={(v) => set('villa_sqft_bg', v as Num)}
+              error={fieldErrors.villa_sqft_bg}
+            />
           </Section>
 
           <Section title="Costs">
-            <Field label="Land cost" name="land_cost_usd" kind="number" min={0} suffix="$" required
-              value={form.land_cost_usd} onChange={(v) => set('land_cost_usd', v as Num)}
-              error={fieldErrors.land_cost_usd} />
-            <Field label="Build $/sqft" name="build_cost_per_sqft" kind="number" min={0} suffix="$/sqft"
-              hint="Blank = use global default" value={form.build_cost_per_sqft}
+            <Field
+              label="Land cost"
+              name="land_cost_usd"
+              kind="number"
+              min={0}
+              suffix="$"
+              required
+              value={form.land_cost_usd}
+              onChange={(v) => set('land_cost_usd', v as Num)}
+              error={fieldErrors.land_cost_usd}
+            />
+            <Field
+              label="Build $/sqft"
+              name="build_cost_per_sqft"
+              kind="number"
+              min={0}
+              suffix="$/sqft"
+              hint="Blank = use global default"
+              value={form.build_cost_per_sqft}
               onChange={(v) => set('build_cost_per_sqft', v as Num)}
-              error={fieldErrors.build_cost_per_sqft} />
-            <Field label="Soft costs (lump sum)" name="soft_costs_lump_sum" kind="number" min={0} suffix="$"
-              value={form.soft_costs_lump_sum} onChange={(v) => set('soft_costs_lump_sum', v as Num)}
-              error={fieldErrors.soft_costs_lump_sum} />
+              error={fieldErrors.build_cost_per_sqft}
+            />
+            <Field
+              label="Soft costs (lump sum)"
+              name="soft_costs_lump_sum"
+              kind="number"
+              min={0}
+              suffix="$"
+              value={form.soft_costs_lump_sum}
+              onChange={(v) => set('soft_costs_lump_sum', v as Num)}
+              error={fieldErrors.soft_costs_lump_sum}
+            />
           </Section>
 
           <Section title="Financing">
-            <Field label="Lender" name="lender_name" kind="text"
-              value={form.lender_name} onChange={(v) => set('lender_name', v as Str)}
-              error={fieldErrors.lender_name} />
-            <Field label="Senior LTV" name="senior_ltv_pct" kind="number" min={0} max={100} suffix="%" required
-              value={form.senior_ltv_display_pct} onChange={(v) => set('senior_ltv_display_pct', v as Num)}
-              error={fieldErrors.senior_ltv_pct} />
-            <Field label="Interest rate (APR)" name="interest_rate_apr" kind="number" min={0} max={100} suffix="%"
-              hint="Blank = use global rate" value={form.interest_rate_display_pct}
+            <Field
+              label="Lender"
+              name="lender_name"
+              kind="text"
+              value={form.lender_name}
+              onChange={(v) => set('lender_name', v as Str)}
+              error={fieldErrors.lender_name}
+            />
+            <Field
+              label="Senior LTV"
+              name="senior_ltv_pct"
+              kind="number"
+              min={0}
+              max={100}
+              suffix="%"
+              required
+              value={form.senior_ltv_display_pct}
+              onChange={(v) => set('senior_ltv_display_pct', v as Num)}
+              error={fieldErrors.senior_ltv_pct}
+            />
+            <Field
+              label="Interest rate (APR)"
+              name="interest_rate_apr"
+              kind="number"
+              min={0}
+              max={100}
+              suffix="%"
+              hint="Blank = use global rate"
+              value={form.interest_rate_display_pct}
               onChange={(v) => set('interest_rate_display_pct', v as Num)}
-              error={fieldErrors.interest_rate_apr} />
+              error={fieldErrors.interest_rate_apr}
+            />
           </Section>
 
           <Section title="Targets">
-            <Field label="Sale price override" name="sale_price_override_usd" kind="number" min={0} suffix="$"
+            <Field
+              label="Sale price override"
+              name="sale_price_override_usd"
+              kind="number"
+              min={0}
+              suffix="$"
               value={form.sale_price_override_usd}
               onChange={(v) => set('sale_price_override_usd', v as Num)}
-              error={fieldErrors.sale_price_override_usd} />
-            <Field label="$/sqft override" name="sale_price_per_sqft_override" kind="number" min={0} suffix="$/sqft"
+              error={fieldErrors.sale_price_override_usd}
+            />
+            <Field
+              label="$/sqft override"
+              name="sale_price_per_sqft_override"
+              kind="number"
+              min={0}
+              suffix="$/sqft"
               value={form.sale_price_per_sqft_override}
               onChange={(v) => set('sale_price_per_sqft_override', v as Num)}
-              error={fieldErrors.sale_price_per_sqft_override} />
-            <Field label="Target margin" name="target_margin" kind="number" min={0} max={100} suffix="%"
+              error={fieldErrors.sale_price_per_sqft_override}
+            />
+            <Field
+              label="Target margin"
+              name="target_margin"
+              kind="number"
+              min={0}
+              max={100}
+              suffix="%"
               value={form.target_margin_display_pct}
               onChange={(v) => set('target_margin_display_pct', v as Num)}
-              error={fieldErrors.target_margin} />
+              error={fieldErrors.target_margin}
+            />
           </Section>
 
           <Section title="Tax">
-            <Field label="Effective tax rate" name="tax_rate_pct" kind="number" min={0} max={100} suffix="%" required
+            <Field
+              label="Effective tax rate"
+              name="tax_rate_pct"
+              kind="number"
+              min={0}
+              max={100}
+              suffix="%"
+              required
               hint="Presentation-only (9-line P&L); engine global tax unchanged"
-              value={form.tax_rate_pct} onChange={(v) => set('tax_rate_pct', v as Num)}
-              error={fieldErrors.tax_rate_pct} />
+              value={form.tax_rate_pct}
+              onChange={(v) => set('tax_rate_pct', v as Num)}
+              error={fieldErrors.tax_rate_pct}
+            />
           </Section>
 
           {/*
@@ -458,15 +575,14 @@ export function InputsEditor({
           <Section title="Cost breakdown" fullWidth>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
-                Optional itemised costs. Engine reads only the lump-sum fields above;
-                this is for board reporting and the Summary tab.
+                Optional itemised costs. Engine reads only the lump-sum fields above; this is for
+                board reporting and the Summary tab.
               </div>
               {COST_GROUPS.map(({ key, label }) => {
                 const lines = form.cost_breakdown?.[key] ?? [];
                 const total = groupTotal(lines);
                 const lump = lumpSumMirror(key);
-                const diverges =
-                  lump != null && total > 0 && divergencePct(lump, total) > 0.05;
+                const diverges = lump != null && total > 0 && divergencePct(lump, total) > 0.05;
                 return (
                   <details
                     key={key}
@@ -498,7 +614,8 @@ export function InputsEditor({
                           fontVariantNumeric: 'tabular-nums',
                         }}
                       >
-                        {fmtCompactUsd(total)} ({lines.length} {lines.length === 1 ? 'line' : 'lines'})
+                        {fmtCompactUsd(total)} ({lines.length}{' '}
+                        {lines.length === 1 ? 'line' : 'lines'})
                       </span>
                       {diverges && lump != null && (
                         <StatusDot

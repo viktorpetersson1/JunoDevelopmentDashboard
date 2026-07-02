@@ -111,7 +111,10 @@ describe('deriveRecommendation', () => {
 
   it('applies a documented premium to the launch and classifies via thresholds', () => {
     const closed = [comp({ address: 'A', psf: 1000 })];
-    const r10 = deriveRecommendation(closed, [], FACTS, { premiumPct: 10, premiumBasis: '3.25-ac lot' });
+    const r10 = deriveRecommendation(closed, [], FACTS, {
+      premiumPct: 10,
+      premiumBasis: '3.25-ac lot',
+    });
     expect(r10.basePsf).toBe(1100);
     expect(r10.launchPriceUsd).toBe(1100 * 5317);
     expect(r10.classification).toBe('rider'); // ≤15%

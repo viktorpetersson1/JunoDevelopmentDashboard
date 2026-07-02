@@ -50,7 +50,12 @@ function briefBody(classification: string, launchPriceUsd: number, psf: number) 
     marketSentiment: { indicators: [], overallRead: 'Market read.' },
     reductionLadder: {
       phases: [{ label: 'Day 0', priceUsd: launchPriceUsd }],
-      walkAwayFloor: { priceUsd: Math.round(launchPriceUsd * 0.8), psf, marginPct: 0, action: 'Hold.' },
+      walkAwayFloor: {
+        priceUsd: Math.round(launchPriceUsd * 0.8),
+        psf,
+        marginPct: 0,
+        action: 'Hold.',
+      },
     },
     outcomeScenarios: {
       scenarios: [{ name: 'Base', exitUsd: launchPriceUsd, probabilityPct: 100 }],
@@ -187,7 +192,11 @@ afterEach(() => {
 describe('T-PRC-3 brief synthesis regression — classification via Sonar', () => {
   it('Big Bing SF → Market-Maker; triangulation fires (red gap); citations; 3 Sonar calls', async () => {
     mockChain(bigBing as CompFixture, briefBody('market_maker', 10_875_000, 1450));
-    const r = await generateStrategyBrief(facts({ villaSqftAg: 7500, waterfrontType: 'sound_front_bluff' }), cc, '');
+    const r = await generateStrategyBrief(
+      facts({ villaSqftAg: 7500, waterfrontType: 'sound_front_bluff' }),
+      cc,
+      ''
+    );
     expect(r.error).toBeUndefined();
     expect(r.brief.recommendation.classification).toBe('market_maker');
     expect(r.llmProvider).toBe('perplexity');
@@ -203,7 +212,11 @@ describe('T-PRC-3 brief synthesis regression — classification via Sonar', () =
 
   it('6 GC → Rider; no triangulation (gap=none)', async () => {
     mockChain(sixGc as CompFixture, briefBody('rider', 4_992_000, 1248));
-    const r = await generateStrategyBrief(facts({ villaSqftAg: 4000, subMarketLabel: 'Shelter Island' }), cc, '');
+    const r = await generateStrategyBrief(
+      facts({ villaSqftAg: 4000, subMarketLabel: 'Shelter Island' }),
+      cc,
+      ''
+    );
     expect(r.error).toBeUndefined();
     expect(r.brief.recommendation.classification).toBe('rider');
     expect(r.brief.triangulationBlock).toBeUndefined();
@@ -212,7 +225,11 @@ describe('T-PRC-3 brief synthesis regression — classification via Sonar', () =
 
   it('84 SBR → Market-Rider; triangulation fires (amber gap)', async () => {
     mockChain(eightFourSbr as CompFixture, briefBody('market_rider', 7_500_000, 1500));
-    const r = await generateStrategyBrief(facts({ villaSqftAg: 5000, subMarketLabel: 'North Haven' }), cc, '');
+    const r = await generateStrategyBrief(
+      facts({ villaSqftAg: 5000, subMarketLabel: 'North Haven' }),
+      cc,
+      ''
+    );
     expect(r.error).toBeUndefined();
     expect(r.brief.recommendation.classification).toBe('market_rider');
     expect(r.brief.triangulationBlock).toBeDefined();

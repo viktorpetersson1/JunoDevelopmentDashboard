@@ -448,7 +448,9 @@ function PremiumControl({
   onError: (msg: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
-  const [pct, setPct] = useState<string>(premium.premiumPct != null ? String(premium.premiumPct) : '');
+  const [pct, setPct] = useState<string>(
+    premium.premiumPct != null ? String(premium.premiumPct) : ''
+  );
   const [basis, setBasis] = useState<string>(premium.premiumBasis ?? '');
   const [saving, startSaving] = useTransition();
 
@@ -863,7 +865,9 @@ function FailedRecommendationCard({ detail }: { detail?: string | null }) {
       >
         The cost stack and breakeven thresholds below are exact — they’re computed directly from the
         project’s land and build costs, not the AI. Only the market read needs another pass; hit{' '}
-        <strong style={{ fontWeight: 600, color: 'var(--color-text-primary, #111)' }}>Refresh</strong>{' '}
+        <strong style={{ fontWeight: 600, color: 'var(--color-text-primary, #111)' }}>
+          Refresh
+        </strong>{' '}
         at the top to retry.
       </p>
       {detail && (
@@ -942,7 +946,9 @@ function SourcesSection({
   if (unique.length === 0) return null;
   return (
     <Card>
-      <SectionEyebrow label={provider === 'perplexity' ? 'Sources · Perplexity Sonar' : 'Sources'} />
+      <SectionEyebrow
+        label={provider === 'perplexity' ? 'Sources · Perplexity Sonar' : 'Sources'}
+      />
       <ol
         style={{
           margin: '10px 0 0',

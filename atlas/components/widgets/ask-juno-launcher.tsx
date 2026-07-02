@@ -117,7 +117,9 @@ export function AskJunoLauncher() {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <JunoMark size={20} ariaLabel="Juno" />
-            <strong style={{ fontSize: 14, color: 'var(--color-text-primary, #111)' }}>Ask Juno</strong>
+            <strong style={{ fontSize: 14, color: 'var(--color-text-primary, #111)' }}>
+              Ask Juno
+            </strong>
           </div>
           <button
             type="button"

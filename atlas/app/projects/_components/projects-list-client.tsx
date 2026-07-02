@@ -179,9 +179,7 @@ export function ProjectsListClient({
             bVal = 0;
         }
         if (typeof aVal === 'string' && typeof bVal === 'string') {
-          return sortDir === 'asc'
-            ? aVal.localeCompare(bVal)
-            : bVal.localeCompare(aVal);
+          return sortDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
         }
         return sortDir === 'asc'
           ? (aVal as number) - (bVal as number)
@@ -351,7 +349,13 @@ export function ProjectsListClient({
           />
         ) : view === 'map' ? (
           <div
-            style={{ ...card, padding: 48, textAlign: 'center', color: 'var(--color-text-tertiary, #767b84)', fontSize: 13 }}
+            style={{
+              ...card,
+              padding: 48,
+              textAlign: 'center',
+              color: 'var(--color-text-tertiary, #767b84)',
+              fontSize: 13,
+            }}
           >
             <p style={{ margin: 0, fontWeight: 700 }}>Map view</p>
             <p style={{ margin: '8px 0 0' }}>
@@ -679,18 +683,12 @@ function TimelineView({
             if (p.start_date && p.sale_date) {
               const sd = new Date(p.start_date);
               const ed = new Date(p.sale_date);
-              barLeft = Math.max(
-                0,
-                ((sd.getTime() - startMonth.getTime()) / totalMs) * totalWidth
-              );
+              barLeft = Math.max(0, ((sd.getTime() - startMonth.getTime()) / totalMs) * totalWidth);
               const rawRight = ((ed.getTime() - startMonth.getTime()) / totalMs) * totalWidth;
               barWidth = Math.max(4, rawRight - barLeft);
             } else if (p.start_date) {
               const sd = new Date(p.start_date);
-              barLeft = Math.max(
-                0,
-                ((sd.getTime() - startMonth.getTime()) / totalMs) * totalWidth
-              );
+              barLeft = Math.max(0, ((sd.getTime() - startMonth.getTime()) / totalMs) * totalWidth);
             }
 
             return (

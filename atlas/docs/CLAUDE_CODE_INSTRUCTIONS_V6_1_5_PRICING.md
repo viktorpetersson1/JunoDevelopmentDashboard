@@ -158,56 +158,71 @@ Three call sites, three JSON schemas. All three schemas live in `atlas/lib/llm/p
 // atlas/lib/llm/perplexity-schemas.ts
 
 export const CompResearchSchema = {
-  type: "json_schema",
+  type: 'json_schema',
   json_schema: {
-    name: "comp_research",
+    name: 'comp_research',
     schema: {
-      type: "object",
-      required: ["closed", "active", "sub_cut_definition", "window_months", "framework_notes"],
+      type: 'object',
+      required: ['closed', 'active', 'sub_cut_definition', 'window_months', 'framework_notes'],
       properties: {
-        sub_cut_definition: { type: "string" },          // e.g. "Bayfront NC 4-5BR ≥ 4,500sqft"
-        window_months: { type: "integer" },              // 24 default, can stretch
-        closed: { type: "array", items: { $ref: "#/$defs/Comp" } },
-        active: { type: "array", items: { $ref: "#/$defs/Comp" } },
-        framework_notes: { type: "string" },             // free text from the model on data quality
-        data_gap_severity: { type: "string", enum: ["none","amber","red"] },
+        sub_cut_definition: { type: 'string' }, // e.g. "Bayfront NC 4-5BR ≥ 4,500sqft"
+        window_months: { type: 'integer' }, // 24 default, can stretch
+        closed: { type: 'array', items: { $ref: '#/$defs/Comp' } },
+        active: { type: 'array', items: { $ref: '#/$defs/Comp' } },
+        framework_notes: { type: 'string' }, // free text from the model on data quality
+        data_gap_severity: { type: 'string', enum: ['none', 'amber', 'red'] },
       },
       $defs: {
         Comp: {
-          type: "object",
-          required: ["address","status","price_usd","ag_sqft","price_per_sqft","attributes","source_url"],
+          type: 'object',
+          required: [
+            'address',
+            'status',
+            'price_usd',
+            'ag_sqft',
+            'price_per_sqft',
+            'attributes',
+            'source_url',
+          ],
           properties: {
-            address: { type: "string" },
-            status: { type: "string", enum: ["closed","active","contract","withdrawn","expired"] },
-            price_usd: { type: "number" },
-            ag_sqft: { type: "integer" },
-            bg_sqft: { type: "integer" },
-            price_per_sqft: { type: "number" },
-            list_date: { type: "string" },              // ISO
-            sale_date: { type: "string" },              // ISO or null
-            dom_days: { type: "integer" },
-            relist_count: { type: "integer" },          // T-PRC-6 stuck-listing tracker
-            first_listed_at: { type: "string" },        // T-PRC-6
-            attributes: {
-              type: "object",
-              properties: {
-                construction: { type: "string", enum: ["new","resale","reno"] },
-                waterfront: { type: "string", enum: ["sound","bay","ocean","none","creek"] },
-                bedrooms: { type: "integer" },
-                pool: { type: "boolean" },
-                acreage: { type: "number" },
-              }
+            address: { type: 'string' },
+            status: {
+              type: 'string',
+              enum: ['closed', 'active', 'contract', 'withdrawn', 'expired'],
             },
-            source_url: { type: "string" },             // primary listing URL
-          }
-        }
-      }
-    }
-  }
+            price_usd: { type: 'number' },
+            ag_sqft: { type: 'integer' },
+            bg_sqft: { type: 'integer' },
+            price_per_sqft: { type: 'number' },
+            list_date: { type: 'string' }, // ISO
+            sale_date: { type: 'string' }, // ISO or null
+            dom_days: { type: 'integer' },
+            relist_count: { type: 'integer' }, // T-PRC-6 stuck-listing tracker
+            first_listed_at: { type: 'string' }, // T-PRC-6
+            attributes: {
+              type: 'object',
+              properties: {
+                construction: { type: 'string', enum: ['new', 'resale', 'reno'] },
+                waterfront: { type: 'string', enum: ['sound', 'bay', 'ocean', 'none', 'creek'] },
+                bedrooms: { type: 'integer' },
+                pool: { type: 'boolean' },
+                acreage: { type: 'number' },
+              },
+            },
+            source_url: { type: 'string' }, // primary listing URL
+          },
+        },
+      },
+    },
+  },
 };
 
-export const StrategyBriefSchema = { /* see T-PRC-3 §spec */ };
-export const BuyerMigrationThesisSchema = { /* see T-PRC-5 §spec */ };
+export const StrategyBriefSchema = {
+  /* see T-PRC-3 §spec */
+};
+export const BuyerMigrationThesisSchema = {
+  /* see T-PRC-5 §spec */
+};
 ```
 
 ### 2.7 Citations as first-class data
@@ -241,7 +256,7 @@ Per §2.1. The audit log row schema for a pricing call:
 
 StatusDot on `/pricing` reads the latest row per `call_site` for the latest `run_id` and surfaces a dot whenever any is not `success`.
 
-### 2.9 Sequencing inside the V6.1 sprint *(see §0a — superseded)*
+### 2.9 Sequencing inside the V6.1 sprint _(see §0a — superseded)_
 
 V6.1.5 was originally scoped to run parallel to V6.1 Part 1 and merge before T115. **That sequencing constraint is now retroactive — V6.1 has shipped.** New sequencing per §0a: V6.1.5 runs after V6.2 ships. T115 v2 follow-up adds a Sonar-backed `research_comps` tool to `lib/ask-juno/tools.ts`.
 
@@ -310,7 +325,7 @@ Carried forward from V6.1 §4 with three additions and two re-emphases:
 
 1. **No engine calc changes.** V6.1 Hard Rule #2 stands. `pricing-framework.ts` is not touched. `pnpm test:golden` must stay green.
 2. **Perplexity is the ONLY LLM provider** in `atlas/lib/pricing/*`. No Anthropic fallback. No silent provider routing.
-3. **No new UI libraries.** V6.1 Hard Rule #3 stands. *(Service SDKs like `@perplexity-ai/perplexity_ai` are explicitly allowed per V6.1 patterns — pinning Anthropic via raw fetch was a choice not a rule.)*
+3. **No new UI libraries.** V6.1 Hard Rule #3 stands. _(Service SDKs like `@perplexity-ai/perplexity_ai` are explicitly allowed per V6.1 patterns — pinning Anthropic via raw fetch was a choice not a rule.)_
 4. **Every Sonar call writes an audit row.** Schema per §2.8. Includes `citations_count` and `cost_usd`.
 5. **Every Sonar call uses `response_format` with a JSON schema.** No parsing JSON out of prose.
 6. **Citations are top-level array,** never inline prose markers. Persist to `pricing_runs.citations` JSONB and `comps.source_url`.
@@ -388,23 +403,23 @@ T-PRC-0 + T-PRC-1. Estimated 4 pomos. Must merge in full before T-PRC-2.
 import type { z } from 'zod';
 
 export interface PerplexityCallInput {
-  systemPrompt: string;                  // role + framework principles, no search instructions
+  systemPrompt: string; // role + framework principles, no search instructions
   userPrompt: string;
   model: 'sonar-pro' | 'sonar-reasoning-pro';
-  responseSchema: object;                // raw JSON schema (not Zod — Sonar wants JSON Schema draft 7)
+  responseSchema: object; // raw JSON schema (not Zod — Sonar wants JSON Schema draft 7)
   searchDomainFilter?: string[];
   searchRecencyFilter?: 'day' | 'week' | 'month' | 'year';
-  searchAfterDate?: string;              // ISO YYYY-MM-DD
+  searchAfterDate?: string; // ISO YYYY-MM-DD
   searchBeforeDate?: string;
-  webSearchOptionsCount?: number;        // soft cap, default unset
+  webSearchOptionsCount?: number; // soft cap, default unset
   callSite: 'location_classifier' | 'comp_research' | 'strategy_brief' | 'buyer_migration_thesis';
-  runId: string;                         // for audit log
-  promptHash: string;                    // hash of the prompt file used
-  timeoutMs?: number;                    // default 60_000
+  runId: string; // for audit log
+  promptHash: string; // hash of the prompt file used
+  timeoutMs?: number; // default 60_000
 }
 
 export interface PerplexityCallResult<T> {
-  data: T;                               // parsed JSON object (Sonar guarantees the shape)
+  data: T; // parsed JSON object (Sonar guarantees the shape)
   citations: Array<{ url: string; title?: string; snippet?: string }>;
   rawResponseId: string;
   inputTokens: number;
@@ -588,83 +603,111 @@ CREATE INDEX ON atlas.comps (first_listed_at) WHERE first_listed_at IS NOT NULL;
 
 ```typescript
 export const StrategyBriefSchema = {
-  type: "json_schema",
+  type: 'json_schema',
   json_schema: {
-    name: "strategy_brief",
+    name: 'strategy_brief',
     schema: {
-      type: "object",
-      required: ["recommendation", "breakevenThresholds", "quickMath",
-                 "compEvidence", "marketSentiment", "reductionLadder",
-                 "outcomeScenarios", "risks", "whyThisNumber", "finalRecommendation"],
+      type: 'object',
+      required: [
+        'recommendation',
+        'breakevenThresholds',
+        'quickMath',
+        'compEvidence',
+        'marketSentiment',
+        'reductionLadder',
+        'outcomeScenarios',
+        'risks',
+        'whyThisNumber',
+        'finalRecommendation',
+      ],
       properties: {
         recommendation: {
-          type: "object",
-          required: ["low","best","high","classification","rationale"],
+          type: 'object',
+          required: ['low', 'best', 'high', 'classification', 'rationale'],
           properties: {
-            low:  { type: "number" },   // $ total
-            best: { type: "number" },
-            high: { type: "number" },
-            classification: { type: "string",
-              enum: ["rider","stretch_rider","market_maker","market_rider"] },
-            rationale: { type: "string" },
-          }
+            low: { type: 'number' }, // $ total
+            best: { type: 'number' },
+            high: { type: 'number' },
+            classification: {
+              type: 'string',
+              enum: ['rider', 'stretch_rider', 'market_maker', 'market_rider'],
+            },
+            rationale: { type: 'string' },
+          },
         },
-        breakevenThresholds: {           // $/sqft and $ total at margin = 0
-          type: "object",
+        breakevenThresholds: {
+          // $/sqft and $ total at margin = 0
+          type: 'object',
           properties: {
-            margin_zero_total: { type: "number" },
-            margin_zero_per_sqft: { type: "number" },
-            margin_target_total: { type: "number" },
-            margin_target_per_sqft: { type: "number" },
-          }
+            margin_zero_total: { type: 'number' },
+            margin_zero_per_sqft: { type: 'number' },
+            margin_target_total: { type: 'number' },
+            margin_target_per_sqft: { type: 'number' },
+          },
         },
-        quickMath: {                     // 3-5 facts the reader scans first
-          type: "array",
-          items: { type: "object", properties: {
-            label: {type:"string"}, value: {type:"string"}, citation_idx: {type:"integer"} }
-          }
-        },
-        compEvidence: {                  // structured anchors — comp + $/sf + cite
-          type: "array",
-          items: { type: "object", required: ["address","price_per_sqft","role","note"],
+        quickMath: {
+          // 3-5 facts the reader scans first
+          type: 'array',
+          items: {
+            type: 'object',
             properties: {
-              address: {type:"string"},
-              price_per_sqft: {type:"number"},
-              role: {type:"string", enum:["anchor","ceiling","floor","outlier"]},
-              note: {type:"string"},
-              citation_idx: {type:"integer"},
-            }
-          }
+              label: { type: 'string' },
+              value: { type: 'string' },
+              citation_idx: { type: 'integer' },
+            },
+          },
         },
-        marketSentiment: { type: "string" },     // 1 paragraph
-        reductionLadder: {                       // Day 0 / 60 / 120 / 180 + walk-away floor
-          type: "object", required: ["day0","day60","day120","day180","walkAwayFloor"],
-          properties: {
-            day0:        { type: "number" },
-            day60:       { type: "number" },
-            day120:      { type: "number" },
-            day180:      { type: "number" },
-            walkAwayFloor: { type: "number" },
-          }
-        },
-        outcomeScenarios: {                      // bear / base / bull, weighted
-          type: "array", minItems: 3, maxItems: 3,
-          items: { type: "object", required: ["label","probability","clearing_price","narrative"],
+        compEvidence: {
+          // structured anchors — comp + $/sf + cite
+          type: 'array',
+          items: {
+            type: 'object',
+            required: ['address', 'price_per_sqft', 'role', 'note'],
             properties: {
-              label: { type:"string", enum:["bear","base","bull"] },
-              probability: { type:"number" },        // 0-1
-              clearing_price: { type:"number" },
-              narrative: { type:"string" },
-            }
-          }
+              address: { type: 'string' },
+              price_per_sqft: { type: 'number' },
+              role: { type: 'string', enum: ['anchor', 'ceiling', 'floor', 'outlier'] },
+              note: { type: 'string' },
+              citation_idx: { type: 'integer' },
+            },
+          },
         },
-        risks: { type: "array", items: { type: "string" } },
-        whyThisNumber: { type: "string" },       // 1 paragraph anchored to comps + framework
-        finalRecommendation: { type: "string" }, // 2-3 sentences
-        triangulation_block: { type: "object" }, // populated by T-PRC-4 when data_gap_severity != 'none'
-      }
-    }
-  }
+        marketSentiment: { type: 'string' }, // 1 paragraph
+        reductionLadder: {
+          // Day 0 / 60 / 120 / 180 + walk-away floor
+          type: 'object',
+          required: ['day0', 'day60', 'day120', 'day180', 'walkAwayFloor'],
+          properties: {
+            day0: { type: 'number' },
+            day60: { type: 'number' },
+            day120: { type: 'number' },
+            day180: { type: 'number' },
+            walkAwayFloor: { type: 'number' },
+          },
+        },
+        outcomeScenarios: {
+          // bear / base / bull, weighted
+          type: 'array',
+          minItems: 3,
+          maxItems: 3,
+          items: {
+            type: 'object',
+            required: ['label', 'probability', 'clearing_price', 'narrative'],
+            properties: {
+              label: { type: 'string', enum: ['bear', 'base', 'bull'] },
+              probability: { type: 'number' }, // 0-1
+              clearing_price: { type: 'number' },
+              narrative: { type: 'string' },
+            },
+          },
+        },
+        risks: { type: 'array', items: { type: 'string' } },
+        whyThisNumber: { type: 'string' }, // 1 paragraph anchored to comps + framework
+        finalRecommendation: { type: 'string' }, // 2-3 sentences
+        triangulation_block: { type: 'object' }, // populated by T-PRC-4 when data_gap_severity != 'none'
+      },
+    },
+  },
 };
 ```
 
@@ -972,20 +1015,20 @@ In addition to per-ticket conditions:
 
 ---
 
-## 7. Decisions register — D-066 through D-073 *(rebased from D-057 → D-064 per §0a)*
+## 7. Decisions register — D-066 through D-073 _(rebased from D-057 → D-064 per §0a)_
 
 To be inserted into `atlas/docs/DECISIONS.md` (rationale in T-PRC-0 / T-PRC-1):
 
-| ID    | Decision                                                                            | Owner       | Date        | Rationale                                                                                                              |
-| ----- | ----------------------------------------------------------------------------------- | ----------- | ----------- | ---------------------------------------------------------------------------------------------------------------------- |
-| D-066 | Move pricing engine to Perplexity Sonar end-to-end                                  | Viktor      | 3 Jun 2026  | Closes the 4 research-layer gaps; no max_uses cap; first-class citations[]; JSON schema responses; flat cost.          |
-| D-067 | SDK: `@perplexity-ai/perplexity_ai`, fall back to direct fetch where gaps exist     | Claude Code | T-PRC-1     | TBD per smoke test outcome.                                                                                            |
-| D-068 | Models: `sonar-pro` standard + `sonar-reasoning-pro` for buyer-migration thesis     | Viktor      | 3 Jun 2026  | Predictable cost; reasoning-pro reserved for the one CoT-benefiting call.                                              |
-| D-069 | Citations as JSONB on `pricing_runs.citations` + `comps.source_url`                 | Viktor      | 3 Jun 2026  | Queryable by domain; deduplicable; PDF-export ready.                                                                   |
-| D-070 | Framework prompts in `atlas/lib/pricing/prompts/*.md` not code                      | Viktor      | 3 Jun 2026  | Lets Viktor edit prompts without code review; prompt_hash logged per call.                                             |
-| D-071 | Buyer-migration thesis as a separate Sonar call (not folded into brief)             | Viktor      | 3 Jun 2026  | One model per call; thesis output is a first-class field, not buried in prose.                                         |
-| D-072 | Stuck-listing tracker — relist + DOM + first_listed_at on comps                     | Viktor      | 3 Jun 2026  | Surfaces market dynamics the LLM summary misses.                                                                       |
-| D-073 | Fail-loud on Sonar errors — no Anthropic fallback in pricing                        | Viktor      | 3 Jun 2026  | A silent provider routing makes the brief untrustworthy. StatusDot surfaces the failure.                               |
+| ID    | Decision                                                                        | Owner       | Date       | Rationale                                                                                                     |
+| ----- | ------------------------------------------------------------------------------- | ----------- | ---------- | ------------------------------------------------------------------------------------------------------------- |
+| D-066 | Move pricing engine to Perplexity Sonar end-to-end                              | Viktor      | 3 Jun 2026 | Closes the 4 research-layer gaps; no max_uses cap; first-class citations[]; JSON schema responses; flat cost. |
+| D-067 | SDK: `@perplexity-ai/perplexity_ai`, fall back to direct fetch where gaps exist | Claude Code | T-PRC-1    | TBD per smoke test outcome.                                                                                   |
+| D-068 | Models: `sonar-pro` standard + `sonar-reasoning-pro` for buyer-migration thesis | Viktor      | 3 Jun 2026 | Predictable cost; reasoning-pro reserved for the one CoT-benefiting call.                                     |
+| D-069 | Citations as JSONB on `pricing_runs.citations` + `comps.source_url`             | Viktor      | 3 Jun 2026 | Queryable by domain; deduplicable; PDF-export ready.                                                          |
+| D-070 | Framework prompts in `atlas/lib/pricing/prompts/*.md` not code                  | Viktor      | 3 Jun 2026 | Lets Viktor edit prompts without code review; prompt_hash logged per call.                                    |
+| D-071 | Buyer-migration thesis as a separate Sonar call (not folded into brief)         | Viktor      | 3 Jun 2026 | One model per call; thesis output is a first-class field, not buried in prose.                                |
+| D-072 | Stuck-listing tracker — relist + DOM + first_listed_at on comps                 | Viktor      | 3 Jun 2026 | Surfaces market dynamics the LLM summary misses.                                                              |
+| D-073 | Fail-loud on Sonar errors — no Anthropic fallback in pricing                    | Viktor      | 3 Jun 2026 | A silent provider routing makes the brief untrustworthy. StatusDot surfaces the failure.                      |
 
 ---
 
@@ -1034,6 +1077,6 @@ If any of these three are unresolved when Claude reaches T-PRC-1, surface as a s
 
 ---
 
-*End of CLAUDE_CODE_INSTRUCTIONS_V6_1_5_PRICING.md.*
+_End of CLAUDE_CODE_INSTRUCTIONS_V6_1_5_PRICING.md._
 
-*Source: provided by Viktor as a docx 3 Jun 2026. Transcribed to Markdown by Claude with reconciliation notes (§0a) noting it's deferred until V6.2 ships. Decision IDs + migration numbers rebased per §0a. The original docx remains in Viktor's Downloads folder for reference.*
+_Source: provided by Viktor as a docx 3 Jun 2026. Transcribed to Markdown by Claude with reconciliation notes (§0a) noting it's deferred until V6.2 ships. Decision IDs + migration numbers rebased per §0a. The original docx remains in Viktor's Downloads folder for reference._

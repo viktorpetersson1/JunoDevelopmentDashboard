@@ -37,7 +37,7 @@ export const PATCH = withErrorBoundary(async (req: NextRequest, ctx: RouteContex
       `Validation failed: ${parsed.error.issues
         .map((i) => `${i.path.join('.')} — ${i.message}`)
         .join('; ')}`,
-      'VALIDATION_FAILED',
+      'VALIDATION_FAILED'
     );
   }
 

@@ -84,9 +84,15 @@ function round4(n: number): number {
  * Pre-call budget estimate — assumes MAX output (worst case), so the gate fails
  * safe: a call is only made if `spent + estimate` stays under the ceiling.
  */
-export function estimateCostUsd(model: string, estInputTokens: number, maxOutputTokens: number): number {
+export function estimateCostUsd(
+  model: string,
+  estInputTokens: number,
+  maxOutputTokens: number
+): number {
   const p = priceFor(model);
-  return round4((estInputTokens / 1_000_000) * p.inPerM + (maxOutputTokens / 1_000_000) * p.outPerM);
+  return round4(
+    (estInputTokens / 1_000_000) * p.inPerM + (maxOutputTokens / 1_000_000) * p.outPerM
+  );
 }
 
 /** True-up from the response's actual token usage (numeric(10,4) safe). */

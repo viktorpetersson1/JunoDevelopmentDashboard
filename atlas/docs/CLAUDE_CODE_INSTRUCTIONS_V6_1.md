@@ -57,12 +57,12 @@ Signed: Claude (instance + date)
 
 ## 1. Context — what V6.1 closes
 
-After V5.2 ships, Atlas looks the part. The 2 June 2026 review found that it does not yet *function* as the cockpit Viktor needs:
+After V5.2 ships, Atlas looks the part. The 2 June 2026 review found that it does not yet _function_ as the cockpit Viktor needs:
 
-- **The Inputs tab on every project is pure read-only** — no `<input>`, no form, no save button. The file's own header comment says *"Edit affordance ships with the New Project Wizard (T065 follow-up)"*. That follow-up was never built. There is no `PATCH /api/projects/[id]` endpoint either — only GET. Owners cannot change a number without Viktor opening Drizzle.
+- **The Inputs tab on every project is pure read-only** — no `<input>`, no form, no save button. The file's own header comment says _"Edit affordance ships with the New Project Wizard (T065 follow-up)"_. That follow-up was never built. There is no `PATCH /api/projects/[id]` endpoint either — only GET. Owners cannot change a number without Viktor opening Drizzle.
 - **No way to upload costs.** Actuals tab has a single-entry modal that works, but no bulk import. Viktor's invoices and cost reports live in Excel/CSV/PDF.
 - **Charts use a fixed 49-month timeline.** The engine emits 49 months starting Jan 2026 (`globals.horizon_months = 49`, `model_start = '2026-01'`). Every project chart renders 49 bars regardless of whether the project starts in 2026 or 2028, and regardless of whether it sold in 2027. Empty bars dominate the visual.
-- **The Summary tab has totals-only P&L.** The Excel master Viktor uses has a *monthly* P&L matrix (9 lines × 16 months for 84 SBR). Atlas only shows the column totals. Board meetings need the monthly view.
+- **The Summary tab has totals-only P&L.** The Excel master Viktor uses has a _monthly_ P&L matrix (9 lines × 16 months for 84 SBR). Atlas only shows the column totals. Board meetings need the monthly view.
 - **The Excel "Assumptions and key figures" block is missing.** Excel's K6–M31 block (start date, sale date, villa sqft split, $/sqft target vs actual, profit ambition vs actual margin, leverage %) is the at-a-glance summary every reader scans first. Atlas scatters this information across Inputs and Schedule.
 - **Home is stretched.** Three sections (`Board questions` · `Tactical context` · `What needs you today`) render as ~9 same-weight chips across one row. No information hierarchy.
 - **Projects list uses tiles where a table would scan better.** 11 projects × wide cards × vertical padding = sparse, slow to read.
@@ -149,7 +149,7 @@ Max 3 dots visible per viewport — if more would render, collapse the surplus i
 
 ## 3a. UX/UI principles — carried forward from V5.2 §3a
 
-Same ten principles (P1 One purpose per page · P2 Hierarchy by size not color · P3 One primary action · P4 State before content · P5 Consistent number formatting · P6 Empty states are content · P7 No dead UI · P8 Reuse ja-* primitives · P9 Mobile is deferred · P10 Screenshot every UI PR). Every V6.1 PR is screenshot-reviewed against these.
+Same ten principles (P1 One purpose per page · P2 Hierarchy by size not color · P3 One primary action · P4 State before content · P5 Consistent number formatting · P6 Empty states are content · P7 No dead UI · P8 Reuse ja-\* primitives · P9 Mobile is deferred · P10 Screenshot every UI PR). Every V6.1 PR is screenshot-reviewed against these.
 
 ## 3b. Editability principles — new for V6.1
 
@@ -240,7 +240,7 @@ T104–T114. Estimated ~5 weeks. Must merge in full and tag `v6.1.0-beta.1` befo
 export const UpdateProjectSchema = z.object({
   // Schedule
   purchase_date: z.string().optional(),
-  start_date: z.string(),  // YYYY-MM
+  start_date: z.string(), // YYYY-MM
   sourcing_months: z.number().int().min(0).optional(),
   permitting_preconstruction_months: z.number().int().min(0).optional(),
   construction_months: z.number().int().min(0).optional(),
@@ -367,10 +367,10 @@ const CostLineItem = z.object({
 });
 
 export const CostBreakdownSchema = z.object({
-  construction: z.array(CostLineItem).optional(),    // build line items
-  superstructure: z.array(CostLineItem).optional(),  // 7 Kingshaus lines from Excel
-  soft: z.array(CostLineItem).optional(),            // permits / arch / etc
-  financing: z.array(CostLineItem).optional(),       // closing + origination + servicing
+  construction: z.array(CostLineItem).optional(), // build line items
+  superstructure: z.array(CostLineItem).optional(), // 7 Kingshaus lines from Excel
+  soft: z.array(CostLineItem).optional(), // permits / arch / etc
+  financing: z.array(CostLineItem).optional(), // closing + origination + servicing
 });
 ```
 
@@ -612,13 +612,14 @@ interface StatusDotProps {
   title: string;
   message: string;
   action?: { label: string; href?: string; onClick?: () => void };
-  timestamp?: string;  // ISO; rendered as "noticed Xh ago"
+  timestamp?: string; // ISO; rendered as "noticed Xh ago"
   /** Auto-suppress when delta = 0 (used for KPI YoY tags). */
   suppressIfZero?: number;
 }
 ```
 
 2. **Visual:**
+
    - 6px solid dot inline, vertically centered with adjacent text
    - Color: info `#0D0D0D`, warning `#D4A017`, error `#C0392B`
    - 2s opacity pulse 1.0 → 0.55 → 1.0, infinite, ease-in-out
@@ -633,18 +634,27 @@ interface StatusDotProps {
 
 ```css
 @keyframes status-dot-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.55; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
 }
 .status-dot {
   animation: status-dot-pulse 2s ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce) {
-  .status-dot { animation: none; opacity: 1; }
+  .status-dot {
+    animation: none;
+    opacity: 1;
+  }
 }
 ```
 
 4. **Platform-wide sweep — replace four offenders:**
+
    - **`/pricing`** — yellow stale-data banner → amber `<StatusDot>` next to "Market intelligence" header. Same message, same "Refresh data now" action (now in popover).
    - **All KPI YoY tags** — red/green `0.0% YoY` etc → wrap each KPI delta in `<StatusDot suppressIfZero={delta}>`. When `delta === 0` or `delta` is undefined, render nothing (no dot). When non-zero, dot color = up `#0D0D0D` (info) or down `#C0392B` (error) — never decorative red/green for tiny moves.
    - **Project page approval banner** (already partly demoted in V5.2 T103.6) → `<StatusDot>` in the project header next to project name. Popover shows lock state + last snapshot date + "Lock new snapshot" action for editors.
@@ -666,7 +676,7 @@ interface StatusDotProps {
 - [ ] Playwright a11y test: keyboard focus reaches dot, Enter opens popover, Escape closes
 - [ ] `D-052` StatusDot primitive replaces inline alert banners logged
 
-**Hard Rules check:** Pure ja-* primitive — no new lib. ✓
+**Hard Rules check:** Pure ja-\* primitive — no new lib. ✓
 
 **Stop-and-ask conditions:**
 
@@ -731,6 +741,7 @@ export const askJunoTools = {
 ```
 
 3. **Low-risk classifier** at `lib/ask-juno/risk-classifier.ts`. Given a tool name + arguments, returns `{auto_execute: boolean, reason: string}`. Auto-execute requires all of:
+
    - Tool is in the low-risk-eligible set (above)
    - Tool action is INSERT (no UPDATE/DELETE)
    - `arguments.amount_usd ?? 0 ≤ 10_000`
@@ -758,6 +769,7 @@ export const askJunoTools = {
 `Confirm` calls the tool. `Edit` opens the relevant editor modal (T104's Inputs editor, T108's importer modal, etc.) with the proposed values pre-filled. `Cancel` aborts and the agent acknowledges.
 
 5. **System prompt** at `lib/ask-juno/system-prompt.ts`. The system prompt MUST include:
+
    - The §−1 Atlas purpose statement
    - The 7 owners and their %s (cap table)
    - The 6 strategic question examples
@@ -802,6 +814,7 @@ export const askJunoTools = {
 1. **File upload affordance in the Ask Juno chat UI** — drag-drop zone above the input box, or paperclip icon inside the input. Accepts `.csv`, `.xlsx`, `.pdf`, `.docx`. Max 10 MB per file.
 
 2. **Extraction pipeline:**
+
    - **CSV / XLSX** — reuse T108's column mapper. Returns structured rows.
    - **PDF** — Claude Sonnet 4.5 with the `application/pdf` input mode. Prompt: "Extract every line item from this document as JSON matching schema X. Categorize each per the actuals categories enum. Return confidence per row."
    - **DOCX** — extract text (use the existing text-extraction helper if there is one; otherwise a minimal mammoth-style extraction), then Sonnet 4.5 on the text with the same prompt.
@@ -862,6 +875,7 @@ export const askJunoTools = {
 **Final ticket — single PR that closes out V6.1:**
 
 1. Update `atlas/docs/DECISIONS.md` with:
+
    - `D-043` Editable inputs via modal + PATCH endpoint
    - `D-044` Dynamic chart timeline platform-wide
    - `D-045` Assumptions hero block + debt-outstanding overlay
@@ -1112,4 +1126,4 @@ If any of these three are still TBD when Claude reaches the relevant ticket, sur
 
 ---
 
-*End of CLAUDE_CODE_INSTRUCTIONS_V6_1.md.*
+_End of CLAUDE_CODE_INSTRUCTIONS_V6_1.md._

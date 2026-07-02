@@ -147,7 +147,7 @@ export async function findManyProjects(
  * findCurrentProjectUuidByKey.
  */
 export async function findManyProjectsWithUuids(
-  opts: ListProjectsOptions = {},
+  opts: ListProjectsOptions = {}
 ): Promise<Array<{ uuid: string; input: ProjectInput }>> {
   const supabase = createSupabaseServerClient();
   const limit = Math.min(Math.max(opts.limit ?? 100, 1), 200);
@@ -433,10 +433,7 @@ export async function applyProjectEdit(
   historical.is_current = false;
   historical.is_archived = false;
   historical.version = currentVersion;
-  const { error: histErr } = await supabase
-    .schema('atlas')
-    .from('projects')
-    .insert(historical);
+  const { error: histErr } = await supabase.schema('atlas').from('projects').insert(historical);
   if (histErr) {
     log.warn('applyProjectEdit: history copy failed (edit + audit still applied)', {
       projectKey,

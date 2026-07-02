@@ -189,7 +189,9 @@ describe('callPerplexity', () => {
   it('treats non-JSON message content as a hard failure (no prose parsing — Hard Rule #5)', async () => {
     const wire = {
       id: 'x',
-      choices: [{ message: { content: 'Here are the comps: 3745 Nassau Point closed $1,455/sf...' } }],
+      choices: [
+        { message: { content: 'Here are the comps: 3745 Nassau Point closed $1,455/sf...' } },
+      ],
       usage: { prompt_tokens: 100, completion_tokens: 50 },
       citations: [],
     };

@@ -83,7 +83,9 @@ async function main(): Promise<void> {
   const cost = (inTok / 1e6) * 3 + (outTok / 1e6) * 15; // sonar-pro pricing
 
   console.log('--- Sonar smoke (Big Bing comp_research) ---');
-  console.log(`latency: ${latencyMs}ms  in: ${inTok} tok  out: ${outTok} tok  cost: $${cost.toFixed(4)}`);
+  console.log(
+    `latency: ${latencyMs}ms  in: ${inTok} tok  out: ${outTok} tok  cost: $${cost.toFixed(4)}`
+  );
   console.log(`citations: ${Array.isArray(body.citations) ? body.citations.length : 0}`);
 
   try {

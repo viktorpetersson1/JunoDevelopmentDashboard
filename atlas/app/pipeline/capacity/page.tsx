@@ -83,16 +83,27 @@ export default async function CapacitySolverPage() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
         <header>
           <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-tertiary)' }}>
-            <a href="/pipeline" style={{ color: 'var(--color-text-tertiary)', textDecoration: 'none' }}>
+            <a
+              href="/pipeline"
+              style={{ color: 'var(--color-text-tertiary)', textDecoration: 'none' }}
+            >
               Pipeline
             </a>{' '}
             / Capacity solver
           </p>
-          <h1 style={{ fontSize: 24, fontWeight: 700, margin: '4px 0 0', color: 'var(--color-text-primary)' }}>
+          <h1
+            style={{
+              fontSize: 24,
+              fontWeight: 700,
+              margin: '4px 0 0',
+              color: 'var(--color-text-primary)',
+            }}
+          >
             Start Capacity Solver
           </h1>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
-            How many more projects can start now under the KPC LOC concurrency covenant — and when the next slot opens.
+            How many more projects can start now under the KPC LOC concurrency covenant — and when
+            the next slot opens.
           </p>
         </header>
 
@@ -105,16 +116,33 @@ export default async function CapacitySolverPage() {
               padding: 'var(--ja-card-padding)',
             }}
           >
-            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 6 }}>
+            <div
+              style={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: 'var(--color-text-primary)',
+                marginBottom: 6,
+              }}
+            >
               Insufficient data
             </div>
-            <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
+            <p
+              style={{
+                margin: 0,
+                fontSize: 13,
+                color: 'var(--color-text-secondary)',
+                lineHeight: 1.5,
+              }}
+            >
               {result.rationale}
             </p>
             <p style={{ margin: '12px 0 0', fontSize: 12, color: 'var(--color-text-tertiary)' }}>
-              The solver needs the LOC&rsquo;s &ldquo;Max concurrent projects&rdquo; covenant from the KPC term sheet.
-              A super-admin can set it in{' '}
-              <a href="/settings?tab=capital-sources" style={{ color: 'var(--color-text-secondary)' }}>
+              The solver needs the LOC&rsquo;s &ldquo;Max concurrent projects&rdquo; covenant from
+              the KPC term sheet. A super-admin can set it in{' '}
+              <a
+                href="/settings?tab=capital-sources"
+                style={{ color: 'var(--color-text-secondary)' }}
+              >
                 Settings → Capital Sources
               </a>
               . Nothing is estimated here until that number is entered.
@@ -123,7 +151,13 @@ export default async function CapacitySolverPage() {
         ) : (
           <>
             {/* Hero result */}
-            <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+            <section
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gap: 16,
+              }}
+            >
               <Hero
                 label="Can start now"
                 value={String(result.max_concurrent_starts_now)}
@@ -161,10 +195,24 @@ export default async function CapacitySolverPage() {
                 padding: 'var(--ja-card-padding)',
               }}
             >
-              <h2 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 6px', color: 'var(--color-text-primary)' }}>
+              <h2
+                style={{
+                  fontSize: 14,
+                  fontWeight: 700,
+                  margin: '0 0 6px',
+                  color: 'var(--color-text-primary)',
+                }}
+              >
                 Rationale
               </h2>
-              <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 13,
+                  color: 'var(--color-text-secondary)',
+                  lineHeight: 1.5,
+                }}
+              >
                 {result.rationale}
               </p>
             </section>
@@ -178,7 +226,14 @@ export default async function CapacitySolverPage() {
                 padding: 'var(--ja-card-padding)',
               }}
             >
-              <h2 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 12px', color: 'var(--color-text-primary)' }}>
+              <h2
+                style={{
+                  fontSize: 14,
+                  fontWeight: 700,
+                  margin: '0 0 12px',
+                  color: 'var(--color-text-primary)',
+                }}
+              >
                 Concurrent projects vs covenant cap
               </h2>
               <CapacityCeilingChart
@@ -191,7 +246,8 @@ export default async function CapacitySolverPage() {
                 <a href="/analytics/cash-schedule" style={{ color: 'var(--color-text-secondary)' }}>
                   cash schedule
                 </a>
-                ). The covenant cap is the dashed red line. Available capacity is the gap between them.
+                ). The covenant cap is the dashed red line. Available capacity is the gap between
+                them.
               </p>
             </section>
           </>
@@ -238,7 +294,15 @@ function Hero({
       >
         {label}
       </div>
-      <div style={{ fontSize: 32, fontWeight: 700, margin: '6px 0 2px', color, letterSpacing: '-0.02em' }}>
+      <div
+        style={{
+          fontSize: 32,
+          fontWeight: 700,
+          margin: '6px 0 2px',
+          color,
+          letterSpacing: '-0.02em',
+        }}
+      >
         {value}
       </div>
       <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{sub}</div>

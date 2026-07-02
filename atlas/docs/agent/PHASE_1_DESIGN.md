@@ -109,12 +109,12 @@ NOTIFY pgrst, 'reload schema';
 
 All edge runtime, service-role client for writes, mirroring existing routes.
 
-| Route | Method · role | Job |
-|---|---|---|
-| `/api/agent/runs` | POST · editor+ | Insert a run (`status='planning'`, goal, pathname, model+ceilings from config). Returns `{ runId }`. Cheap — no LLM here. |
-| `/api/agent/runs/[id]/advance` | POST · owner or super_admin | The workhorse. Acquires the lease, advances a **bounded batch** of steps within a wall-time budget, persists after each, **streams SSE live deltas**, returns when the batch budget is hit (`yield`), or the run pauses/completes/fails. Body `{ continue?: true }` clears `continue_ack` to pass a soft ceiling once. |
-| `/api/agent/runs/[id]/events` | GET · owner/editor+ (viewer: completed only) | **SSE replay from durable state** — reconstructs the whole transcript so far (run → plan → each persisted step), then the current terminal/paused/yield marker. A mid-run refresh shows what already happened; the client then resumes by calling `advance`. |
-| `/api/agent/runs/[id]/abort` | POST · owner or super_admin | `status='aborted'`. |
+| Route                          | Method · role                                | Job                                                                                                                                                                                                                                                                                                                    |
+| ------------------------------ | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/api/agent/runs`              | POST · editor+                               | Insert a run (`status='planning'`, goal, pathname, model+ceilings from config). Returns `{ runId }`. Cheap — no LLM here.                                                                                                                                                                                              |
+| `/api/agent/runs/[id]/advance` | POST · owner or super_admin                  | The workhorse. Acquires the lease, advances a **bounded batch** of steps within a wall-time budget, persists after each, **streams SSE live deltas**, returns when the batch budget is hit (`yield`), or the run pauses/completes/fails. Body `{ continue?: true }` clears `continue_ack` to pass a soft ceiling once. |
+| `/api/agent/runs/[id]/events`  | GET · owner/editor+ (viewer: completed only) | **SSE replay from durable state** — reconstructs the whole transcript so far (run → plan → each persisted step), then the current terminal/paused/yield marker. A mid-run refresh shows what already happened; the client then resumes by calling `advance`.                                                           |
+| `/api/agent/runs/[id]/abort`   | POST · owner or super_admin                  | `status='aborted'`.                                                                                                                                                                                                                                                                                                    |
 
 ### Advance control flow
 
@@ -157,22 +157,25 @@ open SSE stream:
 ```
 
 ### SSE event protocol (emitted by advance; replayed by /events from durable rows)
+
 `run · plan · step_start · step_done · step_failed · paused · done · error · locked · yield`
 
 ### Config seams built now (single-tier behaviour for Phase 1)
+
 - `agentModel()` → `process.env.AGENT_MODEL?.trim() || 'claude-sonnet-4-6'` (CF secret; mirrors `pricingProvider()`'s trim lesson).
 - `modelForStep(type, runModel)` → returns `runModel` for all step types now; Phase 2 escalates `synthesize` to a stronger model — no rework.
 - `maxTokensFor(type)` → small (~512) for `plan`/`tool_route`, large (~4096) for `synthesize`. NOT v1's hardcoded 1024. Used for both the request and the pre-call budget estimate.
 - `estimateCost(model, maxOut)` + `trueUpCost(actualTokens)` → a per-model price table (like `PRICES` in perplexity-client.ts); estimate assumes max output, the agent_llm_calls row records actuals.
 
 ### Phase 1 tools
+
 The 5 existing READ tools re-registered unchanged: `list_projects`, `get_project_summary`, `get_dashboard_kpis`, `search_actuals`, `research_comps`. No write tools, no analysis tools.
 
 ---
 
 ## C. Two design calls for your eye ⚑
 
-**⚑1 — Budget ledger.** Your refinement: "persist `cost_spent_usd` in the SAME write as the step result so a crash can't under-count." My shape goes one better for the *budget gate specifically*: each LLM call writes its `agent_llm_calls` row IMMEDIATELY after the call returns (success or failure), exactly like `perplexity-client` does today — so the authoritative spend is `SUM(agent_llm_calls.cost_usd)`, which a crash physically cannot under-count (the cost row exists before the step row is even touched). `agent_runs.cost_spent_usd` is a denormalised cache for cheap display. **Alternative if you want the literal single-write:** a Postgres RPC `agent_finish_step(...)` doing the llm-call insert + step update + run counter in ONE transaction. I lean against the RPC (more surface, and the ledger-sum is already crash-proof) — confirm you're good with ledger-sum-as-truth.
+**⚑1 — Budget ledger.** Your refinement: "persist `cost_spent_usd` in the SAME write as the step result so a crash can't under-count." My shape goes one better for the _budget gate specifically_: each LLM call writes its `agent_llm_calls` row IMMEDIATELY after the call returns (success or failure), exactly like `perplexity-client` does today — so the authoritative spend is `SUM(agent_llm_calls.cost_usd)`, which a crash physically cannot under-count (the cost row exists before the step row is even touched). `agent_runs.cost_spent_usd` is a denormalised cache for cheap display. **Alternative if you want the literal single-write:** a Postgres RPC `agent_finish_step(...)` doing the llm-call insert + step update + run counter in ONE transaction. I lean against the RPC (more surface, and the ledger-sum is already crash-proof) — confirm you're good with ledger-sum-as-truth.
 
 **⚑2 — Single-advancer lease.** CF Pages has no cross-request pub/sub (Durable Objects would be a new dep — banned). So "live" SSE only exists on the `advance` request that's driving the run; any other client (e.g. a second tab, or the original after a refresh) reconstructs state via `/events` replay and then either tails or takes over driving once the 30s lease expires. The `lease_owner`/`lease_until` columns give single-advancer mutual exclusion so two tabs can't double-execute. This is the no-new-dep answer to "durable + resumable + visible." Flag if you'd rather I pursue a heavier real-time path.
 

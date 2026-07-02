@@ -60,8 +60,12 @@ describe('executeTool research_comps (V6.1.5-001)', () => {
 
     const r = await executeTool(
       'research_comps',
-      { address: '6 Great Circle Dr, Shelter Island, NY', sub_cut_label: 'Shelter Island non-WF NC', ag_sqft: 4000 },
-      fakeUser,
+      {
+        address: '6 Great Circle Dr, Shelter Island, NY',
+        sub_cut_label: 'Shelter Island non-WF NC',
+        ag_sqft: 4000,
+      },
+      fakeUser
     );
 
     expect(r.is_write).toBe(false);
@@ -94,7 +98,7 @@ describe('executeTool research_comps (V6.1.5-001)', () => {
     const r = await executeTool(
       'research_comps',
       { address: 'x', sub_cut_label: 'y', ag_sqft: 5000, is_nc: false },
-      fakeUser,
+      fakeUser
     );
     expect(r.is_write).toBe(false);
     const parsed = JSON.parse(r.content);

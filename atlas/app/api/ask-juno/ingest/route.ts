@@ -42,9 +42,15 @@ const MODEL_CHAIN = [
 async function callAnthropicExtract(
   apiKey: string,
   fileName: string,
-  content: string | { type: 'base64'; mediaType: string; data: string },
+  content: string | { type: 'base64'; mediaType: string; data: string }
 ): Promise<{
-  line_items: Array<{ category: string; line_item: string; amount_usd: number; vendor?: string; date?: string }>;
+  line_items: Array<{
+    category: string;
+    line_item: string;
+    amount_usd: number;
+    vendor?: string;
+    date?: string;
+  }>;
   confidence: number;
   warnings: string[];
 }> {
@@ -57,12 +63,21 @@ Return a JSON object with this exact shape:
 }
 Only use the allowed category values. If unsure, use "other". Return confidence 0.0 if you cannot extract any items.`;
 
-  const userContent = typeof content === 'string'
-    ? [{ type: 'text', text: `Extract cost items from this document (file: ${fileName}):\n\n${content}` }]
-    : [
-        { type: 'text', text: `Extract cost items from this document (file: ${fileName}):` },
-        { type: 'document', source: { type: 'base64', media_type: content.mediaType, data: content.data } },
-      ];
+  const userContent =
+    typeof content === 'string'
+      ? [
+          {
+            type: 'text',
+            text: `Extract cost items from this document (file: ${fileName}):\n\n${content}`,
+          },
+        ]
+      : [
+          { type: 'text', text: `Extract cost items from this document (file: ${fileName}):` },
+          {
+            type: 'document',
+            source: { type: 'base64', media_type: content.mediaType, data: content.data },
+          },
+        ];
 
   for (const model of MODEL_CHAIN) {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -86,13 +101,15 @@ Only use the allowed category values. If unsure, use "other". Return confidence 
       throw new Error(`Anthropic API HTTP ${res.status}: ${text.slice(0, 200)}`);
     }
 
-    const body = await res.json() as { content?: Array<{ type: string; text?: string }> };
+    const body = (await res.json()) as { content?: Array<{ type: string; text?: string }> };
     const text = body.content?.find((b) => b.type === 'text')?.text ?? '';
 
     // Parse JSON from response (may be wrapped in markdown).
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) throw new Error('Model did not return valid JSON');
-    return JSON.parse(match[0]) as ReturnType<typeof callAnthropicExtract> extends Promise<infer T> ? T : never;
+    return JSON.parse(match[0]) as ReturnType<typeof callAnthropicExtract> extends Promise<infer T>
+      ? T
+      : never;
   }
   throw new Error('All models in the fallback chain are unavailable');
 }
@@ -121,7 +138,7 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
   if (file.size > MAX_BYTES) {
     return badRequest(
       `File is ${(file.size / 1_048_576).toFixed(1)} MB — maximum is 10 MB. Split your file and re-upload.`,
-      'FILE_TOO_LARGE',
+      'FILE_TOO_LARGE'
     );
   }
 
@@ -130,7 +147,7 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
   if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
     return badRequest(
       'XLSX support is V6.1 v2. Please open in Excel and save as CSV (File → Save As → CSV UTF-8), then re-upload.',
-      'XLSX_NOT_SUPPORTED',
+      'XLSX_NOT_SUPPORTED'
     );
   }
 
@@ -161,10 +178,13 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
   const byCategory: Record<string, { count: number; total_usd: number }> = {};
   let uncategorizedCount = 0;
   for (const item of extracted.line_items) {
-    const cat = ACTUALS_CATEGORIES.includes(item.category as typeof ACTUALS_CATEGORIES[number])
+    const cat = ACTUALS_CATEGORIES.includes(item.category as (typeof ACTUALS_CATEGORIES)[number])
       ? item.category
       : 'other';
-    if (cat === 'other' && !ACTUALS_CATEGORIES.includes(item.category as typeof ACTUALS_CATEGORIES[number])) {
+    if (
+      cat === 'other' &&
+      !ACTUALS_CATEGORIES.includes(item.category as (typeof ACTUALS_CATEGORIES)[number])
+    ) {
       uncategorizedCount++;
     }
     if (!byCategory[cat]) byCategory[cat] = { count: 0, total_usd: 0 };

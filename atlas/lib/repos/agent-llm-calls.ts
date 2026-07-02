@@ -20,7 +20,9 @@ export interface InsertPendingAgentCallInput {
 }
 
 /** Insert the 'pending' ledger row with the pre-call estimate; returns its id. */
-export async function insertPendingAgentLlmCall(input: InsertPendingAgentCallInput): Promise<string> {
+export async function insertPendingAgentLlmCall(
+  input: InsertPendingAgentCallInput
+): Promise<string> {
   const supabase = createSupabaseServiceRoleClient();
   const { data, error } = await supabase
     .schema('atlas')

@@ -128,13 +128,11 @@ function findEngineIdx(engineDates: string[], monthYM: string): number {
 function resolveSourceStack(
   projectUuid: string,
   assignmentsByProject: Map<string, AssignmentView[]>,
-  sources: CapitalSourceView[],
+  sources: CapitalSourceView[]
 ): string[] {
   const assigned = assignmentsByProject.get(projectUuid) ?? [];
   if (assigned.length > 0) {
-    return [...assigned]
-      .sort((a, b) => a.priority - b.priority)
-      .map((a) => a.capitalSourceId);
+    return [...assigned].sort((a, b) => a.priority - b.priority).map((a) => a.capitalSourceId);
   }
   // Fallback: every project draws against the first kpc_loc source.
   const kpc = sources.find((s) => s.sourceKind === 'kpc_loc');
@@ -251,8 +249,7 @@ export function buildCashSchedule(args: BuildCashScheduleInput): CashSchedule {
       // T125: use the project's total gross profit minus tax in the sale
       // month. For multi-month sale schedules, sales[idx]/total_sales × NPAT.
       if (sale > 0 && result.kpis.total_sales > 0) {
-        const npatShare =
-          (sale / result.kpis.total_sales) * result.kpis.gross_profit;
+        const npatShare = (sale / result.kpis.total_sales) * result.kpis.gross_profit;
         netNpat += npatShare; // pre-tax for now; T125 layers per-project tax
       }
 

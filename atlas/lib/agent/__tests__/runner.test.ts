@@ -14,21 +14,53 @@ const run = (over: Partial<Parameters<typeof decideNextAction>[0]['run']> = {}) 
 
 describe('decideNextAction', () => {
   it('plans first when there is no plan', () => {
-    expect(decideNextAction({ run: run(), hasPlan: false, pendingSteps: 0, spentUsd: 0, nextStepEstUsd: 0.01 }).action).toBe('plan');
+    expect(
+      decideNextAction({
+        run: run(),
+        hasPlan: false,
+        pendingSteps: 0,
+        spentUsd: 0,
+        nextStepEstUsd: 0.01,
+      }).action
+    ).toBe('plan');
   });
 
   it('completes when the plan is done', () => {
-    expect(decideNextAction({ run: run(), hasPlan: true, pendingSteps: 0, spentUsd: 0.1, nextStepEstUsd: 0 }).action).toBe('complete');
+    expect(
+      decideNextAction({
+        run: run(),
+        hasPlan: true,
+        pendingSteps: 0,
+        spentUsd: 0.1,
+        nextStepEstUsd: 0,
+      }).action
+    ).toBe('complete');
   });
 
   it('executes under all ceilings', () => {
-    expect(decideNextAction({ run: run({ currentStep: 3 }), hasPlan: true, pendingSteps: 2, spentUsd: 0.1, nextStepEstUsd: 0.02 }).action).toBe('execute');
+    expect(
+      decideNextAction({
+        run: run({ currentStep: 3 }),
+        hasPlan: true,
+        pendingSteps: 2,
+        spentUsd: 0.1,
+        nextStepEstUsd: 0.02,
+      }).action
+    ).toBe('execute');
   });
 
   it('SOFT step ceiling pauses; continue clears it', () => {
-    const at = { run: run({ currentStep: 20 }), hasPlan: true, pendingSteps: 2, spentUsd: 0.1, nextStepEstUsd: 0.01 };
+    const at = {
+      run: run({ currentStep: 20 }),
+      hasPlan: true,
+      pendingSteps: 2,
+      spentUsd: 0.1,
+      nextStepEstUsd: 0.01,
+    };
     expect(decideNextAction(at)).toEqual({ action: 'pause', reason: 'step_ceiling' });
-    expect(decideNextAction({ ...at, run: run({ currentStep: 20, continueAck: true }) }).action).toBe('execute');
+    expect(
+      decideNextAction({ ...at, run: run({ currentStep: 20, continueAck: true }) }).action
+    ).toBe('execute');
   });
 
   it('SOFT cost ceiling pauses; continue clears it', () => {
@@ -39,16 +71,34 @@ describe('decideNextAction', () => {
 
   it('HARD caps stop even with continue', () => {
     expect(
-      decideNextAction({ run: run({ currentStep: 40, continueAck: true }), hasPlan: true, pendingSteps: 2, spentUsd: 0.1, nextStepEstUsd: 0.01 })
+      decideNextAction({
+        run: run({ currentStep: 40, continueAck: true }),
+        hasPlan: true,
+        pendingSteps: 2,
+        spentUsd: 0.1,
+        nextStepEstUsd: 0.01,
+      })
     ).toEqual({ action: 'pause', reason: 'step_hard_cap' });
     expect(
-      decideNextAction({ run: run({ continueAck: true }), hasPlan: true, pendingSteps: 2, spentUsd: 1.99, nextStepEstUsd: 0.05 })
+      decideNextAction({
+        run: run({ continueAck: true }),
+        hasPlan: true,
+        pendingSteps: 2,
+        spentUsd: 1.99,
+        nextStepEstUsd: 0.05,
+      })
     ).toEqual({ action: 'pause', reason: 'cost_hard_cap' });
   });
 
   it('blocks even the plan call if it would breach the hard cost cap', () => {
     expect(
-      decideNextAction({ run: run(), hasPlan: false, pendingSteps: 0, spentUsd: 1.99, nextStepEstUsd: 0.05 })
+      decideNextAction({
+        run: run(),
+        hasPlan: false,
+        pendingSteps: 0,
+        spentUsd: 1.99,
+        nextStepEstUsd: 0.05,
+      })
     ).toEqual({ action: 'pause', reason: 'cost_hard_cap' });
   });
 });

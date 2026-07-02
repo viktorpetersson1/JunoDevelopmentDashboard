@@ -33,7 +33,9 @@ export default async function AgentPage() {
     <DashboardShell activeHref="/agent" user={dashboardUser}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
         <header>
-          <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
+          <h1
+            style={{ fontSize: 24, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}
+          >
             Ask Juno
           </h1>
           <p style={{ margin: '4px 0 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>

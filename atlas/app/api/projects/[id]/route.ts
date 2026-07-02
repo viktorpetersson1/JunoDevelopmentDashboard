@@ -14,7 +14,11 @@ import { requireAuth } from '@/lib/auth/requireAuth';
 import { requireEditor } from '@/lib/auth/requireRole';
 import { findCurrentProjectByKey } from '@/lib/repos/project';
 import { UpdateProjectSchema } from '@/lib/services/project-schema';
-import { updateProject, ProjectNotFoundError, CalcEngineError } from '@/lib/services/project-update';
+import {
+  updateProject,
+  ProjectNotFoundError,
+  CalcEngineError,
+} from '@/lib/services/project-update';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;

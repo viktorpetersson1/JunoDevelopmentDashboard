@@ -137,12 +137,15 @@ export function deriveRecommendation(
       bandUsd: { low: 0, best: 0, high: 0 },
       classification: 'market_maker',
       anchor: null,
-      ceiling: ceilingComp ? { address: ceilingComp.address, psf: Math.round(ceilingComp.psf) } : null,
+      ceiling: ceilingComp
+        ? { address: ceilingComp.address, psf: Math.round(ceilingComp.psf) }
+        : null,
       inSubCutClosedCount: 0,
       inSubCutActiveCount: activeCount,
       confidence: 'low',
       dataGapSeverity: 'red',
-      basis: 'No closed in-sub-cut new-construction comps — price not derivable from evidence (data gap).',
+      basis:
+        'No closed in-sub-cut new-construction comps — price not derivable from evidence (data gap).',
     };
   }
 
@@ -195,7 +198,9 @@ export function deriveRecommendation(
     },
     classification,
     anchor: { address: anchorComp.address, psf: bestPsf },
-    ceiling: ceilingComp ? { address: ceilingComp.address, psf: Math.round(ceilingComp.psf) } : null,
+    ceiling: ceilingComp
+      ? { address: ceilingComp.address, psf: Math.round(ceilingComp.psf) }
+      : null,
     inSubCutClosedCount: closedCount,
     inSubCutActiveCount: activeCount,
     confidence,

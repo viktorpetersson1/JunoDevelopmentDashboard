@@ -33,7 +33,7 @@ export function SalesEditorModal({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const initial: FormState = {
-    sale_price_override_usd:    project.sale_price_override_usd ?? null,
+    sale_price_override_usd: project.sale_price_override_usd ?? null,
     sale_price_per_sqft_override: project.sale_price_per_sqft_override ?? null,
     target_margin_pct:
       project.target_margin != null ? Math.round(project.target_margin * 1000) / 10 : null,
@@ -51,7 +51,7 @@ export function SalesEditorModal({
     setError(null);
     try {
       const body: Record<string, unknown> = {
-        sale_price_override_usd:    form.sale_price_override_usd,
+        sale_price_override_usd: form.sale_price_override_usd,
         sale_price_per_sqft_override: form.sale_price_per_sqft_override,
         target_margin: form.target_margin_pct != null ? form.target_margin_pct / 100 : null,
       };
@@ -60,9 +60,7 @@ export function SalesEditorModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      const json = (await res.json().catch(() => null)) as
-        | { error?: { message?: string } }
-        | null;
+      const json = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
       if (!res.ok) {
         setError(json?.error?.message ?? `Save failed (HTTP ${res.status})`);
         setSaving(false);
@@ -79,43 +77,89 @@ export function SalesEditorModal({
 
   return (
     <>
-      <Button variant="secondary" size="sm" onClick={() => { setForm(initial); setError(null); setOpen(true); }}>
+      <Button
+        variant="secondary"
+        size="sm"
+        onClick={() => {
+          setForm(initial);
+          setError(null);
+          setOpen(true);
+        }}
+      >
         Edit sale prices
       </Button>
 
       <Modal
         open={open}
-        onClose={() => { if (!saving) setOpen(false); }}
+        onClose={() => {
+          if (!saving) setOpen(false);
+        }}
         title="Edit sale overrides"
         description="Override the engine's exit pricing for this project."
         size="sm"
         dismissOnBackdrop={!saving}
         footer={
           <>
-            <Button variant="ghost" onClick={() => setOpen(false)} disabled={saving}>Cancel</Button>
-            <Button variant="primary" onClick={save} loading={saving} disabled={!dirty}>Save changes</Button>
+            <Button variant="ghost" onClick={() => setOpen(false)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={save} loading={saving} disabled={!dirty}>
+              Save changes
+            </Button>
           </>
         }
       >
         {error && (
-          <div role="alert" style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 8,
-            border: '1px solid var(--color-negative, #b91c1c)', background: 'var(--color-negative-soft, #fef2f2)',
-            color: 'var(--color-negative, #b91c1c)', fontSize: 13 }}>
+          <div
+            role="alert"
+            style={{
+              marginBottom: 12,
+              padding: '10px 12px',
+              borderRadius: 8,
+              border: '1px solid var(--color-negative, #b91c1c)',
+              background: 'var(--color-negative-soft, #fef2f2)',
+              color: 'var(--color-negative, #b91c1c)',
+              fontSize: 13,
+            }}
+          >
             {error}
           </div>
         )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <Field label="Sale price override" name="sale_price_override_usd" kind="number" min={0} suffix="$"
+          <Field
+            label="Sale price override"
+            name="sale_price_override_usd"
+            kind="number"
+            min={0}
+            suffix="$"
             hint="Blank = calc engine determines from $/sqft"
             value={form.sale_price_override_usd}
-            onChange={(v) => setForm((f) => ({ ...f, sale_price_override_usd: v as number | null }))} />
-          <Field label="$/sqft override" name="sale_price_per_sqft_override" kind="number" min={0} suffix="$/sqft"
+            onChange={(v) =>
+              setForm((f) => ({ ...f, sale_price_override_usd: v as number | null }))
+            }
+          />
+          <Field
+            label="$/sqft override"
+            name="sale_price_per_sqft_override"
+            kind="number"
+            min={0}
+            suffix="$/sqft"
             value={form.sale_price_per_sqft_override}
-            onChange={(v) => setForm((f) => ({ ...f, sale_price_per_sqft_override: v as number | null }))} />
-          <Field label="Target margin" name="target_margin" kind="number" min={0} max={100} suffix="%"
+            onChange={(v) =>
+              setForm((f) => ({ ...f, sale_price_per_sqft_override: v as number | null }))
+            }
+          />
+          <Field
+            label="Target margin"
+            name="target_margin"
+            kind="number"
+            min={0}
+            max={100}
+            suffix="%"
             hint="Blank = use global target"
             value={form.target_margin_pct}
-            onChange={(v) => setForm((f) => ({ ...f, target_margin_pct: v as number | null }))} />
+            onChange={(v) => setForm((f) => ({ ...f, target_margin_pct: v as number | null }))}
+          />
         </div>
       </Modal>
     </>

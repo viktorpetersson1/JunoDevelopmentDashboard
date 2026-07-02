@@ -97,7 +97,7 @@ export const capitalSourceAssignments = atlas.table(
     priorityIdx: index('atlas_capital_source_assignments_priority_idx').on(t.projectId, t.priority),
     uniquePair: uniqueIndex('atlas_capital_source_assignments_pair_unique').on(
       t.projectId,
-      t.capitalSourceId,
+      t.capitalSourceId
     ),
   })
 );

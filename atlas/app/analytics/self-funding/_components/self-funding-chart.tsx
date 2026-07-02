@@ -40,7 +40,11 @@ export function SelfFundingChart({ result }: { result: SelfFundingResult }) {
     <div style={{ width: '100%', height: 320 }}>
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={data} margin={{ top: 8, right: 16, bottom: 8, left: 8 }} barGap={4}>
-          <CartesianGrid strokeDasharray="2 4" stroke="var(--color-border-subtle)" vertical={false} />
+          <CartesianGrid
+            strokeDasharray="2 4"
+            stroke="var(--color-border-subtle)"
+            vertical={false}
+          />
           <XAxis
             dataKey="fy"
             tick={{ fontSize: 12, fill: 'var(--color-text-secondary)' }}
@@ -82,8 +86,20 @@ export function SelfFundingChart({ result }: { result: SelfFundingResult }) {
               }}
             />
           )}
-          <Bar dataKey="retained" name="retained" fill="var(--color-positive, #15803d)" fillOpacity={0.8} radius={[3, 3, 0, 0]} />
-          <Bar dataKey="need" name="need" fill="var(--color-text-tertiary, #9ca3af)" fillOpacity={0.7} radius={[3, 3, 0, 0]} />
+          <Bar
+            dataKey="retained"
+            name="retained"
+            fill="var(--color-positive, #15803d)"
+            fillOpacity={0.8}
+            radius={[3, 3, 0, 0]}
+          />
+          <Bar
+            dataKey="need"
+            name="need"
+            fill="var(--color-text-tertiary, #9ca3af)"
+            fillOpacity={0.7}
+            radius={[3, 3, 0, 0]}
+          />
         </ComposedChart>
       </ResponsiveContainer>
     </div>

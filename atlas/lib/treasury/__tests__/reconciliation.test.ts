@@ -74,9 +74,36 @@ const KPC: CapitalSourceView = {
 const NO_ASSIGNMENTS: AssignmentView[] = [];
 
 const CAP_TABLE: CapTableEntryView[] = [
-  { ownerId: 'o1', ownerKey: 'peter', displayName: 'Peter', email: null, isSponsor: true, shareBps: 5000, effectiveFrom: '2026-01-01', taxRateBps: 2500 },
-  { ownerId: 'o2', ownerKey: 'lars', displayName: 'Lars', email: null, isSponsor: false, shareBps: 3000, effectiveFrom: '2026-01-01', taxRateBps: 3000 },
-  { ownerId: 'o3', ownerKey: 'philip', displayName: 'Philip', email: null, isSponsor: false, shareBps: 2000, effectiveFrom: '2026-01-01', taxRateBps: 2000 },
+  {
+    ownerId: 'o1',
+    ownerKey: 'peter',
+    displayName: 'Peter',
+    email: null,
+    isSponsor: true,
+    shareBps: 5000,
+    effectiveFrom: '2026-01-01',
+    taxRateBps: 2500,
+  },
+  {
+    ownerId: 'o2',
+    ownerKey: 'lars',
+    displayName: 'Lars',
+    email: null,
+    isSponsor: false,
+    shareBps: 3000,
+    effectiveFrom: '2026-01-01',
+    taxRateBps: 3000,
+  },
+  {
+    ownerId: 'o3',
+    ownerKey: 'philip',
+    displayName: 'Philip',
+    email: null,
+    isSponsor: false,
+    shareBps: 2000,
+    effectiveFrom: '2026-01-01',
+    taxRateBps: 2000,
+  },
 ];
 
 const schedule = buildCashSchedule({
@@ -112,7 +139,9 @@ describe('T126 reconciliation — invariant 2: distribution ↔ self-funding', (
     const fys = Object.keys(sf.annual_distributions);
     expect(fys.length).toBeGreaterThan(0);
     for (const fy of fys) {
-      expect(Math.abs((dist.annual[fy]?.total ?? 0) - (sf.annual_distributions[fy] ?? 0))).toBeLessThan(0.5);
+      expect(
+        Math.abs((dist.annual[fy]?.total ?? 0) - (sf.annual_distributions[fy] ?? 0))
+      ).toBeLessThan(0.5);
     }
   });
 });

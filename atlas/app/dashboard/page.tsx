@@ -88,16 +88,23 @@ export default async function DashboardPage() {
   const { profile, user } = await requireAuthOrRedirect('/dashboard');
   const { projects } = await findManyProjects({ limit: 100 });
 
-  const [active, globalsCtx, capitalPosition, projectsWithUuids, treasurySources, treasuryAssignments, capTable] =
-    await Promise.all([
-      getActiveScenario(),
-      getActiveGlobals(),
-      getCapitalPosition(),
-      findManyProjectsWithUuids({ limit: 100 }),
-      findActiveCapitalSources(),
-      findAllAssignments(),
-      fetchCapTable(),
-    ]);
+  const [
+    active,
+    globalsCtx,
+    capitalPosition,
+    projectsWithUuids,
+    treasurySources,
+    treasuryAssignments,
+    capTable,
+  ] = await Promise.all([
+    getActiveScenario(),
+    getActiveGlobals(),
+    getCapitalPosition(),
+    findManyProjectsWithUuids({ limit: 100 }),
+    findActiveCapitalSources(),
+    findAllAssignments(),
+    fetchCapTable(),
+  ]);
   // T130 (V7 Rule 1): ONE resolved capital position feeds the chip AND the
   // engine — no surface may compute the facility differently.
   const globals = applyCapitalPositionToGlobals(globalsCtx.globals, capitalPosition);
@@ -229,9 +236,10 @@ export default async function DashboardPage() {
   };
 
   // T110 (V6.1): compute effective tax rate for Annual P&L table (promoted from /analytics/forecast)
-  const effectiveTaxRate = globals.apply_tax !== false
-    ? ((globals.tax_rate_pct ?? 21) + (globals.tax_state_rate_pct ?? 4.5)) / 100
-    : 0;
+  const effectiveTaxRate =
+    globals.apply_tax !== false
+      ? ((globals.tax_rate_pct ?? 21) + (globals.tax_state_rate_pct ?? 4.5)) / 100
+      : 0;
 
   return (
     <DashboardShell
@@ -241,10 +249,17 @@ export default async function DashboardPage() {
       activeScenarioName={active.displayName}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--ja-section-gap)' }}>
-
         {/* ── Page heading ── */}
         <header>
-          <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, letterSpacing: '-0.025em', color: 'var(--color-text-primary)' }}>
+          <h1
+            style={{
+              fontSize: 24,
+              fontWeight: 700,
+              margin: 0,
+              letterSpacing: '-0.025em',
+              color: 'var(--color-text-primary)',
+            }}
+          >
             Home
           </h1>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
@@ -263,7 +278,16 @@ export default async function DashboardPage() {
         >
           {/* ── Boardroom Strip ─────────────────────────────────── */}
           <section style={card}>
-            <h2 style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-tertiary)', margin: '0 0 16px' }}>
+            <h2
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                color: 'var(--color-text-tertiary)',
+                margin: '0 0 16px',
+              }}
+            >
               Boardroom strip
             </h2>
 
@@ -271,7 +295,11 @@ export default async function DashboardPage() {
             <BoardroomRow
               label="NEXT CAPITAL CALL"
               value={nextCallDate ? compact(nextCallAmount) : '—'}
-              detail={nextCallDate ? `${fmtYM(nextCallDate)} · portfolio draw across the funding stack` : 'No draws in the 36-month window'}
+              detail={
+                nextCallDate
+                  ? `${fmtYM(nextCallDate)} · portfolio draw across the funding stack`
+                  : 'No draws in the 36-month window'
+              }
               href="/analytics/cash-schedule"
               overdue={false}
             />
@@ -280,7 +308,11 @@ export default async function DashboardPage() {
             <BoardroomRow
               label="NEXT OWNER DISTRIBUTION"
               value={nextDistMonth ? compact(nextDistMonth.total_distribution) : '—'}
-              detail={nextDistMonth ? `${fmtYM(nextDistMonth.month)} · owner tax distribution at close` : 'No distributions in the 36-month window'}
+              detail={
+                nextDistMonth
+                  ? `${fmtYM(nextDistMonth.month)} · owner tax distribution at close`
+                  : 'No distributions in the 36-month window'
+              }
               href="/earnings"
               overdue={false}
             />
@@ -332,16 +364,54 @@ export default async function DashboardPage() {
             />
 
             {/* Tactical strip (3 cells compressed below Boardroom) */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 0, marginTop: 12, border: '1px solid var(--color-border-hairline)', borderRadius: 8, overflow: 'hidden' }}>
-              <TacticalCell label="90d cash" value={compact(Math.abs(cash90 < 0 ? cash90 : 0))} sub={cash90 < 0 ? 'net outflow' : 'net inflow'} href="/dashboard" />
-              <TacticalCell label="Pipeline rev" value={compact(pipelineRevAll)} sub={`${compact(pipelineRevCommitted)} committed`} href="/projects" border />
-              <TacticalCell label={`Starts ${currentYear}`} value={`${starts2026} / ${targetStarts}`} sub={starts2026 >= targetStarts ? 'on target' : `${targetStarts - starts2026} to go`} href="/pipeline" border />
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: 0,
+                marginTop: 12,
+                border: '1px solid var(--color-border-hairline)',
+                borderRadius: 8,
+                overflow: 'hidden',
+              }}
+            >
+              <TacticalCell
+                label="90d cash"
+                value={compact(Math.abs(cash90 < 0 ? cash90 : 0))}
+                sub={cash90 < 0 ? 'net outflow' : 'net inflow'}
+                href="/dashboard"
+              />
+              <TacticalCell
+                label="Pipeline rev"
+                value={compact(pipelineRevAll)}
+                sub={`${compact(pipelineRevCommitted)} committed`}
+                href="/projects"
+                border
+              />
+              <TacticalCell
+                label={`Starts ${currentYear}`}
+                value={`${starts2026} / ${targetStarts}`}
+                sub={
+                  starts2026 >= targetStarts ? 'on target' : `${targetStarts - starts2026} to go`
+                }
+                href="/pipeline"
+                border
+              />
             </div>
           </section>
 
           {/* ── Today's Desk ─────────────────────────────────────── */}
           <section style={card}>
-            <h2 style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-tertiary)', margin: '0 0 16px' }}>
+            <h2
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                color: 'var(--color-text-tertiary)',
+                margin: '0 0 16px',
+              }}
+            >
               Today&apos;s desk
             </h2>
 
@@ -369,16 +439,40 @@ export default async function DashboardPage() {
 
         {/* ── Portfolio cash flow chart ── */}
         <section style={card}>
-          <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
-            <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>Portfolio cash flow</h2>
-            <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-tertiary)' }}>12 months</span>
+          <header
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'baseline',
+              marginBottom: 16,
+            }}
+          >
+            <h2
+              style={{
+                fontSize: 16,
+                fontWeight: 700,
+                margin: 0,
+                color: 'var(--color-text-primary)',
+              }}
+            >
+              Portfolio cash flow
+            </h2>
+            <span
+              style={{
+                fontSize: 11,
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                color: 'var(--color-text-tertiary)',
+              }}
+            >
+              12 months
+            </span>
           </header>
           <PortfolioCashFlowChart monthly={portfolio.monthly} />
         </section>
 
         {/* ── Annual P&L (promoted from /analytics/forecast — T110) ── */}
         <AnnualPnLTable annual={portfolio.annual} effectiveTaxRate={effectiveTaxRate} />
-
       </div>
     </DashboardShell>
   );
@@ -387,9 +481,27 @@ export default async function DashboardPage() {
 // ─── T110 Boardroom Strip row ─────────────────────────────────────────────────
 
 function BoardroomRow({
-  label, value, detail, href, overdue = false, warn = false, last = false,
-}: { label: string; value: string; detail: string; href: string; overdue?: boolean; warn?: boolean; last?: boolean; }) {
-  const valueColor = overdue ? 'var(--color-negative, #b91c1c)' : warn ? 'var(--color-warning, #a16207)' : 'var(--color-text-primary)';
+  label,
+  value,
+  detail,
+  href,
+  overdue = false,
+  warn = false,
+  last = false,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  href: string;
+  overdue?: boolean;
+  warn?: boolean;
+  last?: boolean;
+}) {
+  const valueColor = overdue
+    ? 'var(--color-negative, #b91c1c)'
+    : warn
+      ? 'var(--color-warning, #a16207)'
+      : 'var(--color-text-primary)';
   return (
     <Link
       href={href}
@@ -404,11 +516,37 @@ function BoardroomRow({
       }}
     >
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-tertiary)', marginBottom: 3 }}>{label}</div>
-        <div style={{ fontSize: 28, fontWeight: 700, color: valueColor, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', lineHeight: 1.1 }}>{value}</div>
-        <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 3 }}>{detail}</div>
+        <div
+          style={{
+            fontSize: 9,
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            color: 'var(--color-text-tertiary)',
+            marginBottom: 3,
+          }}
+        >
+          {label}
+        </div>
+        <div
+          style={{
+            fontSize: 28,
+            fontWeight: 700,
+            color: valueColor,
+            fontVariantNumeric: 'tabular-nums',
+            letterSpacing: '-0.02em',
+            lineHeight: 1.1,
+          }}
+        >
+          {value}
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 3 }}>
+          {detail}
+        </div>
       </div>
-      <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)', flexShrink: 0 }}>details →</span>
+      <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)', flexShrink: 0 }}>
+        details →
+      </span>
     </Link>
   );
 }
@@ -416,8 +554,18 @@ function BoardroomRow({
 // ─── T110 Today's Desk row ────────────────────────────────────────────────────
 
 function DeskRow({
-  count, label, emptyLabel, href, last = false,
-}: { count: number; label: string; emptyLabel: string; href: string; last?: boolean; }) {
+  count,
+  label,
+  emptyLabel,
+  href,
+  last = false,
+}: {
+  count: number;
+  label: string;
+  emptyLabel: string;
+  href: string;
+  last?: boolean;
+}) {
   return (
     <Link
       href={href}
@@ -431,22 +579,52 @@ function DeskRow({
         color: 'inherit',
       }}
     >
-      <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: count > 0 ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)' }}>
+      <span
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          fontSize: 13,
+          color: count > 0 ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)',
+        }}
+      >
         {count > 0 && (
-          <StatusDot severity="error" title={`${count} ${label}`} message={`Open items requiring attention.`} />
+          <StatusDot
+            severity="error"
+            title={`${count} ${label}`}
+            message={`Open items requiring attention.`}
+          />
         )}
-        {count > 0
-          ? <><strong style={{ fontWeight: 700 }}>{count}</strong>&nbsp;{label}</>
-          : emptyLabel}
+        {count > 0 ? (
+          <>
+            <strong style={{ fontWeight: 700 }}>{count}</strong>&nbsp;{label}
+          </>
+        ) : (
+          emptyLabel
+        )}
       </span>
-      <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{count > 0 ? 'review →' : '✓'}</span>
+      <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+        {count > 0 ? 'review →' : '✓'}
+      </span>
     </Link>
   );
 }
 
 // ─── T110 Tactical cell ───────────────────────────────────────────────────────
 
-function TacticalCell({ label, value, sub, href, border = false }: { label: string; value: string; sub?: string; href: string; border?: boolean }) {
+function TacticalCell({
+  label,
+  value,
+  sub,
+  href,
+  border = false,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  href: string;
+  border?: boolean;
+}) {
   return (
     <Link
       href={href}
@@ -460,8 +638,27 @@ function TacticalCell({ label, value, sub, href, border = false }: { label: stri
         borderLeft: border ? '1px solid var(--color-border-hairline)' : 'none',
       }}
     >
-      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-text-tertiary)' }}>{label}</div>
-      <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text-primary)', fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+      <div
+        style={{
+          fontSize: 10,
+          fontWeight: 700,
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+          color: 'var(--color-text-tertiary)',
+        }}
+      >
+        {label}
+      </div>
+      <div
+        style={{
+          fontSize: 16,
+          fontWeight: 700,
+          color: 'var(--color-text-primary)',
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        {value}
+      </div>
       {sub && <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{sub}</div>}
     </Link>
   );

@@ -72,12 +72,12 @@ export default async function EarningsPage() {
 
   const currentFy = serverMonthYM().slice(0, 4);
   const thisFyTotal = forecast.annual[currentFy]?.total ?? 0;
-  const thisFyMine = myOwnerId ? forecast.annual[currentFy]?.by_owner[myOwnerId] ?? 0 : 0;
+  const thisFyMine = myOwnerId ? (forecast.annual[currentFy]?.by_owner[myOwnerId] ?? 0) : 0;
 
   // Chart series: total (admin) or own distributions (matched owner) or total.
   const chartData = forecast.monthly.map((m) => ({
     month: m.month,
-    value: myOwnerId && !isAdmin ? m.by_owner[myOwnerId] ?? 0 : m.total_distribution,
+    value: myOwnerId && !isAdmin ? (m.by_owner[myOwnerId] ?? 0) : m.total_distribution,
   }));
   const chartLabel = myOwnerId && !isAdmin ? 'Your distribution' : 'Total distribution';
 
@@ -87,29 +87,60 @@ export default async function EarningsPage() {
     <DashboardShell activeHref="/earnings" user={dashboardUser}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
         <header>
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, letterSpacing: '-0.025em', color: 'var(--color-text-primary)' }}>
+          <h1
+            style={{
+              margin: 0,
+              fontSize: 24,
+              fontWeight: 700,
+              letterSpacing: '-0.025em',
+              color: 'var(--color-text-primary)',
+            }}
+          >
             Earnings — Distribution forecast
           </h1>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
-            Forecast owner distributions (tax distributions) from recognised project NPAT, by month and fiscal year.
-            Derived from the{' '}
-            <a href="/analytics/cash-schedule" style={{ color: 'var(--color-text-secondary)' }}>cash schedule</a>.
+            Forecast owner distributions (tax distributions) from recognised project NPAT, by month
+            and fiscal year. Derived from the{' '}
+            <a href="/analytics/cash-schedule" style={{ color: 'var(--color-text-secondary)' }}>
+              cash schedule
+            </a>
+            .
           </p>
         </header>
 
         {forecast.insufficient_data ? (
           <Card center>
-            <strong style={{ color: 'var(--color-text-primary)' }}>No distributions forecast</strong>
-            <p style={{ margin: '8px auto 0', maxWidth: 520, fontSize: 13, color: 'var(--color-text-secondary)' }}>
-              No project NPAT is recognised in the 36-month window yet, so there are no distributions to forecast.
+            <strong style={{ color: 'var(--color-text-primary)' }}>
+              No distributions forecast
+            </strong>
+            <p
+              style={{
+                margin: '8px auto 0',
+                maxWidth: 520,
+                fontSize: 13,
+                color: 'var(--color-text-secondary)',
+              }}
+            >
+              No project NPAT is recognised in the 36-month window yet, so there are no
+              distributions to forecast.
             </p>
           </Card>
         ) : (
           <>
             {/* Hero */}
-            <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+            <section
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gap: 16,
+              }}
+            >
               {isAdmin || !myOwnerId ? (
-                <Hero label={`Total distributions · FY ${currentFy}`} value={formatMoney(thisFyTotal * 100, { compact: true, precision: 1 })} sub="Portfolio-wide owner distributions this fiscal year" />
+                <Hero
+                  label={`Total distributions · FY ${currentFy}`}
+                  value={formatMoney(thisFyTotal * 100, { compact: true, precision: 1 })}
+                  sub="Portfolio-wide owner distributions this fiscal year"
+                />
               ) : null}
               {myOwnerId ? (
                 <Hero
@@ -119,7 +150,12 @@ export default async function EarningsPage() {
                   accent
                 />
               ) : !isAdmin ? (
-                <Hero label="Your distribution" value="Pending account" sub="Link your login to a cap-table owner to see your share" muted />
+                <Hero
+                  label="Your distribution"
+                  value="Pending account"
+                  sub="Link your login to a cap-table owner to see your share"
+                  muted
+                />
               ) : null}
               <Hero
                 label="Distribution rate"
@@ -130,41 +166,72 @@ export default async function EarningsPage() {
 
             {/* Chart */}
             <section style={cardStyle}>
-              <h2 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 12px', color: 'var(--color-text-primary)' }}>
+              <h2
+                style={{
+                  fontSize: 14,
+                  fontWeight: 700,
+                  margin: '0 0 12px',
+                  color: 'var(--color-text-primary)',
+                }}
+              >
                 {chartLabel} · next 36 months
               </h2>
               <DistributionChart data={chartData} seriesLabel={chartLabel} />
               <p style={{ margin: '10px 0 0', fontSize: 10, color: 'var(--color-text-tertiary)' }}>
-                Distributions recognised in each project&apos;s sale month. Owner tax distribution = NPAT × owner share ×
-                owner tax rate (D-062, Viktor-confirmed). Forward-only window (no trailing history — realised
-                distributions come from the books).
+                Distributions recognised in each project&apos;s sale month. Owner tax distribution =
+                NPAT × owner share × owner tax rate (D-062, Viktor-confirmed). Forward-only window
+                (no trailing history — realised distributions come from the books).
               </p>
             </section>
 
             {/* Annual per-owner table */}
             <section style={cardStyle}>
-              <h2 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 12px', color: 'var(--color-text-primary)' }}>
-                Annual distributions {isAdmin ? '· all owners' : myOwnerId ? '· your share' : '· portfolio total'}
+              <h2
+                style={{
+                  fontSize: 14,
+                  fontWeight: 700,
+                  margin: '0 0 12px',
+                  color: 'var(--color-text-primary)',
+                }}
+              >
+                Annual distributions{' '}
+                {isAdmin ? '· all owners' : myOwnerId ? '· your share' : '· portfolio total'}
               </h2>
               <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
+                <table
+                  style={{
+                    width: '100%',
+                    borderCollapse: 'collapse',
+                    fontSize: 13,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
                   <thead>
                     <tr>
                       <Th align="left">Owner</Th>
                       <Th align="right">Share</Th>
                       {fys.map((fy) => (
-                        <Th key={fy} align="right">{fy}</Th>
+                        <Th key={fy} align="right">
+                          {fy}
+                        </Th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {/* Total row */}
                     <tr>
-                      <Td align="left" bold>Portfolio total</Td>
-                      <Td align="right" muted>100%</Td>
+                      <Td align="left" bold>
+                        Portfolio total
+                      </Td>
+                      <Td align="right" muted>
+                        100%
+                      </Td>
                       {fys.map((fy) => (
                         <Td key={fy} align="right" bold>
-                          {formatMoney((forecast.annual[fy]?.total ?? 0) * 100, { compact: true, precision: 1 })}
+                          {formatMoney((forecast.annual[fy]?.total ?? 0) * 100, {
+                            compact: true,
+                            precision: 1,
+                          })}
                         </Td>
                       ))}
                     </tr>
@@ -174,16 +241,40 @@ export default async function EarningsPage() {
                       .map((o) => {
                         const unlinked = !o.email;
                         return (
-                          <tr key={o.ownerId} style={o.ownerId === myOwnerId ? { background: 'var(--color-surface-subtle, #f6f6f4)' } : undefined}>
+                          <tr
+                            key={o.ownerId}
+                            style={
+                              o.ownerId === myOwnerId
+                                ? { background: 'var(--color-surface-subtle, #f6f6f4)' }
+                                : undefined
+                            }
+                          >
                             <Td align="left">
                               {o.displayName}
-                              {o.ownerId === myOwnerId && <span style={{ color: 'var(--color-text-tertiary)', fontSize: 11 }}> · you</span>}
-                              {unlinked && isAdmin && <span style={{ color: 'var(--color-warning, #a16207)', fontSize: 11 }}> · pending account</span>}
+                              {o.ownerId === myOwnerId && (
+                                <span style={{ color: 'var(--color-text-tertiary)', fontSize: 11 }}>
+                                  {' '}
+                                  · you
+                                </span>
+                              )}
+                              {unlinked && isAdmin && (
+                                <span
+                                  style={{ color: 'var(--color-warning, #a16207)', fontSize: 11 }}
+                                >
+                                  {' '}
+                                  · pending account
+                                </span>
+                              )}
                             </Td>
-                            <Td align="right" muted>{(o.shareBps / 100).toFixed(1)}%</Td>
+                            <Td align="right" muted>
+                              {(o.shareBps / 100).toFixed(1)}%
+                            </Td>
                             {fys.map((fy) => (
                               <Td key={fy} align="right">
-                                {formatMoney((forecast.annual[fy]?.by_owner[o.ownerId] ?? 0) * 100, { compact: true, precision: 1 })}
+                                {formatMoney(
+                                  (forecast.annual[fy]?.by_owner[o.ownerId] ?? 0) * 100,
+                                  { compact: true, precision: 1 }
+                                )}
                               </Td>
                             ))}
                           </tr>
@@ -193,9 +284,11 @@ export default async function EarningsPage() {
                 </table>
               </div>
               {!isAdmin && !myOwnerId && (
-                <p style={{ margin: '12px 0 0', fontSize: 12, color: 'var(--color-text-tertiary)' }}>
-                  Per-owner breakdown is hidden until your login is linked to a cap-table owner (pending owner↔account
-                  links). You can see the portfolio total above.
+                <p
+                  style={{ margin: '12px 0 0', fontSize: 12, color: 'var(--color-text-tertiary)' }}
+                >
+                  Per-owner breakdown is hidden until your login is linked to a cap-table owner
+                  (pending owner↔account links). You can see the portfolio total above.
                 </p>
               )}
             </section>
@@ -221,13 +314,27 @@ function Hero({
 }) {
   return (
     <div style={{ ...cardStyle, padding: '18px 20px' }}>
-      <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-text-tertiary)', fontWeight: 700 }}>{label}</div>
+      <div
+        style={{
+          fontSize: 11,
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+          color: 'var(--color-text-tertiary)',
+          fontWeight: 700,
+        }}
+      >
+        {label}
+      </div>
       <div
         style={{
           fontSize: 28,
           fontWeight: 700,
           margin: '6px 0 2px',
-          color: muted ? 'var(--color-text-tertiary)' : accent ? 'var(--color-positive, #15803d)' : 'var(--color-text-primary)',
+          color: muted
+            ? 'var(--color-text-tertiary)'
+            : accent
+              ? 'var(--color-positive, #15803d)'
+              : 'var(--color-text-primary)',
           letterSpacing: '-0.02em',
         }}
       >
@@ -239,12 +346,27 @@ function Hero({
 }
 
 function Card({ children, center }: { children: React.ReactNode; center?: boolean }) {
-  return <section style={{ ...cardStyle, padding: 32, textAlign: center ? 'center' : 'left' }}>{children}</section>;
+  return (
+    <section style={{ ...cardStyle, padding: 32, textAlign: center ? 'center' : 'left' }}>
+      {children}
+    </section>
+  );
 }
 
 function Th({ children, align }: { children: React.ReactNode; align: 'left' | 'right' }) {
   return (
-    <th style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-text-tertiary)', padding: '6px 8px', fontWeight: 700, textAlign: align, borderBottom: '1px solid var(--color-border-hairline)' }}>
+    <th
+      style={{
+        fontSize: 11,
+        textTransform: 'uppercase',
+        letterSpacing: '0.06em',
+        color: 'var(--color-text-tertiary)',
+        padding: '6px 8px',
+        fontWeight: 700,
+        textAlign: align,
+        borderBottom: '1px solid var(--color-border-hairline)',
+      }}
+    >
       {children}
     </th>
   );
@@ -262,7 +384,15 @@ function Td({
   muted?: boolean;
 }) {
   return (
-    <td style={{ padding: '6px 8px', textAlign: align, borderBottom: '1px solid var(--color-border-subtle)', color: muted ? 'var(--color-text-tertiary)' : 'var(--color-text-primary)', fontWeight: bold ? 700 : 400 }}>
+    <td
+      style={{
+        padding: '6px 8px',
+        textAlign: align,
+        borderBottom: '1px solid var(--color-border-subtle)',
+        color: muted ? 'var(--color-text-tertiary)' : 'var(--color-text-primary)',
+        fontWeight: bold ? 700 : 400,
+      }}
+    >
       {children}
     </td>
   );

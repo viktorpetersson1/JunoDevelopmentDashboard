@@ -22,7 +22,11 @@ import {
   type TownProximity,
 } from './location-factors';
 // ── V6.1.5 (T-PRC-2) — Perplexity Sonar path (option-b dual-path) ───────────
-import { callPerplexity, PerplexityError, type PerplexityCitation } from '@/lib/llm/perplexity-client';
+import {
+  callPerplexity,
+  PerplexityError,
+  type PerplexityCitation,
+} from '@/lib/llm/perplexity-client';
 import { CompResearchSchema } from '@/lib/llm/perplexity-schemas';
 import { CompResearchDataSchema, type CompResearchData, type SonarComp } from './schemas';
 import { pricingProvider, compSearchDomains } from './provider';
@@ -759,7 +763,11 @@ async function researchCompsViaSonar(
     return mapCompResearchData(parsed.data, result.citations);
   } catch (e) {
     const msg =
-      e instanceof PerplexityError ? e.message : e instanceof Error ? e.message : 'Sonar comp research failed';
+      e instanceof PerplexityError
+        ? e.message
+        : e instanceof Error
+          ? e.message
+          : 'Sonar comp research failed';
     return sonarErrorOutput(msg);
   }
 }
@@ -801,7 +809,11 @@ Return up to ${input.maxClosed ?? 8} CLOSED sales from the last ${windowMonths} 
     return mapCompResearchData(parsed.data, result.citations);
   } catch (e) {
     const msg =
-      e instanceof PerplexityError ? e.message : e instanceof Error ? e.message : 'Sonar market research failed';
+      e instanceof PerplexityError
+        ? e.message
+        : e instanceof Error
+          ? e.message
+          : 'Sonar market research failed';
     return sonarErrorOutput(msg);
   }
 }

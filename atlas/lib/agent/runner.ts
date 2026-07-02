@@ -37,7 +37,11 @@ export function readToolDefinitions(): ToolDefinition[] {
 
 export type AgentEvent =
   | { type: 'run'; status: string; currentStep: number; costSpent: number; goal: string }
-  | { type: 'plan'; summary: string; steps: Array<{ idx: number; tool: string | null; type: string; why?: string }> }
+  | {
+      type: 'plan';
+      summary: string;
+      steps: Array<{ idx: number; tool: string | null; type: string; why?: string }>;
+    }
   | { type: 'step_start'; idx: number; tool: string | null; stepType: string }
   | { type: 'step_done'; idx: number; summary: string; costSpent: number }
   | { type: 'step_failed'; idx: number; error: string }
@@ -55,12 +59,20 @@ export type NextAction =
   | { action: 'plan' }
   | { action: 'execute' }
   | { action: 'complete' }
-  | { action: 'pause'; reason: 'step_ceiling' | 'step_hard_cap' | 'cost_ceiling' | 'cost_hard_cap' };
+  | {
+      action: 'pause';
+      reason: 'step_ceiling' | 'step_hard_cap' | 'cost_ceiling' | 'cost_hard_cap';
+    };
 
 export function decideNextAction(input: {
   run: Pick<
     AgentRunView,
-    'currentStep' | 'stepCeiling' | 'stepHardCap' | 'costCeilingUsd' | 'costHardCapUsd' | 'continueAck'
+    | 'currentStep'
+    | 'stepCeiling'
+    | 'stepHardCap'
+    | 'costCeilingUsd'
+    | 'costHardCapUsd'
+    | 'continueAck'
   >;
   hasPlan: boolean;
   pendingSteps: number;
@@ -114,7 +126,8 @@ export function parsePlan(runId: string, raw: string): ParsedPlan {
   } catch {
     obj = {};
   }
-  const summary = typeof obj.plan === 'string' ? obj.plan : 'Plan unavailable; synthesizing directly.';
+  const summary =
+    typeof obj.plan === 'string' ? obj.plan : 'Plan unavailable; synthesizing directly.';
   const rawSteps = Array.isArray(obj.steps) ? obj.steps : [];
   const allow = new Set<string>(READ_TOOL_NAMES as readonly string[]);
 
@@ -173,7 +186,11 @@ const SYNTH_SYSTEM = `You are Ask Juno, an analyst for the Juno Atlas real-estat
 // ── IO: plan + execute ────────────────────────────────────────────────────────
 
 /** Make the planning call and persist the plan + pending steps. Returns the steps. */
-export async function ensurePlan(run: AgentRunView, apiKey: string, emit: Emit): Promise<ParsedPlan> {
+export async function ensurePlan(
+  run: AgentRunView,
+  apiKey: string,
+  emit: Emit
+): Promise<ParsedPlan> {
   const res = await callAgentModel({
     runId: run.id,
     stepId: null,
@@ -216,7 +233,10 @@ export async function executeStep(args: {
       apiKey,
       system: SYNTH_SYSTEM,
       messages: [
-        { role: 'user', content: `Goal: ${run.goal}\n\nTool results:\n${evidence || '(none)'}\n\nWrite the final answer.` },
+        {
+          role: 'user',
+          content: `Goal: ${run.goal}\n\nTool results:\n${evidence || '(none)'}\n\nWrite the final answer.`,
+        },
       ],
     });
     return { result: { answer: res.text }, summary: res.text.slice(0, 200) };

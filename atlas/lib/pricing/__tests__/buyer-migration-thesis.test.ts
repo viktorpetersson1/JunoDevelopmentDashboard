@@ -11,7 +11,10 @@ vi.mock('@/lib/llm/perplexity-client', () => ({
   PerplexityError: class PerplexityError extends Error {},
 }));
 
-import { runBuyerMigrationThesis, type BuyerMigrationInput } from '@/lib/pricing/buyer-migration-thesis';
+import {
+  runBuyerMigrationThesis,
+  type BuyerMigrationInput,
+} from '@/lib/pricing/buyer-migration-thesis';
 import { callPerplexity } from '@/lib/llm/perplexity-client';
 import type { ResearchedComp } from '@/lib/pricing/comp-researcher';
 
@@ -61,10 +64,15 @@ describe('runBuyerMigrationThesis (T-PRC-5)', () => {
         adjacent_sub_cut_median_per_sqft: 1455,
         premium_vs_adjacent_pct: -0.3,
         named_comps_supporting: [
-          { address: '3745 Nassau Point Rd', price_per_sqft: 1455, why: 'Adjacent bayfront NC anchor.' },
+          {
+            address: '3745 Nassau Point Rd',
+            price_per_sqft: 1455,
+            why: 'Adjacent bayfront NC anchor.',
+          },
         ],
         named_comps_against: [],
-        reasoning: 'A North Fork bayfront NC buyer plausibly substitutes to Sound-front at ~parity.',
+        reasoning:
+          'A North Fork bayfront NC buyer plausibly substitutes to Sound-front at ~parity.',
         recommended_classification: 'market_maker',
         walkback: '',
       },

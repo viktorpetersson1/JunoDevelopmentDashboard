@@ -47,9 +47,9 @@ export interface StatusDotProps {
 // ── Colors (DR-5: using existing COLOR_TOKENS values) ────────────────────────
 
 const DOT_COLOR: Record<StatusDotSeverity, string> = {
-  info:    '#0D0D0D', // --chart-default-1
+  info: '#0D0D0D', // --chart-default-1
   warning: '#a16207', // --color-warning
-  error:   '#b91c1c', // --color-negative
+  error: '#b91c1c', // --color-negative
 };
 
 // ── StatusDotInner (holds all hooks — see outer StatusDot for suppression) ───
@@ -77,7 +77,10 @@ function StatusDotInner({
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Escape') setOpen(false);
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen((s) => !s); }
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setOpen((s) => !s);
+    }
   }, []);
 
   const color = DOT_COLOR[severity];
@@ -156,7 +159,14 @@ function StatusDotInner({
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text-primary)' }}>
             {title}
           </div>
-          <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 4, lineHeight: 1.4 }}>
+          <div
+            style={{
+              fontSize: 13,
+              color: 'var(--color-text-secondary)',
+              marginTop: 4,
+              lineHeight: 1.4,
+            }}
+          >
             {message}
           </div>
           {action && (
@@ -208,10 +218,7 @@ function StatusDotInner({
  */
 export function StatusDot(props: StatusDotProps) {
   const { suppressIfZero, ...rest } = props;
-  if (
-    suppressIfZero !== undefined &&
-    (suppressIfZero === 0 || !Number.isFinite(suppressIfZero))
-  ) {
+  if (suppressIfZero !== undefined && (suppressIfZero === 0 || !Number.isFinite(suppressIfZero))) {
     return null;
   }
   return <StatusDotInner {...rest} />;
@@ -231,11 +238,7 @@ export function StatusDotGroup({
   children: ReactNode;
   maxVisible?: number;
 }) {
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-      {children}
-    </span>
-  );
+  return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>{children}</span>;
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────

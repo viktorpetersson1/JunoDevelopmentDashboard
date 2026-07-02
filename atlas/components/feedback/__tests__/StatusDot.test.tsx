@@ -23,9 +23,7 @@ describe('StatusDot', () => {
   });
 
   it('renders when suppressIfZero is a non-zero finite number', () => {
-    render(
-      <StatusDot severity="info" title="YoY" message="5% up" suppressIfZero={0.05} />
-    );
+    render(<StatusDot severity="info" title="YoY" message="5% up" suppressIfZero={0.05} />);
     expect(screen.getByRole('img', { name: /info: yoy/i })).toBeTruthy();
   });
 

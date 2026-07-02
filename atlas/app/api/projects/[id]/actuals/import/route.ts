@@ -50,7 +50,7 @@ export const revalidate = 0;
 export const runtime = 'edge';
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB hard cap (§T108 stop-and-ask #1)
-const MAX_ROWS = 1000;                  // Sanity cap; plan says >5MB rejects anyway
+const MAX_ROWS = 1000; // Sanity cap; plan says >5MB rejects anyway
 
 const CATEGORIES = ['land', 'build', 'soft', 'kingshaus', 'financing', 'other'] as const;
 type Category = (typeof CATEGORIES)[number];
@@ -158,10 +158,7 @@ export const POST = withErrorBoundary(async (req: NextRequest, ctx: RouteContext
   return badRequest(`Unknown phase "${json.phase}"`, 'UNKNOWN_PHASE');
 });
 
-async function handleDryRun(
-  json: unknown,
-  projectUuid: string
-): Promise<Response> {
+async function handleDryRun(json: unknown, projectUuid: string): Promise<Response> {
   const parsed = DryRunBodySchema.safeParse(json);
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
@@ -214,10 +211,10 @@ async function handleDryRun(
     });
   } catch (err) {
     if (err instanceof ColumnMapperError) {
-      return new Response(
-        JSON.stringify({ error: { code: err.code, message: err.message } }),
-        { status: err.httpStatus, headers: { 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: { code: err.code, message: err.message } }), {
+        status: err.httpStatus,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
     throw err;
   }
@@ -232,7 +229,7 @@ async function handleDryRun(
     description: headerIdx(mapper.column_mapping.description),
   };
   const cell = (row: string[], i: number): string | null =>
-    i >= 0 && i < row.length ? row[i] ?? null : null;
+    i >= 0 && i < row.length ? (row[i] ?? null) : null;
 
   // Validate every row.
   const validatedRows: CreateActualsEntryInput[] = [];
@@ -250,8 +247,7 @@ async function handleDryRun(
 
     const catRaw = cell(row, idx.category);
     const category = normalizeCategory(catRaw);
-    if (!category)
-      errs.push(`row ${i + 1}: category "${catRaw ?? ''}" not in allowed enum`);
+    if (!category) errs.push(`row ${i + 1}: category "${catRaw ?? ''}" not in allowed enum`);
 
     const amtRaw = cell(row, idx.amount_usd);
     const amountCents = normalizeAmountCents(amtRaw);

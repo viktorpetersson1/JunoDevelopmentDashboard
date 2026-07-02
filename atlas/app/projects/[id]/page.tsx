@@ -200,9 +200,7 @@ export default async function ProjectDetailPage({
       const latestLocked = risksProjectUuid
         ? await findLatestLockedSnapshot(risksProjectUuid)
         : null;
-      const risksList = risksProjectUuid
-        ? await findRisksByProject(risksProjectUuid)
-        : [];
+      const risksList = risksProjectUuid ? await findRisksByProject(risksProjectUuid) : [];
       tabContent = (
         <RisksTab
           result={result}

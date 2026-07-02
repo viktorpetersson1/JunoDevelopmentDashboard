@@ -531,7 +531,10 @@ export function MarketIntel({
             }
             action={
               canEdit
-                ? { label: refreshing ? 'Refreshing…' : 'Refresh data now', onClick: () => doRefresh() }
+                ? {
+                    label: refreshing ? 'Refreshing…' : 'Refresh data now',
+                    onClick: () => doRefresh(),
+                  }
                 : undefined
             }
           />
@@ -820,9 +823,13 @@ function KpiTile({
             !hasDelta
               ? 'info'
               : tone === 'higher-better'
-                ? delta! > 0 ? 'info' : 'error'
+                ? delta! > 0
+                  ? 'info'
+                  : 'error'
                 : tone === 'lower-better'
-                  ? delta! < 0 ? 'info' : 'error'
+                  ? delta! < 0
+                    ? 'info'
+                    : 'error'
                   : 'info'
           }
           title={`${label} YoY`}

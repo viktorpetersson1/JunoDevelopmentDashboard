@@ -40,8 +40,7 @@ export function rolloutChip(rollout: RolloutTriggerResult): RolloutChip {
   const value = rollout.next_start_required_by
     ? `Start by ${fmtYM(rollout.next_start_required_by)}`
     : 'On pace';
-  const detail =
-    rollout.rationale.slice(0, 70) + (rollout.rationale.length > 70 ? '…' : '');
+  const detail = rollout.rationale.slice(0, 70) + (rollout.rationale.length > 70 ? '…' : '');
   const color: RolloutChip['color'] =
     rollout.state === 'red' ? 'red' : rollout.state === 'amber' ? 'amber' : 'green';
   return { value, detail, color };

@@ -25,7 +25,7 @@ export function classifyRisk(
   toolName: string,
   args: Record<string, unknown>,
   userRole: string,
-  hasLockedSnap: boolean = false,
+  hasLockedSnap: boolean = false
 ): RiskClassification {
   // Viewer roles can never auto-execute (and should never reach a write tool,
   // but this is the defence-in-depth gate).

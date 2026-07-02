@@ -67,7 +67,15 @@ export function GoalTracker({ report, isEditor = false }: GoalTrackerProps) {
   return (
     <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* Section header row with optional Edit button */}
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          justifyContent: 'space-between',
+          gap: 10,
+          flexWrap: 'wrap',
+        }}
+      >
         <SectionHead
           title="Goal tracker"
           hint={`${report.goal.startsPerYear} starts · ${report.goal.sellsPerYear} sells per year · ${report.goal.planYears}-year plan`}
@@ -110,7 +118,15 @@ export function GoalTracker({ report, isEditor = false }: GoalTrackerProps) {
         >
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-tertiary, #767b84)' }}>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  color: 'var(--color-text-tertiary, #767b84)',
+                }}
+              >
                 Starts / year
               </span>
               <input
@@ -135,7 +151,15 @@ export function GoalTracker({ report, isEditor = false }: GoalTrackerProps) {
             </label>
 
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-tertiary, #767b84)' }}>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  color: 'var(--color-text-tertiary, #767b84)',
+                }}
+              >
                 Sells / year
               </span>
               <input
@@ -160,7 +184,15 @@ export function GoalTracker({ report, isEditor = false }: GoalTrackerProps) {
             </label>
 
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-tertiary, #767b84)' }}>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  color: 'var(--color-text-tertiary, #767b84)',
+                }}
+              >
                 Plan years (1–10)
               </span>
               <input
@@ -199,7 +231,9 @@ export function GoalTracker({ report, isEditor = false }: GoalTrackerProps) {
                 fontSize: 13,
                 fontWeight: 700,
                 color: 'var(--color-surface-base, #fff)',
-                background: saving ? 'var(--color-text-tertiary, #767b84)' : 'var(--color-accent-base, #131313)',
+                background: saving
+                  ? 'var(--color-text-tertiary, #767b84)'
+                  : 'var(--color-accent-base, #131313)',
                 border: 'none',
                 borderRadius: 6,
                 padding: '7px 16px',

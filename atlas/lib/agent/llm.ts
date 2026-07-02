@@ -116,7 +116,10 @@ export async function callAgentModel(args: {
         outputTokens: 0,
         costUsd: est,
       });
-      throw new AgentLlmError(aborted ? 'Agent model timed out' : `Agent model network error`, null);
+      throw new AgentLlmError(
+        aborted ? 'Agent model timed out' : `Agent model network error`,
+        null
+      );
     }
 
     if (!res.ok) {
@@ -156,7 +159,14 @@ export async function callAgentModel(args: {
       .join('\n')
       .trim();
     const toolUses = data.content.filter((b): b is AnthropicToolUse => b.type === 'tool_use');
-    return { text, toolUses, stopReason: data.stop_reason, inputTokens: inTok, outputTokens: outTok, costUsd: cost };
+    return {
+      text,
+      toolUses,
+      stopReason: data.stop_reason,
+      inputTokens: inTok,
+      outputTokens: outTok,
+      costUsd: cost,
+    };
   } finally {
     clearTimeout(timer);
   }

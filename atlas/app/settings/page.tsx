@@ -32,7 +32,15 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const runtime = 'edge';
 
-const TABS = ['profile', 'general', 'cap-table', 'owners', 'capital-sources', 'history', 'suggestions'] as const;
+const TABS = [
+  'profile',
+  'general',
+  'cap-table',
+  'owners',
+  'capital-sources',
+  'history',
+  'suggestions',
+] as const;
 type SettingsTab = (typeof TABS)[number];
 
 const ADMIN_ONLY: SettingsTab[] = ['general', 'cap-table', 'owners', 'capital-sources', 'history'];

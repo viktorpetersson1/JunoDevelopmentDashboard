@@ -65,7 +65,8 @@ export const POST = withErrorBoundary(async (req: NextRequest, ctx: RouteContext
   if (run.createdBy !== user.id) requireSuperAdmin(profile); // owner OR super_admin
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return badRequest('ANTHROPIC_API_KEY not configured — agent unavailable.', 'NO_API_KEY');
+  if (!apiKey)
+    return badRequest('ANTHROPIC_API_KEY not configured — agent unavailable.', 'NO_API_KEY');
 
   const body = (await req.json().catch(() => ({}))) as { continue?: boolean };
   const wantContinue = body?.continue === true;
@@ -82,10 +83,22 @@ export const POST = withErrorBoundary(async (req: NextRequest, ctx: RouteContext
       return;
     }
     if (TERMINAL.has(cur.status)) {
-      emit({ type: 'run', status: cur.status, currentStep: cur.currentStep, costSpent: cur.costSpentUsd, goal: cur.goal });
+      emit({
+        type: 'run',
+        status: cur.status,
+        currentStep: cur.currentStep,
+        costSpent: cur.costSpentUsd,
+        goal: cur.goal,
+      });
       if (cur.status === 'completed') {
-        const synth = (await getStepsService(runId)).find((s) => s.type === 'synthesize' && s.status === 'done');
-        emit({ type: 'done', answer: resultStr(synth?.result, 'answer') || '(no answer)', costSpent: cur.costSpentUsd });
+        const synth = (await getStepsService(runId)).find(
+          (s) => s.type === 'synthesize' && s.status === 'done'
+        );
+        emit({
+          type: 'done',
+          answer: resultStr(synth?.result, 'answer') || '(no answer)',
+          costSpent: cur.costSpentUsd,
+        });
       } else {
         emit({ type: 'error', message: cur.error ?? `run ${cur.status}` });
       }
@@ -150,13 +163,22 @@ export const POST = withErrorBoundary(async (req: NextRequest, ctx: RouteContext
         }
         if (decision.action === 'pause') {
           await updateRun(runId, { status: 'paused', pauseReason: decision.reason });
-          emit({ type: 'paused', reason: decision.reason, currentStep: cur.currentStep, costSpent: spent });
+          emit({
+            type: 'paused',
+            reason: decision.reason,
+            currentStep: cur.currentStep,
+            costSpent: spent,
+          });
           break;
         }
         if (decision.action === 'complete') {
           const synth = steps.find((s) => s.type === 'synthesize' && s.status === 'done');
           await updateRun(runId, { status: 'completed', pauseReason: null });
-          emit({ type: 'done', answer: resultStr(synth?.result, 'answer') || '(no answer produced)', costSpent: spent });
+          emit({
+            type: 'done',
+            answer: resultStr(synth?.result, 'answer') || '(no answer produced)',
+            costSpent: spent,
+          });
           break;
         }
 
@@ -165,9 +187,16 @@ export const POST = withErrorBoundary(async (req: NextRequest, ctx: RouteContext
         await markStepRunning(step);
         emit({ type: 'step_start', idx: step.idx, tool: step.tool, stepType: step.type });
         try {
-          const { result, summary } = await executeStep({ run: cur, step, priorResults, user, apiKey });
+          const { result, summary } = await executeStep({
+            run: cur,
+            step,
+            priorResults,
+            user,
+            apiKey,
+          });
           await finishStep(step.id, result);
-          if (step.tool) priorResults.push({ tool: step.tool, content: resultStr(result, 'content') });
+          if (step.tool)
+            priorResults.push({ tool: step.tool, content: resultStr(result, 'content') });
           const newSpent = await sumAgentCostUsd(runId);
           await updateRun(runId, { currentStep: cur.currentStep + 1, costSpentUsd: newSpent });
           emit({ type: 'step_done', idx: step.idx, summary, costSpent: newSpent });

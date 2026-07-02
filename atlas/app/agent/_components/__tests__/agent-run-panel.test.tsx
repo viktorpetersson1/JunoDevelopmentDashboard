@@ -39,10 +39,18 @@ describe('AgentRunPanel — create then auto-advance', () => {
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       const method = init?.method ?? 'GET';
       if (url === '/api/agent/runs' && method === 'POST') {
-        return { ok: true, status: 201, json: async () => ({ data: { run: { id: 'run-1' } } }) } as unknown as Response;
+        return {
+          ok: true,
+          status: 201,
+          json: async () => ({ data: { run: { id: 'run-1' } } }),
+        } as unknown as Response;
       }
       if (url === '/api/agent/runs' && method === 'GET') {
-        return { ok: true, status: 200, json: async () => ({ data: { runs: [] } }) } as unknown as Response;
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { runs: [] } }),
+        } as unknown as Response;
       }
       if (url === '/api/agent/runs/run-1/advance' && method === 'POST') {
         return sseResponse([
@@ -64,7 +72,9 @@ describe('AgentRunPanel — create then auto-advance', () => {
 
     // The bug: /advance was never called. The fix: it is.
     await waitFor(() =>
-      expect(fetchMock.mock.calls.some((c) => String(c[0]) === '/api/agent/runs/run-1/advance')).toBe(true)
+      expect(
+        fetchMock.mock.calls.some((c) => String(c[0]) === '/api/agent/runs/run-1/advance')
+      ).toBe(true)
     );
 
     // And the streamed answer renders.

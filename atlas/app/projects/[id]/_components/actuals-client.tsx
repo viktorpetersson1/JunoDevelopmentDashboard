@@ -187,13 +187,26 @@ function EntryRow({ entry, isEditor }: { entry: ActualsEntryView; isEditor: bool
         {formatMoney(entry.amountCents, { precision: 2 })}
       </td>
       {isEditor && (
-        <td style={{ padding: '8px 0 8px 8px', borderBottom: '1px solid var(--color-border-subtle)', textAlign: 'right' }}>
+        <td
+          style={{
+            padding: '8px 0 8px 8px',
+            borderBottom: '1px solid var(--color-border-subtle)',
+            textAlign: 'right',
+          }}
+        >
           <button
             onClick={handleDelete}
             disabled={deleting}
             title="Delete entry"
-            style={{ fontSize: 13, background: 'none', border: 'none', cursor: deleting ? 'wait' : 'pointer',
-              color: 'var(--color-negative, #b91c1c)', padding: '0 4px', lineHeight: 1 }}
+            style={{
+              fontSize: 13,
+              background: 'none',
+              border: 'none',
+              cursor: deleting ? 'wait' : 'pointer',
+              color: 'var(--color-negative, #b91c1c)',
+              padding: '0 4px',
+              lineHeight: 1,
+            }}
           >
             ×
           </button>

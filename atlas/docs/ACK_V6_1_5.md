@@ -32,11 +32,11 @@ Signed: Claude (claude-opus-4-8) — 3 June 2026, V6.1.5 kickoff
 
 The plan was authored before V6.1/V6.2 closed. I verified the three rebases against the now-shipped repo (HEAD `9525f31`, tag `v6.2.0`):
 
-| # | Rebase | Plan said | Shipped V6.2 reality | V6.1.5 takes | Status |
-|---|--------|-----------|----------------------|--------------|--------|
-| 1 | **Migrations** | `0034` + `0035` | V6.2 applied `0033`/`0034`/`0035`; last file on disk is `0035_scenarios_starts_per_year_override.sql`; `0036` never used (reserved) | **`0036` + `0037`** | ✅ confirmed — both free |
-| 2 | **Decision IDs** | `D-057` → `D-064` | `DECISIONS.md` ends at **`D-065`** (V6.2 T126) | **`D-066` → `D-073`** | ✅ confirmed — `D-066` is next free |
-| 3 | **T115 follow-up** | n/a (plan predates T115) | T115 shipped (`D-055`) with raw Anthropic tools; `lib/ask-juno/tools.ts` has **no** Sonar `research_comps` tool | T115 v2 follow-up → **deviation V6.1.5-001** in the close PR | ✅ logged |
+| #   | Rebase             | Plan said                | Shipped V6.2 reality                                                                                                                | V6.1.5 takes                                                 | Status                              |
+| --- | ------------------ | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | ----------------------------------- |
+| 1   | **Migrations**     | `0034` + `0035`          | V6.2 applied `0033`/`0034`/`0035`; last file on disk is `0035_scenarios_starts_per_year_override.sql`; `0036` never used (reserved) | **`0036` + `0037`**                                          | ✅ confirmed — both free            |
+| 2   | **Decision IDs**   | `D-057` → `D-064`        | `DECISIONS.md` ends at **`D-065`** (V6.2 T126)                                                                                      | **`D-066` → `D-073`**                                        | ✅ confirmed — `D-066` is next free |
+| 3   | **T115 follow-up** | n/a (plan predates T115) | T115 shipped (`D-055`) with raw Anthropic tools; `lib/ask-juno/tools.ts` has **no** Sonar `research_comps` tool                     | T115 v2 follow-up → **deviation V6.1.5-001** in the close PR | ✅ logged                           |
 
 ### Two additional deltas discovered during the T-PRC-0 scan (not in the plan's §0a)
 
@@ -48,6 +48,7 @@ These are documented in full in [`pricing/V6_1_5_AUDIT.md`](pricing/V6_1_5_AUDIT
 ### Entry gates (plan §10) — kickoff posture
 
 Per Viktor's kickoff direction:
+
 - **Gate 1 — `PERPLEXITY_API_KEY`:** set by Viktor in the **Cloudflare Pages dashboard only** (never in repo/PR/chat). Not present in the local/preflight environment, so live Sonar smoke + live regression cannot run here. **Build behind a `BLOCKED-ON-VIKTOR` marker**: scaffold the Sonar path, keep the existing Anthropic path live as the flag-off state, never invent outputs, never hardcode a key. Live verification = a Viktor-tick checkbox. **(Confirmed — "A")**
 - **Gate 3 — feature-flag posture:** **option (b)** — leave Anthropic live until the Sonar path is verified, then atomic-swap by flipping the flag. The interim "fall back to Anthropic" is the flag-OFF state during the build window, **not** a silent runtime fallback; the shipped flag-ON state has no Anthropic in the pricing path (Hard Rule #2 holds). **(Confirmed — "C")**
 - **Gate 2 — comp domain filter:** proceeding with the plan's documented 6-domain default (`zillow, redfin, compass, douglaselliman, corcoran, saunders`), made tunable at runtime via `PRICING_COMP_DOMAINS` (no code change to adjust). Saunders kept in (strong Sound-front presence); StreetEasy mirror left out (Manhattan-centric). Will surface for explicit confirmation at T-PRC-2 where it binds.

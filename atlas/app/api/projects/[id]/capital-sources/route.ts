@@ -18,10 +18,7 @@ import { requireAuth } from '@/lib/auth/requireAuth';
 import { requireEditor } from '@/lib/auth/requireRole';
 import { findCurrentProjectUuidByKey } from '@/lib/repos/project';
 import { findAssignmentsForProject } from '@/lib/repos/capital-sources';
-import {
-  setProjectAssignments,
-  SetAssignmentsSchema,
-} from '@/lib/services/capital-sources';
+import { setProjectAssignments, SetAssignmentsSchema } from '@/lib/services/capital-sources';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -53,7 +50,7 @@ export const PUT = withErrorBoundary(async (req: NextRequest, ctx: RouteContext)
       `Validation failed: ${parsed.error.issues
         .map((i) => `${i.path.join('.')} — ${i.message}`)
         .join('; ')}`,
-      'VALIDATION_FAILED',
+      'VALIDATION_FAILED'
     );
   }
 

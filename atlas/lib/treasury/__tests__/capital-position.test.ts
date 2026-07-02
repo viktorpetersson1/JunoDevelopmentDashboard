@@ -113,7 +113,9 @@ describe('getActiveGlobalsWithCapital', () => {
     kpcMock.mockResolvedValue(KPC_ROW);
     const out = await getActiveGlobalsWithCapital();
     expect(out.position.configured).toBe(true);
-    expect((out.globals as { kpc_loc?: { facility_size_usd?: number } }).kpc_loc?.facility_size_usd).toBe(6_000_000);
+    expect(
+      (out.globals as { kpc_loc?: { facility_size_usd?: number } }).kpc_loc?.facility_size_usd
+    ).toBe(6_000_000);
     expect(out.isBaseline).toBe(true);
   });
 });

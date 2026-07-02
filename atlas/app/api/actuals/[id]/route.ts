@@ -24,13 +24,16 @@ interface RouteContext {
 
 const PatchActualsSchema = z
   .object({
-    entryDate:   z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'entryDate must be YYYY-MM-DD').optional(),
-    category:    z.enum(['land', 'build', 'soft', 'kingshaus', 'financing', 'other']).optional(),
-    lineItem:    z.string().trim().min(1).max(200).optional(),
+    entryDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'entryDate must be YYYY-MM-DD')
+      .optional(),
+    category: z.enum(['land', 'build', 'soft', 'kingshaus', 'financing', 'other']).optional(),
+    lineItem: z.string().trim().min(1).max(200).optional(),
     amountCents: z.number().int().positive('amountCents must be > 0').optional(),
-    vendor:      z.string().trim().max(200).nullable().optional(),
-    invoiceRef:  z.string().trim().max(120).nullable().optional(),
-    notes:       z.string().max(1000).nullable().optional(),
+    vendor: z.string().trim().max(200).nullable().optional(),
+    invoiceRef: z.string().trim().max(120).nullable().optional(),
+    notes: z.string().max(1000).nullable().optional(),
   })
   .refine((d) => Object.keys(d).length > 0, { message: 'No fields to update' });
 
@@ -62,13 +65,13 @@ export const PATCH = withErrorBoundary(async (req: NextRequest, ctx: RouteContex
 
   const supabase = createSupabaseServerClient();
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
-  if (parsed.data.entryDate !== undefined)   patch.entry_date = parsed.data.entryDate;
-  if (parsed.data.category !== undefined)    patch.category   = parsed.data.category;
-  if (parsed.data.lineItem !== undefined)    patch.line_item  = parsed.data.lineItem;
+  if (parsed.data.entryDate !== undefined) patch.entry_date = parsed.data.entryDate;
+  if (parsed.data.category !== undefined) patch.category = parsed.data.category;
+  if (parsed.data.lineItem !== undefined) patch.line_item = parsed.data.lineItem;
   if (parsed.data.amountCents !== undefined) patch.amount_cents = parsed.data.amountCents;
-  if ('vendor'     in parsed.data) patch.vendor      = parsed.data.vendor ?? null;
-  if ('invoiceRef' in parsed.data) patch.invoice_ref  = parsed.data.invoiceRef ?? null;
-  if ('notes'      in parsed.data) patch.notes        = parsed.data.notes ?? null;
+  if ('vendor' in parsed.data) patch.vendor = parsed.data.vendor ?? null;
+  if ('invoiceRef' in parsed.data) patch.invoice_ref = parsed.data.invoiceRef ?? null;
+  if ('notes' in parsed.data) patch.notes = parsed.data.notes ?? null;
 
   const { error } = await supabase
     .schema('atlas')
@@ -82,11 +85,17 @@ export const PATCH = withErrorBoundary(async (req: NextRequest, ctx: RouteContex
   try {
     const orgId = await resolveOrgId();
     await recordMutation({
-      orgId, userId: user.id,
-      route: req.nextUrl.pathname, method: 'PATCH', statusCode: 200,
-      source: 'ui', after: parsed.data,
+      orgId,
+      userId: user.id,
+      route: req.nextUrl.pathname,
+      method: 'PATCH',
+      statusCode: 200,
+      source: 'ui',
+      after: parsed.data,
     });
-  } catch { /* best-effort */ }
+  } catch {
+    /* best-effort */
+  }
 
   return ok({ id });
 });
@@ -110,11 +119,17 @@ export const DELETE = withErrorBoundary(async (req: NextRequest, ctx: RouteConte
   try {
     const orgId = await resolveOrgId();
     await recordMutation({
-      orgId, userId: user.id,
-      route: req.nextUrl.pathname, method: 'DELETE', statusCode: 200,
-      source: 'ui', after: { id },
+      orgId,
+      userId: user.id,
+      route: req.nextUrl.pathname,
+      method: 'DELETE',
+      statusCode: 200,
+      source: 'ui',
+      after: { id },
     });
-  } catch { /* best-effort */ }
+  } catch {
+    /* best-effort */
+  }
 
   return ok({ id });
 });

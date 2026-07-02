@@ -190,21 +190,21 @@ export interface MonthlyPnLRow {
  */
 export function buildProjectPnLMonthly(
   monthly: MonthlySeries,
-  opts: BuildProjectPnLOptions = {},
+  opts: BuildProjectPnLOptions = {}
 ): MonthlyPnLRow[] {
   const taxRatePct = opts.taxRatePct ?? DEFAULT_PROJECT_TAX_RATE_PCT;
 
   return monthly.dates.map((month, i) => {
     // Guard: the series arrays are optional in test mocks (MonthlySeries is
     // typed with required arrays, but tests stub minimal shapes).
-    const rev  =  (monthly.sales?.[i]      ?? 0);
-    const land = -(monthly.land_cost?.[i]  ?? 0);
+    const rev = monthly.sales?.[i] ?? 0;
+    const land = -(monthly.land_cost?.[i] ?? 0);
     const hard = -(monthly.build_cost?.[i] ?? 0);
-    const soft = -(monthly.soft_cost?.[i]  ?? 0);
-    const sup  = -(monthly.kingshaus?.[i]  ?? 0);
-    const fin  = -(monthly.interest?.[i]   ?? 0);
+    const soft = -(monthly.soft_cost?.[i] ?? 0);
+    const sup = -(monthly.kingshaus?.[i] ?? 0);
+    const fin = -(monthly.interest?.[i] ?? 0);
     const npbt = rev - land - hard - soft - sup - fin;
-    const tax  = npbt > 0 ? npbt * (taxRatePct / 100) : 0;
+    const tax = npbt > 0 ? npbt * (taxRatePct / 100) : 0;
 
     return {
       month,

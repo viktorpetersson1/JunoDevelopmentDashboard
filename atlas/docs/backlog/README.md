@@ -10,8 +10,8 @@ the spec itself.
 
 ## Active backlog
 
-| Spec | Status | Notes |
-| ---- | ------ | ----- |
+| Spec                                                                                     | Status                                   | Notes                                                                                                                                                                                                                                                                                                                                                                                         |
+| ---------------------------------------------------------------------------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [V6.1.5 Pricing Engine → Perplexity Sonar](./CLAUDE_CODE_INSTRUCTIONS_V6_1_5_PRICING.md) | ⏸ DEFERRED — start after `v6.2.0` ships | 7-ticket plan (T-PRC-0 → T-PRC-6) to swap the entire pricing engine off Anthropic and onto Perplexity Sonar end-to-end. Closes 4 research-layer gaps: 5-search cap, no buyer-migration thesis test, freeform triangulation, stale citations. Rebase on entry: migrations 0034/0035 → 0036/0037, decisions D-057 → D-066+. Tag `v6.1.5-pricing.0`. ~4 weeks. Source: Viktor's docx 3 Jun 2026. |
 
 ## Graduated

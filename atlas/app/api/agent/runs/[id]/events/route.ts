@@ -36,7 +36,13 @@ export const GET = withErrorBoundary(async (_req, ctx: RouteContext) => {
   if (!run) return notFound(`Run "${ctx.params.id}" not found`, 'RUN_NOT_FOUND');
 
   return sseStream(async (emit: Emit) => {
-    emit({ type: 'run', status: run.status, currentStep: run.currentStep, costSpent: run.costSpentUsd, goal: run.goal });
+    emit({
+      type: 'run',
+      status: run.status,
+      currentStep: run.currentStep,
+      costSpent: run.costSpentUsd,
+      goal: run.goal,
+    });
 
     const steps = (await getStepsForUser(run.id)).sort((a, b) => a.idx - b.idx);
     if (run.plan) {
@@ -59,16 +65,29 @@ export const GET = withErrorBoundary(async (_req, ctx: RouteContext) => {
               : `${s.tool} → ${resultStr(s.result, 'content').slice(0, 120)}`;
           emit({ type: 'step_done', idx: s.idx, summary: sum, costSpent: run.costSpentUsd });
         } else if (s.status === 'failed') {
-          emit({ type: 'step_failed', idx: s.idx, error: resultStr(s.result, 'content') || 'step failed' });
+          emit({
+            type: 'step_failed',
+            idx: s.idx,
+            error: resultStr(s.result, 'content') || 'step failed',
+          });
         }
       }
     }
 
     if (run.status === 'completed') {
       const synth = steps.find((s) => s.type === 'synthesize' && s.status === 'done');
-      emit({ type: 'done', answer: resultStr(synth?.result, 'answer') || '(no answer)', costSpent: run.costSpentUsd });
+      emit({
+        type: 'done',
+        answer: resultStr(synth?.result, 'answer') || '(no answer)',
+        costSpent: run.costSpentUsd,
+      });
     } else if (run.status === 'paused') {
-      emit({ type: 'paused', reason: run.pauseReason ?? 'paused', currentStep: run.currentStep, costSpent: run.costSpentUsd });
+      emit({
+        type: 'paused',
+        reason: run.pauseReason ?? 'paused',
+        currentStep: run.currentStep,
+        costSpent: run.costSpentUsd,
+      });
     } else if (TERMINAL.has(run.status)) {
       emit({ type: 'error', message: run.error ?? `run ${run.status}` });
     } else {

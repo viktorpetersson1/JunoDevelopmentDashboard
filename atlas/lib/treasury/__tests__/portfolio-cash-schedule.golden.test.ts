@@ -194,9 +194,7 @@ describe('buildCashSchedule (assignment fallback)', () => {
     });
     // We won't pin a specific number — just verify SOMETHING was allocated
     // to KPC (proves the fallback fired).
-    const anyMonth = schedule.rows.some(
-      (r) => (r.by_source[UNCAPPED_KPC.id]?.drawn ?? 0) > 0,
-    );
+    const anyMonth = schedule.rows.some((r) => (r.by_source[UNCAPPED_KPC.id]?.drawn ?? 0) > 0);
     expect(anyMonth).toBe(true);
   });
 });

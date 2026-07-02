@@ -27,17 +27,17 @@ export interface ProjectWindow {
 export function projectWindow(
   monthly: MonthlySeries,
   startDate: string | null | undefined,
-  saleDate: string | null | undefined,
+  saleDate: string | null | undefined
 ): ProjectWindow {
   const dates = monthly.dates;
   const n = dates.length;
   if (n === 0) return { startIdx: 0, endIdx: 0 };
 
   const si = startDate ? dates.indexOf(startDate) : -1;
-  const ei = saleDate  ? dates.indexOf(saleDate)  : -1;
+  const ei = saleDate ? dates.indexOf(saleDate) : -1;
 
   const startIdx = Math.max(0, si >= 0 ? si - 1 : 0);
-  const endIdx   = Math.min(n - 1, ei >= 0 ? ei + 2 : n - 1);
+  const endIdx = Math.min(n - 1, ei >= 0 ? ei + 2 : n - 1);
 
   return { startIdx, endIdx: Math.max(startIdx, endIdx) };
 }
@@ -49,7 +49,7 @@ export function projectWindow(
  */
 export function portfolioWindow(
   dates: string[],
-  projects: Array<{ start_date?: string | null; sale_date?: string | null }>,
+  projects: Array<{ start_date?: string | null; sale_date?: string | null }>
 ): ProjectWindow {
   const n = dates.length;
   if (n === 0) return { startIdx: 0, endIdx: 0 };
@@ -59,13 +59,13 @@ export function portfolioWindow(
 
   for (const p of projects) {
     const si = p.start_date ? dates.indexOf(p.start_date) : -1;
-    const ei = p.sale_date  ? dates.indexOf(p.sale_date)  : -1;
+    const ei = p.sale_date ? dates.indexOf(p.sale_date) : -1;
     if (si >= 0 && si < minSi) minSi = si;
     if (ei >= 0 && ei > maxEi) maxEi = ei;
   }
 
   const startIdx = Math.max(0, minSi - 1);
-  const endIdx   = Math.min(n - 1, maxEi + 2);
+  const endIdx = Math.min(n - 1, maxEi + 2);
 
   return { startIdx, endIdx: Math.max(startIdx, endIdx) };
 }
@@ -76,7 +76,7 @@ export function portfolioWindow(
  */
 export function autoWindow(
   rows: Array<Record<string, number | string>>,
-  numericKeys: string[],
+  numericKeys: string[]
 ): ProjectWindow {
   const n = rows.length;
   if (n === 0) return { startIdx: 0, endIdx: 0 };

@@ -63,25 +63,37 @@ describe('classifyRisk', () => {
   });
 
   it('create_actuals_entry: no amount field → treated as $0 → auto-executes', () => {
-    const r = classifyRisk('create_actuals_entry', { category: 'other', line_item: 'misc' }, 'editor');
+    const r = classifyRisk(
+      'create_actuals_entry',
+      { category: 'other', line_item: 'misc' },
+      'editor'
+    );
     expect(r.auto_execute).toBe(true);
   });
 
   // ── Batch guard ───────────────────────────────────────────────────────────
   it('create_actuals_entry: blocks when entries array has >=5 items', () => {
-    const r = classifyRisk('create_actuals_entry', {
-      amount_usd: 100,
-      entries: [1, 2, 3, 4, 5],
-    }, 'editor');
+    const r = classifyRisk(
+      'create_actuals_entry',
+      {
+        amount_usd: 100,
+        entries: [1, 2, 3, 4, 5],
+      },
+      'editor'
+    );
     expect(r.auto_execute).toBe(false);
     expect(r.reason).toMatch(/batch/i);
   });
 
   it('create_actuals_entry: allows entries array with 4 items', () => {
-    const r = classifyRisk('create_actuals_entry', {
-      amount_usd: 100,
-      entries: [1, 2, 3, 4],
-    }, 'editor');
+    const r = classifyRisk(
+      'create_actuals_entry',
+      {
+        amount_usd: 100,
+        entries: [1, 2, 3, 4],
+      },
+      'editor'
+    );
     expect(r.auto_execute).toBe(true);
   });
 

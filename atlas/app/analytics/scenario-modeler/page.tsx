@@ -62,12 +62,15 @@ export default async function ScenarioModelerPage() {
         <AnalyticsTabs activeKey="scenario-modeler" />
 
         <header>
-          <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
+          <h1
+            style={{ fontSize: 24, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}
+          >
             Finance &amp; Analytics — Scenario Modeler
           </h1>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
-            Drag the drivers; the strategic answers recompute live from the same treasury engine the dashboard uses.
-            Seeded from the active scenario ({active.displayName}). Save to persist a named scenario.
+            Drag the drivers; the strategic answers recompute live from the same treasury engine the
+            dashboard uses. Seeded from the active scenario ({active.displayName}). Save to persist
+            a named scenario.
           </p>
         </header>
 

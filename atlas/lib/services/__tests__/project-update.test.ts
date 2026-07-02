@@ -28,7 +28,9 @@ vi.mock('@/lib/supabase/server', () => ({
   createSupabaseServerClient: () => ({
     schema: () => ({
       from: () => ({
-        select: () => ({ limit: () => ({ single: () => Promise.resolve({ data: { id: 'org-1' } }) }) }),
+        select: () => ({
+          limit: () => ({ single: () => Promise.resolve({ data: { id: 'org-1' } }) }),
+        }),
       }),
     }),
   }),
@@ -55,7 +57,12 @@ const runProjectMock = runProject as Mock;
 const recordMutationMock = recordMutation as Mock;
 
 const USER = { id: 'user-1' } as User;
-const RESULT_STUB = { project_id: 'p1', project_name: 'Test', kpis: {}, monthly: {} } as unknown as ProjectResult;
+const RESULT_STUB = {
+  project_id: 'p1',
+  project_name: 'Test',
+  kpis: {},
+  monthly: {},
+} as unknown as ProjectResult;
 
 function project(): ProjectInput {
   return {

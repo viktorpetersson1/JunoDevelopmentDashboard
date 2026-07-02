@@ -187,7 +187,17 @@ function AuditEntry({
         <span>·</span>
         <span style={{ fontWeight: 700, color: 'var(--color-text-secondary)' }}>{userName}</span>
         <span>·</span>
-        <span style={{ color: categoryColor, textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: 10, fontWeight: 700 }}>{categoryLabel}</span>
+        <span
+          style={{
+            color: categoryColor,
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
+            fontSize: 10,
+            fontWeight: 700,
+          }}
+        >
+          {categoryLabel}
+        </span>
         {isFail && (
           <span style={{ color: 'var(--color-negative, #b91c1c)', fontSize: 10, fontWeight: 700 }}>
             {entry.statusCode}

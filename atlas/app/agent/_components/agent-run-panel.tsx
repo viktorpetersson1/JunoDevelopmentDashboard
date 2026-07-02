@@ -89,7 +89,13 @@ function Dot({ kind, size = 7 }: { kind: keyof typeof DOT; size?: number }) {
   return (
     <span
       aria-hidden="true"
-      style={{ width: size, height: size, borderRadius: 999, background: DOT[kind], flex: '0 0 auto' }}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: 999,
+        background: DOT[kind],
+        flex: '0 0 auto',
+      }}
     />
   );
 }
@@ -166,7 +172,8 @@ export function AgentRunPanel() {
         break;
       case 'plan': {
         setPlanSummary(String(e.summary ?? ''));
-        const incoming = (e.steps as Array<{ idx: number; tool: string | null; type: string }>) ?? [];
+        const incoming =
+          (e.steps as Array<{ idx: number; tool: string | null; type: string }>) ?? [];
         setSteps(new Map(incoming.map((s) => [s.idx, { ...s, state: 'pending' as StepState }])));
         break;
       }
@@ -187,7 +194,8 @@ export function AgentRunPanel() {
         setSteps((m) => {
           const n = new Map(m);
           const cur = n.get(Number(e.idx));
-          if (cur) n.set(Number(e.idx), { ...cur, state: 'done', summary: String(e.summary ?? '') });
+          if (cur)
+            n.set(Number(e.idx), { ...cur, state: 'done', summary: String(e.summary ?? '') });
           return n;
         });
         setCost(Number(e.costSpent ?? 0));
@@ -196,7 +204,8 @@ export function AgentRunPanel() {
         setSteps((m) => {
           const n = new Map(m);
           const cur = n.get(Number(e.idx));
-          if (cur) n.set(Number(e.idx), { ...cur, state: 'failed', summary: String(e.error ?? '') });
+          if (cur)
+            n.set(Number(e.idx), { ...cur, state: 'failed', summary: String(e.error ?? '') });
           return n;
         });
         setStatus('failed');
@@ -240,7 +249,13 @@ export function AgentRunPanel() {
           await consumeSse(res, (e) => {
             applyEvent(e);
             if (e.type === 'yield') sawYield = true;
-            if (e.type === 'done' || e.type === 'paused' || e.type === 'error' || e.type === 'locked') stop = true;
+            if (
+              e.type === 'done' ||
+              e.type === 'paused' ||
+              e.type === 'error' ||
+              e.type === 'locked'
+            )
+              stop = true;
           });
           if (stop || !sawYield) break;
         }
@@ -280,7 +295,8 @@ export function AgentRunPanel() {
         return;
       }
       await consumeSse(res, applyEvent);
-      if (statusRef.current === 'running' || statusRef.current === 'planning') void driveRef.current(saved);
+      if (statusRef.current === 'running' || statusRef.current === 'planning')
+        void driveRef.current(saved);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -298,9 +314,10 @@ export function AgentRunPanel() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ goal: g, pathname: window.location.pathname }),
         });
-        const json = (await res.json().catch(() => null)) as
-          | { data?: { run?: { id: string } }; error?: { message: string } }
-          | null;
+        const json = (await res.json().catch(() => null)) as {
+          data?: { run?: { id: string } };
+          error?: { message: string };
+        } | null;
         if (!res.ok || !json?.data?.run?.id) {
           setNote(json?.error?.message ?? `Failed to start (HTTP ${res.status})`);
           setBusy(false);
@@ -330,7 +347,8 @@ export function AgentRunPanel() {
       const res = await fetch(`/api/agent/runs/${id}/events`);
       if (res.ok) {
         await consumeSse(res, applyEvent);
-        if (statusRef.current === 'running' || statusRef.current === 'planning') void driveRef.current(id);
+        if (statusRef.current === 'running' || statusRef.current === 'planning')
+          void driveRef.current(id);
       }
     },
     [resetTranscript, applyEvent]
@@ -361,9 +379,11 @@ export function AgentRunPanel() {
         : status === 'paused'
           ? 'paused'
           : 'running';
-  const isTerminal = status === 'completed' || status === 'failed' || status === 'aborted' || status === 'error';
+  const isTerminal =
+    status === 'completed' || status === 'failed' || status === 'aborted' || status === 'error';
   const isActive = busy || status === 'running' || status === 'planning';
-  const stepLabel = (s: StepRow) => (s.type === 'synthesize' ? 'Synthesise answer' : (s.tool ?? s.type));
+  const stepLabel = (s: StepRow) =>
+    s.type === 'synthesize' ? 'Synthesise answer' : (s.tool ?? s.type);
 
   // ── Empty state ──────────────────────────────────────────────────────────
   if (!runId) {
@@ -390,7 +410,14 @@ export function AgentRunPanel() {
               color: 'var(--color-text-primary, #111)',
             }}
           />
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 10,
+            }}
+          >
             <span style={{ fontSize: 12, color: 'var(--color-text-tertiary, #767b84)' }}>
               Read-only · plans, runs tools, and synthesises an answer.
             </span>
@@ -403,7 +430,11 @@ export function AgentRunPanel() {
               {busy ? 'Starting…' : 'Run'}
             </button>
           </div>
-          {note && <p style={{ margin: 0, fontSize: 12, color: 'var(--color-negative, #b91c1c)' }}>{note}</p>}
+          {note && (
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--color-negative, #b91c1c)' }}>
+              {note}
+            </p>
+          )}
         </div>
 
         {recent.length > 0 && (
@@ -483,10 +514,21 @@ export function AgentRunPanel() {
           }}
         >
           <Dot kind={statusKind} size={8} />
-          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-primary, #111)', textTransform: 'capitalize' }}>
+          <span
+            style={{
+              fontSize: 13,
+              fontWeight: 700,
+              color: 'var(--color-text-primary, #111)',
+              textTransform: 'capitalize',
+            }}
+          >
             {status || 'planning'}
           </span>
-          {total > 0 && <span style={MONO}>step {Math.min(doneCount + (isActive ? 1 : 0), total)}/{total}</span>}
+          {total > 0 && (
+            <span style={MONO}>
+              step {Math.min(doneCount + (isActive ? 1 : 0), total)}/{total}
+            </span>
+          )}
           <span style={MONO}>· ${cost.toFixed(4)}</span>
           <span style={{ flex: 1 }} />
           {isActive && (
@@ -495,7 +537,11 @@ export function AgentRunPanel() {
             </button>
           )}
           {status === 'failed' && (
-            <button type="button" onClick={() => void startRun(activeGoal)} style={{ ...CTA, padding: '6px 14px', fontSize: 12 }}>
+            <button
+              type="button"
+              onClick={() => void startRun(activeGoal)}
+              style={{ ...CTA, padding: '6px 14px', fontSize: 12 }}
+            >
               Retry
             </button>
           )}
@@ -508,7 +554,14 @@ export function AgentRunPanel() {
         {activeGoal && (
           <div>
             <span style={EYEBROW}>Goal</span>
-            <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--color-text-primary, #111)', lineHeight: 1.5 }}>
+            <p
+              style={{
+                margin: '6px 0 0',
+                fontSize: 14,
+                color: 'var(--color-text-primary, #111)',
+                lineHeight: 1.5,
+              }}
+            >
               {activeGoal}
             </p>
           </div>
@@ -521,7 +574,16 @@ export function AgentRunPanel() {
               <button
                 type="button"
                 onClick={() => setShowSteps((s) => !s)}
-                style={{ ...EYEBROW, background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                style={{
+                  ...EYEBROW,
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
               >
                 {showSteps ? 'Hide' : 'Show'} {total} steps
               </button>
@@ -529,7 +591,14 @@ export function AgentRunPanel() {
               <>
                 <span style={EYEBROW}>Plan</span>
                 {planSummary && (
-                  <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--color-text-secondary, #6b7280)', lineHeight: 1.5 }}>
+                  <p
+                    style={{
+                      margin: '6px 0 0',
+                      fontSize: 13,
+                      color: 'var(--color-text-secondary, #6b7280)',
+                      lineHeight: 1.5,
+                    }}
+                  >
                     {planSummary}
                   </p>
                 )}
@@ -537,19 +606,54 @@ export function AgentRunPanel() {
             )}
 
             {(status !== 'completed' || showSteps) && (
-              <ol style={{ listStyle: 'none', margin: '10px 0 0', padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <ol
+                style={{
+                  listStyle: 'none',
+                  margin: '10px 0 0',
+                  padding: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                }}
+              >
                 {stepList.map((s) => (
-                  <li key={s.idx} style={{ display: 'flex', alignItems: 'flex-start', gap: 9, fontSize: 13 }}>
+                  <li
+                    key={s.idx}
+                    style={{ display: 'flex', alignItems: 'flex-start', gap: 9, fontSize: 13 }}
+                  >
                     <span style={{ marginTop: 5 }}>
-                      <Dot kind={s.state === 'pending' ? 'pending' : s.state === 'running' ? 'running' : s.state === 'failed' ? 'failed' : 'done'} size={6} />
+                      <Dot
+                        kind={
+                          s.state === 'pending'
+                            ? 'pending'
+                            : s.state === 'running'
+                              ? 'running'
+                              : s.state === 'failed'
+                                ? 'failed'
+                                : 'done'
+                        }
+                        size={6}
+                      />
                     </span>
                     <span style={{ flex: 1 }}>
-                      <span style={{ fontWeight: 500, color: 'var(--color-text-primary, #111)' }}>{stepLabel(s)}</span>
+                      <span style={{ fontWeight: 500, color: 'var(--color-text-primary, #111)' }}>
+                        {stepLabel(s)}
+                      </span>
                       {s.state === 'running' && (
-                        <span style={{ color: 'var(--color-text-tertiary, #767b84)' }}> · working…</span>
+                        <span style={{ color: 'var(--color-text-tertiary, #767b84)' }}>
+                          {' '}
+                          · working…
+                        </span>
                       )}
                       {s.summary && s.type !== 'synthesize' && (
-                        <span style={{ display: 'block', color: 'var(--color-text-tertiary, #767b84)', marginTop: 2, fontSize: 12 }}>
+                        <span
+                          style={{
+                            display: 'block',
+                            color: 'var(--color-text-tertiary, #767b84)',
+                            marginTop: 2,
+                            fontSize: 12,
+                          }}
+                        >
                           {s.summary}
                         </span>
                       )}
@@ -576,13 +680,25 @@ export function AgentRunPanel() {
             }}
           >
             <Dot kind="paused" />
-            <span style={{ flex: 1, minWidth: 220, fontSize: 13, color: 'var(--color-text-secondary, #6b7280)' }}>
+            <span
+              style={{
+                flex: 1,
+                minWidth: 220,
+                fontSize: 13,
+                color: 'var(--color-text-secondary, #6b7280)',
+              }}
+            >
               {pauseReason.includes('hard')
                 ? `Hard limit reached (${pauseReason.replace(/_/g, ' ')}). Start a new run to go further.`
                 : `Reached the ${pauseReason.replace(/_/g, ' ')} checkpoint. Continue this run?`}
             </span>
             {!pauseReason.includes('hard') && (
-              <button type="button" onClick={() => void drive(undefined, true)} disabled={busy} style={{ ...CTA, padding: '8px 16px', opacity: busy ? 0.6 : 1 }}>
+              <button
+                type="button"
+                onClick={() => void drive(undefined, true)}
+                disabled={busy}
+                style={{ ...CTA, padding: '8px 16px', opacity: busy ? 0.6 : 1 }}
+              >
                 Continue
               </button>
             )}
@@ -613,7 +729,15 @@ export function AgentRunPanel() {
 
         {/* Failure / note */}
         {(status === 'failed' || status === 'error' || status === 'aborted') && note && (
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: 'var(--color-text-secondary, #6b7280)' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 8,
+              fontSize: 13,
+              color: 'var(--color-text-secondary, #6b7280)',
+            }}
+          >
             <span style={{ marginTop: 5 }}>
               <Dot kind="failed" size={6} />
             </span>
@@ -621,7 +745,9 @@ export function AgentRunPanel() {
           </div>
         )}
         {!isTerminal && note && (
-          <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-tertiary, #767b84)' }}>{note}</p>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-tertiary, #767b84)' }}>
+            {note}
+          </p>
         )}
       </div>
     </div>

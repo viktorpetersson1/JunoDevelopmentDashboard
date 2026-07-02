@@ -9,27 +9,28 @@
 
 ### 1a. IN the pricing path → **retire** (T-PRC-1 stub, T-PRC-2/T-PRC-3 rewire to Sonar)
 
-| File | Public export(s) | Anthropic helper | Model chain | Web search | `response_format` | Response parsing | Zod | Citations surfaced |
-|------|------------------|------------------|-------------|-----------|-------------------|------------------|-----|--------------------|
-| **`lib/pricing/comp-researcher.ts`** | `researchComps` (L506), `researchMarketActivity` (L444) | `callAnthropic` (L278); raw `fetch('https://api.anthropic.com/v1/messages')` (L329) | `claude-sonnet-4-5` → `claude-3-7-sonnet-latest` → `claude-3-5-sonnet-latest` (L273–275) | `web_search_20250305` name `web_search`, **`max_uses: 5`** (L308–313) | ❌ none | `extractJson()` (L173) + `JSON.parse()` (L184) — **prose extraction** | ❌ none | ❌ none |
-| **`lib/pricing/location-classifier.ts`** | `classifyLocation` (L244), `parseLocationClassification` (L119) | `callAnthropic` (L172); raw `fetch(...)` (L208) | same chain (L167–169) | `web_search_20250305`, **`max_uses: 3`** (L194–197) | ❌ none | `extractJson()` (L112) + `JSON.parse()` (L136) | ❌ none | ❌ none |
-| **`lib/pricing/strategy-brief.ts`** | `generateStrategyBrief` (L663), `stageToPhase` (L878) | `callClaudeForBrief` (L666); raw `fetch(...)` (L622), `anthropic-version: 2023-06-01` (L627) | same chain (L611–613) | ❌ none (synthesis only; `max_tokens: 6000`) | ❌ none | `extractJson()` (L598) + `JSON.parse()` (L741) → `ParsedBriefBody` | ❌ none | ❌ none |
+| File                                     | Public export(s)                                                | Anthropic helper                                                                             | Model chain                                                                              | Web search                                                            | `response_format` | Response parsing                                                      | Zod     | Citations surfaced |
+| ---------------------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ----------------- | --------------------------------------------------------------------- | ------- | ------------------ |
+| **`lib/pricing/comp-researcher.ts`**     | `researchComps` (L506), `researchMarketActivity` (L444)         | `callAnthropic` (L278); raw `fetch('https://api.anthropic.com/v1/messages')` (L329)          | `claude-sonnet-4-5` → `claude-3-7-sonnet-latest` → `claude-3-5-sonnet-latest` (L273–275) | `web_search_20250305` name `web_search`, **`max_uses: 5`** (L308–313) | ❌ none           | `extractJson()` (L173) + `JSON.parse()` (L184) — **prose extraction** | ❌ none | ❌ none            |
+| **`lib/pricing/location-classifier.ts`** | `classifyLocation` (L244), `parseLocationClassification` (L119) | `callAnthropic` (L172); raw `fetch(...)` (L208)                                              | same chain (L167–169)                                                                    | `web_search_20250305`, **`max_uses: 3`** (L194–197)                   | ❌ none           | `extractJson()` (L112) + `JSON.parse()` (L136)                        | ❌ none | ❌ none            |
+| **`lib/pricing/strategy-brief.ts`**      | `generateStrategyBrief` (L663), `stageToPhase` (L878)           | `callClaudeForBrief` (L666); raw `fetch(...)` (L622), `anthropic-version: 2023-06-01` (L627) | same chain (L611–613)                                                                    | ❌ none (synthesis only; `max_tokens: 6000`)                          | ❌ none           | `extractJson()` (L598) + `JSON.parse()` (L741) → `ParsedBriefBody`    | ❌ none | ❌ none            |
 
 **Internal fallbacks present today (the "silent degradation" Hard Rule #2 kills):**
+
 - `comp-researcher.researchComps`: Attempt 1 = web_search beta (L510); on error/empty → Attempt 2 = training-data knowledge call (L542). Returns `{ error: 'Anthropic API error (HTTP …)' }` on hard failure.
 - `location-classifier.classifyLocation`: web (L266) → web retry (L271) → knowledge-only (L293).
 - These tiered fallbacks are exactly what the plan replaces with **fail-loud** behaviour (§2.1, §2.8).
 
 ### 1b. OUTSIDE the pricing path → **STAY on Anthropic** (do NOT touch — §2.1)
 
-| File | Owner | Why it stays |
-|------|-------|--------------|
-| `lib/services/csv-column-mapper.ts` | V6.1 **T108** CSV importer (D-048) | Explicitly out of scope (§2.1). Raw fetch, same model chain, `ANTHROPIC_API_KEY` (L283). |
-| `lib/ask-juno/tools.ts` | V6.1 **T115** Ask Juno agent (D-055) | Out of scope. Gets the **T115 v2 follow-up** (`research_comps` tool wrapping `callPerplexity`) → deviation **V6.1.5-001** in the close PR. |
+| File                                | Owner                                | Why it stays                                                                                                                               |
+| ----------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `lib/services/csv-column-mapper.ts` | V6.1 **T108** CSV importer (D-048)   | Explicitly out of scope (§2.1). Raw fetch, same model chain, `ANTHROPIC_API_KEY` (L283).                                                   |
+| `lib/ask-juno/tools.ts`             | V6.1 **T115** Ask Juno agent (D-055) | Out of scope. Gets the **T115 v2 follow-up** (`research_comps` tool wrapping `callPerplexity`) → deviation **V6.1.5-001** in the close PR. |
 
 ### 1c. T-PRC-0 stop-and-ask check → **CLEAN**
 
-> *"Any Anthropic call site in the pricing path that lives outside `atlas/lib/pricing/*` (e.g. a shared helper in `lib/llm/`)."*
+> _"Any Anthropic call site in the pricing path that lives outside `atlas/lib/pricing/_`(e.g. a shared helper in`lib/llm/`)."\*
 
 **None.** All three pricing call sites embed their own `callAnthropic`/`callClaudeForBrief` helper locally inside `lib/pricing/`. There is **no `lib/llm/` directory** today (T-PRC-1 creates it). `csv-column-mapper.ts` and `ask-juno/tools.ts` are independent, non-pricing surfaces. → The retire is cleanly scoped to `lib/pricing/*`; nothing shared needs to move unilaterally.
 
@@ -37,12 +38,12 @@
 
 ## 2. The four research-layer gaps → call-site mapping
 
-| # | Gap | Where it lives today | Sonar fix (ticket) |
-|---|-----|----------------------|--------------------|
-| 1 | **5-search cap** — triangulation in thin sub-cuts hits the ceiling and degrades silently | `comp-researcher.ts` `max_uses: 5` (L313); `location-classifier.ts` `max_uses: 3` (L197) | `sonar-pro` — no `max_uses` cap; search priced into tokens (T-PRC-2) |
-| 2 | **No buyer-migration thesis test** — "stretch" verbiage emitted but adjacent sub-cut never programmatically tested | nowhere — absent from the engine | `sonar-reasoning-pro` thesis call (T-PRC-5) |
-| 3 | **Freeform triangulation** — data-gap reconciliation is prose in the brief, not a structured block | `strategy-brief.ts` brief jsonb prose | `TriangulationBlockSchema` structured block (T-PRC-4) |
-| 4 | **Stale / unstructured citations** — Anthropic returns inline prose citations, never surfaced as data | all three (no `citations` handling anywhere) | top-level `citations[]` → `pricing_briefs.citations` JSONB + `comps.source_url` (T-PRC-2) |
+| #   | Gap                                                                                                                | Where it lives today                                                                     | Sonar fix (ticket)                                                                        |
+| --- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| 1   | **5-search cap** — triangulation in thin sub-cuts hits the ceiling and degrades silently                           | `comp-researcher.ts` `max_uses: 5` (L313); `location-classifier.ts` `max_uses: 3` (L197) | `sonar-pro` — no `max_uses` cap; search priced into tokens (T-PRC-2)                      |
+| 2   | **No buyer-migration thesis test** — "stretch" verbiage emitted but adjacent sub-cut never programmatically tested | nowhere — absent from the engine                                                         | `sonar-reasoning-pro` thesis call (T-PRC-5)                                               |
+| 3   | **Freeform triangulation** — data-gap reconciliation is prose in the brief, not a structured block                 | `strategy-brief.ts` brief jsonb prose                                                    | `TriangulationBlockSchema` structured block (T-PRC-4)                                     |
+| 4   | **Stale / unstructured citations** — Anthropic returns inline prose citations, never surfaced as data              | all three (no `citations` handling anywhere)                                             | top-level `citations[]` → `pricing_briefs.citations` JSONB + `comps.source_url` (T-PRC-2) |
 
 Page-level workaround corroborating gap #4: `app/pricing/page.tsx` 5-year-window comment ("AI-returned comps tend to be 12–24 months old"). Stays, but Sonar `search_after_date_filter` reduces its load.
 
@@ -52,11 +53,11 @@ Page-level workaround corroborating gap #4: `app/pricing/page.tsx` 5-year-window
 
 Two pricing tables exist; the plan conflates them under "pricing_runs":
 
-| Table | Migration | Role | Citation columns land here? |
-|-------|-----------|------|------------------------------|
-| `atlas.pricing_runs` (+ child `pricing_run_comparables`) | `0004` | **Legacy** bottoms-up estimate ("no longer the canonical pricing workflow" — per 0014 comment). Child already has `source_url`. | ❌ no |
-| `atlas.pricing_briefs` | `0014` (D-025a) | **Canonical, live.** `brief jsonb`, `used_web_search`, `comp_count`, `data_gap`, `generation_error`, versioned per (project, version). This is what `generateStrategyBrief` writes. | ✅ **yes — DR-A** |
-| `atlas.comps` | `0017`+ (`dom_days`, grants, waterfront-nullable) | Live comp store. | gets `source_url`/`relist_count`/`first_listed_at`/`current_dom_days` in **0037** |
+| Table                                                    | Migration                                         | Role                                                                                                                                                                                | Citation columns land here?                                                       |
+| -------------------------------------------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `atlas.pricing_runs` (+ child `pricing_run_comparables`) | `0004`                                            | **Legacy** bottoms-up estimate ("no longer the canonical pricing workflow" — per 0014 comment). Child already has `source_url`.                                                     | ❌ no                                                                             |
+| `atlas.pricing_briefs`                                   | `0014` (D-025a)                                   | **Canonical, live.** `brief jsonb`, `used_web_search`, `comp_count`, `data_gap`, `generation_error`, versioned per (project, version). This is what `generateStrategyBrief` writes. | ✅ **yes — DR-A**                                                                 |
+| `atlas.comps`                                            | `0017`+ (`dom_days`, grants, waterfront-nullable) | Live comp store.                                                                                                                                                                    | gets `source_url`/`relist_count`/`first_listed_at`/`current_dom_days` in **0037** |
 
 **DR-A decision (to formalise as D-069 at T-PRC-1):** `citations` / `llm_provider` / `llm_total_cost_usd` go on **`pricing_briefs`**, not the legacy `pricing_runs`. `pricing_llm_calls.run_id` references the **brief** id (the unit of a pricing "run" is a brief).
 
@@ -94,7 +95,8 @@ ALTER TABLE atlas.pricing_briefs ADD COLUMN citations          jsonb;
 ALTER TABLE atlas.pricing_briefs ADD COLUMN llm_provider       text NOT NULL DEFAULT 'perplexity';
 ALTER TABLE atlas.pricing_briefs ADD COLUMN llm_total_cost_usd numeric(10,4) NOT NULL DEFAULT 0;
 ```
-*(plus GRANT + RLS to mirror the existing `pricing_briefs` / `comps` policy set — see migrations `0015`/`0016`/`0018` for the established pattern; new-table GRANT+RLS footgun noted in MEMORY.)*
+
+_(plus GRANT + RLS to mirror the existing `pricing_briefs` / `comps` policy set — see migrations `0015`/`0016`/`0018` for the established pattern; new-table GRANT+RLS footgun noted in MEMORY.)_
 
 ### `0037_comps_provenance.sql` (T-PRC-2)
 
@@ -113,16 +115,16 @@ CREATE INDEX ON atlas.comps (first_listed_at) WHERE first_listed_at IS NOT NULL;
 
 Seeded into `DECISIONS.md` as a new V6.1.5 section (placeholders; rationale fleshed out at T-PRC-1 and finalised at T-PRC-6):
 
-| ID | Decision | Owner |
-|----|----------|-------|
-| D-066 | Move pricing engine to Perplexity Sonar end-to-end | Viktor |
-| D-067 | SDK: `@perplexity-ai/perplexity_ai` vs direct fetch (decided by T-PRC-1 smoke) | Claude Code |
-| D-068 | Models: `sonar-pro` standard + `sonar-reasoning-pro` for buyer-migration thesis | Viktor |
-| D-069 | Citations as JSONB on `pricing_briefs.citations` + `comps.source_url` (**DR-A**: brief, not legacy `pricing_runs`) | Viktor |
-| D-070 | Framework prompts in `lib/pricing/prompts/*.md`, not code | Viktor |
-| D-071 | Buyer-migration thesis as a separate Sonar call | Viktor |
-| D-072 | Stuck-listing tracker — relist + DOM + first_listed_at on comps | Viktor |
-| D-073 | Fail-loud on Sonar errors — no Anthropic fallback in pricing (+ feature-flag posture sub-decision) | Viktor |
+| ID    | Decision                                                                                                           | Owner       |
+| ----- | ------------------------------------------------------------------------------------------------------------------ | ----------- |
+| D-066 | Move pricing engine to Perplexity Sonar end-to-end                                                                 | Viktor      |
+| D-067 | SDK: `@perplexity-ai/perplexity_ai` vs direct fetch (decided by T-PRC-1 smoke)                                     | Claude Code |
+| D-068 | Models: `sonar-pro` standard + `sonar-reasoning-pro` for buyer-migration thesis                                    | Viktor      |
+| D-069 | Citations as JSONB on `pricing_briefs.citations` + `comps.source_url` (**DR-A**: brief, not legacy `pricing_runs`) | Viktor      |
+| D-070 | Framework prompts in `lib/pricing/prompts/*.md`, not code                                                          | Viktor      |
+| D-071 | Buyer-migration thesis as a separate Sonar call                                                                    | Viktor      |
+| D-072 | Stuck-listing tracker — relist + DOM + first_listed_at on comps                                                    | Viktor      |
+| D-073 | Fail-loud on Sonar errors — no Anthropic fallback in pricing (+ feature-flag posture sub-decision)                 | Viktor      |
 
 ---
 
@@ -147,4 +149,4 @@ Seeded into `DECISIONS.md` as a new V6.1.5 section (placeholders; rationale fles
 - [x] `D-066` → `D-073` placeholders seeded in `DECISIONS.md` (§5)
 - [x] Cost-shadow methodology documented; live A/B run flagged BLOCKED-ON-VIKTOR pending key (§6)
 - [x] Schema reconciliation (DR-A `pricing_briefs`) + rebased `0036`/`0037` DDL drafted (§3, §4)
-- [ ] *(out-of-band)* `PERPLEXITY_API_KEY` confirmed live in Cloudflare Pages — Viktor ticks
+- [ ] _(out-of-band)_ `PERPLEXITY_API_KEY` confirmed live in Cloudflare Pages — Viktor ticks

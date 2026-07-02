@@ -24,11 +24,11 @@ const fixture = JSON.parse(readFileSync(resolve(FIXTURES_DIR, firstFixture), 'ut
 
 const TAX_RATE = 25;
 const project = fixture.inputs.project;
-const result  = runProject(project, BASELINE_GLOBALS, BASELINE_SCENARIO);
-const pnl     = buildProjectPnL(result, { taxRatePct: TAX_RATE });
+const result = runProject(project, BASELINE_GLOBALS, BASELINE_SCENARIO);
+const pnl = buildProjectPnL(result, { taxRatePct: TAX_RATE });
 const monthly = buildProjectPnLMonthly(result.monthly, { taxRatePct: TAX_RATE });
 
-function sumField(field: keyof typeof monthly[0]): number {
+function sumField(field: keyof (typeof monthly)[0]): number {
   return monthly.reduce((s, r) => s + (r[field] as number), 0);
 }
 
@@ -72,7 +72,9 @@ describe('buildProjectPnLMonthly', () => {
   });
 
   it('npbt columns sum to pnl.net_profit_before_tax_usd', () => {
-    expect(within1(sumField('net_profit_before_tax_usd'), pnl.net_profit_before_tax_usd)).toBe(true);
+    expect(within1(sumField('net_profit_before_tax_usd'), pnl.net_profit_before_tax_usd)).toBe(
+      true
+    );
   });
 
   it('npat internal consistency: sum(npbt) - sum(tax) ≈ sum(npat)', () => {
@@ -82,7 +84,7 @@ describe('buildProjectPnLMonthly', () => {
     // whereas buildProjectPnL applies tax to the aggregate positive NPBT.
     // This is intentional: the monthly table is presentation-only.
     const sumNpbt = sumField('net_profit_before_tax_usd');
-    const sumTax  = sumField('tax_usd');
+    const sumTax = sumField('tax_usd');
     const sumNpat = sumField('net_profit_after_tax_usd');
     expect(within1(sumNpbt - sumTax, sumNpat)).toBe(true);
   });

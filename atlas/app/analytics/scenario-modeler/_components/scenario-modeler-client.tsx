@@ -125,7 +125,7 @@ export function ScenarioModelerClient(props: Props) {
 
     const kpc = Object.values(schedule.sources).find((x) => x.sourceKind === 'kpc_loc') ?? null;
     const locHeadroomNow = kpc
-      ? schedule.rows[0]?.by_source[kpc.id]?.headroom ?? kpc.headroomUsd
+      ? (schedule.rows[0]?.by_source[kpc.id]?.headroom ?? kpc.headroomUsd)
       : null;
 
     const startCap = solveStartCapacity(schedule);
@@ -187,7 +187,9 @@ export function ScenarioModelerClient(props: Props) {
           body: JSON.stringify({ id: scenario.id }),
         });
       }
-      setSaveMsg(makeActive ? `Saved "${scenario.name}" and set active.` : `Saved "${scenario.name}".`);
+      setSaveMsg(
+        makeActive ? `Saved "${scenario.name}" and set active.` : `Saved "${scenario.name}".`
+      );
       setName('');
       router.refresh();
     } catch (e) {
@@ -223,13 +225,33 @@ export function ScenarioModelerClient(props: Props) {
         : 'neutral';
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 360px) 1fr', gap: 20, alignItems: 'start' }}>
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'minmax(280px, 360px) 1fr',
+        gap: 20,
+        alignItems: 'start',
+      }}
+    >
       {/* ── Sliders ─────────────────────────────────────── */}
       <section style={cardStyle}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
-          <h2 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>Drivers</h2>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'baseline',
+            marginBottom: 16,
+          }}
+        >
+          <h2
+            style={{ fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}
+          >
+            Drivers
+          </h2>
           {dirty && (
-            <button type="button" onClick={reset} style={linkBtn}>Reset</button>
+            <button type="button" onClick={reset} style={linkBtn}>
+              Reset
+            </button>
           )}
         </div>
 
@@ -279,13 +301,20 @@ export function ScenarioModelerClient(props: Props) {
           onChange={(v) => setSliders((s) => ({ ...s, startsPerYear: v }))}
         />
         <p style={{ margin: '4px 0 0', fontSize: 10, color: 'var(--color-text-tertiary)' }}>
-          Sale, build, rate &amp; timing flow through the engine into every answer. Starts/year is a forward-planning
-          knob (saved with the scenario; the live answers model the existing project set).
+          Sale, build, rate &amp; timing flow through the engine into every answer. Starts/year is a
+          forward-planning knob (saved with the scenario; the live answers model the existing
+          project set).
         </p>
 
         {/* Save */}
         {props.canEdit ? (
-          <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--color-border-hairline)' }}>
+          <div
+            style={{
+              marginTop: 16,
+              paddingTop: 16,
+              borderTop: '1px solid var(--color-border-hairline)',
+            }}
+          >
             <input
               type="text"
               value={name}
@@ -294,15 +323,27 @@ export function ScenarioModelerClient(props: Props) {
               style={inputStyle}
             />
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-              <button type="button" disabled={saving} onClick={() => handleSave(false)} style={btnSecondary}>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => handleSave(false)}
+                style={btnSecondary}
+              >
                 {saving ? 'Saving…' : 'Save'}
               </button>
-              <button type="button" disabled={saving} onClick={() => handleSave(true)} style={btnPrimary}>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => handleSave(true)}
+                style={btnPrimary}
+              >
                 Save &amp; activate
               </button>
             </div>
             {saveMsg && (
-              <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--color-text-secondary)' }}>{saveMsg}</p>
+              <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--color-text-secondary)' }}>
+                {saveMsg}
+              </p>
             )}
           </div>
         ) : (
@@ -314,19 +355,39 @@ export function ScenarioModelerClient(props: Props) {
 
       {/* ── Answers ─────────────────────────────────────── */}
       <section style={cardStyle}>
-        <h2 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 4px', color: 'var(--color-text-primary)' }}>
-          Strategic answers {dirty && <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--color-text-tertiary)' }}>· live preview (unsaved)</span>}
+        <h2
+          style={{
+            fontSize: 14,
+            fontWeight: 700,
+            margin: '0 0 4px',
+            color: 'var(--color-text-primary)',
+          }}
+        >
+          Strategic answers{' '}
+          {dirty && (
+            <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--color-text-tertiary)' }}>
+              · live preview (unsaved)
+            </span>
+          )}
         </h2>
 
         <AnswerRow
           label="NEXT CAPITAL CALL"
           value={a.callRow ? compact(a.callRow.net_cash_need) : 'None'}
-          detail={a.callRow ? `${fmtYM(a.callRow.month)} · first month with a draw` : 'No draws in the 36-month window'}
+          detail={
+            a.callRow
+              ? `${fmtYM(a.callRow.month)} · first month with a draw`
+              : 'No draws in the 36-month window'
+          }
         />
         <AnswerRow
           label="NEXT OWNER DISTRIBUTION"
           value={a.nextDist ? compact(a.nextDist.total_distribution) : 'None'}
-          detail={a.nextDist ? `${fmtYM(a.nextDist.month)} · owner tax distribution at project close` : 'No distributions in the 36-month window'}
+          detail={
+            a.nextDist
+              ? `${fmtYM(a.nextDist.month)} · owner tax distribution at project close`
+              : 'No distributions in the 36-month window'
+          }
         />
         <AnswerRow
           label="KPC LOC HEADROOM"
@@ -407,9 +468,27 @@ function Slider({
 }) {
   return (
     <div style={{ marginBottom: 14 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>{label}</span>
-        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-primary)', fontVariantNumeric: 'tabular-nums' }}>{display}</span>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'baseline',
+          marginBottom: 4,
+        }}
+      >
+        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+          {label}
+        </span>
+        <span
+          style={{
+            fontSize: 13,
+            fontWeight: 700,
+            color: 'var(--color-text-primary)',
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          {display}
+        </span>
       </div>
       <input
         type="range"
@@ -457,9 +536,33 @@ function AnswerRow({
       }}
     >
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-tertiary)', marginBottom: 3 }}>{label}</div>
-        <div style={{ fontSize: 26, fontWeight: 700, color: valueColor, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', lineHeight: 1.1 }}>{value}</div>
-        <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 3 }}>{detail}</div>
+        <div
+          style={{
+            fontSize: 9,
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            color: 'var(--color-text-tertiary)',
+            marginBottom: 3,
+          }}
+        >
+          {label}
+        </div>
+        <div
+          style={{
+            fontSize: 26,
+            fontWeight: 700,
+            color: valueColor,
+            fontVariantNumeric: 'tabular-nums',
+            letterSpacing: '-0.02em',
+            lineHeight: 1.1,
+          }}
+        >
+          {value}
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 3 }}>
+          {detail}
+        </div>
       </div>
     </div>
   );

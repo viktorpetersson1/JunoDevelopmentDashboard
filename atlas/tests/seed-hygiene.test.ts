@@ -23,7 +23,12 @@ describe('seed-baseline-projects.sql hygiene (V7 T131)', () => {
   });
 
   it('seeds the four real projects', () => {
-    for (const name of ['6 Great Circle', '84 Sunset Beach Road', '540 Hands Creek', 'North Haven']) {
+    for (const name of [
+      '6 Great Circle',
+      '84 Sunset Beach Road',
+      '540 Hands Creek',
+      'North Haven',
+    ]) {
       expect(sql).toContain(`'${name}'`);
     }
   });

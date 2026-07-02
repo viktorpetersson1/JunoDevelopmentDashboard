@@ -27,7 +27,11 @@ import {
   type TownProximity,
 } from './location-factors';
 // V6.1.5 (T-PRC-3) — Sonar brief synthesis (option-b dual-path)
-import { callPerplexity, PerplexityError, type PerplexityCitation } from '@/lib/llm/perplexity-client';
+import {
+  callPerplexity,
+  PerplexityError,
+  type PerplexityCitation,
+} from '@/lib/llm/perplexity-client';
 import { StrategyBriefSchema } from '@/lib/llm/perplexity-schemas';
 import {
   StrategyBriefBodySchema,
@@ -872,7 +876,14 @@ export async function generateStrategyBrief(
   }
 
   // 3. Brief synthesis — Sonar (option-b flag) or the existing Anthropic call.
-  const prompt = buildBriefPrompt(facts, closingCosts, breakevens, closedComps, activeComps, derived);
+  const prompt = buildBriefPrompt(
+    facts,
+    closingCosts,
+    breakevens,
+    closedComps,
+    activeComps,
+    derived
+  );
 
   const fallback = (error: string): BriefGenerationResult => ({
     brief: {

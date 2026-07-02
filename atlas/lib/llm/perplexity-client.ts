@@ -224,8 +224,10 @@ export async function callPerplexity<T>(
   };
   if (input.searchDomainFilter?.length) body.search_domain_filter = input.searchDomainFilter;
   if (input.searchRecencyFilter) body.search_recency_filter = input.searchRecencyFilter;
-  if (input.searchAfterDate) body.search_after_date_filter = toPerplexityDate(input.searchAfterDate);
-  if (input.searchBeforeDate) body.search_before_date_filter = toPerplexityDate(input.searchBeforeDate);
+  if (input.searchAfterDate)
+    body.search_after_date_filter = toPerplexityDate(input.searchAfterDate);
+  if (input.searchBeforeDate)
+    body.search_before_date_filter = toPerplexityDate(input.searchBeforeDate);
   if (input.webSearchOptionsCount != null) {
     // Field name provisional pending live-API verification (Viktor-tick). Unset
     // by default for comp research (no result cap — that is the whole point).

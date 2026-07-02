@@ -71,7 +71,7 @@ export function blendedOwnerTaxRate(capTable: CapTableEntryView[]): number {
 export function buildSelfFundingTrajectory(
   schedule: CashSchedule,
   capTable: CapTableEntryView[],
-  opts: SelfFundingOptions = {},
+  opts: SelfFundingOptions = {}
 ): SelfFundingResult {
   const distributionRate = opts.distributionRate ?? blendedOwnerTaxRate(capTable);
 
@@ -107,8 +107,7 @@ export function buildSelfFundingTrajectory(
   }
 
   const startYear = Number(schedule.start_month.slice(0, 4));
-  const yearsToSelfFunding =
-    selfFundingYear === null ? null : Number(selfFundingYear) - startYear;
+  const yearsToSelfFunding = selfFundingYear === null ? null : Number(selfFundingYear) - startYear;
 
   // 4. Insufficient data = no NPAT recognised anywhere in the horizon.
   const insufficientData = Object.values(annual_npat).every((v) => Math.abs(v) < 1);

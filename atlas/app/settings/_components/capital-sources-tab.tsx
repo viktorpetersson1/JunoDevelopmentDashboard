@@ -33,11 +33,11 @@ interface FormState {
   sourceName: Str;
   limitUsd: Num;
   drawnUsd: Num;
-  interestRateDisplayPct: Num;       // percent UI; sent as decimal (÷100)
+  interestRateDisplayPct: Num; // percent UI; sent as decimal (÷100)
   notes: Str;
-  covenantMaxLtcDisplayPct: Num;     // percent UI; sent as decimal
+  covenantMaxLtcDisplayPct: Num; // percent UI; sent as decimal
   covenantMaxConcurrentProjects: Num;
-  drawWindowStartDate: Str;          // YYYY-MM-DD
+  drawWindowStartDate: Str; // YYYY-MM-DD
   drawWindowEndDate: Str;
   priorityOrder: Num;
 }
@@ -146,7 +146,9 @@ export function CapitalSourcesTab({ sources }: { sources: CapitalSourceView[] })
     try {
       const res = await fetch(`/api/capital-sources/${s.id}`, { method: 'DELETE' });
       if (!res.ok) {
-        const json = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+        const json = (await res.json().catch(() => null)) as {
+          error?: { message?: string };
+        } | null;
         alert(json?.error?.message ?? `Archive failed (HTTP ${res.status})`);
         return;
       }
@@ -165,9 +167,18 @@ export function CapitalSourcesTab({ sources }: { sources: CapitalSourceView[] })
         padding: 'var(--ja-card-padding)',
       }}
     >
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
+      <header
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'baseline',
+          marginBottom: 16,
+        }}
+      >
         <div>
-          <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
+          <h2
+            style={{ fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}
+          >
             Capital sources
           </h2>
           <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-tertiary)' }}>
@@ -185,7 +196,14 @@ export function CapitalSourcesTab({ sources }: { sources: CapitalSourceView[] })
           No capital sources configured yet. Add one to start tracking headroom and covenants.
         </p>
       ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
+        <table
+          style={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            fontSize: 13,
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
           <thead>
             <tr>
               <Th>Source</Th>
@@ -208,27 +226,50 @@ export function CapitalSourcesTab({ sources }: { sources: CapitalSourceView[] })
                     {SOURCE_KIND_LABELS[s.sourceKind]} · priority {s.priorityOrder}
                   </div>
                 </Td>
-                <Td align="right">{formatMoney(s.limitUsd * 100, { compact: true, precision: 2 })}</Td>
-                <Td align="right">{formatMoney(s.drawnUsd * 100, { compact: true, precision: 2 })}</Td>
+                <Td align="right">
+                  {formatMoney(s.limitUsd * 100, { compact: true, precision: 2 })}
+                </Td>
+                <Td align="right">
+                  {formatMoney(s.drawnUsd * 100, { compact: true, precision: 2 })}
+                </Td>
                 <Td align="right" emphatic>
                   {formatMoney(s.headroomUsd * 100, { compact: true, precision: 2 })}
                 </Td>
-                <Td align="right">{s.interestRatePct == null ? '—' : `${(s.interestRatePct * 100).toFixed(2)}%`}</Td>
-                <Td align="right">{s.covenantMaxLtcPct == null ? '—' : `${(s.covenantMaxLtcPct * 100).toFixed(1)}%`}</Td>
+                <Td align="right">
+                  {s.interestRatePct == null ? '—' : `${(s.interestRatePct * 100).toFixed(2)}%`}
+                </Td>
+                <Td align="right">
+                  {s.covenantMaxLtcPct == null ? '—' : `${(s.covenantMaxLtcPct * 100).toFixed(1)}%`}
+                </Td>
                 <Td align="right">{s.covenantMaxConcurrentProjects ?? '—'}</Td>
                 <Td align="right">{s.version}</Td>
                 <Td align="right">
                   <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
                     <button
                       onClick={() => openEdit(s)}
-                      style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, border: '1px solid var(--color-border-hairline)', cursor: 'pointer', background: 'none' }}
+                      style={{
+                        fontSize: 11,
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        border: '1px solid var(--color-border-hairline)',
+                        cursor: 'pointer',
+                        background: 'none',
+                      }}
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => archive(s)}
                       title="Archive"
-                      style={{ fontSize: 13, padding: '0 4px', border: 'none', cursor: 'pointer', background: 'none', color: 'var(--color-negative, #b91c1c)', lineHeight: 1 }}
+                      style={{
+                        fontSize: 13,
+                        padding: '0 4px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        background: 'none',
+                        color: 'var(--color-negative, #b91c1c)',
+                        lineHeight: 1,
+                      }}
                     >
                       ×
                     </button>
@@ -242,16 +283,22 @@ export function CapitalSourcesTab({ sources }: { sources: CapitalSourceView[] })
 
       <Modal
         open={open}
-        onClose={() => { if (!saving) setOpen(false); }}
+        onClose={() => {
+          if (!saving) setOpen(false);
+        }}
         title={editingId ? 'Edit capital source (writes new version)' : 'Add capital source'}
-        description={editingId
-          ? 'Each save mints a new version row. Prior versions stay queryable for audit.'
-          : 'Versioned ledger entry. Covenants are optional but recommended.'}
+        description={
+          editingId
+            ? 'Each save mints a new version row. Prior versions stay queryable for audit.'
+            : 'Versioned ledger entry. Covenants are optional but recommended.'
+        }
         size="lg"
         dismissOnBackdrop={!saving}
         footer={
           <>
-            <Button variant="ghost" onClick={() => setOpen(false)} disabled={saving}>Cancel</Button>
+            <Button variant="ghost" onClick={() => setOpen(false)} disabled={saving}>
+              Cancel
+            </Button>
             <Button variant="primary" onClick={save} loading={saving}>
               {editingId ? 'Save new version' : 'Add source'}
             </Button>
@@ -259,7 +306,17 @@ export function CapitalSourcesTab({ sources }: { sources: CapitalSourceView[] })
         }
       >
         {error && (
-          <div role="alert" style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 8, border: '1px solid var(--color-negative, #b91c1c)', color: 'var(--color-negative, #b91c1c)', fontSize: 13 }}>
+          <div
+            role="alert"
+            style={{
+              marginBottom: 12,
+              padding: '10px 12px',
+              borderRadius: 8,
+              border: '1px solid var(--color-negative, #b91c1c)',
+              color: 'var(--color-negative, #b91c1c)',
+              fontSize: 13,
+            }}
+          >
             {error}
           </div>
         )}
@@ -270,7 +327,9 @@ export function CapitalSourcesTab({ sources }: { sources: CapitalSourceView[] })
               <label style={fieldLabelStyle}>Source kind</label>
               <select
                 value={form.sourceKind}
-                onChange={(e) => setForm((f) => ({ ...f, sourceKind: e.target.value as SourceKind }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, sourceKind: e.target.value as SourceKind }))
+                }
                 style={selectStyle}
               >
                 <option value="kpc_loc">KPC LOC</option>
@@ -381,9 +440,13 @@ export function CapitalSourcesTab({ sources }: { sources: CapitalSourceView[] })
                 onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value || null }))}
                 rows={3}
                 style={{
-                  width: '100%', padding: '6px 10px', borderRadius: 6,
-                  border: '1px solid var(--color-border-hairline)', fontSize: 13,
-                  resize: 'vertical', fontFamily: 'inherit',
+                  width: '100%',
+                  padding: '6px 10px',
+                  borderRadius: 6,
+                  border: '1px solid var(--color-border-hairline)',
+                  fontSize: 13,
+                  resize: 'vertical',
+                  fontFamily: 'inherit',
                 }}
               />
             </div>
@@ -416,7 +479,16 @@ const selectStyle: React.CSSProperties = {
 function FormSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h4 style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-tertiary)', margin: '0 0 10px', fontWeight: 700 }}>
+      <h4
+        style={{
+          fontSize: 11,
+          textTransform: 'uppercase',
+          letterSpacing: '0.08em',
+          color: 'var(--color-text-tertiary)',
+          margin: '0 0 10px',
+          fontWeight: 700,
+        }}
+      >
         {title}
       </h4>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
@@ -426,28 +498,52 @@ function FormSection({ title, children }: { title: string; children: React.React
   );
 }
 
-function Th({ children, align = 'left' }: { children?: React.ReactNode; align?: 'left' | 'right' }) {
+function Th({
+  children,
+  align = 'left',
+}: {
+  children?: React.ReactNode;
+  align?: 'left' | 'right';
+}) {
   return (
-    <th style={{
-      textAlign: align, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em',
-      color: 'var(--color-text-tertiary)', padding: '6px 12px 6px 0', borderBottom: '1px solid var(--color-border-hairline)',
-      whiteSpace: 'nowrap', fontWeight: 700,
-    }}>
+    <th
+      style={{
+        textAlign: align,
+        fontSize: 11,
+        textTransform: 'uppercase',
+        letterSpacing: '0.08em',
+        color: 'var(--color-text-tertiary)',
+        padding: '6px 12px 6px 0',
+        borderBottom: '1px solid var(--color-border-hairline)',
+        whiteSpace: 'nowrap',
+        fontWeight: 700,
+      }}
+    >
       {children}
     </th>
   );
 }
 
-function Td({ children, align = 'left', emphatic = false }: { children: React.ReactNode; align?: 'left' | 'right'; emphatic?: boolean }) {
+function Td({
+  children,
+  align = 'left',
+  emphatic = false,
+}: {
+  children: React.ReactNode;
+  align?: 'left' | 'right';
+  emphatic?: boolean;
+}) {
   return (
-    <td style={{
-      padding: '8px 12px 8px 0',
-      borderBottom: '1px solid var(--color-border-subtle)',
-      verticalAlign: 'top',
-      textAlign: align,
-      fontWeight: emphatic ? 700 : 400,
-      color: 'var(--color-text-primary)',
-    }}>
+    <td
+      style={{
+        padding: '8px 12px 8px 0',
+        borderBottom: '1px solid var(--color-border-subtle)',
+        verticalAlign: 'top',
+        textAlign: align,
+        fontWeight: emphatic ? 700 : 400,
+        color: 'var(--color-text-primary)',
+      }}
+    >
       {children}
     </td>
   );

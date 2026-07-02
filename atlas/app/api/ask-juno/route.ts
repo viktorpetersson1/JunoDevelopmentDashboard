@@ -95,7 +95,7 @@ async function callAnthropic(
   apiKey: string,
   systemPrompt: string,
   messages: unknown[],
-  withTools: boolean,
+  withTools: boolean
 ): Promise<AnthropicMessage> {
   for (const model of MODEL_CHAIN) {
     const body: Record<string, unknown> = {
@@ -168,7 +168,7 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
   if (!parsed.success) {
     return badRequest(
       `Validation failed: ${parsed.error.issues.map((i) => `${i.path.join('.')} — ${i.message}`).join('; ')}`,
-      'VALIDATION_FAILED',
+      'VALIDATION_FAILED'
     );
   }
 
@@ -195,11 +195,14 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Cookie': req.headers.get('cookie') ?? '',
+            Cookie: req.headers.get('cookie') ?? '',
           },
           body: JSON.stringify({ ...confirmed_tool.args, stage: 'tbc' }),
         });
-        const data = await res.json().catch(() => null) as { data?: { projectKey?: string }; error?: { message?: string } } | null;
+        const data = (await res.json().catch(() => null)) as {
+          data?: { projectKey?: string };
+          error?: { message?: string };
+        } | null;
         if (!res.ok) {
           throw new Error(data?.error?.message ?? `Create failed (HTTP ${res.status})`);
         }
@@ -213,7 +216,11 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
           after: { projectKey: data?.data?.projectKey, args: confirmed_tool.args },
         });
         toolResult = {
-          content: JSON.stringify({ success: true, project_key: data?.data?.projectKey, audit_log_id: auditId }),
+          content: JSON.stringify({
+            success: true,
+            project_key: data?.data?.projectKey,
+            audit_log_id: auditId,
+          }),
           audit_log_id: auditId,
           is_write: true,
         };
@@ -225,11 +232,13 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
-            'Cookie': req.headers.get('cookie') ?? '',
+            Cookie: req.headers.get('cookie') ?? '',
           },
           body: JSON.stringify(fields),
         });
-        const data = await res.json().catch(() => null) as { error?: { message?: string } } | null;
+        const data = (await res.json().catch(() => null)) as {
+          error?: { message?: string };
+        } | null;
         if (!res.ok) {
           throw new Error(data?.error?.message ?? `Update failed (HTTP ${res.status})`);
         }
@@ -258,20 +267,24 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
         // Inject a synthetic assistant tool_use block + user tool_result
         {
           role: 'assistant',
-          content: [{
-            type: 'tool_use',
-            id: toolUseId,
-            name: confirmed_tool.name,
-            input: confirmed_tool.args,
-          }],
+          content: [
+            {
+              type: 'tool_use',
+              id: toolUseId,
+              name: confirmed_tool.name,
+              input: confirmed_tool.args,
+            },
+          ],
         },
         {
           role: 'user',
-          content: [{
-            type: 'tool_result',
-            tool_use_id: toolUseId,
-            content: toolResult.content,
-          }],
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: toolUseId,
+              content: toolResult.content,
+            },
+          ],
         },
       ];
 
@@ -310,21 +323,30 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
 
     // Tool use — iterate through tool_use blocks.
     const toolUseBlocks = firstMsg.content.filter(
-      (b): b is AnthropicToolUse => b.type === 'tool_use',
+      (b): b is AnthropicToolUse => b.type === 'tool_use'
     );
 
     // Separate READ tools (execute now) from WRITE tools (check risk).
     const toolResults: Array<{ tool_use_id: string; content: string }> = [];
 
     for (const tu of toolUseBlocks) {
-      const isReadTool = ['list_projects', 'get_project_summary', 'get_dashboard_kpis', 'search_actuals', 'research_comps'].includes(tu.name);
+      const isReadTool = [
+        'list_projects',
+        'get_project_summary',
+        'get_dashboard_kpis',
+        'search_actuals',
+        'research_comps',
+      ].includes(tu.name);
 
       if (isReadTool) {
         try {
           const result = await executeTool(tu.name, tu.input, user);
           toolResults.push({ tool_use_id: tu.id, content: result.content });
         } catch (err) {
-          toolResults.push({ tool_use_id: tu.id, content: `Error: ${err instanceof Error ? err.message : String(err)}` });
+          toolResults.push({
+            tool_use_id: tu.id,
+            content: `Error: ${err instanceof Error ? err.message : String(err)}`,
+          });
         }
         continue;
       }
@@ -355,7 +377,10 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
         const result = await executeTool(tu.name, tu.input, user);
         toolResults.push({ tool_use_id: tu.id, content: result.content });
       } catch (err) {
-        toolResults.push({ tool_use_id: tu.id, content: `Error: ${err instanceof Error ? err.message : String(err)}` });
+        toolResults.push({
+          tool_use_id: tu.id,
+          content: `Error: ${err instanceof Error ? err.message : String(err)}`,
+        });
       }
     }
 
@@ -375,7 +400,6 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
 
     const finalMsg = await callAnthropic(apiKey, systemPrompt, extendedMessages, false);
     return ok({ type: 'reply', text: extractText(finalMsg.content) });
-
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return ok({ type: 'error', text: `Juno agent error: ${msg.slice(0, 400)}` });

@@ -28,7 +28,7 @@ const SOURCE_KIND_LABELS: Record<SourceKind, string> = {
 };
 
 interface AssignmentRow {
-  id?: string;            // server-issued — present on rows that already exist
+  id?: string; // server-issued — present on rows that already exist
   capitalSourceId: string;
   source: CapitalSourceView | null; // resolved from the active-sources fetch
 }
@@ -52,7 +52,8 @@ export function CapitalSourcesEditor({
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
 
-  const dirty = JSON.stringify(assigned.map((a) => a.capitalSourceId)) !== JSON.stringify(initialOrder);
+  const dirty =
+    JSON.stringify(assigned.map((a) => a.capitalSourceId)) !== JSON.stringify(initialOrder);
 
   // Lazy fetch when the user opens the editor.
   useEffect(() => {
@@ -92,7 +93,9 @@ export function CapitalSourcesEditor({
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [open, projectKey, loading, sources.length]);
 
   const unassigned = sources.filter((s) => !assigned.some((a) => a.capitalSourceId === s.id));
@@ -151,9 +154,9 @@ export function CapitalSourcesEditor({
         body: JSON.stringify({ sourceIds: assigned.map((a) => a.capitalSourceId) }),
       });
       if (!res.ok) {
-        const json = (await res.json().catch(() => null)) as
-          | { error?: { message?: string } }
-          | null;
+        const json = (await res.json().catch(() => null)) as {
+          error?: { message?: string };
+        } | null;
         setError(json?.error?.message ?? `Save failed (HTTP ${res.status})`);
         setSaving(false);
         return;
@@ -174,12 +177,14 @@ export function CapitalSourcesEditor({
   if (!open) {
     return (
       <section style={card}>
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <header
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}
+        >
           <div>
             <h3 style={sectionLabel}>Capital sources</h3>
             <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-tertiary)' }}>
-              Per-project funding stack. Configure the lender priority order. If empty,
-              defaults to KPC LOC only (T120 aggregator).
+              Per-project funding stack. Configure the lender priority order. If empty, defaults to
+              KPC LOC only (T120 aggregator).
             </p>
           </div>
           <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
@@ -193,7 +198,14 @@ export function CapitalSourcesEditor({
   // Expanded state: full editor.
   return (
     <section style={card}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
+      <header
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'baseline',
+          marginBottom: 12,
+        }}
+      >
         <div>
           <h3 style={sectionLabel}>Capital sources funding stack</h3>
           <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-tertiary)' }}>
@@ -201,10 +213,24 @@ export function CapitalSourcesEditor({
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <Button variant="ghost" size="sm" onClick={() => { setOpen(false); setError(null); }} disabled={saving}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setOpen(false);
+              setError(null);
+            }}
+            disabled={saving}
+          >
             Cancel
           </Button>
-          <Button variant="primary" size="sm" onClick={save} loading={saving} disabled={!dirty || loading}>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={save}
+            loading={saving}
+            disabled={!dirty || loading}
+          >
             Save funding stack
           </Button>
         </div>
@@ -217,14 +243,17 @@ export function CapitalSourcesEditor({
       )}
 
       {loading ? (
-        <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)' }}>Loading capital sources…</p>
+        <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)' }}>
+          Loading capital sources…
+        </p>
       ) : (
         <>
           {/* Stack */}
           <ol style={{ listStyle: 'none', padding: 0, margin: 0 }}>
             {assigned.length === 0 ? (
               <li style={{ fontSize: 13, color: 'var(--color-text-tertiary)', padding: '8px 0' }}>
-                No sources assigned yet. Default fallback: KPC LOC. Add a source below to make it explicit.
+                No sources assigned yet. Default fallback: KPC LOC. Add a source below to make it
+                explicit.
               </li>
             ) : (
               assigned.map((row, idx) => (
@@ -243,22 +272,39 @@ export function CapitalSourcesEditor({
                     border: `1px solid ${dragOverIdx === idx && dragIdx !== idx ? 'var(--color-accent-lime, #ddec65)' : 'var(--color-border-hairline)'}`,
                     borderRadius: 8,
                     marginBottom: 6,
-                    background: dragIdx === idx ? 'var(--color-surface-muted)' : 'var(--color-surface-base)',
+                    background:
+                      dragIdx === idx ? 'var(--color-surface-muted)' : 'var(--color-surface-base)',
                     cursor: 'grab',
                     fontSize: 13,
                   }}
                 >
-                  <span style={{ color: 'var(--color-text-tertiary)', fontSize: 11, minWidth: 18 }}>{idx + 1}.</span>
-                  <span aria-hidden="true" style={{ color: 'var(--color-text-tertiary)', cursor: 'grab', fontSize: 14 }}>⋮⋮</span>
+                  <span style={{ color: 'var(--color-text-tertiary)', fontSize: 11, minWidth: 18 }}>
+                    {idx + 1}.
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    style={{ color: 'var(--color-text-tertiary)', cursor: 'grab', fontSize: 14 }}
+                  >
+                    ⋮⋮
+                  </span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>
                       {row.source?.sourceName ?? '(unknown source)'}
                     </div>
-                    <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: 'var(--color-text-tertiary)',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}
+                    >
                       {row.source ? SOURCE_KIND_LABELS[row.source.sourceKind] : ''}
-                      {row.source && ` · headroom ${formatMoney(row.source.headroomUsd * 100, { compact: true, precision: 1 })}`}
-                      {row.source?.covenantMaxLtcPct != null && ` · max LTC ${(row.source.covenantMaxLtcPct * 100).toFixed(1)}%`}
-                      {row.source?.covenantMaxConcurrentProjects != null && ` · max ${row.source.covenantMaxConcurrentProjects} concurrent`}
+                      {row.source &&
+                        ` · headroom ${formatMoney(row.source.headroomUsd * 100, { compact: true, precision: 1 })}`}
+                      {row.source?.covenantMaxLtcPct != null &&
+                        ` · max LTC ${(row.source.covenantMaxLtcPct * 100).toFixed(1)}%`}
+                      {row.source?.covenantMaxConcurrentProjects != null &&
+                        ` · max ${row.source.covenantMaxConcurrentProjects} concurrent`}
                     </div>
                   </div>
                   <button
@@ -266,8 +312,13 @@ export function CapitalSourcesEditor({
                     onClick={() => removeAt(idx)}
                     title="Remove from stack"
                     style={{
-                      fontSize: 16, padding: '0 6px', border: 'none', cursor: 'pointer',
-                      background: 'none', color: 'var(--color-negative, #b91c1c)', lineHeight: 1,
+                      fontSize: 16,
+                      padding: '0 6px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: 'none',
+                      color: 'var(--color-negative, #b91c1c)',
+                      lineHeight: 1,
                     }}
                   >
                     ×
@@ -280,7 +331,15 @@ export function CapitalSourcesEditor({
           {/* Add row */}
           {unassigned.length > 0 ? (
             <div style={{ marginTop: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
-              <label style={{ fontSize: 11, color: 'var(--color-text-tertiary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              <label
+                style={{
+                  fontSize: 11,
+                  color: 'var(--color-text-tertiary)',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                }}
+              >
                 Add source
               </label>
               <select
@@ -291,14 +350,21 @@ export function CapitalSourcesEditor({
                 }}
                 defaultValue=""
                 style={{
-                  flex: 1, fontSize: 13, padding: '6px 10px', borderRadius: 6,
-                  border: '1px solid var(--color-border-hairline)', background: 'var(--color-surface-base)',
+                  flex: 1,
+                  fontSize: 13,
+                  padding: '6px 10px',
+                  borderRadius: 6,
+                  border: '1px solid var(--color-border-hairline)',
+                  background: 'var(--color-surface-base)',
                 }}
               >
-                <option value="" disabled>Choose a source…</option>
+                <option value="" disabled>
+                  Choose a source…
+                </option>
                 {unassigned.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.sourceName} ({SOURCE_KIND_LABELS[s.sourceKind]}) · headroom {formatMoney(s.headroomUsd * 100, { compact: true, precision: 1 })}
+                    {s.sourceName} ({SOURCE_KIND_LABELS[s.sourceKind]}) · headroom{' '}
+                    {formatMoney(s.headroomUsd * 100, { compact: true, precision: 1 })}
                   </option>
                 ))}
               </select>
@@ -306,7 +372,10 @@ export function CapitalSourcesEditor({
           ) : sources.length === 0 ? (
             <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)', marginTop: 12 }}>
               No capital sources configured yet. Super-admins can add them in{' '}
-              <a href="/settings?tab=capital-sources" style={{ color: 'var(--color-text-secondary)' }}>
+              <a
+                href="/settings?tab=capital-sources"
+                style={{ color: 'var(--color-text-secondary)' }}
+              >
                 Settings → Capital Sources
               </a>
               .

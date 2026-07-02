@@ -10,16 +10,16 @@
 
 ### 1.1 Ask Juno v1 (the thing we're replacing)
 
-| Aspect | Today | Source |
-|---|---|---|
-| Widget | Client island, bottom-right launcher + `atlas:open-ask-juno` event; conversation held in React state only — **lost on reload** | `components/widgets/AskJunoWidget.tsx` |
-| Transport | **One synchronous JSON POST** per message — no streaming | widget `fetch('/api/ask-juno')` |
-| Loop | **Max 2 LLM round-trips** per message: call-with-tools → execute tools → call-without-tools for the final reply. Not a planner; cannot chain reasoning across tools | `app/api/ask-juno/route.ts:293-382` |
-| Model | Anthropic Messages API, fallback chain `claude-sonnet-4-5 → claude-3-7-sonnet-latest → claude-3-5-sonnet-latest`, `max_tokens: 1024` hardcoded | route `:69-103` |
-| Tools | 5 READ (`list_projects`, `get_project_summary`, `get_dashboard_kpis`, `search_actuals`, `research_comps`) + 4 WRITE (`create_project`, `update_project`, `create_actuals_entry`, `create_risk`) | `lib/ask-juno/tools.ts` |
-| Write gating | `classifyRisk()`: auto-execute only if tool ∈ {actuals, risk} AND editor+ AND amount ≤ $10k AND batch < 5 AND **no locked approval snapshot**; otherwise returns `pending_confirmation` and the user approves in-widget. `create/update_project` **always** confirm and then delegate to the existing `POST/PATCH /api/projects` routes — the platform gate is never bypassed | `lib/ask-juno/risk-classifier.ts` |
-| Audit | Every write → `recordMutation()` (`atlas.audit_log`, `source: 'ask_juno_agent'`, before/after JSONB, PII-redacted); `audit_log_id` surfaced in chat. **LLM calls themselves are NOT audited** (no tokens/cost rows) | `lib/services/audit.ts:71-105` |
-| Ingest | `/api/ask-juno/ingest` — CSV/PDF → Anthropic extraction → actuals proposal (T116) | exists, keep |
+| Aspect       | Today                                                                                                                                                                                                                                                                                                                                                                         | Source                                 |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| Widget       | Client island, bottom-right launcher + `atlas:open-ask-juno` event; conversation held in React state only — **lost on reload**                                                                                                                                                                                                                                                | `components/widgets/AskJunoWidget.tsx` |
+| Transport    | **One synchronous JSON POST** per message — no streaming                                                                                                                                                                                                                                                                                                                      | widget `fetch('/api/ask-juno')`        |
+| Loop         | **Max 2 LLM round-trips** per message: call-with-tools → execute tools → call-without-tools for the final reply. Not a planner; cannot chain reasoning across tools                                                                                                                                                                                                           | `app/api/ask-juno/route.ts:293-382`    |
+| Model        | Anthropic Messages API, fallback chain `claude-sonnet-4-5 → claude-3-7-sonnet-latest → claude-3-5-sonnet-latest`, `max_tokens: 1024` hardcoded                                                                                                                                                                                                                                | route `:69-103`                        |
+| Tools        | 5 READ (`list_projects`, `get_project_summary`, `get_dashboard_kpis`, `search_actuals`, `research_comps`) + 4 WRITE (`create_project`, `update_project`, `create_actuals_entry`, `create_risk`)                                                                                                                                                                               | `lib/ask-juno/tools.ts`                |
+| Write gating | `classifyRisk()`: auto-execute only if tool ∈ {actuals, risk} AND editor+ AND amount ≤ $10k AND batch < 5 AND **no locked approval snapshot**; otherwise returns `pending_confirmation` and the user approves in-widget. `create/update_project` **always** confirm and then delegate to the existing `POST/PATCH /api/projects` routes — the platform gate is never bypassed | `lib/ask-juno/risk-classifier.ts`      |
+| Audit        | Every write → `recordMutation()` (`atlas.audit_log`, `source: 'ask_juno_agent'`, before/after JSONB, PII-redacted); `audit_log_id` surfaced in chat. **LLM calls themselves are NOT audited** (no tokens/cost rows)                                                                                                                                                           | `lib/services/audit.ts:71-105`         |
+| Ingest       | `/api/ask-juno/ingest` — CSV/PDF → Anthropic extraction → actuals proposal (T116)                                                                                                                                                                                                                                                                                             | exists, keep                           |
 
 ### 1.2 Suggestions queue (the approval primitive)
 
@@ -32,16 +32,19 @@
 All verified signatures; "pure" = no I/O, runs server or browser (proven: the Scenario Modeler client island already runs `runProject`, `buildCashSchedule`, `solveStartCapacity`, `buildSelfFundingTrajectory`, `buildDistributionForecast`, `computeRolloutTrigger`, `buildProjectPnL` **in the browser**).
 
 **calc (frozen — read-only to the agent):**
+
 - `runProject(project: ProjectInput, globals, scenario): ProjectResult` — pure
 - `aggregatePortfolio(projects, globals, scenario): PortfolioResult` — pure
 - DB boundary: `projectRowToInput(row)` + `getActiveGlobals()` / `getActiveScenario()`
 
 **treasury (all pure):**
+
 - `buildCashSchedule({projects, globals, scenario, sources, assignments, todayYM}): CashSchedule` — THE shared schedule
 - `solveStartCapacity(schedule)`, `buildLocRepayment(schedule)`, `buildSelfFundingTrajectory(schedule, capTable, opts?)`, `buildDistributionForecast(schedule, capTable, opts?)`, covenant checks, `blendedOwnerTaxRate(capTable)`
 - finance: `computeRolloutTrigger(...)`, `buildProjectPnL(result)`
 
 **pricing:**
+
 - `deriveRecommendation(closed, active, facts, opts?)` — pure; the deterministic launch price/band/classification
 - `diffCompSets(before, after)` — pure
 - `generateStrategyBrief(facts, closingCosts, apiKey, opts?{storedComps, premium…})` — LLM; deterministic when `storedComps` given
@@ -67,7 +70,7 @@ The prompt assumes "a naive in-request agent loop will time out." The code says 
 - CF Pages Functions (Workers) meter **CPU time**, not wall time; an I/O-bound LLM loop mostly awaits. **Empirically**, the pricing-brief route already runs 2–3+ minutes of sequential LLM calls (comp research → synthesis at `timeoutMs: 120_000` → triangulation → buyer-migration) inside ONE edge request, in production, successfully — including a run where a single inner call burned its full 60s and the request still completed.
 - The REAL failure modes observed: (a) the client disconnects/refreshes → the whole run dies with no trace; (b) zero progress visibility during 1–3 minutes (the "Refreshing…" button); (c) an inner-step failure loses all prior work; (d) no cost ceiling — nothing stops a pathological loop.
 
-**Conclusion:** durable run/step state is the right call — but for *resumability, visibility, auditability and budgets*, not because a single bounded step can't run at the edge. Design accordingly: each HTTP invocation advances 1–N bounded steps (a step may itself be one LLM call + tool executions), persists, streams progress via SSE, and the client drives continuation. Works within everything verified above; no new deps.
+**Conclusion:** durable run/step state is the right call — but for _resumability, visibility, auditability and budgets_, not because a single bounded step can't run at the edge. Design accordingly: each HTTP invocation advances 1–N bounded steps (a step may itself be one LLM call + tool executions), persists, streams progress via SSE, and the client drives continuation. Works within everything verified above; no new deps.
 
 ---
 
@@ -78,7 +81,7 @@ The prompt assumes "a naive in-request agent loop will time out." The code says 
 3. **Streaming** — SSE progress/tokens to the widget (net-new pattern, web-standard only).
 4. **Agent LLM audit** — `agent_llm_calls` mirroring `pricing_llm_calls` (its CHECKs block reuse).
 5. **Cross-engine assembly tools** — thin wrappers loading DB state once, then calling the pure engines (the Scenario Modeler's server loader is the template).
-6. **Approve-executes wiring** — `agent_actions` lifecycle FK'ing into `suggestions`, where approval invokes the *existing* service (`updateProject` etc.) — closing the today-dormant `applied` state.
+6. **Approve-executes wiring** — `agent_actions` lifecycle FK'ing into `suggestions`, where approval invokes the _existing_ service (`updateProject` etc.) — closing the today-dormant `applied` state.
 7. **Alerts + scheduler** — deterministic checks off `buildCashSchedule` + an external cron trigger (none exists).
 8. **Model refresh** — v1's fallback chain is dated; v2 should take the model string from config (§6 question).
 
@@ -141,4 +144,4 @@ Per-phase DoD: typecheck + lint + vitest all-green + golden 23/23 + `next build`
 
 ---
 
-*Phase 0 ends here. Nothing further is built until these answers + an explicit go.*
+_Phase 0 ends here. Nothing further is built until these answers + an explicit go._

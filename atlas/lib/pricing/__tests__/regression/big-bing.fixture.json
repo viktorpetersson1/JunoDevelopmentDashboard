@@ -12,7 +12,13 @@
         "ag_sqft": 5000,
         "price_per_sqft": 1455,
         "sale_date": "2025-06-01",
-        "attributes": { "construction": "new", "waterfront": "bay", "bedrooms": 5, "pool": true, "acreage": 1.1 },
+        "attributes": {
+          "construction": "new",
+          "waterfront": "bay",
+          "bedrooms": 5,
+          "pool": true,
+          "acreage": 1.1
+        },
         "source_url": "https://www.compass.com/listing/3745-nassau-point"
       },
       {

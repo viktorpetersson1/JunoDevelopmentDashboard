@@ -81,17 +81,25 @@ export default async function SelfFundingPage() {
         <AnalyticsTabs activeKey="self-funding" />
 
         <header>
-          <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
+          <h1
+            style={{ fontSize: 24, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}
+          >
             Finance &amp; Analytics — Self-funding trajectory
           </h1>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
-            When retained profits can fund new project starts instead of owner capital calls — by fiscal year,
-            from {schedule.start_month}.
+            When retained profits can fund new project starts instead of owner capital calls — by
+            fiscal year, from {schedule.start_month}.
           </p>
         </header>
 
         {/* Hero */}
-        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+        <section
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: 16,
+          }}
+        >
           <div
             style={{
               background: 'var(--ja-card-bg)',
@@ -101,7 +109,15 @@ export default async function SelfFundingPage() {
               gridColumn: '1 / -1',
             }}
           >
-            <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-text-tertiary)', fontWeight: 700 }}>
+            <div
+              style={{
+                fontSize: 11,
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+                color: 'var(--color-text-tertiary)',
+                fontWeight: 700,
+              }}
+            >
               Self-funding trajectory
             </div>
             <div
@@ -109,7 +125,9 @@ export default async function SelfFundingPage() {
                 fontSize: 32,
                 fontWeight: 700,
                 margin: '6px 0 2px',
-                color: result.self_funding_year ? 'var(--color-positive, #15803d)' : 'var(--color-text-primary)',
+                color: result.self_funding_year
+                  ? 'var(--color-positive, #15803d)'
+                  : 'var(--color-text-primary)',
                 letterSpacing: '-0.02em',
               }}
             >
@@ -128,15 +146,26 @@ export default async function SelfFundingPage() {
             padding: 'var(--ja-card-padding)',
           }}
         >
-          <h2 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 12px', color: 'var(--color-text-primary)' }}>
+          <h2
+            style={{
+              fontSize: 14,
+              fontWeight: 700,
+              margin: '0 0 12px',
+              color: 'var(--color-text-primary)',
+            }}
+          >
             Retained NPAT vs equity need, by fiscal year
           </h2>
           <SelfFundingChart result={result} />
           <p style={{ margin: '10px 0 0', fontSize: 10, color: 'var(--color-text-tertiary)' }}>
-            Retained NPAT = recognised NPAT − owner distributions (modelled as the blended owner tax distribution,{' '}
-            {(result.distribution_rate * 100).toFixed(1)}% of NPAT, derived from cap-table tax rates). Equity need ={' '}
-            equity drawn into new starts. Self-funding year = first FY retained ≥ need. NPAT recognised at sale from the{' '}
-            <a href="/analytics/cash-schedule" style={{ color: 'var(--color-text-secondary)' }}>cash schedule</a>.
+            Retained NPAT = recognised NPAT − owner distributions (modelled as the blended owner tax
+            distribution, {(result.distribution_rate * 100).toFixed(1)}% of NPAT, derived from
+            cap-table tax rates). Equity need = equity drawn into new starts. Self-funding year =
+            first FY retained ≥ need. NPAT recognised at sale from the{' '}
+            <a href="/analytics/cash-schedule" style={{ color: 'var(--color-text-secondary)' }}>
+              cash schedule
+            </a>
+            .
           </p>
         </section>
 
@@ -149,11 +178,25 @@ export default async function SelfFundingPage() {
             padding: 'var(--ja-card-padding)',
           }}
         >
-          <h2 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 12px', color: 'var(--color-text-primary)' }}>
+          <h2
+            style={{
+              fontSize: 14,
+              fontWeight: 700,
+              margin: '0 0 12px',
+              color: 'var(--color-text-primary)',
+            }}
+          >
             Annual detail
           </h2>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
+            <table
+              style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                fontSize: 13,
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
               <thead>
                 <tr>
                   <Th align="left">Fiscal year</Th>
@@ -165,25 +208,49 @@ export default async function SelfFundingPage() {
                 </tr>
               </thead>
               <tbody>
-                {Object.keys(result.annual_equity_need).sort().map((fy) => {
-                  const need = result.annual_equity_need[fy] ?? 0;
-                  const retained = result.annual_retained_npat[fy] ?? 0;
-                  const funds = need > 0 && retained >= need;
-                  return (
-                    <tr key={fy}>
-                      <Td align="left" bold>{fy}</Td>
-                      <Td align="right">{formatMoney((result.annual_npat[fy] ?? 0) * 100, { compact: true, precision: 1 })}</Td>
-                      <Td align="right" muted>{formatMoney((result.annual_distributions[fy] ?? 0) * 100, { compact: true, precision: 1 })}</Td>
-                      <Td align="right">{formatMoney(retained * 100, { compact: true, precision: 1 })}</Td>
-                      <Td align="right">{formatMoney(need * 100, { compact: true, precision: 1 })}</Td>
-                      <Td align="right">
-                        <span style={{ color: funds ? 'var(--color-positive, #15803d)' : 'var(--color-text-tertiary)' }}>
-                          {need === 0 ? '—' : funds ? 'Yes' : 'No'}
-                        </span>
-                      </Td>
-                    </tr>
-                  );
-                })}
+                {Object.keys(result.annual_equity_need)
+                  .sort()
+                  .map((fy) => {
+                    const need = result.annual_equity_need[fy] ?? 0;
+                    const retained = result.annual_retained_npat[fy] ?? 0;
+                    const funds = need > 0 && retained >= need;
+                    return (
+                      <tr key={fy}>
+                        <Td align="left" bold>
+                          {fy}
+                        </Td>
+                        <Td align="right">
+                          {formatMoney((result.annual_npat[fy] ?? 0) * 100, {
+                            compact: true,
+                            precision: 1,
+                          })}
+                        </Td>
+                        <Td align="right" muted>
+                          {formatMoney((result.annual_distributions[fy] ?? 0) * 100, {
+                            compact: true,
+                            precision: 1,
+                          })}
+                        </Td>
+                        <Td align="right">
+                          {formatMoney(retained * 100, { compact: true, precision: 1 })}
+                        </Td>
+                        <Td align="right">
+                          {formatMoney(need * 100, { compact: true, precision: 1 })}
+                        </Td>
+                        <Td align="right">
+                          <span
+                            style={{
+                              color: funds
+                                ? 'var(--color-positive, #15803d)'
+                                : 'var(--color-text-tertiary)',
+                            }}
+                          >
+                            {need === 0 ? '—' : funds ? 'Yes' : 'No'}
+                          </span>
+                        </Td>
+                      </tr>
+                    );
+                  })}
               </tbody>
             </table>
           </div>

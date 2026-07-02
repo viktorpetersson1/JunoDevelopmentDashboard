@@ -117,10 +117,6 @@ export async function patchRisk(id: string, patch: PatchRiskRow): Promise<void> 
 /** Hard-delete a risk row. */
 export async function deleteRisk(id: string): Promise<void> {
   const supabase = createSupabaseServerClient();
-  const { error } = await supabase
-    .schema('atlas')
-    .from('project_risks')
-    .delete()
-    .eq('id', id);
+  const { error } = await supabase.schema('atlas').from('project_risks').delete().eq('id', id);
   if (error) throw new Error(`deleteRisk: ${error.message}`);
 }

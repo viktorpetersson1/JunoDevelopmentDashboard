@@ -44,7 +44,12 @@ const input: TriangulationInput = {
   gapSeverity: 'red',
   closedComps: [comp({ address: '3745 Nassau Point Rd', psf: 1455, waterfrontType: 'bayfront' })],
   activeComps: [
-    comp({ address: 'Soundfront Bluff A', status: 'active', psf: 1800, waterfrontType: 'sound_front_bluff' }),
+    comp({
+      address: 'Soundfront Bluff A',
+      status: 'active',
+      psf: 1800,
+      waterfrontType: 'sound_front_bluff',
+    }),
   ],
 };
 

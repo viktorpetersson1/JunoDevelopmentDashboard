@@ -75,7 +75,7 @@ describe('checkMaxLtcCovenant', () => {
     const r = checkMaxLtcCovenant({
       outstandingUsd: 3_000_000,
       totalCostUsd: 4_000_000,
-      covenantMaxLtcPct: 0.70,
+      covenantMaxLtcPct: 0.7,
     });
     expect(r.formula).toContain('75.0%');
     expect(r.formula).toContain('70.0%');

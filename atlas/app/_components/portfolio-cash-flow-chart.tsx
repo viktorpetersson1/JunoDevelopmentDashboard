@@ -59,7 +59,12 @@ const tickMonth = (ym: string): string => (ym.endsWith('-01') ? ym.slice(0, 4) :
 export function PortfolioCashFlowChart({ monthly }: { monthly: PortfolioMonthlySeries }) {
   const [showFull, setShowFull] = useState(false);
   const allData = buildRows(monthly);
-  const win = autoWindow(allData as unknown as Array<Record<string, number | string>>, ['netCash', 'equityCalled', 'closingCash', 'locBalance']);
+  const win = autoWindow(allData as unknown as Array<Record<string, number | string>>, [
+    'netCash',
+    'equityCalled',
+    'closingCash',
+    'locBalance',
+  ]);
   const data = showFull ? allData : allData.slice(win.startIdx, win.endIdx + 1);
 
   return (
@@ -80,67 +85,67 @@ export function PortfolioCashFlowChart({ monthly }: { monthly: PortfolioMonthlyS
           {showFull ? 'Show active window' : 'Show full model horizon'}
         </button>
       </div>
-    <div style={{ width: '100%', height: 320 }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={data} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
-          <CartesianGrid strokeDasharray="2 4" stroke="var(--color-border-subtle)" />
-          <XAxis
-            dataKey="date"
-            tickFormatter={tickMonth}
-            tick={{ fontSize: 11, fill: 'var(--color-text-tertiary)' }}
-            stroke="var(--color-border-hairline)"
-          />
-          <YAxis
-            tickFormatter={compact}
-            tick={{ fontSize: 11, fill: 'var(--color-text-tertiary)' }}
-            stroke="var(--color-border-hairline)"
-            width={56}
-          />
-          <Tooltip
-            formatter={(v: number | string) => (typeof v === 'number' ? compact(v) : String(v))}
-            labelStyle={{ color: 'var(--color-text-primary)', fontSize: 12 }}
-            contentStyle={{
-              background: 'var(--color-surface-base)',
-              border: 'var(--ja-card-border)',
-              borderRadius: 8,
-              fontSize: 12,
-            }}
-          />
-          <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-          {/* T103.10 — monochrome palette per COLOR_TOKENS.md */}
-          <ReferenceLine y={0} stroke="var(--chart-axis-line, #b0b5bc)" strokeWidth={1} />
-          <Bar
-            dataKey="netCash"
-            name="Net cash"
-            fill="var(--chart-default-1, #0d0d0d)"
-            opacity={0.55}
-          />
-          <Bar
-            dataKey="equityCalled"
-            name="Equity called"
-            fill="var(--chart-default-3, #8a8780)"
-            opacity={0.7}
-          />
-          <Line
-            type="monotone"
-            dataKey="closingCash"
-            name="Closing cash"
-            stroke="var(--chart-default-1, #0d0d0d)"
-            strokeWidth={2}
-            dot={false}
-          />
-          <Line
-            type="monotone"
-            dataKey="locBalance"
-            name="LOC balance"
-            stroke="var(--chart-default-2, #4b4b48)"
-            strokeWidth={2}
-            strokeDasharray="4 3"
-            dot={false}
-          />
-        </ComposedChart>
-      </ResponsiveContainer>
-    </div>
+      <div style={{ width: '100%', height: 320 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart data={data} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
+            <CartesianGrid strokeDasharray="2 4" stroke="var(--color-border-subtle)" />
+            <XAxis
+              dataKey="date"
+              tickFormatter={tickMonth}
+              tick={{ fontSize: 11, fill: 'var(--color-text-tertiary)' }}
+              stroke="var(--color-border-hairline)"
+            />
+            <YAxis
+              tickFormatter={compact}
+              tick={{ fontSize: 11, fill: 'var(--color-text-tertiary)' }}
+              stroke="var(--color-border-hairline)"
+              width={56}
+            />
+            <Tooltip
+              formatter={(v: number | string) => (typeof v === 'number' ? compact(v) : String(v))}
+              labelStyle={{ color: 'var(--color-text-primary)', fontSize: 12 }}
+              contentStyle={{
+                background: 'var(--color-surface-base)',
+                border: 'var(--ja-card-border)',
+                borderRadius: 8,
+                fontSize: 12,
+              }}
+            />
+            <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+            {/* T103.10 — monochrome palette per COLOR_TOKENS.md */}
+            <ReferenceLine y={0} stroke="var(--chart-axis-line, #b0b5bc)" strokeWidth={1} />
+            <Bar
+              dataKey="netCash"
+              name="Net cash"
+              fill="var(--chart-default-1, #0d0d0d)"
+              opacity={0.55}
+            />
+            <Bar
+              dataKey="equityCalled"
+              name="Equity called"
+              fill="var(--chart-default-3, #8a8780)"
+              opacity={0.7}
+            />
+            <Line
+              type="monotone"
+              dataKey="closingCash"
+              name="Closing cash"
+              stroke="var(--chart-default-1, #0d0d0d)"
+              strokeWidth={2}
+              dot={false}
+            />
+            <Line
+              type="monotone"
+              dataKey="locBalance"
+              name="LOC balance"
+              stroke="var(--chart-default-2, #4b4b48)"
+              strokeWidth={2}
+              strokeDasharray="4 3"
+              dot={false}
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }

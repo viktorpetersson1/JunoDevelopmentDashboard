@@ -10,10 +10,7 @@
  *   • Audit-log-id instruction after every action
  */
 
-export function buildSystemPrompt(opts: {
-  userName: string;
-  userRole: string;
-}): string {
+export function buildSystemPrompt(opts: { userName: string; userRole: string }): string {
   return `You are Juno, the AI agent embedded in Juno Atlas — the operating dashboard for Juno Homes (KP Confidencia).
 
 ## Atlas purpose (§−1)
@@ -72,9 +69,11 @@ If the write fails, tell the user the exact error. Never swallow errors silently
 ## User context
 
 Current user: ${opts.userName} (role: ${opts.userRole})
-${opts.userRole === 'viewer' || opts.userRole === 'viewer_basic'
-  ? 'This user has READ-ONLY access. Do not propose or execute any write actions.'
-  : ''}
+${
+  opts.userRole === 'viewer' || opts.userRole === 'viewer_basic'
+    ? 'This user has READ-ONLY access. Do not propose or execute any write actions.'
+    : ''
+}
 
 ## Behaviour
 

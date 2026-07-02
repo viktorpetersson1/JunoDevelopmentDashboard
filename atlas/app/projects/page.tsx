@@ -36,8 +36,8 @@ export default async function ProjectsListPage() {
       gross_profit: result.kpis.gross_profit,
       margin_pct: result.kpis.profit_margin_pct,
       sale_price_per_sqft_override: p.sale_price_per_sqft_override ?? null,
-      start_date: result.start_date ?? null,    // ProjectResult.start_date (derived by engine)
-      sale_date: result.sale_date ?? null,       // ProjectResult.sale_date (derived by engine)
+      start_date: result.start_date ?? null, // ProjectResult.start_date (derived by engine)
+      sale_date: result.sale_date ?? null, // ProjectResult.sale_date (derived by engine)
     };
   });
 

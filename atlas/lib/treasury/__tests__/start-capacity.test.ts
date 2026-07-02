@@ -39,7 +39,7 @@ function kpc(overrides: Partial<CapitalSourceView> = {}): CapitalSourceView {
 function scheduleFromConcurrency(
   concurrencyByMonth: number[],
   source: CapitalSourceView,
-  headroom = 3_000_000,
+  headroom = 3_000_000
 ): CashSchedule {
   const rows: CashScheduleRow[] = concurrencyByMonth.map((count, i) => ({
     month: `2026-${String((i % 12) + 1).padStart(2, '0')}`,
@@ -78,7 +78,12 @@ describe('solveStartCapacity', () => {
   });
 
   it('no kpc_loc source → unconfigured with add-source message', () => {
-    const s: CashSchedule = { rows: [], sources: {}, start_month: '2026-01', breach_month_count: 0 };
+    const s: CashSchedule = {
+      rows: [],
+      sources: {},
+      start_month: '2026-01',
+      breach_month_count: 0,
+    };
     const r = solveStartCapacity(s);
     expect(r.state).toBe('unconfigured');
     expect(r.rationale).toMatch(/No KPC LOC/i);

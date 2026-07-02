@@ -5,10 +5,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import {
-  buildSelfFundingTrajectory,
-  blendedOwnerTaxRate,
-} from '../self-funding';
+import { buildSelfFundingTrajectory, blendedOwnerTaxRate } from '../self-funding';
 import type { CashSchedule, CashScheduleRow } from '../portfolio-cash-schedule';
 import type { CapTableEntryView } from '@/lib/repos/settings';
 
@@ -16,7 +13,7 @@ import type { CapTableEntryView } from '@/lib/repos/settings';
  *  with the annual totals spread onto the first month (simplest + exact). */
 function scheduleFromYears(
   years: Record<string, { npat: number; equity: number }>,
-  startMonth = '2026-01',
+  startMonth = '2026-01'
 ): CashSchedule {
   const rows: CashScheduleRow[] = [];
   for (const [fy, { npat, equity }] of Object.entries(years)) {

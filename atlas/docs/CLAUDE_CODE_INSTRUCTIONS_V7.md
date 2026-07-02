@@ -24,11 +24,11 @@ Evidence driving V7 (from exec meeting recordings May 20–Jun 17, agenda emails
 
 **V7 target shape — exactly 4 sidebar items:**
 
-| Surface | Job |
-|---|---|
-| **Home** | Juno company view: performance, aggregate cash flow, cash requirements (90d + 12m), aggregate P&L, capital/LOC position |
-| **Projects** | Run each project at exec level: **Program · Cash flow · Cash requirements · P&L** — one page, four blocks, rolls up into Home |
-| **Pipeline** | Drive new projects: ranked potential-project list with standardized key metrics + a research section per opportunity |
+| Surface      | Job                                                                                                                                      |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| **Home**     | Juno company view: performance, aggregate cash flow, cash requirements (90d + 12m), aggregate P&L, capital/LOC position                  |
+| **Projects** | Run each project at exec level: **Program · Cash flow · Cash requirements · P&L** — one page, four blocks, rolls up into Home            |
+| **Pipeline** | Drive new projects: ranked potential-project list with standardized key metrics + a research section per opportunity                     |
 | **Ask Juno** | Intelligence layer: Q&A over the portfolio, meeting-transcript review with approval-gated change suggestions, pipeline research drafting |
 
 Everything else is parked behind feature flags — not deleted. Code is retained; navigation and routes are gated.
@@ -79,6 +79,7 @@ I will not break the V7 Hard Rules (§1).
 **Problem.** `/dashboard` shows "KPC LOC headroom $6.00M · 0% utilized" while `/analytics/capital` shows "0% of $0.0M facility" + a red "LOC exhausted for 15 months" funding-gap banner. At least one surface falls back to a hardcoded/baseline facility while another reads the (empty or mis-seeded) `atlas.capital_sources` table.
 
 **Scope.**
+
 - Audit every consumer of capital-source data: `lib/repos/capital-sources.ts` (`findActiveKpcLoc`, `findActiveCapitalSources`, `findAllAssignments`), `lib/treasury/portfolio-cash-schedule.ts`, `lib/calc/portfolio/aggregate.ts`, Home boardroom strip, `/analytics/capital`, `/analytics/loc`, pipeline start-capacity solver.
 - Introduce one server-side accessor `getCapitalPosition()` in `lib/treasury/` that returns either a fully-resolved facility model **or** `{ configured: false }`. All surfaces consume this. Delete every hardcoded fallback (grep for `6_000_000`, `6.0M`, `BASELINE` LOC constants outside `lib/calc/baselines.ts`).
 - When `configured: false`: render the Rule-6 empty state on every dependent chip/tile/banner; suppress funding-gap, cap-breach, and rollout alerts entirely.
@@ -89,6 +90,7 @@ I will not break the V7 Hard Rules (§1).
 ### T131 — Purge placeholder projects; seed the real portfolio
 
 **Scope.**
+
 - Delete seed rows "Project 5"–"Project 11" (and any other synthetic rows) from `atlas.projects` via migration. Remove them from `data.js`-derived seeds if referenced.
 - Seed/verify the real portfolio with Viktor/Melissa-confirmed inputs: **6 Great Circle** (sales stage — staging complete, broker launch late June, target ~$4.85M), **84 Sunset Beach Rd** (construction/pre-construction), **540 Hands Creek** (permitting — East Hampton, 9+ month permit risk), **North Haven** (permitting). Populate owner, market, target sale month for each — no "—" columns on the list view for real projects.
 - Add a lint-style unit test: no project named `/^Project \d+$/` may exist in seeds.
@@ -98,6 +100,7 @@ I will not break the V7 Hard Rules (§1).
 ### T132 — Alert hygiene: no stale or incomplete-input alerts
 
 **Scope.**
+
 - Rollout-pacing chip (`lib/finance/rollout-trigger.ts`): never render a "start by" date in the past — if the computed date < today, show "Start ASAP — trailing NPAT below target" (neutral phrasing) or suppress when inputs are unconfigured (Rule 6).
 - Cap-breach counter ("15 cap-breach months"): gate on `getCapitalPosition().configured`.
 - Sweep every red/amber element on Home + Today's Desk for the same pattern; document each in the PR.
@@ -107,6 +110,7 @@ I will not break the V7 Hard Rules (§1).
 ### T133 — CI green, one deployment, docs repositioned
 
 **Scope.**
+
 - Fix or quarantine the failing `atlas-ci` jobs (dozens of failure emails June 4–16 — likely the stub `golden`/`integration` jobs or pages-build). CI must be green on `main` for 5 consecutive pushes before Part 1 starts.
 - **Canonical deployment = Cloudflare Pages (`juno-atlas.pages.dev`, later a custom domain).** Decommission the Render service; `render.yaml` gets a header comment marking it dead, `docs/deploy-cloudflare.md` becomes the only deploy doc. If onrender.com still serves traffic, replace it with a redirect page.
 - Rewrite `docs/about-atlas.md`: remove "system of record… Excel is archived"; state the exec-dashboard positioning verbatim from §−1. Update `README.md` accordingly.
@@ -120,6 +124,7 @@ I will not break the V7 Hard Rules (§1).
 ### T134 — Sidebar to 4 items; park everything else
 
 **Scope.**
+
 - `patterns/AppShell.tsx`: nav becomes exactly `Home · Projects · Pipeline · Ask Juno`, plus Settings via the existing topbar user menu (not the sidebar).
 - Park behind flags (extend the existing `ATLAS_FEATURE_FLAGS` mechanism + T098-style middleware redirects): `/pricing/*` (all), `/earnings`, `/notifications`, `/suggestions` (page — the queue itself stays, surfaced via Home chip in T144), `/users`, `/activity`, `/cleanup`, `/analytics/sensitivity`, `/analytics/stress`, `/analytics/scenarios`, `/analytics/scenario-modeler`, `/analytics/risks`, `/analytics/waterfall`, `/pipeline/capacity`.
 - Parked routes 302 → the nearest surviving surface when the flag is off (map each in the PR). `/analytics/*` survivors are absorbed by T135.
@@ -174,6 +179,7 @@ Header keeps: name, stage chip, market, owner, target sale month, and an **"Edit
 ### T139 — Opportunities: the standardized deal sheet
 
 **Scope.**
+
 - New table `atlas.opportunities` (migration via Supabase MCP): `id, name, market, status ('researching'|'contacted'|'negotiating'|'passed'|'promoted'), owner_name, cash_needed_usd, timeline_months (to cash-back), expected_profit_usd, expected_margin_pct, next_step, next_step_owner, notes, source, created_at, updated_at, promoted_project_id`.
 - `/pipeline` becomes: **(1) Potential projects** — ranked table (default sort: expected profit ÷ cash needed, i.e. capital efficiency; sortable), each row showing exactly the standardized metrics above. Row click → opportunity detail. **(2) In-flight** (existing section, kept). **(3) Goal tracker** (existing, kept, moved below). The old kanban and capacity page stay parked.
 - Add/edit = single small form (Rule 5).
@@ -189,6 +195,7 @@ Header keeps: name, stage chip, market, owner, target sale month, and an **"Edit
 ### T141 — Promote to project + seed live deals
 
 **Scope.**
+
 - "Promote to project" on an opportunity: creates a project via the T138 form pre-filled from the opportunity's metrics, sets `status='promoted'`, links `promoted_project_id`, keeps the research record read-only.
 - Seed current real opportunities (values from the exec meeting record; Viktor confirms in PR): **72 South Ferry Rd, Shelter Island** (negotiating — contract-now/design-permit/close-later structure, ~$900k down + ~$800k seller note at 6–7%), **Miami lot** (researching — ~$1.4M off-market, Lucas), **Hudson Valley** (researching — estate segment, Lucas/Viktor), **Aspen/Carbondale** (researching — Lucas), **North Fork Oregon Rd** (passed — seller price based on future appreciation; keep for the record).
 
@@ -201,6 +208,7 @@ Header keeps: name, stage chip, market, owner, target sale month, and an **"Edit
 ### T142 — Fathom meeting ingestion
 
 **Scope.**
+
 - New env `FATHOM_API_KEY` (Cloudflare Pages dashboard only; `.env.example` entry with comment).
 - New table `atlas.meetings`: `id, fathom_recording_id (unique), title, held_at, participants jsonb, summary_md, transcript_md, ingested_at`.
 - `lib/meetings/fathom-client.ts` — list + fetch summary/transcript from the Fathom API (filter: title contains "Juno" or participants ≥ 3, last 90 days).
@@ -217,6 +225,7 @@ Header keeps: name, stage chip, market, owner, target sale month, and an **"Edit
 ### T144 — Meeting review → approval-gated suggestions
 
 **Scope.**
+
 - New agent capability: "Review latest meeting" (button on `/agent` + auto-offered after T142 sync). The agent reads the newest meeting, compares stated facts against Atlas data (projects, opportunities, capital), and files **suggestions** into the existing `atlas.suggestions` queue — one per proposed change, with `proposed_patch` as structured jsonb: `{ entity: 'project'|'opportunity'|'capital_source', id, field, current_value, proposed_value, evidence: quote + timestamp }`.
 - Apply path: on approve, a server action applies the patch through the same repo functions the UI forms use (validation included), then marks `applied`. Unknown fields → suggestion is rejected with a note, never a crash. (Rule 7.)
 - Surface: "N suggestions pending" chip on Home Today's Desk → a lightweight review panel (list, evidence quote, Approve / Reject). This resurrects the parked `/suggestions` UI in slim form inside Home — do not un-park the old page.
@@ -239,7 +248,7 @@ Header keeps: name, stage chip, market, owner, target sale month, and an **"Edit
 - Zero red alerts on the seeded real portfolio unless hand-verifiably true.
 - Real data only: 4–5 real projects, 5 real opportunities, real KPC LOC, no placeholders.
 - Reconciliation table vs. Melissa's master attached to the release notes (per-project revenue/cost/profit, deltas explained).
-- A cold-start exec can answer, in < 2 minutes of clicking: *How much cash do we need in the next 90 days? · Which project needs it? · What's our margin per active project? · Which opportunity should we chase next? · What did we decide last Wednesday?*
+- A cold-start exec can answer, in < 2 minutes of clicking: _How much cash do we need in the next 90 days? · Which project needs it? · What's our margin per active project? · Which opportunity should we chase next? · What did we decide last Wednesday?_
 - Weekly upkeep demonstrated ≤ 15 minutes (script the walkthrough in the release notes).
 - CI green; single deployment URL; `about-atlas.md` matches the exec-dashboard positioning.
 - Tag `v7.0.0`; update `DECISIONS.md` (new D-entry: "Atlas repositioned as exec dashboard — system-of-record ambition retired") and `V7_TRACKER.md` complete.

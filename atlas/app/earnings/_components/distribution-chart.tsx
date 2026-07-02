@@ -37,7 +37,11 @@ export function DistributionChart({
     <div style={{ width: '100%', height: 280 }}>
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={data} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
-          <CartesianGrid strokeDasharray="2 4" stroke="var(--color-border-subtle)" vertical={false} />
+          <CartesianGrid
+            strokeDasharray="2 4"
+            stroke="var(--color-border-subtle)"
+            vertical={false}
+          />
           <XAxis
             dataKey="month"
             tickFormatter={tickMonth}
@@ -51,7 +55,10 @@ export function DistributionChart({
             width={56}
           />
           <Tooltip
-            formatter={(v: number | string) => [typeof v === 'number' ? compact(v) : String(v), seriesLabel]}
+            formatter={(v: number | string) => [
+              typeof v === 'number' ? compact(v) : String(v),
+              seriesLabel,
+            ]}
             labelStyle={{ color: 'var(--color-text-primary)', fontSize: 12 }}
             contentStyle={{
               background: 'var(--color-surface-base)',
@@ -60,7 +67,13 @@ export function DistributionChart({
               fontSize: 12,
             }}
           />
-          <Bar dataKey="value" name={seriesLabel} fill="var(--color-accent, #0D0D0D)" fillOpacity={0.85} radius={[3, 3, 0, 0]} />
+          <Bar
+            dataKey="value"
+            name={seriesLabel}
+            fill="var(--color-accent, #0D0D0D)"
+            fillOpacity={0.85}
+            radius={[3, 3, 0, 0]}
+          />
         </ComposedChart>
       </ResponsiveContainer>
     </div>

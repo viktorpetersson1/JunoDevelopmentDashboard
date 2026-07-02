@@ -9,7 +9,11 @@
  * Messages API `tools` parameter (same fetch pattern as comp-researcher.ts).
  */
 
-import { findManyProjects, findCurrentProjectByKey, findCurrentProjectUuidByKey } from '@/lib/repos/project';
+import {
+  findManyProjects,
+  findCurrentProjectByKey,
+  findCurrentProjectUuidByKey,
+} from '@/lib/repos/project';
 import { findLatestLockedSnapshot } from '@/lib/repos/approval-snapshot';
 import { runProject } from '@/lib/calc/project/runProject';
 import { BASELINE_SCENARIO } from '@/lib/calc/baselines';
@@ -53,18 +57,24 @@ export interface ToolResult {
 export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     name: 'list_projects',
-    description: 'List all active (non-archived) projects with key metrics (name, stage, status, total revenue, NPAT margin, sale date). Call this before answering any project-specific question.',
+    description:
+      'List all active (non-archived) projects with key metrics (name, stage, status, total revenue, NPAT margin, sale date). Call this before answering any project-specific question.',
     input_schema: {
       type: 'object',
       properties: {
-        stage: { type: 'string', description: 'Optional stage filter: tbc | sourcing | pre_construction | construction | sales | sold' },
+        stage: {
+          type: 'string',
+          description:
+            'Optional stage filter: tbc | sourcing | pre_construction | construction | sales | sold',
+        },
       },
       required: [],
     },
   },
   {
     name: 'get_project_summary',
-    description: 'Get detailed summary for one project by its project_key (e.g. "p2", "84sbr"). Returns inputs, calc-engine KPIs, P&L, and 9-line margin breakdown.',
+    description:
+      'Get detailed summary for one project by its project_key (e.g. "p2", "84sbr"). Returns inputs, calc-engine KPIs, P&L, and 9-line margin breakdown.',
     input_schema: {
       type: 'object',
       properties: {
@@ -75,7 +85,8 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   },
   {
     name: 'get_dashboard_kpis',
-    description: 'Get portfolio-level KPIs: total pipeline revenue, LOC utilisation, rollout trigger, peak equity, committed vs prospect breakdown.',
+    description:
+      'Get portfolio-level KPIs: total pipeline revenue, LOC utilisation, rollout trigger, peak equity, committed vs prospect breakdown.',
     input_schema: {
       type: 'object',
       properties: {},
@@ -111,7 +122,10 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
         },
         ag_sqft: { type: 'number', description: 'Above-grade square footage of the subject' },
         is_nc: { type: 'boolean', description: 'New construction? Defaults true.' },
-        comp_window_months: { type: 'number', description: 'Lookback window in months (default 24)' },
+        comp_window_months: {
+          type: 'number',
+          description: 'Lookback window in months (default 24)',
+        },
       },
       required: ['address', 'sub_cut_label', 'ag_sqft'],
     },
@@ -121,7 +135,8 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
 
   {
     name: 'create_project',
-    description: 'Create a new project. Defaults stage to "tbc". ALWAYS requires user confirmation — never auto-executes.',
+    description:
+      'Create a new project. Defaults stage to "tbc". ALWAYS requires user confirmation — never auto-executes.',
     input_schema: {
       type: 'object',
       properties: {
@@ -132,14 +147,18 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
         construction_months: { type: 'number', description: 'Construction duration months' },
         sales_months: { type: 'number', description: 'Sales period months' },
         address: { type: 'string', description: 'Site address (optional)' },
-        build_cost_per_sqft: { type: 'number', description: 'Build $/sqft (optional, uses global default if null)' },
+        build_cost_per_sqft: {
+          type: 'number',
+          description: 'Build $/sqft (optional, uses global default if null)',
+        },
       },
       required: ['name', 'villa_sqft_ag', 'land_cost_usd'],
     },
   },
   {
     name: 'update_project',
-    description: 'Update one or more fields on an existing project. ALWAYS requires user confirmation.',
+    description:
+      'Update one or more fields on an existing project. ALWAYS requires user confirmation.',
     input_schema: {
       type: 'object',
       properties: {
@@ -160,13 +179,17 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   },
   {
     name: 'create_actuals_entry',
-    description: 'Log one actual cost entry for a project. Auto-executes when amount ≤ $10,000 and no locked snapshot.',
+    description:
+      'Log one actual cost entry for a project. Auto-executes when amount ≤ $10,000 and no locked snapshot.',
     input_schema: {
       type: 'object',
       properties: {
         project_key: { type: 'string', description: 'The project slug' },
         entry_date: { type: 'string', description: 'YYYY-MM-DD' },
-        category: { type: 'string', description: 'land | build | soft | kingshaus | financing | other' },
+        category: {
+          type: 'string',
+          description: 'land | build | soft | kingshaus | financing | other',
+        },
         line_item: { type: 'string', description: 'Description of the cost' },
         amount_usd: { type: 'number', description: 'Amount in USD (positive)' },
         vendor: { type: 'string', description: 'Optional vendor name' },
@@ -210,7 +233,7 @@ async function resolveOrgId(): Promise<string> {
 export async function executeTool(
   toolName: string,
   args: Record<string, unknown>,
-  user: User,
+  user: User
 ): Promise<ToolResult> {
   switch (toolName) {
     // ── READ tools ────────────────────────────────────────────────────────────
@@ -268,7 +291,10 @@ export async function executeTool(
             gross_profit_usd: Math.round(result.kpis.gross_profit),
             npat_usd: Math.round(pnl.net_profit_after_tax_usd),
             npat_margin_pct: (pnl.npat_margin_pct * 100).toFixed(1) + '%',
-            irr_annual: result.kpis.irr_annual != null ? (result.kpis.irr_annual * 100).toFixed(1) + '%' : null,
+            irr_annual:
+              result.kpis.irr_annual != null
+                ? (result.kpis.irr_annual * 100).toFixed(1) + '%'
+                : null,
             moic: result.kpis.moic.toFixed(2) + 'x',
             peak_debt_usd: Math.round(result.kpis.peak_debt),
             total_interest_usd: Math.round(result.kpis.total_interest),
@@ -289,10 +315,12 @@ export async function executeTool(
       return {
         content: JSON.stringify({
           active_projects: k.active_project_count,
-          total_pipeline_revenue_usd: Math.round(projects.reduce((s, p) => {
-            const r = runProject(p, globals, BASELINE_SCENARIO);
-            return s + r.kpis.total_sales;
-          }, 0)),
+          total_pipeline_revenue_usd: Math.round(
+            projects.reduce((s, p) => {
+              const r = runProject(p, globals, BASELINE_SCENARIO);
+              return s + r.kpis.total_sales;
+            }, 0)
+          ),
           peak_equity_usd: Math.round(k.peak_equity_required),
           max_debt_usd: Math.round(k.max_debt_outstanding),
           total_equity_called_usd: Math.round(k.total_equity_called),
@@ -333,7 +361,7 @@ export async function executeTool(
           compWindowMonths:
             args.comp_window_months != null ? Number(args.comp_window_months) : undefined,
         },
-        process.env.ANTHROPIC_API_KEY ?? '',
+        process.env.ANTHROPIC_API_KEY ?? ''
       );
       return {
         content: JSON.stringify({
@@ -389,7 +417,12 @@ export async function executeTool(
         method: 'POST',
         statusCode: 201,
         source: 'ask_juno_agent',
-        after: { actualsId: result.id, amountCents, category: input.category, lineItem: input.lineItem },
+        after: {
+          actualsId: result.id,
+          amountCents,
+          category: input.category,
+          lineItem: input.lineItem,
+        },
       });
 
       return {
@@ -436,7 +469,9 @@ export async function executeTool(
       // These always go through the confirmation flow — they should never
       // reach executeTool directly. If they do, it means the caller bypassed
       // the risk classifier (which should have rejected auto-execute).
-      throw new Error(`Tool '${toolName}' must be executed via user confirmation, not auto-execute`);
+      throw new Error(
+        `Tool '${toolName}' must be executed via user confirmation, not auto-execute`
+      );
     }
 
     default:

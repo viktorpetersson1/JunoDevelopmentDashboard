@@ -68,11 +68,21 @@ export function PipelineBoard({ groups: initialGroups, isEditor }: PipelineBoard
         prev.map((g) => {
           if (g.key === sourceStageKey) {
             const nextCards = g.cards.filter((c) => c.id !== cardId);
-            return { ...g, cards: nextCards, count: nextCards.length, totalValue: nextCards.reduce((s, c) => s + c.total_sales, 0) };
+            return {
+              ...g,
+              cards: nextCards,
+              count: nextCards.length,
+              totalValue: nextCards.reduce((s, c) => s + c.total_sales, 0),
+            };
           }
           if (g.key === targetStageKey) {
             const nextCards = [...g.cards, updatedCard];
-            return { ...g, cards: nextCards, count: nextCards.length, totalValue: nextCards.reduce((s, c) => s + c.total_sales, 0) };
+            return {
+              ...g,
+              cards: nextCards,
+              count: nextCards.length,
+              totalValue: nextCards.reduce((s, c) => s + c.total_sales, 0),
+            };
           }
           return g;
         })
@@ -99,11 +109,21 @@ export function PipelineBoard({ groups: initialGroups, isEditor }: PipelineBoard
           prev.map((g) => {
             if (g.key === targetStageKey) {
               const nextCards = g.cards.filter((c) => c.id !== cardId);
-              return { ...g, cards: nextCards, count: nextCards.length, totalValue: nextCards.reduce((s, c) => s + c.total_sales, 0) };
+              return {
+                ...g,
+                cards: nextCards,
+                count: nextCards.length,
+                totalValue: nextCards.reduce((s, c) => s + c.total_sales, 0),
+              };
             }
             if (g.key === sourceStageKey && card) {
               const nextCards = [...g.cards, card];
-              return { ...g, cards: nextCards, count: nextCards.length, totalValue: nextCards.reduce((s, c) => s + c.total_sales, 0) };
+              return {
+                ...g,
+                cards: nextCards,
+                count: nextCards.length,
+                totalValue: nextCards.reduce((s, c) => s + c.total_sales, 0),
+              };
             }
             return g;
           })
@@ -151,7 +171,13 @@ interface PipelineColumnProps {
   onDrop: (targetStageKey: string, cardId: string) => void;
 }
 
-function PipelineColumn({ group, isEditor, loadingCardId, cardErrors, onDrop }: PipelineColumnProps) {
+function PipelineColumn({
+  group,
+  isEditor,
+  loadingCardId,
+  cardErrors,
+  onDrop,
+}: PipelineColumnProps) {
   const [isDragOver, setIsDragOver] = useState(false);
 
   return (
@@ -324,9 +350,7 @@ function PipelineCardLink({ card, isEditor, isLoading, error }: PipelineCardLink
         style={{
           display: 'block',
           background: 'var(--color-surface-base)',
-          border: error
-            ? '1px solid var(--color-negative, #dc2626)'
-            : 'var(--ja-card-border)',
+          border: error ? '1px solid var(--color-negative, #dc2626)' : 'var(--ja-card-border)',
           borderRadius: 10,
           padding: '10px 12px',
           textDecoration: 'none',

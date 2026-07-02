@@ -6,10 +6,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import {
-  buildDistributionForecast,
-  resolveOwnerByEmail,
-} from '../distribution-forecast';
+import { buildDistributionForecast, resolveOwnerByEmail } from '../distribution-forecast';
 import { buildSelfFundingTrajectory } from '../self-funding';
 import type { CashSchedule, CashScheduleRow } from '../portfolio-cash-schedule';
 import type { CapTableEntryView } from '@/lib/repos/settings';
@@ -18,7 +15,7 @@ function owner(
   id: string,
   shareBps: number,
   taxRateBps: number,
-  email: string | null = null,
+  email: string | null = null
 ): CapTableEntryView {
   return {
     ownerId: id,

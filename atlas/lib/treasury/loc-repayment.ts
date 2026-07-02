@@ -112,9 +112,7 @@ export function buildLocRepayment(schedule: CashSchedule): LocRepayment {
   }
 
   const monthsToFullClearance =
-    fullClearance === null
-      ? null
-      : schedule.rows.findIndex((r) => r.month === fullClearance);
+    fullClearance === null ? null : schedule.rows.findIndex((r) => r.month === fullClearance);
 
   return {
     source_id: sourceId,

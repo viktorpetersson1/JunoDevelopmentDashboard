@@ -71,7 +71,7 @@ export interface DistributionForecastOptions {
 export function buildDistributionForecast(
   schedule: CashSchedule,
   capTable: CapTableEntryView[],
-  opts: DistributionForecastOptions = {},
+  opts: DistributionForecastOptions = {}
 ): DistributionForecast {
   const owners: DistributionOwnerMeta[] = capTable.map((e) => ({
     ownerId: e.ownerId,
@@ -114,7 +114,8 @@ export function buildDistributionForecast(
     if (!annual[fy]) annual[fy] = { total: 0, by_owner: {} };
     annual[fy]!.total += total;
     for (const o of owners) {
-      annual[fy]!.by_owner[o.ownerId] = (annual[fy]!.by_owner[o.ownerId] ?? 0) + (byOwner[o.ownerId] ?? 0);
+      annual[fy]!.by_owner[o.ownerId] =
+        (annual[fy]!.by_owner[o.ownerId] ?? 0) + (byOwner[o.ownerId] ?? 0);
     }
   }
 
@@ -136,7 +137,7 @@ export function buildDistributionForecast(
  */
 export function resolveOwnerByEmail(
   owners: DistributionOwnerMeta[],
-  userEmail: string | null | undefined,
+  userEmail: string | null | undefined
 ): string | null {
   if (!userEmail) return null;
   const needle = userEmail.trim().toLowerCase();

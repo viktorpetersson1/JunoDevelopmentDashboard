@@ -48,7 +48,20 @@ function fmtSqft(n: number | null | undefined): string {
 
 function fmtMonth(ym: string | null | undefined): string {
   if (!ym) return '—';
-  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const MONTHS = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
   const parts = ym.split('-');
   const y = parts[0] ?? ym;
   const mIdx = Number(parts[1] ?? 0) - 1;
@@ -97,10 +110,7 @@ export function AssumptionsHero({
     {
       label: 'Margin (NPAT)',
       value: fmtPct(kpis.profit_margin_pct),
-      sub:
-        targetMargin(project) !== null
-          ? `target ${fmtPct(targetMargin(project))}`
-          : undefined,
+      sub: targetMargin(project) !== null ? `target ${fmtPct(targetMargin(project))}` : undefined,
     },
 
     // Row 3 — cost stack

@@ -152,7 +152,7 @@ Until T123–T125 ship, the Boardroom rows continue to link to whatever V6.1 wir
 
 ## 3a. UX/UI principles — carried forward from V5.2/V6.1 §3a
 
-Same ten principles (P1 One purpose per page · P2 Hierarchy by size not color · P3 One primary action · P4 State before content · P5 Consistent number formatting · P6 Empty states are content · P7 No dead UI · P8 Reuse ja-* primitives · P9 Mobile is deferred · P10 Screenshot every UI PR). Every V6.2 PR is screenshot-reviewed against these.
+Same ten principles (P1 One purpose per page · P2 Hierarchy by size not color · P3 One primary action · P4 State before content · P5 Consistent number formatting · P6 Empty states are content · P7 No dead UI · P8 Reuse ja-\* primitives · P9 Mobile is deferred · P10 Screenshot every UI PR). Every V6.2 PR is screenshot-reviewed against these.
 
 ## 3b. Treasury principles — new for V6.2
 
@@ -208,6 +208,7 @@ T118–T122. Estimated ~4 weeks. Must merge in full and tag `v6.2.0-beta.1` befo
 **Spec:**
 
 1. **Migration `0033_capital_sources_extras.sql`** — extend `atlas.capital_sources` with:
+
    - `covenant_max_ltc_pct numeric(5,3)` — covenant ceiling on debt / cost
    - `covenant_max_concurrent_projects int` — max # of projects this source can fund concurrently
    - `draw_window_start_date date` — earliest month this source can fund a draw (null = no window)
@@ -217,6 +218,7 @@ T118–T122. Estimated ~4 weeks. Must merge in full and tag `v6.2.0-beta.1` befo
    - `created_by uuid REFERENCES auth.users(id)`, `updated_at timestamptz NOT NULL DEFAULT now()`
 
 2. **Migration `0034_capital_source_assignments.sql`** — new table mapping projects to sources:
+
    ```sql
    CREATE TABLE atlas.capital_source_assignments (
      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -229,6 +231,7 @@ T118–T122. Estimated ~4 weeks. Must merge in full and tag `v6.2.0-beta.1` befo
    ```
 
 3. **Repo `atlas/lib/repos/capital-sources.ts`** with:
+
    - `findActiveCapitalSources(): Promise<CapitalSourceView[]>`
    - `findCapitalSourceById(id: string): Promise<CapitalSourceView | null>`
    - `findAssignmentsForProject(projectUuid: string): Promise<AssignmentView[]>`
@@ -241,6 +244,7 @@ T118–T122. Estimated ~4 weeks. Must merge in full and tag `v6.2.0-beta.1` befo
 6. **Update `Dashboard's KPC LOC chip`** to read from `findActiveCapitalSources()` (no schema-level hardcoding).
 
 **Done-when:**
+
 - [ ] Migrations 0033 + 0034 applied
 - [ ] Repo + service + endpoints (GET/POST/PATCH/DELETE)
 - [ ] Settings page lists + edits capital sources (super_admin only)
@@ -263,6 +267,7 @@ T118–T122. Estimated ~4 weeks. Must merge in full and tag `v6.2.0-beta.1` befo
 5. If no assignments, project defaults to `[kpc_loc]` only (back-compat for the 10 baseline projects).
 
 **Done-when:**
+
 - [ ] Capital sources section in the editor with drag-reorder
 - [ ] `PUT /api/projects/[id]/capital-sources` endpoint
 - [ ] Default assignment for projects without explicit configuration
@@ -281,15 +286,18 @@ T118–T122. Estimated ~4 weeks. Must merge in full and tag `v6.2.0-beta.1` befo
 1. **`atlas/lib/treasury/portfolio-cash-schedule.ts`** — pure function `buildCashSchedule(projects, scenario, capitalSources, assignments, todayYM): MonthlySchedule`. Returns 36 rows of:
    ```typescript
    interface CashScheduleRow {
-     month: string;           // YYYY-MM
-     net_cash_need: number;   // sum of project debt_drawn (positive = need)
-     net_cash_in: number;     // sum of project sale_proceeds + debt_repaid
-     by_source: Record<string, {
-       drawn: number;
-       repaid: number;
-       balance_eom: number;
-       headroom: number;
-     }>;
+     month: string; // YYYY-MM
+     net_cash_need: number; // sum of project debt_drawn (positive = need)
+     net_cash_in: number; // sum of project sale_proceeds + debt_repaid
+     by_source: Record<
+       string,
+       {
+         drawn: number;
+         repaid: number;
+         balance_eom: number;
+         headroom: number;
+       }
+     >;
      covenant_breaches: Array<{ source_id: string; rule: string; severity: 'warn' | 'breach' }>;
    }
    ```
@@ -300,6 +308,7 @@ T118–T122. Estimated ~4 weeks. Must merge in full and tag `v6.2.0-beta.1` befo
 6. **Sidebar nav:** add "Cash schedule" as a sub-tab of Finance & Analytics.
 
 **Done-when:**
+
 - [ ] `buildCashSchedule` pure function + tests (parity vs `aggregatePortfolio`)
 - [ ] Per-source breakdown is correct (KPC LOC drawn before Harrison)
 - [ ] Covenant breaches surface as StatusDots with formulas
@@ -309,6 +318,7 @@ T118–T122. Estimated ~4 weeks. Must merge in full and tag `v6.2.0-beta.1` befo
 **Hard Rules check:** Pure presentation + aggregation; engine untouched. Golden test added. ✓
 
 **Stop-and-ask conditions:**
+
 - Aggregator parity test fails — there's a math gap; do not paper over.
 - Covenant formula can't be expressed as a pure function — raise the spec, don't fake it.
 
@@ -321,8 +331,8 @@ T118–T122. Estimated ~4 weeks. Must merge in full and tag `v6.2.0-beta.1` befo
 1. **`lib/treasury/loc-repayment.ts`** — pure function `buildLocRepayment(cashSchedule, kpcLocSource): LocRepayment` returns:
    ```typescript
    interface LocRepayment {
-     first_paydown_month: string | null;     // first month KPC LOC outstanding decreases
-     full_clearance_month: string | null;    // first month outstanding hits $0
+     first_paydown_month: string | null; // first month KPC LOC outstanding decreases
+     full_clearance_month: string | null; // first month outstanding hits $0
      months_to_full_clearance: number | null;
      timeline: Array<{ month: string; outstanding: number; interest_accrued: number }>;
    }
@@ -331,6 +341,7 @@ T118–T122. Estimated ~4 weeks. Must merge in full and tag `v6.2.0-beta.1` befo
 3. **Boardroom chip update** (T126): KPC LOC headroom row's detail line now reads "First paydown {month} · Full clear {month}".
 
 **Done-when:**
+
 - [ ] `buildLocRepayment` pure function + 4 unit tests (zero clearance, single paydown, multi-paydown, never-cleared)
 - [ ] `/analytics/loc` page with two hero numbers + timeline chart
 - [ ] `D-060` LOC repayment schedule logged
@@ -351,6 +362,7 @@ T118–T122. Estimated ~4 weeks. Must merge in full and tag `v6.2.0-beta.1` befo
 3. **Pipeline page** (V6.1) gets a "Capacity solver" chip showing `max_concurrent_starts_now` clickable through.
 
 **Done-when:**
+
 - [ ] `solveStartCapacity` pure function + 6 unit tests (no headroom, plenty of headroom, covenant-limited, time-limited, etc.)
 - [ ] `/pipeline/capacity` page renders the result
 - [ ] Pipeline page links to it
@@ -377,9 +389,9 @@ T123–T127. Estimated ~3 weeks.
 1. **`lib/treasury/self-funding.ts`** — pure function `buildSelfFundingTrajectory(projects, cashSchedule, owners, capTable): SelfFundingResult`:
    ```typescript
    interface SelfFundingResult {
-     annual_retained_npat: Record<string, number>;  // FY → $ retained after owner distributions
-     annual_equity_need: Record<string, number>;    // FY → $ equity required by new project starts
-     self_funding_year: string | null;              // first FY where retained >= need
+     annual_retained_npat: Record<string, number>; // FY → $ retained after owner distributions
+     annual_equity_need: Record<string, number>; // FY → $ equity required by new project starts
+     self_funding_year: string | null; // first FY where retained >= need
      years_to_self_funding: number | null;
    }
    ```
@@ -387,6 +399,7 @@ T123–T127. Estimated ~3 weeks.
 3. **Boardroom chip update**: Add to Boardroom Strip → a new (5th) row "Self-funding trajectory" — value = the year, detail = "Retained NPAT ≥ equity need by {month}".
 
 **Done-when:**
+
 - [ ] `buildSelfFundingTrajectory` pure function + tests (3 cases: self-funded in horizon, never self-funded, already self-funded)
 - [ ] `/analytics/self-funding` page renders the chart + hero
 - [ ] Boardroom row added
@@ -411,6 +424,7 @@ T123–T127. Estimated ~3 weeks.
 5. **Compare** button (V6.2 v2 follow-up) deferred.
 
 **Done-when:**
+
 - [ ] `/analytics/scenario-modeler` page with 5 sliders + 6-answer panel
 - [ ] Save writes to `atlas.scenarios`
 - [ ] Migration 0035 adds `starts_per_year_override` column
@@ -427,7 +441,11 @@ T123–T127. Estimated ~3 weeks.
 1. **`lib/treasury/distribution-forecast.ts`** — pure function `buildDistributionForecast(projects, cashSchedule, owners, capTable): DistributionForecast`:
    ```typescript
    interface DistributionForecast {
-     monthly: Array<{ month: string; total_distribution: number; by_owner: Record<string, number> }>;
+     monthly: Array<{
+       month: string;
+       total_distribution: number;
+       by_owner: Record<string, number>;
+     }>;
      annual: Record<string, { total: number; by_owner: Record<string, number> }>;
    }
    ```
@@ -439,6 +457,7 @@ T123–T127. Estimated ~3 weeks.
 4. Per-owner row visibility per §2.7: super_admin sees all; logged-in owner sees own row + total; un-linked owners shown as "Pending account".
 
 **Done-when:**
+
 - [ ] `buildDistributionForecast` pure function + tests
 - [ ] `/earnings` page replaces placeholder; admin + owner views both work
 - [ ] Per-owner row visibility enforced
@@ -463,6 +482,7 @@ T123–T127. Estimated ~3 weeks.
 3. **Remove** the V5.2 hardcoded chip math on the dashboard (Q1, Q2 paths). Everything reads from the treasury aggregator.
 
 **Done-when:**
+
 - [ ] All 5 Boardroom rows link to V6.2 surfaces
 - [ ] Reconciliation tests pass (3 invariants)
 - [ ] No surface independently recomputes any treasury number
@@ -545,6 +565,7 @@ Carried from V6.1: direct commits to `main` (per Viktor's standing workflow), pu
 T118 (ledger) is the foundation; T119, T120 depend on it. T121, T122 depend on T120. Part 2 (T123–T125) depends on T120's aggregator. T126 depends on T123 + T125. T127 is the close.
 
 Recommended sequence:
+
 1. **T118** (Capital Sources ledger) — week 1
 2. **T119** (Multi-lender inputs editor) — week 2
 3. **T120** (36-month cash schedule + aggregator) — week 2–3
@@ -567,6 +588,7 @@ Total: **~7 weeks focused** (same shape as V6.1).
 ### 6.4 Stop-and-ask conditions
 
 In addition to per-ticket conditions:
+
 - Any engine calc change. Hard Rule #2.
 - Any package install. Hard Rule #3.
 - Any covenant formula not expressible as a pure function. New Hard Rule #6.
@@ -584,12 +606,14 @@ Same as V6.1: merged to main · CI green · verified on live URL · DEVIATION_RE
 These were considered but are explicitly NOT in V6.2:
 
 **Deferred to V6.3 (agent expansion):**
+
 - Ask Juno reads PDFs and offers strategic interpretation (not just extraction)
 - Ask Juno proactive: "84 SBR margin slipped — want me to draft a memo?"
 - Ask Juno integrates with calendar, email, Drive
 - Multi-turn complex workflows that span > 5 tool calls
 
 **Deferred to V7 (governance polish):**
+
 - Project profitability scorecard (NPAT / months tied up)
 - Concentration risk view (% NPAT in 1 project / lender / submarket)
 - "What changed since last board meeting" digest
@@ -597,12 +621,14 @@ These were considered but are explicitly NOT in V6.2:
 - PDF / board-pack export
 
 **Explicit V6.2 v2 follow-ups (documented but not shipped):**
+
 - Scenario "Compare" mode (side-by-side two scenarios with delta column)
 - Cash schedule "Show 60 months" toggle (mirroring T105 pattern)
 - Per-source covenant timeline (line chart of LTC over time vs ceiling)
 - Distribution Forecast YTD vs annual target progress bar
 
 **Explicitly never in scope:**
+
 - Email/Slack notification delivery (Viktor said no)
 - LP capital account / IRR-to-date / waterfall per owner (debt-funded model)
 - Subcontractor management, RFIs (Procore/Buildertrend territory)
@@ -642,4 +668,4 @@ NEW V6.2 numbers needed:
 
 ---
 
-*End of CLAUDE_CODE_INSTRUCTIONS_V6_2.md (DRAFT).*
+_End of CLAUDE_CODE_INSTRUCTIONS_V6_2.md (DRAFT)._

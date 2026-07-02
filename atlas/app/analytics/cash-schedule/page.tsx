@@ -70,11 +70,14 @@ export default async function CashSchedulePage() {
         <AnalyticsTabs activeKey="cash-schedule" />
 
         <header>
-          <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
+          <h1
+            style={{ fontSize: 24, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}
+          >
             Finance &amp; Analytics — Cash schedule
           </h1>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
-            36 months from {schedule.start_month} — per-source draws, repayments, balances and headroom.{' '}
+            36 months from {schedule.start_month} — per-source draws, repayments, balances and
+            headroom.{' '}
             {schedule.breach_month_count > 0
               ? `${schedule.breach_month_count} month${schedule.breach_month_count === 1 ? '' : 's'} with covenant breaches.`
               : 'No covenant breaches in window.'}
@@ -94,7 +97,10 @@ export default async function CashSchedulePage() {
             }}
           >
             No capital sources configured yet. Super-admins can add them in{' '}
-            <a href="/settings?tab=capital-sources" style={{ color: 'var(--color-text-secondary)' }}>
+            <a
+              href="/settings?tab=capital-sources"
+              style={{ color: 'var(--color-text-secondary)' }}
+            >
               Settings → Capital Sources
             </a>
             .

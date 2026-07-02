@@ -39,7 +39,7 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
       `Validation failed: ${parsed.error.issues
         .map((i) => `${i.path.join('.')} — ${i.message}`)
         .join('; ')}`,
-      'VALIDATION_FAILED',
+      'VALIDATION_FAILED'
     );
   }
 

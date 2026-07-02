@@ -79,7 +79,9 @@ export default async function LocRepaymentPage() {
         <AnalyticsTabs activeKey="loc" />
 
         <header>
-          <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
+          <h1
+            style={{ fontSize: 24, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}
+          >
             Finance &amp; Analytics — KPC LOC repayment
           </h1>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
@@ -92,7 +94,10 @@ export default async function LocRepaymentPage() {
         {!hasLoc ? (
           <EmptyCard>
             No KPC LOC source configured yet. Super-admins can add one in{' '}
-            <a href="/settings?tab=capital-sources" style={{ color: 'var(--color-text-secondary)' }}>
+            <a
+              href="/settings?tab=capital-sources"
+              style={{ color: 'var(--color-text-secondary)' }}
+            >
               Settings → Capital Sources
             </a>
             .
@@ -100,11 +105,23 @@ export default async function LocRepaymentPage() {
         ) : (
           <>
             {/* Hero numbers */}
-            <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+            <section
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gap: 16,
+              }}
+            >
               <Hero
                 label="First paydown"
                 value={fmtMonthLong(repayment.first_paydown_month)}
-                sub={repayment.first_paydown_month ? 'Outstanding starts decreasing' : everDrawn ? 'Never paid down in window' : 'LOC never drawn'}
+                sub={
+                  repayment.first_paydown_month
+                    ? 'Outstanding starts decreasing'
+                    : everDrawn
+                      ? 'Never paid down in window'
+                      : 'LOC never drawn'
+                }
               />
               <Hero
                 label="Full clearance"
@@ -120,7 +137,10 @@ export default async function LocRepaymentPage() {
               />
               <Hero
                 label="Peak outstanding"
-                value={formatMoney(repayment.peak_outstanding * 100, { compact: true, precision: 1 })}
+                value={formatMoney(repayment.peak_outstanding * 100, {
+                  compact: true,
+                  precision: 1,
+                })}
                 sub="Maximum LOC balance in window"
               />
             </section>
@@ -134,14 +154,21 @@ export default async function LocRepaymentPage() {
                 padding: 'var(--ja-card-padding)',
               }}
             >
-              <h2 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 12px', color: 'var(--color-text-primary)' }}>
+              <h2
+                style={{
+                  fontSize: 14,
+                  fontWeight: 700,
+                  margin: '0 0 12px',
+                  color: 'var(--color-text-primary)',
+                }}
+              >
                 LOC outstanding over 36 months
               </h2>
               <LocRepaymentChart repayment={repayment} />
               <p style={{ margin: '10px 0 0', fontSize: 10, color: 'var(--color-text-tertiary)' }}>
-                Outstanding = end-of-month LOC balance from the cash schedule. First-paydown marker = first month the
-                balance decreases after being drawn; full-clearance marker = first month it returns to $0. Reconciles
-                with the{' '}
+                Outstanding = end-of-month LOC balance from the cash schedule. First-paydown marker
+                = first month the balance decreases after being drawn; full-clearance marker = first
+                month it returns to $0. Reconciles with the{' '}
                 <a href="/analytics/cash-schedule" style={{ color: 'var(--color-text-secondary)' }}>
                   cash schedule
                 </a>{' '}

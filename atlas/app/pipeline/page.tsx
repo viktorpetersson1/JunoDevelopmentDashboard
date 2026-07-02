@@ -70,7 +70,7 @@ export default async function PipelinePage() {
       sources,
       assignments,
       todayYM,
-    }),
+    })
   );
 
   // Run the calc engine once per project (expected start/sell + KPIs).
@@ -214,7 +214,15 @@ function CapacityChip({ capacity }: { capacity: StartCapacityResult }) {
         color: 'var(--color-text-secondary)',
       }}
     >
-      <span style={{ fontWeight: 700, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: 11 }}>
+      <span
+        style={{
+          fontWeight: 700,
+          color: 'var(--color-text-tertiary)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+          fontSize: 11,
+        }}
+      >
         Capacity
       </span>
       {configured ? (

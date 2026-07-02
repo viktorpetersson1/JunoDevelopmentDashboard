@@ -28,7 +28,10 @@ describe('AppShell', () => {
     // Primary items present (incl. the new Ask Juno entry, AJ-8).
     expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/dashboard');
     expect(screen.getByRole('link', { name: 'Ask Juno' })).toHaveAttribute('href', '/agent');
-    expect(screen.getByRole('link', { name: 'Finance & Analytics' })).toHaveAttribute('href', '/analytics'); // T114 (V6.1)
+    expect(screen.getByRole('link', { name: 'Finance & Analytics' })).toHaveAttribute(
+      'href',
+      '/analytics'
+    ); // T114 (V6.1)
     expect(screen.getByRole('link', { name: 'Earnings' })).toHaveAttribute('href', '/earnings');
     // Active link (Home = /dashboard).
     const home = screen.getByRole('link', { name: 'Home' });
