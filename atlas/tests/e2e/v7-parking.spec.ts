@@ -96,6 +96,28 @@ test.describe('T135 absorbed treasury surfaces — unconditional 301s to Home an
   });
 });
 
+test.describe('T136 project page — old ?tab= URLs 308 to the page (+ anchor)', () => {
+  // The tab redirect runs before auth in the page component (pure URL
+  // mapping, no data), so it is observable unauthenticated.
+  const TABS: Array<{ tab: string; anchor: string }> = [
+    { tab: 'timeline', anchor: '#program' },
+    { tab: 'capital', anchor: '#requirements' },
+    { tab: 'actuals', anchor: '#pnl' },
+    { tab: 'risks', anchor: '#risks' },
+    { tab: 'summary', anchor: '' },
+    { tab: 'pricing', anchor: '' },
+  ];
+
+  for (const t of TABS) {
+    test(`?tab=${t.tab} → /projects/p2${t.anchor}`, async ({ request }) => {
+      const res = await request.get(`/projects/p2?tab=${t.tab}`, { maxRedirects: 0 });
+      expect(res.status()).toBe(308);
+      const to = new URL(res.headers()['location']!, BASE);
+      expect(`${to.pathname}${to.hash}`).toBe(`/projects/p2${t.anchor}`);
+    });
+  }
+});
+
 test.describe('T134 parking — flags on (ATLAS_FEATURE_FLAGS=pricing,analytics-lab)', () => {
   test.skip(!FLAGS_ON, 'run with ATLAS_FEATURE_FLAGS=pricing,analytics-lab to exercise this state');
 
