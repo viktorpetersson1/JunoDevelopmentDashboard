@@ -1,16 +1,20 @@
 /**
- * T065 — New project wizard at /projects/new.
+ * V7 T138 — /projects/new = one simple form.
  *
- * Server Component shell: auth + role gate (editor or super_admin), then
- * hands off to the client wizard for the form state machine.
+ * The 7-step wizard is replaced in place by SimpleProjectForm (~14 inputs,
+ * defaults prefilled; POST /api/projects + optional one-shot PATCH).
+ * Everything else inherits globals and is editable later via the T136
+ * edit-assumptions drawer.
  *
- * Non-editor users get a 403-style redirect with a clear note instead of
- * a generic forbidden error.
+ * Rule 4 (park, don't delete): the wizard components stay on disk, and
+ * ATLAS_FEATURE_FLAGS=project-wizard renders the old wizard here intact.
  */
 
 import { redirect } from 'next/navigation';
 import { DashboardShell } from '../../_components/dashboard-shell';
 import { NewProjectWizard } from './_components/new-project-wizard';
+import { SimpleProjectForm } from './_components/simple-project-form';
+import { flagEnabled } from '@/lib/flags';
 import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
 import { hasRole } from '@/lib/auth/requireRole';
 
@@ -33,7 +37,7 @@ export default async function NewProjectPage() {
 
   return (
     <DashboardShell activeHref="/projects" user={dashboardUser}>
-      <NewProjectWizard />
+      {flagEnabled('project-wizard') ? <NewProjectWizard /> : <SimpleProjectForm />}
     </DashboardShell>
   );
 }
