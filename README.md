@@ -1,9 +1,28 @@
-# Juno Financial Dashboard (v10)
+# Juno Atlas
+
+**Juno Atlas is an executive dashboard.** Melissa's financial models and Juno's
+finance systems remain the source of truth; Atlas presents the numbers the exec
+team needs to run the business at exec level, on ≤15 minutes of upkeep per week.
+(Repositioned by V7, 2 Jul 2026 — the earlier "system of record / Excel is
+archived" framing is retired. See `docs/about-atlas.md`.)
+
+- **The product**: `atlas/` — Next.js 14 App Router on Cloudflare Pages.
+  Live at **https://juno-atlas.pages.dev** (the canonical and only deployment;
+  deploys from `atlas/` on push to `main`).
+- **Docs**: `atlas/docs/` — plans, trackers, DECISIONS.md, DEVIATION_REGISTER.md.
+  Deploy doc: `atlas/docs/deploy-cloudflare.md`.
+- **Legacy** (below): the original vanilla-JS SPA under `public/` — retained as
+  reference only. Its Render service now serves a redirect to the Cloudflare
+  deployment (`render.yaml` is marked dead; V7 T133).
+
+---
+
+## Legacy vanilla SPA (reference only — decommissioned V7 T133)
 
 Interactive web dashboard rebuilt from the Excel model
 `Juno_Cash flow Forecast_20260412_MASTER.xlsx`.
 
-## What this is
+### What this was
 
 A self-contained static web app that:
 

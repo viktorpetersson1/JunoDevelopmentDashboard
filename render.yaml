@@ -1,32 +1,26 @@
-# Render Blueprint for Juno Financial Dashboard
-# Deploys this folder as a static site at https://juno-financial-dashboard.onrender.com
-# Apply via: https://render.com/docs/blueprint-spec — push to a Git repo and connect.
+# ⚠️ DEAD SERVICE — decommissioned by V7 T133 (2 Jul 2026).
+#
+# The canonical Juno Atlas deployment is Cloudflare Pages:
+#   https://juno-atlas.pages.dev   (deploys from atlas/ on push to main)
+# See atlas/docs/deploy-cloudflare.md — the ONLY deploy doc.
+#
+# This Render static site (the legacy vanilla SPA under public/) no longer
+# serves the app: staticPublishPath points at redirect-page/, which forwards
+# every visit to the Cloudflare deployment. The legacy SPA code under public/
+# is retained in-repo as reference (V7 Rule 4: park, don't delete).
 services:
   - type: web
     name: juno-financial-dashboard
     runtime: static
     plan: free
     region: oregon
-    buildCommand: ""               # no build — pure static HTML + ES modules
-    staticPublishPath: ./public
+    buildCommand: '' # no build — a single redirect page
+    staticPublishPath: ./redirect-page
     headers:
       - path: /*
         name: Cache-Control
-        value: "public, max-age=300, must-revalidate"
-      - path: /*.html
-        name: Cache-Control
-        value: "no-cache, no-store, must-revalidate"
-      # Security headers
-      - path: /*
-        name: X-Content-Type-Options
-        value: nosniff
-      - path: /*
-        name: X-Frame-Options
-        value: SAMEORIGIN
-      - path: /*
-        name: Referrer-Policy
-        value: strict-origin-when-cross-origin
+        value: 'no-cache, no-store, must-revalidate'
     routes:
       - type: rewrite
-        source: /
+        source: /*
         destination: /index.html
