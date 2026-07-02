@@ -14,25 +14,30 @@ describe('AppShell', () => {
     expect(screen.getByRole('main', { name: 'Page content' })).toHaveTextContent('BODY');
   });
 
-  it('renders default sidebar sections (7 primary + 2 account, no section labels)', () => {
-    // T098 — nav collapsed from 15 items / 3 labelled sections to 6+2 / no labels.
-    // AJ-8 (Ask Juno v2): + "Ask Juno" under Home → 7 primary.
+  it('renders the V7 four-surface nav (Home · Projects · Pipeline · Ask Juno)', () => {
+    // V7 T134 — The Simplification: exactly 4 items, one section, no labels.
+    // Settings lives in the topbar user menu; everything else is parked.
     render(
       <AppShell activeHref="/dashboard" scenario="base" onScenarioChange={() => {}}>
         x
       </AppShell>
     );
-    // No section labels in the simplified nav.
     expect(screen.queryByText('PORTFOLIO')).not.toBeInTheDocument();
     expect(screen.queryByText('WORKSPACE')).not.toBeInTheDocument();
-    // Primary items present (incl. the new Ask Juno entry, AJ-8).
     expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/dashboard');
+    expect(screen.getByRole('link', { name: 'Projects' })).toHaveAttribute('href', '/projects');
+    expect(screen.getByRole('link', { name: 'Pipeline' })).toHaveAttribute('href', '/pipeline');
     expect(screen.getByRole('link', { name: 'Ask Juno' })).toHaveAttribute('href', '/agent');
-    expect(screen.getByRole('link', { name: 'Finance & Analytics' })).toHaveAttribute(
-      'href',
-      '/analytics'
-    ); // T114 (V6.1)
-    expect(screen.getByRole('link', { name: 'Earnings' })).toHaveAttribute('href', '/earnings');
+    // Parked surfaces are NOT in the nav.
+    for (const gone of [
+      'Pricing',
+      'Finance & Analytics',
+      'Earnings',
+      'Notifications',
+      'Settings',
+    ]) {
+      expect(screen.queryByRole('link', { name: gone })).not.toBeInTheDocument();
+    }
     // Active link (Home = /dashboard).
     const home = screen.getByRole('link', { name: 'Home' });
     expect(home).toHaveAttribute('aria-current', 'page');
@@ -60,10 +65,15 @@ describe('AppShell', () => {
   });
 
   it('exports DEFAULT_SIDEBAR_SECTIONS + DEFAULT_USER constants', () => {
-    // 2 sections (7 primary incl. Ask Juno [AJ-8] + 2 account), no labels.
-    expect(DEFAULT_SIDEBAR_SECTIONS).toHaveLength(2);
-    expect(DEFAULT_SIDEBAR_SECTIONS[0]?.items).toHaveLength(7);
-    expect(DEFAULT_SIDEBAR_SECTIONS[1]?.items).toHaveLength(2);
+    // V7 T134: ONE section, exactly 4 surfaces.
+    expect(DEFAULT_SIDEBAR_SECTIONS).toHaveLength(1);
+    expect(DEFAULT_SIDEBAR_SECTIONS[0]?.items).toHaveLength(4);
+    expect(DEFAULT_SIDEBAR_SECTIONS[0]?.items.map((i) => i.href)).toEqual([
+      '/dashboard',
+      '/projects',
+      '/pipeline',
+      '/agent',
+    ]);
     expect(DEFAULT_USER.name).toBe('Viktor Petersson');
   });
 });

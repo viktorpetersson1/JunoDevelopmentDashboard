@@ -12,8 +12,19 @@
  */
 import { NextResponse, type NextRequest } from 'next/server';
 import { updateSession } from './lib/supabase/middleware';
+import { parkedRedirect } from './lib/flags';
 
 export async function middleware(request: NextRequest) {
+  // V7 T134 — surface parking (Rule 4). Parked routes 302 to the nearest
+  // surviving surface unless re-enabled via ATLAS_FEATURE_FLAGS.
+  const parked = parkedRedirect(request.nextUrl.pathname);
+  if (parked) {
+    const url = request.nextUrl.clone();
+    url.pathname = parked;
+    url.search = '';
+    return NextResponse.redirect(url, { status: 302 });
+  }
+
   // T073: dev-only routes (/dev/*) return 404 in production builds. Belt-
   // and-suspenders with the page-level guard so prod traffic never hits
   // the demo content. (Can't use /_dev because Next.js treats underscore-

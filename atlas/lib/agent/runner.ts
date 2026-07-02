@@ -10,7 +10,7 @@
  * Phase 1 tools are the 5 existing READ tools — no writes, no analysis tools.
  */
 import type { User } from '@supabase/supabase-js';
-import { TOOL_DEFINITIONS, executeTool, type ToolDefinition } from '@/lib/ask-juno/tools';
+import { availableToolDefinitions, executeTool, type ToolDefinition } from '@/lib/ask-juno/tools';
 import { callAgentModel } from './llm';
 import { estimateCostUsd, maxTokensFor, type AgentStepType } from './config';
 import {
@@ -30,7 +30,11 @@ export const READ_TOOL_NAMES = [
 ] as const;
 
 export function readToolDefinitions(): ToolDefinition[] {
-  return TOOL_DEFINITIONS.filter((t) => (READ_TOOL_NAMES as readonly string[]).includes(t.name));
+  // V7 T134: availableToolDefinitions() drops research_comps when the pricing
+  // surface is parked — the agent's plan can't route to a parked tool.
+  return availableToolDefinitions().filter((t) =>
+    (READ_TOOL_NAMES as readonly string[]).includes(t.name)
+  );
 }
 
 // ── SSE event protocol ────────────────────────────────────────────────────────
@@ -129,7 +133,8 @@ export function parsePlan(runId: string, raw: string): ParsedPlan {
   const summary =
     typeof obj.plan === 'string' ? obj.plan : 'Plan unavailable; synthesizing directly.';
   const rawSteps = Array.isArray(obj.steps) ? obj.steps : [];
-  const allow = new Set<string>(READ_TOOL_NAMES as readonly string[]);
+  // Gate on the AVAILABLE set (parked tools are not plannable — V7 T134).
+  const allow = new Set<string>(readToolDefinitions().map((t) => t.name));
 
   const toolSteps: NewStep[] = [];
   for (const s of rawSteps) {

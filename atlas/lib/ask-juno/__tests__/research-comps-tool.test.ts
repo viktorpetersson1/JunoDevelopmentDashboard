@@ -4,8 +4,12 @@
  * asserts executeTool('research_comps', ...) wraps the researcher, maps the
  * subject args, returns the comp set + sources as READ (is_write false), and
  * surfaces a researcher error without throwing.
+ *
+ * V7 T134: the pricing surface is parked by default — these behaviour tests
+ * run with ATLAS_FEATURE_FLAGS=pricing (proving the flag restores the tool
+ * intact, Rule 4), plus a parked-state test with the flag off.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('@/lib/supabase/server', () => ({
   createSupabaseServerClient: vi.fn(),
@@ -22,8 +26,16 @@ import type { User } from '@supabase/supabase-js';
 const researchMock = vi.mocked(researchComps);
 const fakeUser = { id: 'u1' } as User;
 
+const savedFlags = process.env.ATLAS_FEATURE_FLAGS;
+
 beforeEach(() => {
   researchMock.mockReset();
+  process.env.ATLAS_FEATURE_FLAGS = 'pricing';
+});
+
+afterEach(() => {
+  if (savedFlags === undefined) delete process.env.ATLAS_FEATURE_FLAGS;
+  else process.env.ATLAS_FEATURE_FLAGS = savedFlags;
 });
 
 describe('executeTool research_comps (V6.1.5-001)', () => {
@@ -105,5 +117,18 @@ describe('executeTool research_comps (V6.1.5-001)', () => {
     expect(parsed.error).toContain('Sonar HTTP 500');
     expect(parsed.comps).toHaveLength(0);
     expect(researchMock.mock.calls[0]![0].isNc).toBe(false);
+  });
+
+  it('V7 T134: with the pricing flag OFF the tool is parked — no researcher call', async () => {
+    delete process.env.ATLAS_FEATURE_FLAGS;
+    const r = await executeTool(
+      'research_comps',
+      { address: 'x', sub_cut_label: 'y', ag_sqft: 5000 },
+      fakeUser
+    );
+    expect(r.is_write).toBe(false);
+    const parsed = JSON.parse(r.content);
+    expect(parsed.error).toContain('parked');
+    expect(researchMock).not.toHaveBeenCalled();
   });
 });

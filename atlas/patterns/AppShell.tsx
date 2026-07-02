@@ -69,8 +69,9 @@ const ProjectsIcon = () => (
   </svg>
 );
 
-/** Analytics icon — chart line with tabs, evoking the multi-view umbrella. */
-const AnalyticsIcon = () => (
+/** Analytics icon — chart line with tabs, evoking the multi-view umbrella.
+ *  (V7 T134: no longer in the default nav; exported for re-enabled surfaces.) */
+export const AnalyticsIcon = () => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
     <path d="M2.5 17.5h15" strokeLinecap="round" />
     <path d="M5 13l3-4 3 3 4-6" strokeLinecap="round" strokeLinejoin="round" />
@@ -78,8 +79,8 @@ const AnalyticsIcon = () => (
   </svg>
 );
 
-/** Earnings icon — bar chart with upward arrow, evoking shareholder profit. */
-const EarningsIcon = () => (
+/** Earnings icon — bar chart with upward arrow. (V7 T134: parked; exported.) */
+export const EarningsIcon = () => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
     <rect x="3" y="10" width="3" height="7.5" rx="0.5" />
     <rect x="8.5" y="6.5" width="3" height="11" rx="0.5" />
@@ -96,22 +97,24 @@ const PipelineIcon = () => (
   </svg>
 );
 
-/** Pricing icon — tag with $ glyph. */
-const PricingIcon = () => (
+/** Pricing icon — tag with $ glyph. (V7 T134: parked; exported.) */
+export const PricingIcon = () => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
     <path d="M11 2.5h6.5v6.5L9 17.5l-6.5-6.5L11 2.5z" strokeLinejoin="round" />
     <circle cx="14" cy="6" r="1.25" />
   </svg>
 );
 
-const NotificationsIcon = () => (
+/** (V7 T134: parked; exported.) */
+export const NotificationsIcon = () => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
     <path d="M10 2.5a5 5 0 0 0-5 5v3l-1.5 2h13L15 10.5v-3a5 5 0 0 0-5-5z" strokeLinejoin="round" />
     <path d="M8.5 15.5a1.5 1.5 0 0 0 3 0" strokeLinecap="round" />
   </svg>
 );
 
-const SettingsIcon = () => (
+/** (V7 T134: Settings moved to the topbar user menu; exported for reuse.) */
+export const SettingsIcon = () => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
     <circle cx="10" cy="10" r="2.5" />
     <path
@@ -150,32 +153,20 @@ const JunoLogo = () => (
   </div>
 );
 
-// ─── Default nav structure (T098 — V5.2) ────────────────────────────────────
+// ─── Default nav structure (V7 T134 — The Simplification) ───────────────────
 //
-// 6 primary items + 2 account items, no section labels.
-// The Analytics umbrella replaces the 7 individual portfolio routes.
-// Suggestions + Ask Juno removed from primary nav (Suggestions lives inside
-// Settings; Ask Juno remains as the floating widget + bottom-right launcher).
+// Exactly FOUR surfaces: Home · Projects · Pipeline · Ask Juno. Settings lives
+// in the topbar user menu (DashboardShell → UserMenu), not the sidebar.
+// Everything else is parked behind ATLAS_FEATURE_FLAGS (lib/flags.ts) with
+// middleware 302s — code retained, navigation cut (Rule 4).
 
 export const DEFAULT_SIDEBAR_SECTIONS: SidebarSection[] = [
   {
-    // No label — the 6 primary items need no header. Two sections separated
-    // by CSS margin-top (ja-sidebar__section + ja-sidebar__section) gives
-    // the single divider before Notifications/Settings.
     items: [
       { href: '/dashboard', label: 'Home', icon: <OverviewIcon /> },
-      { href: '/agent', label: 'Ask Juno', icon: <AskJunoIcon /> },
       { href: '/projects', label: 'Projects', icon: <ProjectsIcon /> },
       { href: '/pipeline', label: 'Pipeline', icon: <PipelineIcon /> },
-      { href: '/pricing', label: 'Pricing', icon: <PricingIcon /> },
-      { href: '/analytics', label: 'Finance & Analytics', icon: <AnalyticsIcon /> },
-      { href: '/earnings', label: 'Earnings', icon: <EarningsIcon /> },
-    ],
-  },
-  {
-    items: [
-      { href: '/notifications', label: 'Notifications', icon: <NotificationsIcon /> },
-      { href: '/settings', label: 'Settings', icon: <SettingsIcon /> },
+      { href: '/agent', label: 'Ask Juno', icon: <AskJunoIcon /> },
     ],
   },
 ];

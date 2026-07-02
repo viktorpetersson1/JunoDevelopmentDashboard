@@ -21,6 +21,7 @@ import { buildProjectPnL } from '@/lib/finance/project-pnl';
 import { aggregatePortfolio } from '@/lib/calc/portfolio/aggregate';
 import { getActiveGlobals } from '@/lib/globals/active';
 import { getActiveGlobalsWithCapital } from '@/lib/treasury/capital-position';
+import { flagEnabled } from '@/lib/flags';
 import { listActualsByCategory } from '@/lib/services/actuals';
 import { createActualsEntry, type CreateActualsEntryInput } from '@/lib/services/actuals';
 import { insertRisk } from '@/lib/repos/project-risks';
@@ -53,6 +54,17 @@ export interface ToolResult {
 }
 
 // ── READ tool definitions ─────────────────────────────────────────────────────
+
+/**
+ * V7 T134 — the tool set the model actually sees. The pricing surface is
+ * parked by default; its research_comps tool (and the pricing LLM path behind
+ * it) is only offered when ATLAS_FEATURE_FLAGS includes 'pricing'.
+ */
+export function availableToolDefinitions(): ToolDefinition[] {
+  return flagEnabled('pricing')
+    ? TOOL_DEFINITIONS
+    : TOOL_DEFINITIONS.filter((t) => t.name !== 'research_comps');
+}
 
 export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
@@ -349,6 +361,17 @@ export async function executeTool(
     }
 
     case 'research_comps': {
+      // V7 T134 — parked with the pricing surface; a stale/planned call while
+      // the flag is off returns a clear error instead of spending an LLM call.
+      if (!flagEnabled('pricing')) {
+        return {
+          content: JSON.stringify({
+            error:
+              'The pricing surface is parked (V7). Enable the "pricing" feature flag to use comp research.',
+          }),
+          is_write: false,
+        };
+      }
       // V6.1.5-001 — live Sonar comp research (researchComps branches on
       // PRICING_LLM_PROVIDER; perplexity is live in prod). The apiKey is only
       // used by the dormant Anthropic path; the Sonar path reads its own key.

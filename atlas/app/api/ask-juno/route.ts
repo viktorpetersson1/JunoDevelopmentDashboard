@@ -29,7 +29,7 @@ import { requireAuth } from '@/lib/auth/requireAuth';
 import { buildSystemPrompt } from '@/lib/ask-juno/system-prompt';
 import { classifyRisk } from '@/lib/ask-juno/risk-classifier';
 import {
-  TOOL_DEFINITIONS,
+  availableToolDefinitions,
   executeTool,
   projectHasLockedSnapshot,
   type ToolResult,
@@ -105,7 +105,7 @@ async function callAnthropic(
       messages,
     };
     if (withTools) {
-      body.tools = TOOL_DEFINITIONS;
+      body.tools = availableToolDefinitions();
     }
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
