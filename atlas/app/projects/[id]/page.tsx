@@ -157,8 +157,7 @@ export default async function ProjectDetailPage({
     <DashboardShell
       activeHref="/projects"
       user={dashboardUser}
-      activeScenarioId={active.activeId}
-      activeScenarioName={active.displayName}
+      activeScenarioClass={active.activeClass}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--ja-section-gap)' }}>
         {/* ── Header: name · stage chip · market · SPV · target sale · edit ── */}

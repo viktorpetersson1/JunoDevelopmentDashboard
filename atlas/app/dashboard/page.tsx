@@ -191,8 +191,7 @@ export default async function DashboardPage() {
     <DashboardShell
       activeHref="/dashboard"
       user={dashboardUser}
-      activeScenarioId={active.activeId}
-      activeScenarioName={active.displayName}
+      activeScenarioClass={active.activeClass}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--ja-section-gap)' }}>
         {/* ── Page heading ── */}

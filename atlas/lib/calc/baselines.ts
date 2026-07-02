@@ -117,3 +117,43 @@ export const BASELINE_SCENARIO: Scenario = {
   timing_shift_months: 0,
   excluded_project_ids: [],
 };
+
+// ── V7 T137 — topbar preset driver sets ──────────────────────────────────────
+// ADDITIVE constants only (the engine itself is frozen; golden fixtures pin
+// BASELINE_*). The topbar Pessimistic / Base / Optimistic toggle maps to these
+// three via the `preset:<class>` cookie value (lib/scenarios/active.ts).
+// Deltas are exec-level stress defaults (the /sensitivity heatmap's ±10%
+// axes); tune here — one place — if Viktor/Melissa want different presets.
+
+/** Downside: costs +10%, prices −10%, rates +100 bps, everything 3mo late. */
+export const PESSIMISTIC_SCENARIO: Scenario = {
+  name: 'Pessimistic',
+  class: 'pessimistic',
+  locked: true,
+  interest_rate_delta_bps: 100,
+  build_cost_multiplier: 1.1,
+  sale_price_multiplier: 0.9,
+  margin_override: null,
+  timing_shift_months: 3,
+  excluded_project_ids: [],
+};
+
+/** Upside: costs −5%, prices +5%, rates −50 bps, on time. */
+export const OPTIMISTIC_SCENARIO: Scenario = {
+  name: 'Optimistic',
+  class: 'optimistic',
+  locked: true,
+  interest_rate_delta_bps: -50,
+  build_cost_multiplier: 0.95,
+  sale_price_multiplier: 1.05,
+  margin_override: null,
+  timing_shift_months: 0,
+  excluded_project_ids: [],
+};
+
+/** The three topbar presets, keyed by the `preset:<key>` cookie suffix. */
+export const PRESET_SCENARIOS: Record<'base' | 'pessimistic' | 'optimistic', Scenario> = {
+  base: BASELINE_SCENARIO,
+  pessimistic: PESSIMISTIC_SCENARIO,
+  optimistic: OPTIMISTIC_SCENARIO,
+};
