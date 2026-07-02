@@ -1,44 +1,45 @@
 /**
- * T096 — Dashboard strategic cockpit.
+ * V7 T135 — Home = the Juno company view.
  *
- * 5-row layout that answers exec/owner board questions directly:
+ * One scrollable Server Component that answers the exec questions in order
+ * (composition, not new math — every number is buildCashSchedule /
+ * aggregatePortfolio output, Rule 1):
  *
- *   Row 1: 4 strategic chips (Next capital call · Next distribution ·
- *          KPC LOC headroom · Rollout pacing)
- *   Row 2: 3 tactical chips  (90d cash need · Pipeline revenue · Starts 2026)
- *   Row 3: 3 action cards    (Drafts needing lock · Capital calls drafting ·
- *          Risk cap-breaches)
- *   Row 4: 12-month portfolio cash-flow chart
- *   Row 5: Committed projects (top 2 by target close date)
+ *   1. Boardroom strip — 4 chips: Next capital call · Cash requirement 90d ·
+ *      KPC LOC position · Next owner distribution. Each `details →` scrolls
+ *      to the owning section below (no cross-page hops). Today's Desk beside.
+ *   2. #cashflow      — company cash flow (12-month window, full-horizon toggle)
+ *   3. #requirements  — cash requirements, next 12 months (T120 schedule)
+ *   4. #pnl           — annual P&L
+ *   5. #capital       — Capital & LOC (KPI row + drawdown chart, absorbed
+ *                       from /analytics/capital + /analytics/loc)
+ *   6. #self-funding  — self-funding trajectory, collapsed by default
  *
- * Server Component — all data fetched on the server; the client wrapper
- * owns only the "Committed only" toggle (localStorage-persisted).
+ * The absorbed /analytics/{capital,cash-schedule,loc,self-funding} URLs 301
+ * here with anchors (middleware).
  */
 
 import Link from 'next/link';
 import { DashboardShell } from '../_components/dashboard-shell';
 import { PortfolioCashFlowChart } from '../_components/portfolio-cash-flow-chart';
 import { AnnualPnLTable } from '../analytics/forecast/_components/annual-pnl-table';
+import { CashRequirementsTable } from './_components/cash-requirements-table';
+import { CapitalLocSection } from './_components/capital-loc-section';
+import { SelfFundingChart } from '../analytics/self-funding/_components/self-funding-chart';
 import { StatusDot } from '@/components/feedback/StatusDot';
 import { findActiveCapitalSources, findAllAssignments } from '@/lib/repos/capital-sources';
 import { getCapitalPosition, applyCapitalPositionToGlobals } from '@/lib/treasury/capital-position';
 import { findManyProjects, findManyProjectsWithUuids } from '@/lib/repos/project';
 import { aggregatePortfolio } from '@/lib/calc/portfolio/aggregate';
 import { buildCashSchedule } from '@/lib/treasury/portfolio-cash-schedule';
+import { buildCashRequirements } from '@/lib/treasury/cash-requirements';
 import { buildSelfFundingTrajectory } from '@/lib/treasury/self-funding';
 import { buildDistributionForecast } from '@/lib/treasury/distribution-forecast';
 import { fetchCapTable } from '@/lib/repos/settings';
 import { getActiveGlobals } from '@/lib/globals/active';
 import { getActiveScenario } from '@/lib/scenarios/active';
-import { buildProjectPnL } from '@/lib/finance/project-pnl';
-import { computeRolloutTrigger } from '@/lib/finance/rollout-trigger';
-import { rolloutChip } from '@/lib/finance/rollout-chip';
-import { getCommitmentTier } from '@/lib/projects/commitment-tier';
 import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { runProject } from '@/lib/calc/project/runProject';
-import { BASELINE_SCENARIO } from '@/lib/calc/baselines';
-import type { ProjectInput } from '@/lib/calc/project/types';
 import type { CSSProperties } from 'react';
 
 export const dynamic = 'force-dynamic';
@@ -68,21 +69,17 @@ function fmtYM(ym: string): string {
   return `${MONTHS[Number(m ?? 1) - 1] ?? ''} ${y}`;
 }
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
-
-// T103.5/.9 — every card uses the canonical white-on-grey-on-white pattern.
-// Container hierarchy: white page → soft grey <Section> → white Card inside.
-// Cards keep hairline border (Ramp pattern), section provides the grouping.
+// T103.5/.9 — canonical white-on-grey-on-white card. Anchored sections get
+// scroll-margin so the topbar doesn't cover them after a chip jump.
 const card: CSSProperties = {
   background: 'var(--ja-card-bg)',
   border: 'var(--ja-card-border)',
   borderRadius: 'var(--ja-card-radius)',
   padding: 'var(--ja-card-padding)',
+  scrollMarginTop: 80,
 };
 
 // ─── Page ────────────────────────────────────────────────────────────────────
-// T110 (V6.1): Chip / SmallChip / ActionCard removed — replaced by
-// BoardroomRow / DeskRow / TacticalCell below.
 
 export default async function DashboardPage() {
   const { profile, user } = await requireAuthOrRedirect('/dashboard');
@@ -105,15 +102,15 @@ export default async function DashboardPage() {
     findAllAssignments(),
     fetchCapTable(),
   ]);
-  // T130 (V7 Rule 1): ONE resolved capital position feeds the chip AND the
+  // T130 (V7 Rule 1): ONE resolved capital position feeds every chip AND the
   // engine — no surface may compute the facility differently.
   const globals = applyCapitalPositionToGlobals(globalsCtx.globals, capitalPosition);
   const portfolio = aggregatePortfolio(projects, globals, active.scenario);
   const todayYM = serverMonthYM();
 
   // T126 — ONE treasury schedule is the source of truth for the Boardroom
-  // strategic answers. No surface independently recomputes a treasury number:
-  // capital call, distribution, self-funding all read this same schedule.
+  // strategic answers. T135 adds the cash-requirements derivation on top;
+  // still the same schedule, no independent recompute.
   const schedule = buildCashSchedule({
     projects: projectsWithUuids,
     globals,
@@ -124,33 +121,21 @@ export default async function DashboardPage() {
   });
   const selfFunding = buildSelfFundingTrajectory(schedule, capTable);
   const distribution = buildDistributionForecast(schedule, capTable);
+  const requirements = buildCashRequirements(schedule, {
+    monthlyOverheadUsd: (globals.fixed_overhead_annual_usd ?? 0) / 12,
+  });
 
-  // Run engine on every project; build per-project results once for all chips.
-  const results = projects.map((p) => ({
-    project: p,
-    result: runProject(p as unknown as ProjectInput, globals, BASELINE_SCENARIO),
-    tier: getCommitmentTier(p),
-  }));
+  // ── Boardroom chips (4 — V7 T135) ───────────────────────────────────────
 
-  const committed = results.filter((r) => r.tier === 'committed');
-
-  // ── Row 1: strategic chips ─────────────────────────────────────────────
-
-  // 1a. Next capital call — first schedule month with a net draw (T126: reads
-  //     the cash schedule, NOT a separate committed-only loop, so the chip
-  //     reconciles with /analytics/cash-schedule exactly).
+  // 1. Next capital call — first schedule month with a net draw.
   const nextCallRow = schedule.rows.find((r) => r.net_cash_need > 1) ?? null;
-  const nextCallDate = nextCallRow?.month ?? null;
-  const nextCallAmount = nextCallRow?.net_cash_need ?? 0;
 
-  // 1b. Next owner distribution — first schedule month with a distribution
-  //     (T126: reads the distribution forecast, D-064 owner-tax model, so the
-  //     chip reconciles with /earnings).
-  const nextDistMonth = distribution.monthly.find((m) => m.total_distribution > 1) ?? null;
+  // 2. Cash requirement 90d — from the same requirements derivation the
+  //    #requirements table renders (draws + overhead, next 3 months).
+  const req90 = requirements.next_90d_requirement;
+  const req90Equity = requirements.next_90d_equity;
 
-  // 1c. KPC LOC headroom — T130 (V7): reads the SAME resolved capital position
-  // the engine ran with. No hardcoded fallback: unconfigured renders an explicit
-  // empty state (Rule 6), never $6M-on-faith and never $0-as-fact.
+  // 3. KPC LOC position — T130: the SAME resolved position the engine ran with.
   const locConfigured = capitalPosition.configured;
   const locLimit = capitalPosition.configured ? capitalPosition.facilityUsd : 0;
   const locDrawn = capitalPosition.configured ? capitalPosition.drawnUsd : 0;
@@ -160,46 +145,10 @@ export default async function DashboardPage() {
   const locColor: 'green' | 'amber' | 'red' =
     locUtilPct >= 0.9 ? 'red' : locUtilPct >= 0.75 ? 'amber' : 'green';
 
-  // 1d. Rollout pacing
-  const rollout = computeRolloutTrigger({
-    projects: results.map((r) => ({
-      project_id: r.project.id,
-      recognition_month: r.result.sale_date,
-      npat_usd: buildProjectPnL(r.result, { taxRatePct: r.project.tax_rate_pct })
-        .net_profit_after_tax_usd,
-    })),
-    target_annual_npat_usd: globals.target_annual_npat_usd ?? null,
-    fixed_overhead_annual_usd: globals.fixed_overhead_annual_usd,
-    project_time_to_npat_months: globals.project_time_to_npat_months ?? 18,
-    today_month: todayYM,
-  });
-  // T132 (V7 alert hygiene): presentation via the pure rolloutChip() mapper —
-  // never a past "start by" date, never red-on-stale, unconfigured = prompt.
-  const { value: rolloutValue, detail: rolloutDetail, color: rolloutColor } = rolloutChip(rollout);
+  // 4. Next owner distribution — D-064 owner-tax model over the schedule.
+  const nextDistMonth = distribution.monthly.find((m) => m.total_distribution > 1) ?? null;
 
-  // ── Row 2: tactical chips ──────────────────────────────────────────────
-
-  // 2a. 90d cash need — net of outflows for next 90 days from portfolio series
-  const months90 = 3;
-  let cash90 = 0;
-  for (let i = 0; i < Math.min(months90, portfolio.monthly.net_cash.length); i++) {
-    cash90 += portfolio.monthly.net_cash[i] ?? 0;
-  }
-
-  // 2b. Pipeline revenue — committed vs prospect breakdown
-  const pipelineRevAll = results.reduce((s, r) => s + r.result.kpis.total_sales, 0);
-  const pipelineRevCommitted = committed.reduce((s, r) => s + r.result.kpis.total_sales, 0);
-  const _pipelineRevProspect = pipelineRevAll - pipelineRevCommitted; // reserved for V6.2 strategy page
-
-  // 2c. Starts 2026 — from portfolio pipeline service (simple approximation)
-  const currentYear = new Date().getUTCFullYear();
-  const starts2026 = results.filter((r) => {
-    const sd = r.project.start_date ?? r.project.purchase_date ?? '';
-    return sd.startsWith(String(currentYear));
-  }).length;
-  const targetStarts = globals.target_starts_per_year ?? 4;
-
-  // ── Row 3: action counts ───────────────────────────────────────────────
+  // ── Today's Desk counts ─────────────────────────────────────────────────
 
   let draftSnapshotCount = 0;
   let draftCallCount = 0;
@@ -227,15 +176,12 @@ export default async function DashboardPage() {
     // non-critical; action cards show 0 safely
   }
 
-  // T110: committed-projects row removed. top2Committed reserved for V6.2.
-  // const _top2Committed = [...committed].sort(...).slice(0, 2);
-
   const dashboardUser = {
     name: profile.displayName ?? profile.email ?? user.email ?? 'Juno',
     email: profile.email ?? user.email ?? '',
   };
 
-  // T110 (V6.1): compute effective tax rate for Annual P&L table (promoted from /analytics/forecast)
+  // T110 (V6.1): effective tax rate for the Annual P&L table.
   const effectiveTaxRate =
     globals.apply_tax !== false
       ? ((globals.tax_rate_pct ?? 21) + (globals.tax_state_rate_pct ?? 4.5)) / 100
@@ -263,7 +209,7 @@ export default async function DashboardPage() {
             Home
           </h1>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
-            Atlas — at a glance
+            The Juno company view — cash, capital, profit
           </p>
         </header>
 
@@ -276,7 +222,7 @@ export default async function DashboardPage() {
             alignItems: 'start',
           }}
         >
-          {/* ── Boardroom Strip ─────────────────────────────────── */}
+          {/* ── Boardroom Strip — 4 chips, in-page anchors ──────────── */}
           <section style={card}>
             <h2
               style={{
@@ -291,20 +237,43 @@ export default async function DashboardPage() {
               Boardroom strip
             </h2>
 
-            {/* Row: Next capital call — T126: reads the cash schedule */}
             <BoardroomRow
               label="NEXT CAPITAL CALL"
-              value={nextCallDate ? compact(nextCallAmount) : '—'}
+              value={nextCallRow ? compact(nextCallRow.net_cash_need) : '—'}
               detail={
-                nextCallDate
-                  ? `${fmtYM(nextCallDate)} · portfolio draw across the funding stack`
+                nextCallRow
+                  ? `${fmtYM(nextCallRow.month)} · portfolio draw across the funding stack`
                   : 'No draws in the 36-month window'
               }
-              href="/analytics/cash-schedule"
+              href="#requirements"
               overdue={false}
             />
 
-            {/* Row: Next owner distribution — T126: reads the distribution forecast */}
+            <BoardroomRow
+              label="CASH REQUIREMENT 90D"
+              value={req90 > 1 ? compact(req90) : '—'}
+              detail={
+                req90 > 1
+                  ? `next 3 months · draws + overhead · of which equity ${compact(req90Equity)}`
+                  : 'No cash requirement in the next 3 months'
+              }
+              href="#requirements"
+              overdue={false}
+            />
+
+            <BoardroomRow
+              label="KPC LOC POSITION"
+              value={locConfigured ? compact(locAvailable) : 'Not configured'}
+              detail={
+                locConfigured
+                  ? `headroom of ${compact(locLimit)} · ${(locUtilPct * 100).toFixed(0)}% utilized · ${locRate}%`
+                  : 'No capital sources configured — Settings → Capital Sources'
+              }
+              href={locConfigured ? '#capital' : '/settings'}
+              overdue={locConfigured && locColor === 'red'}
+              warn={locConfigured && locColor === 'amber'}
+            />
+
             <BoardroomRow
               label="NEXT OWNER DISTRIBUTION"
               value={nextDistMonth ? compact(nextDistMonth.total_distribution) : '—'}
@@ -313,91 +282,9 @@ export default async function DashboardPage() {
                   ? `${fmtYM(nextDistMonth.month)} · owner tax distribution at close`
                   : 'No distributions in the 36-month window'
               }
-              href="/earnings"
-              overdue={false}
-            />
-
-            {/* Row: KPC LOC headroom — T130 (V7): same resolved position as the
-                engine; Rule-6 explicit empty state when unconfigured. */}
-            <BoardroomRow
-              label="KPC LOC HEADROOM"
-              value={locConfigured ? compact(locAvailable) : 'Not configured'}
-              detail={
-                locConfigured
-                  ? `of ${compact(locLimit)} available · ${(locUtilPct * 100).toFixed(0)}% utilized · ${locRate}%`
-                  : 'No capital sources configured — Settings → Capital Sources'
-              }
-              href={locConfigured ? '/analytics/loc' : '/settings'}
-              overdue={locConfigured && locColor === 'red'}
-              warn={locConfigured && locColor === 'amber'}
-            />
-
-            {/* Row: Rollout pacing — T132: never a past date, never red-on-stale. */}
-            <BoardroomRow
-              label="ROLLOUT PACING"
-              value={rolloutValue}
-              detail={rolloutDetail}
-              href="/pipeline/capacity"
-              overdue={rolloutColor === 'red'}
-              warn={rolloutColor === 'amber'}
-            />
-
-            {/* Row: Self-funding trajectory (T123) */}
-            <BoardroomRow
-              label="SELF-FUNDING TRAJECTORY"
-              value={
-                selfFunding.insufficient_data
-                  ? '—'
-                  : selfFunding.self_funding_year
-                    ? selfFunding.self_funding_year
-                    : 'Beyond 36mo'
-              }
-              detail={
-                selfFunding.insufficient_data
-                  ? 'No project NPAT recognised in window yet'
-                  : selfFunding.self_funding_year
-                    ? `Retained NPAT ≥ equity need in FY ${selfFunding.self_funding_year}`
-                    : 'Retained NPAT below equity need across the window'
-              }
-              href="/analytics/self-funding"
+              href="#self-funding"
               last
             />
-
-            {/* Tactical strip (3 cells compressed below Boardroom) */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: 0,
-                marginTop: 12,
-                border: '1px solid var(--color-border-hairline)',
-                borderRadius: 8,
-                overflow: 'hidden',
-              }}
-            >
-              <TacticalCell
-                label="90d cash"
-                value={compact(Math.abs(cash90 < 0 ? cash90 : 0))}
-                sub={cash90 < 0 ? 'net outflow' : 'net inflow'}
-                href="/dashboard"
-              />
-              <TacticalCell
-                label="Pipeline rev"
-                value={compact(pipelineRevAll)}
-                sub={`${compact(pipelineRevCommitted)} committed`}
-                href="/projects"
-                border
-              />
-              <TacticalCell
-                label={`Starts ${currentYear}`}
-                value={`${starts2026} / ${targetStarts}`}
-                sub={
-                  starts2026 >= targetStarts ? 'on target' : `${targetStarts - starts2026} to go`
-                }
-                href="/pipeline"
-                border
-              />
-            </div>
           </section>
 
           {/* ── Today's Desk ─────────────────────────────────────── */}
@@ -425,56 +312,155 @@ export default async function DashboardPage() {
               count={draftCallCount}
               label="capital calls drafting"
               emptyLabel="No draft calls"
-              href="/analytics/capital"
+              href="#capital"
             />
             <DeskRow
               count={capBreachCount}
               label="cap-breach months in window"
               emptyLabel="No LOC breaches forecast"
-              href="/analytics/stress"
+              href="#capital"
               last
             />
           </section>
         </div>
 
-        {/* ── Portfolio cash flow chart ── */}
-        <section style={card}>
-          <header
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'baseline',
-              marginBottom: 16,
-            }}
-          >
-            <h2
-              style={{
-                fontSize: 16,
-                fontWeight: 700,
-                margin: 0,
-                color: 'var(--color-text-primary)',
-              }}
-            >
-              Portfolio cash flow
-            </h2>
-            <span
-              style={{
-                fontSize: 11,
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                color: 'var(--color-text-tertiary)',
-              }}
-            >
-              12 months
-            </span>
-          </header>
+        {/* ── 2. Company cash flow ── */}
+        <section id="cashflow" style={card}>
+          <SectionHeader
+            title="Company cash flow"
+            hint="Portfolio net cash, equity calls, closing cash, LOC balance"
+          />
           <PortfolioCashFlowChart monthly={portfolio.monthly} />
         </section>
 
-        {/* ── Annual P&L (promoted from /analytics/forecast — T110) ── */}
-        <AnnualPnLTable annual={portfolio.annual} effectiveTaxRate={effectiveTaxRate} />
+        {/* ── 3. Cash requirements (T135 — the "how much and when" table) ── */}
+        <section id="requirements" style={card}>
+          <SectionHeader
+            title="Cash requirements"
+            hint={`Next 12 months from ${fmtYM(schedule.start_month)}${
+              requirements.peak_month
+                ? ` · peak ${fmtYM(requirements.peak_month)} (${compact(requirements.peak_requirement)})`
+                : ''
+            }`}
+          />
+          {treasurySources.length === 0 ? (
+            <p
+              style={{
+                margin: 0,
+                padding: '24px 0',
+                textAlign: 'center',
+                fontSize: 13,
+                color: 'var(--color-text-tertiary)',
+              }}
+            >
+              No capital sources configured — add them under Settings → Capital Sources to activate
+              the funding columns. Draws and overhead still shown from the model.
+            </p>
+          ) : null}
+          <CashRequirementsTable req={requirements} />
+        </section>
+
+        {/* ── 4. Annual P&L ── */}
+        <section id="pnl" style={{ scrollMarginTop: 80 }}>
+          <AnnualPnLTable annual={portfolio.annual} effectiveTaxRate={effectiveTaxRate} />
+        </section>
+
+        {/* ── 5. Capital & LOC (absorbs /analytics/capital + /analytics/loc) ── */}
+        <section id="capital" style={card}>
+          <SectionHeader
+            title="Capital & LOC"
+            hint="KPC LOC utilization, equity beyond the line, senior debt"
+          />
+          <CapitalLocSection
+            monthly={portfolio.monthly}
+            kpis={portfolio.kpis}
+            locConfigured={locConfigured}
+          />
+        </section>
+
+        {/* ── 6. Self-funding trajectory — collapsed by default ── */}
+        <details id="self-funding" style={{ ...card, padding: 0 }}>
+          <summary
+            style={{
+              cursor: 'pointer',
+              listStyle: 'none',
+              padding: 'var(--ja-card-padding)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'baseline',
+            }}
+          >
+            <span>
+              <span
+                style={{
+                  fontSize: 16,
+                  fontWeight: 700,
+                  color: 'var(--color-text-primary)',
+                }}
+              >
+                Self-funding trajectory
+              </span>
+              <span
+                style={{
+                  marginLeft: 10,
+                  fontSize: 12,
+                  color: 'var(--color-text-secondary)',
+                }}
+              >
+                {selfFunding.insufficient_data
+                  ? 'No project NPAT recognised in window yet'
+                  : selfFunding.self_funding_year
+                    ? `Retained NPAT ≥ equity need in FY ${selfFunding.self_funding_year}`
+                    : 'Retained NPAT below equity need across the window'}
+              </span>
+            </span>
+            <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>expand ▾</span>
+          </summary>
+          <div style={{ padding: '0 var(--ja-card-padding) var(--ja-card-padding)' }}>
+            <SelfFundingChart result={selfFunding} />
+            <p style={{ margin: '10px 0 0', fontSize: 10, color: 'var(--color-text-tertiary)' }}>
+              Retained NPAT = recognised NPAT − owner distributions (blended owner-tax rate,{' '}
+              {(selfFunding.distribution_rate * 100).toFixed(1)}% of NPAT). Equity need = equity
+              drawn into new starts. NPAT recognised at sale from the same cash schedule as the
+              requirements table above.
+            </p>
+          </div>
+        </details>
       </div>
     </DashboardShell>
+  );
+}
+
+// ─── Section header ───────────────────────────────────────────────────────────
+
+function SectionHeader({ title, hint }: { title: string; hint?: string }) {
+  return (
+    <header
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'baseline',
+        marginBottom: 16,
+        gap: 12,
+        flexWrap: 'wrap',
+      }}
+    >
+      <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
+        {title}
+      </h2>
+      {hint && (
+        <span
+          style={{
+            fontSize: 11,
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            color: 'var(--color-text-tertiary)',
+          }}
+        >
+          {hint}
+        </span>
+      )}
+    </header>
   );
 }
 
@@ -609,65 +595,3 @@ function DeskRow({
     </Link>
   );
 }
-
-// ─── T110 Tactical cell ───────────────────────────────────────────────────────
-
-function TacticalCell({
-  label,
-  value,
-  sub,
-  href,
-  border = false,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  href: string;
-  border?: boolean;
-}) {
-  return (
-    <Link
-      href={href}
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 2,
-        padding: '10px 14px',
-        textDecoration: 'none',
-        color: 'inherit',
-        borderLeft: border ? '1px solid var(--color-border-hairline)' : 'none',
-      }}
-    >
-      <div
-        style={{
-          fontSize: 10,
-          fontWeight: 700,
-          textTransform: 'uppercase',
-          letterSpacing: '0.06em',
-          color: 'var(--color-text-tertiary)',
-        }}
-      >
-        {label}
-      </div>
-      <div
-        style={{
-          fontSize: 16,
-          fontWeight: 700,
-          color: 'var(--color-text-primary)',
-          fontVariantNumeric: 'tabular-nums',
-        }}
-      >
-        {value}
-      </div>
-      {sub && <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{sub}</div>}
-    </Link>
-  );
-}
-
-// ─── Legacy components (no longer rendered — kept for reference) ──────────────
-// NOTE: Chip, SmallChip, ActionCard were the V5.2 Row 1-3 components.
-// Replaced by BoardroomRow, DeskRow, TacticalCell in T110 (V6.1).
-// The committed-projects row (Row 5) is removed — information is in Projects list.
-// Keep the unused function stubs below so old imports/tests don't break.
-
-// (V5.2 committed-projects row removed in T110 — data now in /projects table view)

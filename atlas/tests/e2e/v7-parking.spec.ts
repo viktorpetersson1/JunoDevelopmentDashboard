@@ -64,6 +64,38 @@ test.describe('T134 parking — default state (flags off)', () => {
   });
 });
 
+test.describe('T135 absorbed treasury surfaces — unconditional 301s to Home anchors', () => {
+  // These four surfaces are ABSORBED into Home (not flag-parked): their URLs
+  // 301 to the owning /dashboard section regardless of ATLAS_FEATURE_FLAGS.
+  const ABSORBED: Array<{ from: string; toPath: string; toHash: string }> = [
+    { from: '/analytics', toPath: '/dashboard', toHash: '' },
+    { from: '/analytics/capital', toPath: '/dashboard', toHash: '#capital' },
+    { from: '/analytics/cash-schedule', toPath: '/dashboard', toHash: '#requirements' },
+    { from: '/analytics/loc', toPath: '/dashboard', toHash: '#capital' },
+    { from: '/analytics/self-funding', toPath: '/dashboard', toHash: '#self-funding' },
+  ];
+
+  for (const r of ABSORBED) {
+    test(`${r.from} 301s to ${r.toPath}${r.toHash}`, async ({ request }) => {
+      const res = await request.get(r.from, { maxRedirects: 0 });
+      expect(res.status()).toBe(301);
+      const to = new URL(res.headers()['location']!, BASE);
+      expect(to.pathname).toBe(r.toPath);
+      expect(to.hash).toBe(r.toHash);
+    });
+  }
+
+  test('legacy /capital chains to /dashboard#capital in two hops', async ({ request }) => {
+    const hop1 = await request.get('/capital', { maxRedirects: 0 });
+    expect(hop1.status()).toBe(301);
+    expect(locationPath(hop1)).toBe('/analytics/capital');
+    const hop2 = await request.get('/analytics/capital', { maxRedirects: 0 });
+    expect(hop2.status()).toBe(301);
+    const to = new URL(hop2.headers()['location']!, BASE);
+    expect(`${to.pathname}${to.hash}`).toBe('/dashboard#capital');
+  });
+});
+
 test.describe('T134 parking — flags on (ATLAS_FEATURE_FLAGS=pricing,analytics-lab)', () => {
   test.skip(!FLAGS_ON, 'run with ATLAS_FEATURE_FLAGS=pricing,analytics-lab to exercise this state');
 

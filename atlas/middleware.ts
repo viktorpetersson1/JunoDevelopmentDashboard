@@ -39,6 +39,9 @@ export async function middleware(request: NextRequest) {
   // T098 — 301 redirects for the 7 routes moved under /analytics.
   // These are permanent redirects; they keep old bookmarks alive and prevent
   // any lingering cf-pages cache from serving a 404.
+  // V7 T135 — the four treasury surfaces are ABSORBED into Home: their URLs
+  // 301 to the owning /dashboard section anchor (they are not flag-parked —
+  // Home IS the surface now). Targets may carry a #fragment.
   const ANALYTICS_REDIRECTS: Record<string, string> = {
     '/cashflow': '/dashboard',
     '/capital': '/analytics/capital',
@@ -49,12 +52,20 @@ export async function middleware(request: NextRequest) {
     '/risks': '/analytics/risks',
     // T110 (V6.1): /analytics/forecast deleted — Annual P&L promoted to Home.
     '/analytics/forecast': '/dashboard',
+    // V7 T135 — absorbed into Home.
+    '/analytics': '/dashboard',
+    '/analytics/capital': '/dashboard#capital',
+    '/analytics/cash-schedule': '/dashboard#requirements',
+    '/analytics/loc': '/dashboard#capital',
+    '/analytics/self-funding': '/dashboard#self-funding',
   };
   const pathname = request.nextUrl.pathname;
   const redirectTarget = ANALYTICS_REDIRECTS[pathname];
   if (redirectTarget) {
     const url = request.nextUrl.clone();
-    url.pathname = redirectTarget;
+    const [path, hash] = redirectTarget.split('#');
+    url.pathname = path ?? redirectTarget;
+    url.hash = hash ? `#${hash}` : '';
     return NextResponse.redirect(url, { status: 301 });
   }
 

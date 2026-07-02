@@ -48,7 +48,10 @@ describe('parkedRedirect — default state (flags off)', () => {
       '/pipeline',
       '/agent',
       '/settings',
-      '/analytics/capital', // absorbed by T135, survives T134
+      // T135: the four absorbed treasury URLs are NOT flag-parked — the
+      // middleware 301s them to /dashboard anchors (asserted in the
+      // v7-parking e2e), so parkedRedirect passes them through here.
+      '/analytics/capital',
       '/analytics/cash-schedule',
       '/analytics/loc',
       '/analytics/self-funding',
