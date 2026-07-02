@@ -20,7 +20,8 @@ import { DashboardShell } from '../_components/dashboard-shell';
 import { PortfolioCashFlowChart } from '../_components/portfolio-cash-flow-chart';
 import { AnnualPnLTable } from '../analytics/forecast/_components/annual-pnl-table';
 import { StatusDot } from '@/components/feedback/StatusDot';
-import { findActiveKpcLoc, findActiveCapitalSources, findAllAssignments } from '@/lib/repos/capital-sources';
+import { findActiveCapitalSources, findAllAssignments } from '@/lib/repos/capital-sources';
+import { getCapitalPosition, applyCapitalPositionToGlobals } from '@/lib/treasury/capital-position';
 import { findManyProjects, findManyProjectsWithUuids } from '@/lib/repos/project';
 import { aggregatePortfolio } from '@/lib/calc/portfolio/aggregate';
 import { buildCashSchedule } from '@/lib/treasury/portfolio-cash-schedule';
@@ -86,16 +87,19 @@ export default async function DashboardPage() {
   const { profile, user } = await requireAuthOrRedirect('/dashboard');
   const { projects } = await findManyProjects({ limit: 100 });
 
-  const [active, globalsCtx, projectsWithUuids, treasurySources, treasuryAssignments, capTable] =
+  const [active, globalsCtx, capitalPosition, projectsWithUuids, treasurySources, treasuryAssignments, capTable] =
     await Promise.all([
       getActiveScenario(),
       getActiveGlobals(),
+      getCapitalPosition(),
       findManyProjectsWithUuids({ limit: 100 }),
       findActiveCapitalSources(),
       findAllAssignments(),
       fetchCapTable(),
     ]);
-  const globals = globalsCtx.globals;
+  // T130 (V7 Rule 1): ONE resolved capital position feeds the chip AND the
+  // engine — no surface may compute the facility differently.
+  const globals = applyCapitalPositionToGlobals(globalsCtx.globals, capitalPosition);
   const portfolio = aggregatePortfolio(projects, globals, active.scenario);
   const todayYM = serverMonthYM();
 
@@ -136,24 +140,14 @@ export default async function DashboardPage() {
   //     chip reconciles with /earnings).
   const nextDistMonth = distribution.monthly.find((m) => m.total_distribution > 1) ?? null;
 
-  // 1c. KPC LOC headroom (V6.2 T118: now reads from the versioned ledger repo
-  // — respects is_current + is_archived filters. Fallback to V5.2-confirmed
-  // defaults if no kpc_loc source is configured yet.)
-  let locLimit = 6_000_000;
-  let locDrawn = 0;
-  let locRate = 6;
-  try {
-    const kpc = await findActiveKpcLoc();
-    if (kpc) {
-      locLimit = kpc.limitUsd;
-      locDrawn = kpc.drawnUsd;
-      // Repo returns interestRatePct as a DECIMAL (0.06); chip wants percent (6).
-      locRate = (kpc.interestRatePct ?? 0.06) * 100;
-    }
-  } catch {
-    // fallback to confirmed values
-  }
-  const locAvailable = locLimit - locDrawn;
+  // 1c. KPC LOC headroom — T130 (V7): reads the SAME resolved capital position
+  // the engine ran with. No hardcoded fallback: unconfigured renders an explicit
+  // empty state (Rule 6), never $6M-on-faith and never $0-as-fact.
+  const locConfigured = capitalPosition.configured;
+  const locLimit = capitalPosition.configured ? capitalPosition.facilityUsd : 0;
+  const locDrawn = capitalPosition.configured ? capitalPosition.drawnUsd : 0;
+  const locRate = capitalPosition.configured ? capitalPosition.interestRate * 100 : 0;
+  const locAvailable = capitalPosition.configured ? capitalPosition.headroomUsd : 0;
   const locUtilPct = locLimit > 0 ? locDrawn / locLimit : 0;
   const locColor: 'green' | 'amber' | 'red' =
     locUtilPct >= 0.9 ? 'red' : locUtilPct >= 0.75 ? 'amber' : 'green';
@@ -204,7 +198,9 @@ export default async function DashboardPage() {
 
   let draftSnapshotCount = 0;
   let draftCallCount = 0;
-  const capBreachCount = portfolio.monthly.cap_breach_months ?? 0;
+  // T130/T132 (V7 Rule 6): a cap-breach count derived from an UNCONFIGURED
+  // facility is noise, not signal — suppress it entirely in that case.
+  const capBreachCount = locConfigured ? (portfolio.monthly.cap_breach_months ?? 0) : 0;
   try {
     const supabase = createSupabaseServerClient();
     const [snapRes, callRes] = await Promise.all([
@@ -291,14 +287,19 @@ export default async function DashboardPage() {
               overdue={false}
             />
 
-            {/* Row: KPC LOC headroom — T126: links to the LOC repayment page */}
+            {/* Row: KPC LOC headroom — T130 (V7): same resolved position as the
+                engine; Rule-6 explicit empty state when unconfigured. */}
             <BoardroomRow
               label="KPC LOC HEADROOM"
-              value={compact(locAvailable)}
-              detail={`of ${compact(locLimit)} available · ${(locUtilPct * 100).toFixed(0)}% utilized · ${locRate}%`}
-              href="/analytics/loc"
-              overdue={locColor === 'red'}
-              warn={locColor === 'amber'}
+              value={locConfigured ? compact(locAvailable) : 'Not configured'}
+              detail={
+                locConfigured
+                  ? `of ${compact(locLimit)} available · ${(locUtilPct * 100).toFixed(0)}% utilized · ${locRate}%`
+                  : 'No capital sources configured — Settings → Capital Sources'
+              }
+              href={locConfigured ? '/analytics/loc' : '/settings'}
+              overdue={locConfigured && locColor === 'red'}
+              warn={locConfigured && locColor === 'amber'}
             />
 
             {/* Row: Rollout pacing — T126: links to the capacity solver */}

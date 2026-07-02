@@ -1,4 +1,4 @@
-/**
+﻿/**
  * POST /api/scenarios/preview
  *
  * Run the portfolio aggregator with a DRAFT scenario (no persistence)
@@ -17,7 +17,7 @@ import { withErrorBoundary } from '@/lib/api/handler';
 import { requireAuth } from '@/lib/auth/requireAuth';
 import { findManyProjects } from '@/lib/repos/project';
 import { aggregatePortfolio } from '@/lib/calc/portfolio/aggregate';
-import { getActiveGlobals } from '@/lib/globals/active';
+import { getActiveGlobalsWithCapital } from '@/lib/treasury/capital-position';
 import type { Scenario } from '@/lib/calc/project/types';
 
 export const dynamic = 'force-dynamic';
@@ -64,8 +64,9 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
   const { projects } = await findManyProjects({ limit: 100 });
   // V4.11b — preview uses active globals so what the user sees here
   // matches what they'll see on the dashboard after applying.
-  const globalsCtx = await getActiveGlobals();
-  const result = aggregatePortfolio(projects, globalsCtx.globals, draftScenario);
+  // T130 (V7 Rule 1): overlay the resolved capital position, same as the dashboard.
+  const { globals } = await getActiveGlobalsWithCapital();
+  const result = aggregatePortfolio(projects, globals, draftScenario);
 
   return ok({
     kpis: {

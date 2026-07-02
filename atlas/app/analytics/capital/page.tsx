@@ -15,6 +15,7 @@ import { CapitalStackChart } from './_components/capital-stack-chart';
 import { findManyProjects } from '@/lib/repos/project';
 import { aggregatePortfolio } from '@/lib/calc/portfolio/aggregate';
 import { getActiveGlobals } from '@/lib/globals/active';
+import { getCapitalPosition, applyCapitalPositionToGlobals } from '@/lib/treasury/capital-position';
 import { getActiveScenario } from '@/lib/scenarios/active';
 import { formatMoney } from '@/lib/utils/money';
 import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
@@ -27,15 +28,23 @@ export const runtime = 'edge';
 export default async function CapitalOverviewPage() {
   const { profile, user } = await requireAuthOrRedirect('/analytics/capital');
   const { projects } = await findManyProjects({ limit: 100 });
-  // V4.12 active scenario + V4.11b active globals.
-  const [active, globalsCtx] = await Promise.all([getActiveScenario(), getActiveGlobals()]);
+  // V4.12 active scenario + V4.11b active globals + T130 (V7 Rule 1): the SAME
+  // resolved capital position Home uses feeds this page's engine run — the
+  // "$6.00M headroom" vs "$0.0M facility" contradiction is structurally dead.
+  const [active, globalsCtx, capitalPosition] = await Promise.all([
+    getActiveScenario(),
+    getActiveGlobals(),
+    getCapitalPosition(),
+  ]);
+  const globals = applyCapitalPositionToGlobals(globalsCtx.globals, capitalPosition);
   const [portfolio, capTable] = await Promise.all([
-    Promise.resolve(aggregatePortfolio(projects, globalsCtx.globals, active.scenario)),
+    Promise.resolve(aggregatePortfolio(projects, globals, active.scenario)),
     fetchCapTable(),
   ]);
 
   const m = portfolio.monthly;
   const k = portfolio.kpis;
+  const locConfigured = capitalPosition.configured;
   const locCap = m.kpc_loc_config.facility_size_usd;
   const locPeakPct = locCap > 0 ? (m.loc_peak_balance / locCap) * 100 : 0;
 
@@ -45,35 +54,45 @@ export default async function CapitalOverviewPage() {
   };
 
   // 6 KPI tiles per INVENTORY §17.
+  // T130 (V7 Rule 6): LOC-derived tiles render an explicit "Not configured"
+  // when no facility exists — never $0-as-fact, never a derived red tone.
   const kpis: Array<{
     label: string;
     value: string;
     hint?: string;
     tone?: 'negative' | 'neutral';
   }> = [
-    {
-      label: 'KPC LOC peak',
-      value: formatMoney(m.loc_peak_balance * 100, { compact: true, precision: 2 }),
-      hint: `${locPeakPct.toFixed(0)}% of $${(locCap / 1_000_000).toFixed(1)}M facility`,
-      tone: locPeakPct > 90 ? 'negative' : 'neutral',
-    },
-    {
-      label: 'LOC interest',
-      value: formatMoney(m.loc_total_interest * 100, { compact: true, precision: 2 }),
-      hint: `${(m.kpc_loc_config.interest_rate_apr * 100).toFixed(2)}% APR`,
-    },
-    {
-      label: 'Owner equity needed',
-      value: formatMoney(m.true_equity_total_drawn * 100, { compact: true, precision: 2 }),
-      hint: m.true_equity_total_drawn > 0 ? 'beyond KPC LOC capacity' : 'within LOC capacity',
-      tone: m.true_equity_total_drawn > 0 ? 'negative' : 'neutral',
-    },
-    {
-      label: 'Funding-gap months',
-      value: String(m.cap_breach_months),
-      hint: m.cap_breach_months > 0 ? 'months where LOC is over cap' : 'no breach',
-      tone: m.cap_breach_months > 0 ? 'negative' : 'neutral',
-    },
+    locConfigured
+      ? {
+          label: 'KPC LOC peak',
+          value: formatMoney(m.loc_peak_balance * 100, { compact: true, precision: 2 }),
+          hint: `${locPeakPct.toFixed(0)}% of $${(locCap / 1_000_000).toFixed(1)}M facility`,
+          tone: locPeakPct > 90 ? 'negative' : 'neutral',
+        }
+      : { label: 'KPC LOC peak', value: '—', hint: 'No capital sources configured' },
+    locConfigured
+      ? {
+          label: 'LOC interest',
+          value: formatMoney(m.loc_total_interest * 100, { compact: true, precision: 2 }),
+          hint: `${(m.kpc_loc_config.interest_rate_apr * 100).toFixed(2)}% APR`,
+        }
+      : { label: 'LOC interest', value: '—', hint: 'No capital sources configured' },
+    locConfigured
+      ? {
+          label: 'Owner equity needed',
+          value: formatMoney(m.true_equity_total_drawn * 100, { compact: true, precision: 2 }),
+          hint: m.true_equity_total_drawn > 0 ? 'beyond KPC LOC capacity' : 'within LOC capacity',
+          tone: m.true_equity_total_drawn > 0 ? 'negative' : 'neutral',
+        }
+      : { label: 'Owner equity needed', value: '—', hint: 'Configure the facility first' },
+    locConfigured
+      ? {
+          label: 'Funding-gap months',
+          value: String(m.cap_breach_months),
+          hint: m.cap_breach_months > 0 ? 'months where LOC is over cap' : 'no breach',
+          tone: m.cap_breach_months > 0 ? 'negative' : 'neutral',
+        }
+      : { label: 'Funding-gap months', value: '—', hint: 'Configure the facility first' },
     {
       label: 'Senior debt peak',
       value: formatMoney(k.max_debt_outstanding * 100, { compact: true, precision: 2 }),
@@ -106,8 +125,16 @@ export default async function CapitalOverviewPage() {
           </p>
         </header>
 
-        {/* Alert banner — surfaces the funding-gap signal per INVENTORY §17 */}
-        {m.cap_breach_months > 0 ? (
+        {/* Alert banner — T130 (V7 Rule 6): the funding-gap alert may ONLY fire
+            off a configured facility; unconfigured renders the explicit empty
+            state instead of a derived red banner. */}
+        {!locConfigured ? (
+          <AlertBanner
+            tone="neutral"
+            title="No capital sources configured."
+            body="Add the KPC LOC (and any senior facilities) under Settings → Capital Sources to activate LOC utilization, funding-gap, and headroom analysis."
+          />
+        ) : m.cap_breach_months > 0 ? (
           <AlertBanner
             tone="negative"
             title={`Funding gap: KPC LOC exhausted for ${m.cap_breach_months} month${m.cap_breach_months === 1 ? '' : 's'}.`}

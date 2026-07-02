@@ -16,6 +16,7 @@ import { BASELINE_SCENARIO } from '@/lib/calc/baselines';
 import { buildProjectPnL } from '@/lib/finance/project-pnl';
 import { aggregatePortfolio } from '@/lib/calc/portfolio/aggregate';
 import { getActiveGlobals } from '@/lib/globals/active';
+import { getActiveGlobalsWithCapital } from '@/lib/treasury/capital-position';
 import { listActualsByCategory } from '@/lib/services/actuals';
 import { createActualsEntry, type CreateActualsEntryInput } from '@/lib/services/actuals';
 import { insertRisk } from '@/lib/repos/project-risks';
@@ -279,7 +280,10 @@ export async function executeTool(
 
     case 'get_dashboard_kpis': {
       const { projects } = await findManyProjects({ limit: 100 });
-      const { globals } = await getActiveGlobals();
+      // T130 (V7 Rule 1): the agent's portfolio numbers use the same resolved
+      // capital position as Home — the assistant may never quote a figure the
+      // dashboard wouldn't show.
+      const { globals } = await getActiveGlobalsWithCapital();
       const portfolio = aggregatePortfolio(projects, globals, BASELINE_SCENARIO);
       const k = portfolio.kpis;
       return {
