@@ -1,21 +1,22 @@
 /**
- * D-027 — Pipeline = the 3-year velocity workspace.
+ * V7 T139 — Pipeline = potential projects first.
  *
- * Reframed from the old read-only kanban into a goal-driven planning surface:
- *   1. Goal tracker     — starts/sells per year vs. the org velocity target
- *   2. In-flight        — projects actively building or selling, with timeline
- *   3. Candidate funnel — sourcing pipeline depth + forward "what's needed" signal
+ * 1. Potential projects — the ranked opportunities table (atlas.opportunities;
+ *    default sort capital efficiency). The June-17 requirement verbatim:
+ *    every deal shows cash needed · timeline · potential profit, rankable.
+ * 2. In-flight          — projects actively building or selling (kept)
+ * 3. Goal tracker       — starts/sells vs the velocity target (kept, moved below)
  *
- * The original 6-stage kanban is preserved at the bottom inside a collapsed
- * <details> ("Full pipeline board") so nothing is lost — it's just no longer
- * the headline.
+ * The old kanban board + candidate funnel are PARKED (components stay on
+ * disk, no longer rendered — Rule 4); /pipeline/capacity is parked by T134.
  *
  * Server Component. Velocity math is pure (lib/services/pipeline-velocity.ts).
  */
 
 import { DashboardShell } from '../_components/dashboard-shell';
-import { PipelineBoard, type StageGroup } from './_components/pipeline-board';
-import { GoalTracker, InFlight, CandidateFunnel } from './_components/velocity-sections';
+import { GoalTracker, InFlight } from './_components/velocity-sections';
+import { OpportunitiesSection } from './_components/opportunities-section';
+import { listOpportunities } from '@/lib/repos/opportunities';
 import { findManyProjects, findManyProjectsWithUuids } from '@/lib/repos/project';
 import { findActiveCapitalSources, findAllAssignments } from '@/lib/repos/capital-sources';
 import { buildCashSchedule } from '@/lib/treasury/portfolio-cash-schedule';
@@ -36,19 +37,9 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const runtime = 'edge';
 
-/** Canonical stages for the (demoted) full board. */
-const STAGES: { key: string; label: string; description: string }[] = [
-  { key: 'sourcing', label: 'Sourcing', description: 'Prospect identified, pre-LOI' },
-  { key: 'pre_construction', label: 'Pre-construction', description: 'Permitting + design' },
-  { key: 'construction', label: 'Construction', description: 'Active build' },
-  { key: 'sales', label: 'Sales', description: 'Listed, under contract' },
-  { key: 'sold', label: 'Sold', description: 'Closed within last 12 mo' },
-  { key: 'archived', label: 'Archived', description: 'Closed > 12 mo · dead deals' },
-];
-
 export default async function PipelinePage() {
   const { profile, user } = await requireAuthOrRedirect('/pipeline');
-  const [{ projects }, globalsCtx, projectsWithUuids, sources, assignments, active] =
+  const [{ projects }, globalsCtx, projectsWithUuids, sources, assignments, active, opportunities] =
     await Promise.all([
       findManyProjects({ limit: 200 }),
       getActiveGlobals(),
@@ -56,6 +47,7 @@ export default async function PipelinePage() {
       findActiveCapitalSources(),
       findAllAssignments(),
       getActiveScenario(),
+      listOpportunities(),
     ]);
 
   // T122 — Start Capacity Solver chip. Reuses the SAME treasury pipeline as
@@ -90,30 +82,6 @@ export default async function PipelinePage() {
   // scripts). Year only — no time-of-day dependency.
   const currentYear = new Date().getUTCFullYear();
   const report = computeVelocity(inputs, goal, currentYear);
-
-  // Build the kanban groups for the collapsed full board.
-  const cards = inputs.map(({ project: p, result }) => ({
-    id: p.id,
-    name: p.name,
-    address: p.address ?? null,
-    market: p.market ?? 'default',
-    stage: p.stage ?? 'sourcing',
-    status: p.status ?? 'pipeline',
-    total_sales: result.kpis.total_sales,
-    profit_margin_pct: result.kpis.profit_margin_pct,
-    villa_sqft: p.villa_sqft,
-  }));
-  const groups: StageGroup[] = STAGES.map((s) => {
-    const items = cards.filter((c) => normalizeStage(c.stage) === s.key);
-    return {
-      key: s.key,
-      label: s.label,
-      description: s.description,
-      count: items.length,
-      totalValue: items.reduce((sum, c) => sum + c.total_sales, 0),
-      cards: items,
-    };
-  });
 
   const dashboardUser = {
     name: profile.displayName ?? profile.email ?? user.email ?? 'Juno',
@@ -151,30 +119,21 @@ export default async function PipelinePage() {
           </div>
         </header>
 
-        <GoalTracker report={report} isEditor={hasRole(profile, ['super_admin', 'editor'])} />
-        <Divider />
+        {/* V7 T139 — 1. Potential projects (ranked deal sheet) */}
+        <OpportunitiesSection
+          opportunities={opportunities}
+          isEditor={hasRole(profile, ['super_admin', 'editor'])}
+        />
+
+        {/* 2. In-flight (kept) */}
         <InFlight report={report} />
         <Divider />
-        <CandidateFunnel report={report} nextYear={currentYear + 1} />
 
-        {/* Demoted full board */}
-        <details style={{ marginTop: 4 }}>
-          <summary
-            style={{
-              cursor: 'pointer',
-              fontSize: 13,
-              fontWeight: 700,
-              color: 'var(--color-text-secondary, #6b7280)',
-              padding: '8px 0',
-              listStyle: 'revert',
-            }}
-          >
-            Full pipeline board ({projects.length} projects, 6 stages)
-          </summary>
-          <div style={{ marginTop: 12 }}>
-            <PipelineBoard groups={groups} isEditor={hasRole(profile, ['super_admin', 'editor'])} />
-          </div>
-        </details>
+        {/* 3. Goal tracker (kept, moved below) */}
+        <GoalTracker report={report} isEditor={hasRole(profile, ['super_admin', 'editor'])} />
+
+        {/* The kanban board + candidate funnel are parked (Rule 4): components
+            remain in _components/, no longer rendered. */}
       </div>
     </DashboardShell>
   );
@@ -236,16 +195,5 @@ function CapacityChip({ capacity }: { capacity: StartCapacityResult }) {
   );
 }
 
-/** Map any incoming stage string to one of the 6 canonical board columns. */
-function normalizeStage(stage: string): string {
-  const s = stage.toLowerCase();
-  if (s === 'pre_construction' || s === 'preconstruction' || s === 'permitting') {
-    return 'pre_construction';
-  }
-  if (s === 'marketing' || s === 'listed') return 'sales';
-  if (s === 'archived' || s === 'dead') return 'archived';
-  if (s === 'sold' || s === 'closed') return 'sold';
-  if (s === 'construction') return 'construction';
-  if (s === 'sales') return 'sales';
-  return 'sourcing';
-}
+// (V7 T139: normalizeStage + the kanban group builder moved out with the
+// parked board — see _components/pipeline-board.tsx if the board returns.)

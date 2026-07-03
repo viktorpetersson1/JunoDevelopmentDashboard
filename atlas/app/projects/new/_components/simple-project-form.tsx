@@ -40,9 +40,20 @@ function currentYM(): string {
   return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`;
 }
 
-export function SimpleProjectForm() {
+export function SimpleProjectForm({
+  initialOverrides,
+  promoteOpportunity,
+}: {
+  /** T141 — pre-fill values (e.g. from an opportunity's metrics). */
+  initialOverrides?: Partial<SimpleFormState>;
+  /** T141 — when set, a successful create marks this opportunity promoted. */
+  promoteOpportunity?: { id: string; name: string };
+} = {}) {
   const router = useRouter();
-  const initial = useMemo(() => defaultFormState(currentYM()), []);
+  const initial = useMemo(
+    () => ({ ...defaultFormState(currentYM()), ...initialOverrides }),
+    [initialOverrides]
+  );
   const [form, setForm] = useState<SimpleFormState>(initial);
   const [errors, setErrors] = useState<string[]>([]);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -71,25 +82,28 @@ export function SimpleProjectForm() {
         } | null;
         throw new Error(body?.error?.message ?? `Create failed (HTTP ${res.status})`);
       }
-      const body = (await res.json()) as { data: { projectKey: string } };
+      const body = (await res.json()) as { data: { id: string; projectKey: string } };
       const key = body.data.projectKey;
 
       // Optional one-shot follow-up: target price / KPC-only financing.
       if (built.patch) {
-        const patchRes = await fetch(`/api/projects/${key}`, {
+        await fetch(`/api/projects/${key}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(built.patch),
-        });
-        if (!patchRes.ok) {
-          // The project EXISTS — don't strand the user. Land on the page and
-          // surface the drawer for the missing knobs.
-          startTransition(() => {
-            router.push(`/projects/${key}`);
-            router.refresh();
-          });
-          return;
-        }
+        }).catch(() => null);
+        // On failure the project still EXISTS — land on the page; the
+        // missing knobs are editable in the drawer.
+      }
+
+      // T141 — promotion bookkeeping: mark the source opportunity promoted
+      // + link the project row. Best-effort; the project page is the prize.
+      if (promoteOpportunity) {
+        await fetch(`/api/opportunities/${promoteOpportunity.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'promoted', promoted_project_id: body.data.id }),
+        }).catch(() => null);
       }
 
       startTransition(() => {
@@ -122,6 +136,22 @@ export function SimpleProjectForm() {
           14 fields, most pre-filled. Everything else inherits globals — edit later from the project
           page.
         </p>
+        {promoteOpportunity && (
+          <p
+            role="status"
+            style={{
+              margin: '10px 0 0',
+              padding: '8px 12px',
+              fontSize: 12.5,
+              borderRadius: 8,
+              border: '1px solid var(--color-border-hairline)',
+              color: 'var(--color-text-secondary)',
+            }}
+          >
+            Promoting opportunity <strong>{promoteOpportunity.name}</strong> — creating this project
+            marks it promoted and links the record (research stays read-only).
+          </p>
+        )}
       </header>
 
       {/* Identity */}
