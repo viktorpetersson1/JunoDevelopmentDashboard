@@ -10,6 +10,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { DashboardShell } from '@/app/_components/dashboard-shell';
 import { ResearchPanel } from './_components/research-panel';
+import { DraftMetricsPanel } from './_components/draft-metrics-panel';
 import { findOpportunityById } from '@/lib/repos/opportunities';
 import { capitalEfficiency } from '@/lib/pipeline/opportunity-ranking';
 import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
@@ -119,23 +120,6 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
             </p>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            {/* T145 wires this — disabled with tooltip until then. */}
-            <button
-              type="button"
-              disabled
-              title="Coming with the pipeline research assistant (T145)"
-              style={{
-                padding: '7px 14px',
-                fontSize: 12.5,
-                borderRadius: 8,
-                border: '1px solid var(--color-border-hairline)',
-                background: 'var(--color-surface-base)',
-                color: 'var(--color-text-tertiary)',
-                cursor: 'not-allowed',
-              }}
-            >
-              Ask Juno to draft key metrics
-            </button>
             {isEditor && !isPromoted && opp.status !== 'passed' && (
               <Link
                 href={`/projects/new?fromOpportunity=${opp.id}`}
@@ -219,6 +203,12 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
               {opp.notes && <p style={{ margin: opp.nextStep ? '6px 0 0' : 0 }}>{opp.notes}</p>}
             </div>
           )}
+
+          {/* V7 T145 — draft the metrics from the research notes; the user
+              reviews + saves (the PATCH is the only write). */}
+          <div style={{ marginTop: 14 }}>
+            <DraftMetricsPanel opportunityId={opp.id} disabled={!isEditor || isPromoted} />
+          </div>
         </section>
 
         {/* Research */}

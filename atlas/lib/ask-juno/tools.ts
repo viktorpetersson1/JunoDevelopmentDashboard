@@ -22,6 +22,8 @@ import { aggregatePortfolio } from '@/lib/calc/portfolio/aggregate';
 import { getActiveGlobals } from '@/lib/globals/active';
 import { getActiveGlobalsWithCapital } from '@/lib/treasury/capital-position';
 import { flagEnabled } from '@/lib/flags';
+import { listMeetings, findMeetingById } from '@/lib/repos/meetings';
+import { listOpportunities, findOpportunityById } from '@/lib/repos/opportunities';
 import { listActualsByCategory } from '@/lib/services/actuals';
 import { createActualsEntry, type CreateActualsEntryInput } from '@/lib/services/actuals';
 import { insertRisk } from '@/lib/repos/project-risks';
@@ -114,6 +116,52 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
         project_key: { type: 'string', description: 'The project slug' },
       },
       required: ['project_key'],
+    },
+  },
+  // ── V7 T143 — meetings + opportunities (READ) ─────────────────────────────
+  {
+    name: 'list_meetings',
+    description:
+      'List ingested Juno meetings (Fathom recordings): id, title, date, participant count, whether a transcript exists. Use FIRST for any "what did we decide/discuss/agree" question, then get_meeting for the detail.',
+    input_schema: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+  },
+  {
+    name: 'get_meeting',
+    description:
+      'Get one meeting by id: summary plus a transcript chunk. Transcripts are chunked (~12k chars); the result reports chunk/chunk_count — call again with the next chunk number if the answer needs more. Cite the meeting title + date when quoting.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        meeting_id: { type: 'string', description: 'The meeting id from list_meetings' },
+        chunk: { type: 'number', description: 'Transcript chunk number (1-based, default 1)' },
+      },
+      required: ['meeting_id'],
+    },
+  },
+  {
+    name: 'list_opportunities',
+    description:
+      'List pipeline opportunities (the standardized deal sheet): name, status, owner, cash needed, timeline, expected profit/margin, next step. Use for "which deal should we chase" / pipeline questions.',
+    input_schema: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+  },
+  {
+    name: 'get_opportunity',
+    description:
+      'Get one opportunity by id, including the research record (notes, links, decision log).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        opportunity_id: { type: 'string', description: 'The opportunity id (uuid)' },
+      },
+      required: ['opportunity_id'],
     },
   },
   {
@@ -355,6 +403,97 @@ export async function executeTool(
             total_usd: (c.totalCents / 100).toFixed(2),
             entry_count: c.entries.length,
           })),
+        }),
+        is_write: false,
+      };
+    }
+
+    // ── V7 T143 — meetings + opportunities (READ) ─────────────────────────
+
+    case 'list_meetings': {
+      const meetings = await listMeetings({ limit: 25 });
+      return {
+        content: JSON.stringify({
+          meetings: meetings.map((m) => ({
+            id: m.id,
+            title: m.title,
+            held_at: m.heldAt,
+            participant_count: m.participants.length,
+            has_transcript: !!m.transcriptMd,
+          })),
+          count: meetings.length,
+        }),
+        is_write: false,
+      };
+    }
+
+    case 'get_meeting': {
+      const id = String(args.meeting_id ?? '');
+      const meeting = await findMeetingById(id);
+      if (!meeting) return { content: `Meeting "${id}" not found.`, is_write: false };
+      // Transcripts can be huge — chunk so a step result stays evidence-sized.
+      const CHUNK = 12_000;
+      const transcript = meeting.transcriptMd ?? '';
+      const chunkCount = Math.max(1, Math.ceil(transcript.length / CHUNK));
+      const chunkNum = Math.min(Math.max(1, Number(args.chunk ?? 1)), chunkCount);
+      const slice = transcript.slice((chunkNum - 1) * CHUNK, chunkNum * CHUNK);
+      return {
+        content: JSON.stringify({
+          id: meeting.id,
+          title: meeting.title,
+          held_at: meeting.heldAt,
+          participants: meeting.participants,
+          summary_md: meeting.summaryMd,
+          transcript_chunk: slice || null,
+          chunk: chunkNum,
+          chunk_count: chunkCount,
+        }),
+        is_write: false,
+      };
+    }
+
+    case 'list_opportunities': {
+      const opportunities = await listOpportunities();
+      return {
+        content: JSON.stringify({
+          opportunities: opportunities.map((o) => ({
+            id: o.id,
+            name: o.name,
+            market: o.market,
+            status: o.status,
+            owner: o.ownerName,
+            cash_needed_usd: o.cashNeededUsd,
+            timeline_months: o.timelineMonths,
+            expected_profit_usd: o.expectedProfitUsd,
+            expected_margin_pct: o.expectedMarginPct,
+            next_step: o.nextStep,
+          })),
+          count: opportunities.length,
+        }),
+        is_write: false,
+      };
+    }
+
+    case 'get_opportunity': {
+      const id = String(args.opportunity_id ?? '');
+      const opp = await findOpportunityById(id);
+      if (!opp) return { content: `Opportunity "${id}" not found.`, is_write: false };
+      return {
+        content: JSON.stringify({
+          id: opp.id,
+          name: opp.name,
+          market: opp.market,
+          status: opp.status,
+          owner: opp.ownerName,
+          cash_needed_usd: opp.cashNeededUsd,
+          timeline_months: opp.timelineMonths,
+          expected_profit_usd: opp.expectedProfitUsd,
+          expected_margin_pct: opp.expectedMarginPct,
+          next_step: opp.nextStep,
+          notes: opp.notes,
+          source: opp.source,
+          research: opp.research,
+          promoted_project_id: opp.promotedProjectId,
         }),
         is_write: false,
       };

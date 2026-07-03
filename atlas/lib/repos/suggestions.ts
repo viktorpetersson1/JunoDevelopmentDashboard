@@ -45,12 +45,15 @@ interface SuggestionRow {
   applied_at: string | null;
 }
 
-/** Insert a fresh pending suggestion. Returns the created row's id. */
+/** Insert a fresh pending suggestion. Returns the created row's id.
+ *  V7 T144: `proposedPatch` carries the structured jsonb patch the generic
+ *  apply path executes on approval. */
 export async function insertSuggestion(input: {
   submittedBy: string;
   prompt: string;
   pathname: string | null;
   assistantSummary: string | null;
+  proposedPatch?: unknown | null;
 }): Promise<string> {
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
@@ -61,6 +64,7 @@ export async function insertSuggestion(input: {
       prompt: input.prompt,
       pathname: input.pathname,
       assistant_summary: input.assistantSummary,
+      proposed_patch: input.proposedPatch ?? null,
     })
     .select('id')
     .single();

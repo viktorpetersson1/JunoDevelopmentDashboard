@@ -25,8 +25,15 @@ import { PortfolioCashFlowChart } from '../_components/portfolio-cash-flow-chart
 import { AnnualPnLTable } from '../analytics/forecast/_components/annual-pnl-table';
 import { CashRequirementsTable } from './_components/cash-requirements-table';
 import { CapitalLocSection } from './_components/capital-loc-section';
+import {
+  SuggestionsReviewPanel,
+  type PendingSuggestionItem,
+} from './_components/suggestions-review-panel';
 import { SelfFundingChart } from '../analytics/self-funding/_components/self-funding-chart';
 import { StatusDot } from '@/components/feedback/StatusDot';
+import { findManySuggestions } from '@/lib/repos/suggestions';
+import { isProposedPatch } from '@/lib/agent/meeting-review';
+import { hasRole } from '@/lib/auth/requireRole';
 import { findActiveCapitalSources, findAllAssignments } from '@/lib/repos/capital-sources';
 import { getCapitalPosition, applyCapitalPositionToGlobals } from '@/lib/treasury/capital-position';
 import { findManyProjects, findManyProjectsWithUuids } from '@/lib/repos/project';
@@ -176,6 +183,22 @@ export default async function DashboardPage() {
     // non-critical; action cards show 0 safely
   }
 
+  // V7 T144 — pending suggestions for the desk chip + review panel (editor+).
+  const isEditor = hasRole(profile, ['super_admin', 'editor']);
+  const pendingSuggestions: PendingSuggestionItem[] = isEditor
+    ? await findManySuggestions({ status: 'pending', limit: 20 })
+        .then((rows) =>
+          rows.map((s) => ({
+            id: s.id,
+            submittedAt: s.submittedAt,
+            prompt: s.prompt,
+            assistantSummary: s.assistantSummary,
+            patch: isProposedPatch(s.proposedPatch) ? s.proposedPatch : null,
+          }))
+        )
+        .catch(() => [])
+    : [];
+
   const dashboardUser = {
     name: profile.displayName ?? profile.email ?? user.email ?? 'Juno',
     email: profile.email ?? user.email ?? '',
@@ -318,6 +341,13 @@ export default async function DashboardPage() {
               label="cap-breach months in window"
               emptyLabel="No LOC breaches forecast"
               href="#capital"
+            />
+            {/* V7 T144 — meeting-review suggestions awaiting approval. */}
+            <DeskRow
+              count={pendingSuggestions.length}
+              label="suggestions pending review"
+              emptyLabel="No suggestions pending"
+              href="#suggestions"
               last
             />
           </section>
@@ -376,6 +406,18 @@ export default async function DashboardPage() {
             locConfigured={locConfigured}
           />
         </section>
+
+        {/* ── V7 T144: suggestions review (slim panel; the /suggestions page
+            stays parked). Editor+ only — approve triggers the generic apply. */}
+        {isEditor && (
+          <section id="suggestions" style={card}>
+            <SectionHeader
+              title="Suggestions"
+              hint={`${pendingSuggestions.length} pending · approve applies via the same forms' validation`}
+            />
+            <SuggestionsReviewPanel items={pendingSuggestions} />
+          </section>
+        )}
 
         {/* ── 6. Self-funding trajectory — collapsed by default ── */}
         <details id="self-funding" style={{ ...card, padding: 0 }}>

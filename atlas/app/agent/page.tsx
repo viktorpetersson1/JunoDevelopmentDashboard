@@ -9,6 +9,8 @@
 import { redirect } from 'next/navigation';
 import { DashboardShell } from '../_components/dashboard-shell';
 import { AgentRunPanel } from './_components/agent-run-panel';
+import { MeetingsSync } from './_components/meetings-sync';
+import { listMeetings } from '@/lib/repos/meetings';
 import { requireAuthOrRedirect } from '@/lib/auth/requireAuth';
 import { hasRole } from '@/lib/auth/requireRole';
 
@@ -23,6 +25,9 @@ export default async function AgentPage() {
   if (!hasRole(profile, ['super_admin', 'editor'])) {
     redirect('/dashboard');
   }
+
+  // T142 — recent ingested meetings (list is light: no transcripts rendered).
+  const meetings = await listMeetings({ limit: 10 }).catch(() => []);
 
   const dashboardUser = {
     name: profile.displayName ?? profile.email ?? user.email ?? 'Juno',
@@ -46,6 +51,9 @@ export default async function AgentPage() {
         </header>
 
         <AgentRunPanel />
+
+        {/* V7 T142 — Fathom ingestion (editor+; the page already gates). */}
+        <MeetingsSync meetings={meetings} />
       </div>
     </DashboardShell>
   );

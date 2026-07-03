@@ -21,6 +21,8 @@ import { requireEditor } from '@/lib/auth/requireRole';
 import { recordMutation } from '@/lib/services/audit';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { updateSuggestionStatus } from '@/lib/repos/suggestions';
+import { isProposedPatch } from '@/lib/agent/meeting-review';
+import { applySuggestionPatch } from '@/lib/agent/apply-suggestion';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -53,6 +55,7 @@ export const PATCH = withErrorBoundary(
     }
 
     let updated;
+    let applyNote: string | null = null;
     try {
       updated = await updateSuggestionStatus({
         id,
@@ -60,6 +63,24 @@ export const PATCH = withErrorBoundary(
         reviewerId: user.id,
         note: parsed.data.note ?? null,
       });
+
+      // V7 T144 — the generic apply path (Rule 7: only ever AFTER a human
+      // approval row exists). Structured patches route through the same
+      // repo/service functions the UI forms use; success advances
+      // approved → applied, failure leaves the row approved with the note
+      // surfaced (retryable). Legacy free-form suggestions are untouched.
+      if (parsed.data.status === 'approved' && isProposedPatch(updated.proposedPatch)) {
+        const applied = await applySuggestionPatch(updated.proposedPatch, user);
+        applyNote = applied.note;
+        if (applied.ok) {
+          updated = await updateSuggestionStatus({
+            id,
+            next: 'applied',
+            reviewerId: user.id,
+            note: applied.note,
+          });
+        }
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes('not found')) return notFound('Suggestion not found');
@@ -91,7 +112,7 @@ export const PATCH = withErrorBoundary(
       // best-effort
     }
 
-    return ok({ suggestion: updated });
+    return ok({ suggestion: updated, applyNote });
   }
 );
 

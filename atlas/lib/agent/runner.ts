@@ -20,13 +20,18 @@ import {
   type NewStep,
 } from '@/lib/repos/agent-runs';
 
-/** Phase 1 surface: the 5 existing READ tools only. */
+/** READ surface: the 5 v1 tools + the V7 T143 meetings/opportunities tools. */
 export const READ_TOOL_NAMES = [
   'list_projects',
   'get_project_summary',
   'get_dashboard_kpis',
   'search_actuals',
   'research_comps',
+  // V7 T143
+  'list_meetings',
+  'get_meeting',
+  'list_opportunities',
+  'get_opportunity',
 ] as const;
 
 export function readToolDefinitions(): ToolDefinition[] {
@@ -184,6 +189,8 @@ Available READ tools:
 Rules:
 - Output ONLY a JSON object: {"plan": "<one sentence approach>", "steps": [{"tool": "<name>", "args": {...}, "why": "<short>"}]}.
 - Use only the tools above. If you need a project key you don't have, plan list_projects first.
+- DECISION questions ("what did we decide/discuss/agree about X?") route to the meeting tools: list_meetings first, then get_meeting on the relevant one — quote the transcript and cite the meeting title + date.
+- Pipeline/deal questions ("which opportunity should we chase?") route to list_opportunities (+ get_opportunity for detail).
 - Keep it to the fewest steps that answer the goal (max 8). Do NOT invent tools or write data — this is read-only.`;
 
 const SYNTH_SYSTEM = `You are Ask Juno, an analyst for the Juno Atlas real-estate development platform. The system has gathered tool results for the user's goal. Write the final answer: direct, specific, grounded ONLY in the tool results below. Cite concrete numbers from the results; never invent figures. If the results are insufficient, say what's missing. Be concise.`;
