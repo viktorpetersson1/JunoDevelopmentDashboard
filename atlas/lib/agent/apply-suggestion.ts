@@ -23,13 +23,19 @@ import { updateProject } from '@/lib/services/project-update';
 import { UpdateProjectSchema } from '@/lib/services/project-schema';
 import { patchOpportunity, findOpportunityById } from '@/lib/repos/opportunities';
 import { updateCapitalSource } from '@/lib/services/capital-sources';
+import { hasRole } from '@/lib/auth/requireRole';
+import type { UserProfile } from '@/lib/auth/profile';
 
 export interface ApplyResult {
   ok: boolean;
   note: string;
 }
 
-export async function applySuggestionPatch(raw: unknown, user: User): Promise<ApplyResult> {
+export async function applySuggestionPatch(
+  raw: unknown,
+  user: User,
+  profile: UserProfile
+): Promise<ApplyResult> {
   if (!isProposedPatch(raw)) {
     return {
       ok: false,
@@ -84,6 +90,17 @@ export async function applySuggestionPatch(raw: unknown, user: User): Promise<Ap
       }
 
       case 'capital_source': {
+        // QA fix (review finding #1): capital sources are super_admin-only
+        // everywhere else (/api/capital-sources/[id] = requireSuperAdmin,
+        // D-076 "financial/structural = super_admin only"). The suggestions
+        // approve path must enforce the SAME boundary — an editor approving
+        // a capital_source patch must not escalate past it.
+        if (!hasRole(profile, ['super_admin'])) {
+          return {
+            ok: false,
+            note: 'Capital-source changes require super_admin approval — ask a super admin to approve this suggestion.',
+          };
+        }
         const field = patch.field;
         if (field !== 'limit_usd' && field !== 'interest_rate_pct') {
           return { ok: false, note: `Field ${field} not applicable to capital sources.` };

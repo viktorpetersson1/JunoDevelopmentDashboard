@@ -58,11 +58,15 @@ export default async function NewProjectPage({
     const opp = await findOpportunityById(searchParams.fromOpportunity).catch(() => null);
     if (opp && opp.status !== 'promoted') {
       promote = { id: opp.id, name: opp.name };
+      // QA fix (review finding): cash_needed_usd is the deal's TOTAL cash
+      // requirement (down payment + costs + reserves), not the land price —
+      // pre-filling it as land_cost_usd would silently feed the engine a
+      // materially wrong cost basis. Land cost stays blank; the required
+      // field forces the user to type the real number.
       initialOverrides = {
         name: opp.name,
         market_id: opp.market && KNOWN_MARKETS.has(opp.market) ? opp.market : 'default',
         stage: 'sourcing',
-        ...(opp.cashNeededUsd !== null && { land_cost_usd: String(opp.cashNeededUsd) }),
       };
     }
   }

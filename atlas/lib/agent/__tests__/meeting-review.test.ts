@@ -192,11 +192,14 @@ describe('T144 apply routing (mocked services — same fns the UI uses)', () => 
     meeting_id: 'm1',
     meeting_title: 'Juno Executive Meeting 17 Jun',
   };
+  const user = { id: 'u1' } as never;
+  const editor = { role: 'editor' } as never;
+  const superAdmin = { role: 'super_admin' } as never;
 
   it('project patch routes through updateProject (validated service)', async () => {
     const { applySuggestionPatch } = await import('../apply-suggestion');
     updateProjectMock.mockResolvedValue({ version: 4, requiresReapproval: true });
-    const r = await applySuggestionPatch(basePatch, { id: 'u1' } as never);
+    const r = await applySuggestionPatch(basePatch, user, editor);
     expect(r.ok).toBe(true);
     expect(updateProjectMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -219,7 +222,8 @@ describe('T144 apply routing (mocked services — same fns the UI uses)', () => 
         field: 'cash_needed_usd',
         proposed_value: 950_000,
       },
-      { id: 'u1' } as never
+      user,
+      editor
     );
     expect(r.ok).toBe(true);
     expect(patchOpportunityMock).toHaveBeenCalledWith('o1', { cashNeededUsd: 950_000 });
@@ -233,15 +237,37 @@ describe('T144 apply routing (mocked services — same fns the UI uses)', () => 
         field: 'cash_needed_usd',
         proposed_value: 1,
       },
-      { id: 'u1' } as never
+      user,
+      editor
     );
     expect(r2.ok).toBe(false);
     expect(patchOpportunityMock).toHaveBeenCalledTimes(1); // no second write
   });
 
+  it('capital_source: editor refused (super_admin boundary, D-076); super_admin applies', async () => {
+    const { applySuggestionPatch } = await import('../apply-suggestion');
+    const csPatch = {
+      ...basePatch,
+      entity: 'capital_source' as const,
+      id: 'c1',
+      field: 'limit_usd',
+      current_value: 6_000_000,
+      proposed_value: 8_000_000,
+    };
+    const refused = await applySuggestionPatch(csPatch, user, editor);
+    expect(refused.ok).toBe(false);
+    expect(refused.note).toMatch(/super_admin/);
+    expect(updateCapitalSourceMock).not.toHaveBeenCalled();
+
+    updateCapitalSourceMock.mockResolvedValue({ id: 'c1', version: 2 });
+    const applied = await applySuggestionPatch(csPatch, user, superAdmin);
+    expect(applied.ok).toBe(true);
+    expect(updateCapitalSourceMock).toHaveBeenCalledWith('c1', { limitUsd: 8_000_000 }, user);
+  });
+
   it('non-structured / unknown-field payloads → ok:false note, ZERO writes', async () => {
     const { applySuggestionPatch } = await import('../apply-suggestion');
-    const r = await applySuggestionPatch({ anything: 'else' }, { id: 'u1' } as never);
+    const r = await applySuggestionPatch({ anything: 'else' }, user, editor);
     expect(r.ok).toBe(false);
     expect(updateProjectMock).not.toHaveBeenCalled();
     expect(patchOpportunityMock).not.toHaveBeenCalled();
@@ -251,7 +277,7 @@ describe('T144 apply routing (mocked services — same fns the UI uses)', () => 
   it('service throw → ok:false with the message (never a crash)', async () => {
     const { applySuggestionPatch } = await import('../apply-suggestion');
     updateProjectMock.mockRejectedValue(new Error('engine failed pre-run'));
-    const r = await applySuggestionPatch(basePatch, { id: 'u1' } as never);
+    const r = await applySuggestionPatch(basePatch, user, editor);
     expect(r.ok).toBe(false);
     expect(r.note).toContain('engine failed pre-run');
   });

@@ -12,20 +12,23 @@ import { test, expect } from '@playwright/test';
  */
 
 test.describe('atlas smoke (no auth needed)', () => {
-  test('GET /api/health returns 200 with envelope', async ({ request }) => {
+  test('GET /api/health returns the bare liveness body', async ({ request }) => {
+    // T084.2: the public probe is intentionally {status:'ok'} ONLY — commit
+    // SHA + build time moved behind super_admin at /api/health/detailed so
+    // unauthenticated curl can't fingerprint the deploy.
     const res = await request.get('/api/health');
     expect(res.status()).toBe(200);
-    const body = (await res.json()) as { data?: { status: string; commit: string; time: string } };
-    expect(body.data?.status).toBe('ok');
-    expect(typeof body.data?.commit).toBe('string');
-    expect(body.data?.time).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+    const body = (await res.json()) as { status?: string };
+    expect(body.status).toBe('ok');
   });
 
   test('unauthenticated / redirects to /sign-in with redirectTo param', async ({ page }) => {
     await page.goto('/');
     await expect(page).toHaveURL(/\/sign-in(\?.*)?$/);
     const url = new URL(page.url());
-    expect(url.searchParams.get('redirectTo')).toBe('/');
+    // Since b68a290 (next-on-pages `/` 404 fix), `/` canonically forwards to
+    // /dashboard first — the auth redirect therefore carries /dashboard.
+    expect(url.searchParams.get('redirectTo')).toBe('/dashboard');
   });
 
   test('unauthenticated /projects redirects to /sign-in', async ({ page }) => {

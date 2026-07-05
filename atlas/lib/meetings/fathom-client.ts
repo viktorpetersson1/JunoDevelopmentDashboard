@@ -146,8 +146,12 @@ export async function fetchRecentJunoMeetings(opts?: {
       headers: { 'X-Api-Key': key, Accept: 'application/json' },
     });
     if (!res.ok) {
+      // QA hardening: the raw third-party error body stays in the server log
+      // (CF captures console.error); the thrown message — which the sync
+      // route surfaces to the browser — carries only the status.
       const body = await res.text().catch(() => '');
-      throw new Error(`Fathom API ${res.status}: ${body.slice(0, 300)}`);
+      console.error(`Fathom API ${res.status} response: ${body.slice(0, 500)}`);
+      throw new Error(`Fathom API ${res.status} — sync failed; see server logs for detail.`);
     }
     const json = (await res.json()) as RawListResponse;
     const items = json.items ?? json.meetings ?? json.data ?? [];

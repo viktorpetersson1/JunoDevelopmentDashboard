@@ -161,17 +161,24 @@ export async function updateSuggestionStatus(input: {
   if (input.note !== undefined) patch.review_note = input.note;
   if (input.next === 'applied') patch.applied_at = new Date().toISOString();
 
+  // Compare-and-swap on the status we validated against (V7 QA): two
+  // concurrent reviewers can both pass the read-side check above; the
+  // `.eq('status', prev)` guard makes exactly ONE transition win, so the
+  // T144 apply path can never run twice for the same approval.
   const { data: updated, error: uErr } = await supabase
     .schema('atlas')
     .from('suggestions')
     .update(patch)
     .eq('id', input.id)
+    .eq('status', prev)
     .select(
       'id, submitted_by, submitted_at, prompt, pathname, assistant_summary, proposed_patch, status, reviewed_by, reviewed_at, review_note, applied_at'
     )
     .single();
   if (uErr || !updated) {
-    throw new Error(`updateSuggestionStatus update: ${uErr?.message ?? 'no row'}`);
+    throw new Error(
+      `updateSuggestionStatus: invalid transition ${prev} → ${input.next} (row changed concurrently${uErr ? `: ${uErr.message}` : ''})`
+    );
   }
 
   // Re-fetch submitter identity for the response.

@@ -35,7 +35,9 @@ test.describe('V3 §3 — sign-in layout + interaction', () => {
     expect(btnHeight, 'Sign In button height').toBeGreaterThanOrEqual(48);
 
     for (const label of ['Email', 'Password']) {
-      const input = page.getByLabel(label);
+      // exact: the eye toggle's aria-label ("Show password") substring-matches
+      // a bare getByLabel('Password') — strict mode then sees 2 elements.
+      const input = page.getByLabel(label, { exact: true });
       await expect(input).toBeVisible();
       const wrapHeight = await input.evaluate((el) => {
         const wrap = (el as HTMLElement).closest('.ja-input-wrap') as HTMLElement | null;
@@ -64,7 +66,7 @@ test.describe('V3 §3 — sign-in layout + interaction', () => {
     await expect(hideToggle).toHaveAttribute('aria-pressed', 'true');
 
     // Password input type flips from "password" to "text"
-    const password = page.getByLabel('Password');
+    const password = page.getByLabel('Password', { exact: true });
     await expect(password).toHaveAttribute('type', 'text');
   });
 
@@ -166,22 +168,26 @@ test.describe('V3 §3 — /sign-up + forgot-password flow', () => {
     await expect(page.getByRole('button', { name: /send reset link/i })).toBeDisabled();
   });
 
-  test('item 4 (partial): Sign In button switches to "Signing in…" while submitting', async ({
-    page,
-  }) => {
+  test('item 4 (partial): submit surfaces a failure + releases the guard', async ({ page }) => {
+    // Without Supabase env, the browser client throws SYNCHRONOUSLY inside
+    // the handler — setSubmitting(true)+finally reset batch into one React
+    // render, so the transient "Signing in…" label never paints and cannot
+    // be asserted here (it needs a real async auth round-trip — see the
+    // authed suite). What IS deterministically observable, and what T080.3
+    // actually protects: a failed submit surfaces an inline error (QA fix —
+    // previously an unhandled rejection with ZERO user feedback) and the
+    // button returns to an enabled "Sign in" (double-submit guard released,
+    // never stuck on "Signing in…").
     await page.goto(SIGNIN);
-    // Fire a submit with placeholder Supabase env (auth call will fail).
-    // We only assert the button label flips before the response lands.
     await page.getByLabel('Email').fill('user@example.com');
-    await page.getByLabel('Password').fill('placeholder-pw');
-    const btn = page.getByRole('button', { name: /^Sign in$/i });
+    await page.getByLabel('Password', { exact: true }).fill('placeholder-pw');
+    await page.getByRole('button', { name: /^Sign in$/i }).click();
 
-    const inFlight = btn.click();
-    // The label flip happens synchronously in startSubmit() — should be
-    // observable before the auth promise resolves.
-    await expect(page.getByRole('button', { name: /signing in/i })).toBeVisible({ timeout: 2000 });
-    await inFlight.catch(() => {
-      /* placeholder env → expected rejection */
+    await expect(page.locator('.ja-form-error, [role="alert"]').first()).toBeVisible({
+      timeout: 3000,
     });
+    const btn = page.getByRole('button', { name: /^Sign in$/i });
+    await expect(btn).toBeVisible();
+    await expect(btn).toBeEnabled();
   });
 });

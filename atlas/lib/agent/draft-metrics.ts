@@ -58,12 +58,12 @@ export function parseDraftMetrics(raw: string): DraftMetrics {
     const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
     const jsonStr = fenced?.[1] ?? raw.match(/\{[\s\S]*\}/)?.[0] ?? raw;
     const obj = JSON.parse(jsonStr) as Record<string, unknown>;
+    const months = num(obj.timeline_months, 0, 240);
     return {
       cash_needed_usd: num(obj.cash_needed_usd, 0, 1_000_000_000),
-      timeline_months:
-        obj.timeline_months === null || obj.timeline_months === undefined
-          ? null
-          : Math.round(num(obj.timeline_months, 0, 240) ?? 0) || null,
+      // QA fix: no `|| null` here — `0 || null` is null in JS, which would
+      // turn a real "0 months to cash-back" answer into a fake research gap.
+      timeline_months: months === null ? null : Math.round(months),
       expected_profit_usd: num(obj.expected_profit_usd, -1_000_000_000, 1_000_000_000),
       expected_margin_pct: num(obj.expected_margin_pct, -100, 100),
       next_step: typeof obj.next_step === 'string' ? obj.next_step.slice(0, 500) : null,

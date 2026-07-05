@@ -86,6 +86,10 @@ export function ResearchPanel({
   };
 
   const addLogEntry = async () => {
+    // QA fix: the Enter-key shortcut bypassed the Button's loading guard —
+    // a persist racing an in-flight one could PATCH a stale research object
+    // and silently drop the other change. Same gate as the buttons.
+    if (saving) return;
     if (!newLogNote.trim()) return;
     const today = new Date().toISOString().slice(0, 10);
     const next = [...log, { date: today, note: newLogNote.trim() }];

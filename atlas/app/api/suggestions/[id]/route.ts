@@ -17,7 +17,7 @@ import type { NextRequest } from 'next/server';
 import { ok, badRequest, notFound } from '@/lib/api/response';
 import { withErrorBoundary } from '@/lib/api/handler';
 import { requireAuth } from '@/lib/auth/requireAuth';
-import { requireEditor } from '@/lib/auth/requireRole';
+import { requireEditor, requireSuperAdmin } from '@/lib/auth/requireRole';
 import { recordMutation } from '@/lib/services/audit';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { updateSuggestionStatus } from '@/lib/repos/suggestions';
@@ -54,6 +54,24 @@ export const PATCH = withErrorBoundary(
       );
     }
 
+    // QA fix (review finding #1): a capital_source patch must clear the SAME
+    // role bar as the direct /api/capital-sources route (super_admin, D-076).
+    // Checked BEFORE the transition so the suggestion stays PENDING for a
+    // super admin to approve — never approved-but-unapplied.
+    if (parsed.data.status === 'approved') {
+      const supabase = createSupabaseServerClient();
+      const { data: row } = await supabase
+        .schema('atlas')
+        .from('suggestions')
+        .select('proposed_patch')
+        .eq('id', id)
+        .maybeSingle();
+      const pp = (row as { proposed_patch?: unknown } | null)?.proposed_patch;
+      if (isProposedPatch(pp) && pp.entity === 'capital_source') {
+        requireSuperAdmin(profile);
+      }
+    }
+
     let updated;
     let applyNote: string | null = null;
     try {
@@ -70,7 +88,7 @@ export const PATCH = withErrorBoundary(
       // approved → applied, failure leaves the row approved with the note
       // surfaced (retryable). Legacy free-form suggestions are untouched.
       if (parsed.data.status === 'approved' && isProposedPatch(updated.proposedPatch)) {
-        const applied = await applySuggestionPatch(updated.proposedPatch, user);
+        const applied = await applySuggestionPatch(updated.proposedPatch, user, profile);
         applyNote = applied.note;
         if (applied.ok) {
           updated = await updateSuggestionStatus({

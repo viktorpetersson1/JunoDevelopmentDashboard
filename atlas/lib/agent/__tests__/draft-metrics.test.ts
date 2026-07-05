@@ -58,6 +58,14 @@ describe('T145 draft metrics', () => {
     expect(d.reasoning).toMatch(/cash-back/);
   });
 
+  it('a real 0 stays 0 (QA fix: `0 || null` must not fake a research gap)', () => {
+    const d = parseDraftMetrics(
+      JSON.stringify({ timeline_months: 0, cash_needed_usd: 0, reasoning: 'immediate cash-back' })
+    );
+    expect(d.timeline_months).toBe(0);
+    expect(d.cash_needed_usd).toBe(0);
+  });
+
   it('nulls stay null (research gaps are not zeros)', () => {
     const d = parseDraftMetrics(
       JSON.stringify({

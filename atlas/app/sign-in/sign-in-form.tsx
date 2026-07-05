@@ -91,6 +91,13 @@ export function SignInForm({
         router.push(redirectTo);
         router.refresh();
       });
+    } catch (err) {
+      // QA fix: a thrown failure (network down, fetch aborted, client
+      // misconfigured) previously escaped as an unhandled rejection — the
+      // button reset with NO feedback. Surface it like any auth error.
+      setFormError(
+        err instanceof Error ? err.message : 'Sign-in failed — check your connection and retry.'
+      );
     } finally {
       setSubmitting(false);
     }

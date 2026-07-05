@@ -201,6 +201,28 @@ jobs:
           uploadArtifacts: true
           temporaryPublicStorage: true
 
+  # Playwright e2e (V7 QA pass): the no-auth surface — middleware parking +
+  # absorbed 301s + tab redirects + endpoint gating + the sign-in specs.
+  # Auth-dependent journeys self-skip (no test user in CI). Added because
+  # 4 broken specs sat invisible for weeks with no e2e job in CI.
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: atlas/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright test
+        env:
+          CI: 'true'
+
   # Cloudflare Pages adapter build — catches edge-runtime regressions
   # before Cloudflare's own build pipeline runs. Doesn't deploy; the
   # actual deploy is triggered by Cloudflare's GitHub integration.
