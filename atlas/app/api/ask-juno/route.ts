@@ -1,24 +1,27 @@
 /**
- * POST /api/ask-juno
+ * POST /api/ask-juno — AJ-v3: the working-pane conversation engine.
  *
- * V6.1 T115 — Ask Juno tool-calling agent.
+ * A real agentic loop (up from v1's single tool round-trip):
  *
- * Deviation V6-07.a: Vercel AI SDK not in package.json.
- * Uses raw Anthropic Messages API with the `tools` parameter (same fetch
- * pattern as lib/pricing/comp-researcher.ts). No streaming — one or two
- * round-trips per user message.
+ *   loop (≤ MAX_ITERS, budget-capped):
+ *     model(tools) →
+ *       text only        → final reply
+ *       ask_user         → pause: pane renders multiple-choice options
+ *       READ tool        → execute inline, feed result back, continue
+ *       WRITE tool       → risk-classify:
+ *                            auto  → execute (editor+), continue
+ *                            else  → pause: pane renders a confirmation card
  *
- * Flow:
- *   1. Client sends { messages, pathname } (full conversation history).
- *   2. Server calls Anthropic with tool definitions.
- *   3a. Text reply → return { data: { type: 'reply', text } }
- *   3b. Tool call → READ tools execute immediately; result fed back to Claude for final reply.
- *   3c. WRITE tool requiring confirmation → return { data: { type: 'pending_confirmation', ... } }
- *   3d. WRITE auto-execute → execute, return { data: { type: 'tool_executed', ... } }
- *   4. Confirmed tool: client sends { messages, confirmed_tool: { name, args } }
- *      → execute the write, return reply.
+ * Pauses resume via `resume` — the client replays history plus the
+ * confirmed/declined/answered outcome; the loop CONTINUES with tools, so
+ * Juno can chain work after an approval (v1 stopped dead).
  *
- * Auth: any authenticated user (read tools). Write tools also require editor role.
+ * Ledger + budget: every model call runs inside a per-turn agent_run via
+ * callAgentModel (agent_llm_calls rows, estimate-then-true-up); the turn
+ * stops with a clear message at the run's hard cost cap.
+ *
+ * Role gates (fixes a v1 gap): EVERY write execution — auto OR confirmed —
+ * requires editor+ server-side, not just at proposal time.
  */
 
 import { z } from 'zod';
@@ -26,122 +29,67 @@ import type { NextRequest } from 'next/server';
 import { ok, badRequest } from '@/lib/api/response';
 import { withErrorBoundary } from '@/lib/api/handler';
 import { requireAuth } from '@/lib/auth/requireAuth';
+import { hasRole } from '@/lib/auth/requireRole';
 import { buildSystemPrompt } from '@/lib/ask-juno/system-prompt';
 import { classifyRisk } from '@/lib/ask-juno/risk-classifier';
 import {
   availableToolDefinitions,
   executeTool,
   projectHasLockedSnapshot,
+  READ_ONLY_TOOL_NAMES,
   type ToolResult,
 } from '@/lib/ask-juno/tools';
+import { archiveProject } from '@/lib/services/project-archive';
+import { createRun, updateRun } from '@/lib/repos/agent-runs';
+import { sumAgentCostUsd } from '@/lib/repos/agent-llm-calls';
+import { callAgentModel, type AnthropicToolUse } from '@/lib/agent/llm';
+import { agentModel } from '@/lib/agent/config';
 import { recordMutation } from '@/lib/services/audit';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-// Edge runtime — CF Pages Functions are edge-only (D-017 / D-018 preflight
-// guards). LLM calls are network I/O, not CPU; Workers' time-budget is fine.
-// nodejs_compat (V5.2 D-017) makes Buffer / process available.
 export const runtime = 'edge';
+
+const MAX_ITERS = 10;
 
 // ── Request schema ────────────────────────────────────────────────────────────
 
 const MessageSchema = z.object({
-  role: z.enum(['user', 'assistant', 'tool_result', 'system']),
-  content: z.union([z.string(), z.array(z.any())]),
+  role: z.enum(['user', 'assistant']),
+  content: z.string().max(32_000),
 });
 
-const ConfirmedToolSchema = z.object({
-  name: z.string(),
+const ResumeSchema = z.object({
+  kind: z.enum(['confirmed_tool', 'declined_tool', 'answered_question']),
+  tool_use_id: z.string().max(128),
+  name: z.string().max(128),
   args: z.record(z.unknown()),
-  tool_use_id: z.string().optional(),
+  /** answered_question: the user's picked/typed answer. */
+  answer: z.string().max(4000).optional(),
 });
 
 const BodySchema = z.object({
-  messages: z.array(MessageSchema).min(1),
+  messages: z.array(MessageSchema).min(1).max(80),
   pathname: z.string().max(500).optional(),
-  /** When set, the user has confirmed a previously proposed write action. */
-  confirmed_tool: ConfirmedToolSchema.optional(),
+  resume: ResumeSchema.optional(),
 });
 
-// ── Anthropic API call ────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-const MODEL_CHAIN = [
-  'claude-sonnet-4-5',
-  'claude-3-7-sonnet-latest',
-  'claude-3-5-sonnet-latest',
-] as const;
-
-interface AnthropicToolUse {
-  type: 'tool_use';
-  id: string;
-  name: string;
-  input: Record<string, unknown>;
-}
-
-interface AnthropicTextBlock {
+interface TextBlock {
   type: 'text';
   text: string;
 }
+type ContentBlock = TextBlock | AnthropicToolUse;
 
-type AnthropicContentBlock = AnthropicToolUse | AnthropicTextBlock;
-
-interface AnthropicMessage {
-  content: AnthropicContentBlock[];
-  stop_reason: 'end_turn' | 'tool_use' | 'max_tokens' | string;
-}
-
-async function callAnthropic(
-  apiKey: string,
-  systemPrompt: string,
-  messages: unknown[],
-  withTools: boolean
-): Promise<AnthropicMessage> {
-  for (const model of MODEL_CHAIN) {
-    const body: Record<string, unknown> = {
-      model,
-      max_tokens: 1024,
-      system: systemPrompt,
-      messages,
-    };
-    if (withTools) {
-      body.tools = availableToolDefinitions();
-    }
-
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (res.status === 404 || res.status === 400) {
-      // Model not available — try next in chain.
-      continue;
-    }
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => '(no body)');
-      throw new Error(`Anthropic API HTTP ${res.status}: ${text.slice(0, 400)}`);
-    }
-
-    return (await res.json()) as AnthropicMessage;
-  }
-  throw new Error('All models in the fallback chain failed or are unavailable');
-}
-
-function extractText(content: AnthropicContentBlock[]): string {
+function extractText(content: ContentBlock[]): string {
   return content
-    .filter((b): b is AnthropicTextBlock => b.type === 'text')
+    .filter((b): b is TextBlock => b.type === 'text')
     .map((b) => b.text)
     .join('\n')
     .trim();
 }
-
-// ── Handler ───────────────────────────────────────────────────────────────────
 
 let cachedOrgId: string | null = null;
 async function resolveOrgId(): Promise<string> {
@@ -152,6 +100,101 @@ async function resolveOrgId(): Promise<string> {
   return cachedOrgId;
 }
 
+interface ExecutedWrite {
+  tool: string;
+  audit_log_id: string | null;
+  summary: string;
+}
+
+/** Execute a WRITE tool via the same validated paths the UI uses. */
+async function executeWrite(
+  req: NextRequest,
+  name: string,
+  args: Record<string, unknown>,
+  user: { id: string }
+): Promise<ToolResult> {
+  const base = req.nextUrl.origin;
+  const cookie = req.headers.get('cookie') ?? '';
+
+  if (name === 'create_project') {
+    const res = await fetch(`${base}/api/projects`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: cookie },
+      body: JSON.stringify({ stage: 'tbc', ...args }),
+    });
+    const data = (await res.json().catch(() => null)) as {
+      data?: { projectKey?: string };
+      error?: { message?: string };
+    } | null;
+    if (!res.ok) throw new Error(data?.error?.message ?? `Create failed (HTTP ${res.status})`);
+    const auditId = await recordMutation({
+      orgId: await resolveOrgId(),
+      userId: user.id,
+      route: 'service:create_project:ask_juno',
+      method: 'POST',
+      statusCode: 201,
+      source: 'ask_juno_agent',
+      after: { projectKey: data?.data?.projectKey, args },
+    });
+    return {
+      content: JSON.stringify({
+        success: true,
+        project_key: data?.data?.projectKey,
+        audit_log_id: auditId,
+      }),
+      audit_log_id: auditId,
+      is_write: true,
+    };
+  }
+
+  if (name === 'update_project') {
+    const key = String(args.project_key ?? '');
+    const { project_key: _k, ...fields } = args;
+    const res = await fetch(`${base}/api/projects/${key}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Cookie: cookie },
+      body: JSON.stringify(fields),
+    });
+    const data = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+    if (!res.ok) throw new Error(data?.error?.message ?? `Update failed (HTTP ${res.status})`);
+    const auditId = await recordMutation({
+      orgId: await resolveOrgId(),
+      userId: user.id,
+      route: `service:update_project:ask_juno:${key}`,
+      method: 'PATCH',
+      statusCode: 200,
+      source: 'ask_juno_agent',
+      after: { projectKey: key, fields },
+    });
+    return {
+      content: JSON.stringify({ success: true, project_key: key, audit_log_id: auditId }),
+      audit_log_id: auditId,
+      is_write: true,
+    };
+  }
+
+  if (name === 'archive_project') {
+    const key = String(args.project_key ?? '');
+    const result = await archiveProject(key, user as never, await resolveOrgId());
+    return {
+      content: JSON.stringify({
+        success: true,
+        archived: result.projectKey,
+        name: result.name,
+        audit_log_id: result.auditId,
+      }),
+      audit_log_id: result.auditId,
+      is_write: true,
+    };
+  }
+
+  // Everything else (actuals, risks, opportunities) executes + audits in
+  // the shared executor.
+  return executeTool(name, args, user as never);
+}
+
+// ── Handler ───────────────────────────────────────────────────────────────────
+
 export const POST = withErrorBoundary(async (req: NextRequest) => {
   const { user, profile } = await requireAuth();
 
@@ -159,7 +202,7 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
   if (!apiKey) {
     return ok({
       type: 'reply',
-      text: 'Ask Juno agent is not configured — an admin needs to set ANTHROPIC_API_KEY in Cloudflare Pages env vars.',
+      text: 'Ask Juno is not configured — an admin needs to set ANTHROPIC_API_KEY in Cloudflare Pages env vars.',
     });
   }
 
@@ -171,176 +214,210 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
       'VALIDATION_FAILED'
     );
   }
+  const { messages, resume } = parsed.data;
+  const isEditor = hasRole(profile, ['super_admin', 'editor']);
 
-  const { messages, confirmed_tool } = parsed.data;
   const systemPrompt = buildSystemPrompt({
     userName: profile.displayName ?? profile.email ?? user.email ?? 'User',
     userRole: profile.role,
   });
 
-  // ── Path A: executing a previously confirmed write tool ───────────────────
-  if (confirmed_tool) {
-    try {
-      // (hasLocked check retained for future re-approval gate wiring)
-      const _hasLocked = confirmed_tool.args.project_key
-        ? await projectHasLockedSnapshot(String(confirmed_tool.args.project_key))
-        : false;
+  // Per-turn agent_run: ledger + budget caps.
+  const lastUser = [...messages].reverse().find((m) => m.role === 'user');
+  const run = await createRun({
+    createdBy: user.id,
+    goal: (resume ? `[${resume.kind}] ${resume.name}` : (lastUser?.content ?? 'chat')).slice(
+      0,
+      4000
+    ),
+    pathname: parsed.data.pathname ?? '/ask-juno',
+    model: agentModel(),
+  });
 
-      // For confirmed tools (create_project / update_project) call internal APIs
-      let toolResult: ToolResult;
-      if (confirmed_tool.name === 'create_project') {
-        // Delegate to the existing POST /api/projects endpoint internally.
-        const base = req.nextUrl.origin;
-        const res = await fetch(`${base}/api/projects`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Cookie: req.headers.get('cookie') ?? '',
-          },
-          body: JSON.stringify({ ...confirmed_tool.args, stage: 'tbc' }),
-        });
-        const data = (await res.json().catch(() => null)) as {
-          data?: { projectKey?: string };
-          error?: { message?: string };
-        } | null;
-        if (!res.ok) {
-          throw new Error(data?.error?.message ?? `Create failed (HTTP ${res.status})`);
-        }
-        const auditId = await recordMutation({
-          orgId: await resolveOrgId(),
-          userId: user.id,
-          route: 'service:create_project:ask_juno',
-          method: 'POST',
-          statusCode: 201,
-          source: 'ask_juno_agent',
-          after: { projectKey: data?.data?.projectKey, args: confirmed_tool.args },
-        });
-        toolResult = {
-          content: JSON.stringify({
-            success: true,
-            project_key: data?.data?.projectKey,
-            audit_log_id: auditId,
-          }),
-          audit_log_id: auditId,
-          is_write: true,
-        };
-      } else if (confirmed_tool.name === 'update_project') {
-        const key = String(confirmed_tool.args.project_key ?? '');
-        const { project_key: _k, ...fields } = confirmed_tool.args;
-        const base = req.nextUrl.origin;
-        const res = await fetch(`${base}/api/projects/${key}`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            Cookie: req.headers.get('cookie') ?? '',
-          },
-          body: JSON.stringify(fields),
-        });
-        const data = (await res.json().catch(() => null)) as {
-          error?: { message?: string };
-        } | null;
-        if (!res.ok) {
-          throw new Error(data?.error?.message ?? `Update failed (HTTP ${res.status})`);
-        }
-        const auditId = await recordMutation({
-          orgId: await resolveOrgId(),
-          userId: user.id,
-          route: `service:update_project:ask_juno:${key}`,
-          method: 'PATCH',
-          statusCode: 200,
-          source: 'ask_juno_agent',
-          after: { projectKey: key, fields },
-        });
-        toolResult = {
-          content: JSON.stringify({ success: true, project_key: key, audit_log_id: auditId }),
-          audit_log_id: auditId,
-          is_write: true,
-        };
-      } else {
-        toolResult = await executeTool(confirmed_tool.name, confirmed_tool.args, user);
-      }
+  const finishRun = (status: 'completed' | 'failed', error?: string) =>
+    updateRun(run.id, { status, error: error ?? null }).catch(() => null);
 
-      // Feed the tool result back to Claude for a final reply.
-      const toolUseId = confirmed_tool.tool_use_id ?? `toolu_confirmed_${Date.now()}`;
-      const extendedMessages = [
-        ...messages,
-        // Inject a synthetic assistant tool_use block + user tool_result
-        {
-          role: 'assistant',
-          content: [
-            {
-              type: 'tool_use',
-              id: toolUseId,
-              name: confirmed_tool.name,
-              input: confirmed_tool.args,
-            },
-          ],
-        },
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'tool_result',
-              tool_use_id: toolUseId,
-              content: toolResult.content,
-            },
-          ],
-        },
-      ];
+  // Anthropic-format transcript. History arrives as plain text turns; the
+  // resume outcome is appended as a synthetic tool_use/tool_result pair.
+  const transcript: Array<{ role: 'user' | 'assistant'; content: unknown }> = messages.map((m) => ({
+    role: m.role,
+    content: m.content,
+  }));
+  const executedWrites: ExecutedWrite[] = [];
 
-      const finalMsg = await callAnthropic(apiKey, systemPrompt, extendedMessages, false);
-      const finalText = extractText(finalMsg.content);
-
-      return ok({
-        type: 'tool_executed',
-        tool_name: confirmed_tool.name,
-        audit_log_id: toolResult.audit_log_id ?? null,
-        text: finalText || `Done — audit log id: ${toolResult.audit_log_id ?? 'n/a'}`,
+  if (resume) {
+    let resultContent: string;
+    if (resume.kind === 'declined_tool') {
+      resultContent = JSON.stringify({
+        declined: true,
+        note: 'The user declined this action. Do not retry it unless asked; continue helping.',
       });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      return ok({ type: 'error', text: `Tool execution failed: ${msg}` });
+    } else if (resume.kind === 'answered_question') {
+      resultContent = JSON.stringify({ answer: resume.answer ?? '' });
+    } else {
+      // confirmed_tool — execute NOW (editor+ enforced server-side).
+      if (!isEditor) {
+        await finishRun('failed', 'viewer attempted confirmed write');
+        return ok({
+          type: 'reply',
+          text: 'Your role is read-only — an editor or super admin has to approve and run changes.',
+        });
+      }
+      try {
+        const result = await executeWrite(req, resume.name, resume.args, user);
+        resultContent = result.content;
+        executedWrites.push({
+          tool: resume.name,
+          audit_log_id: result.audit_log_id ?? null,
+          summary: `${resume.name} executed`,
+        });
+      } catch (err) {
+        resultContent = JSON.stringify({
+          success: false,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
     }
+
+    transcript.push(
+      {
+        role: 'assistant',
+        content: [
+          { type: 'tool_use', id: resume.tool_use_id, name: resume.name, input: resume.args },
+        ],
+      },
+      {
+        role: 'user',
+        content: [{ type: 'tool_result', tool_use_id: resume.tool_use_id, content: resultContent }],
+      }
+    );
   }
 
-  // ── Path B: normal conversation turn ─────────────────────────────────────
-
+  // ── The loop ───────────────────────────────────────────────────────────────
   try {
-    const anthropicMessages = messages
-      .filter((m) => m.role === 'user' || m.role === 'assistant')
-      .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+    for (let iter = 0; iter < MAX_ITERS; iter++) {
+      const res = await callAgentModel({
+        runId: run.id,
+        stepId: null,
+        callSite: 'synthesize', // 4096 max_tokens — real answers, not stubs
+        runModel: run.model,
+        apiKey,
+        system: systemPrompt,
+        messages: transcript,
+        tools: availableToolDefinitions(),
+      });
 
-    if (anthropicMessages.length === 0) {
-      return badRequest('No user/assistant messages provided', 'VALIDATION_FAILED');
-    }
+      // Budget gate — the ledger is authoritative (estimate-then-true-up).
+      const spent = await sumAgentCostUsd(run.id).catch(() => 0);
+      const overBudget = spent >= run.costHardCapUsd;
 
-    const firstMsg = await callAnthropic(apiKey, systemPrompt, anthropicMessages, true);
+      const content = res.toolUses.length
+        ? ([
+            ...(res.text ? [{ type: 'text', text: res.text } as TextBlock] : []),
+            ...res.toolUses,
+          ] as ContentBlock[])
+        : ([{ type: 'text', text: res.text } as TextBlock] as ContentBlock[]);
 
-    // Pure text reply — no tool calls.
-    if (firstMsg.stop_reason !== 'tool_use') {
-      return ok({ type: 'reply', text: extractText(firstMsg.content) });
-    }
+      if (res.stopReason !== 'tool_use' || res.toolUses.length === 0) {
+        await finishRun('completed');
+        return ok({
+          type: 'reply',
+          text: extractText(content) || '(no reply)',
+          executed_writes: executedWrites,
+          cost_usd: spent,
+        });
+      }
 
-    // Tool use — iterate through tool_use blocks.
-    const toolUseBlocks = firstMsg.content.filter(
-      (b): b is AnthropicToolUse => b.type === 'tool_use'
-    );
+      if (overBudget) {
+        await finishRun('completed');
+        return ok({
+          type: 'reply',
+          text: `I've hit this turn's cost cap ($${run.costHardCapUsd.toFixed(2)}) mid-task. Here's where I got to: ${extractText(content) || '(tool work in progress)'} — send a follow-up to continue.`,
+          executed_writes: executedWrites,
+          cost_usd: spent,
+        });
+      }
 
-    // Separate READ tools (execute now) from WRITE tools (check risk).
-    const toolResults: Array<{ tool_use_id: string; content: string }> = [];
+      const preamble = extractText(content);
+      const toolResults: Array<{ tool_use_id: string; content: string }> = [];
+      let paused: ReturnType<typeof ok> | null = null;
 
-    for (const tu of toolUseBlocks) {
-      const isReadTool = [
-        'list_projects',
-        'get_project_summary',
-        'get_dashboard_kpis',
-        'search_actuals',
-        'research_comps',
-      ].includes(tu.name);
+      for (const tu of res.toolUses) {
+        // 1. Interaction protocol — pause and ask the user.
+        if (tu.name === 'ask_user') {
+          const q = tu.input as { question?: unknown; options?: unknown };
+          await finishRun('completed');
+          paused = ok({
+            type: 'ask_user',
+            tool_use_id: tu.id,
+            tool_args: tu.input,
+            question: String(q.question ?? 'Which option?'),
+            options: Array.isArray(q.options)
+              ? (q.options as Array<{ label?: unknown; description?: unknown }>)
+                  .slice(0, 4)
+                  .map((o) => ({
+                    label: String(o.label ?? ''),
+                    description: o.description ? String(o.description) : undefined,
+                  }))
+                  .filter((o) => o.label)
+              : [],
+            preamble,
+            executed_writes: executedWrites,
+          });
+          break;
+        }
 
-      if (isReadTool) {
+        // 2. READ tools — execute inline.
+        if (READ_ONLY_TOOL_NAMES.includes(tu.name)) {
+          try {
+            const result = await executeTool(tu.name, tu.input, user);
+            toolResults.push({ tool_use_id: tu.id, content: result.content });
+          } catch (err) {
+            toolResults.push({
+              tool_use_id: tu.id,
+              content: `Error: ${err instanceof Error ? err.message : String(err)}`,
+            });
+          }
+          continue;
+        }
+
+        // 3. WRITE tools.
+        if (!isEditor) {
+          toolResults.push({
+            tool_use_id: tu.id,
+            content:
+              'Error: this user has a read-only role — write actions are not available. Offer to summarize the change for an editor instead.',
+          });
+          continue;
+        }
+
+        const hasLocked = tu.input.project_key
+          ? await projectHasLockedSnapshot(String(tu.input.project_key))
+          : false;
+        const classification = classifyRisk(tu.name, tu.input, profile.role, hasLocked);
+
+        if (!classification.auto_execute) {
+          await finishRun('completed');
+          paused = ok({
+            type: 'pending_confirmation',
+            tool_name: tu.name,
+            tool_use_id: tu.id,
+            tool_args: tu.input,
+            reason: classification.reason,
+            preamble,
+            executed_writes: executedWrites,
+          });
+          break;
+        }
+
+        // Auto-execute the low-risk write.
         try {
-          const result = await executeTool(tu.name, tu.input, user);
+          const result = await executeWrite(req, tu.name, tu.input, user);
+          executedWrites.push({
+            tool: tu.name,
+            audit_log_id: result.audit_log_id ?? null,
+            summary: `${tu.name} auto-executed (${classification.reason})`,
+          });
           toolResults.push({ tool_use_id: tu.id, content: result.content });
         } catch (err) {
           toolResults.push({
@@ -348,60 +425,37 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
             content: `Error: ${err instanceof Error ? err.message : String(err)}`,
           });
         }
-        continue;
       }
 
-      // WRITE tool — risk-classify.
-      const hasLocked = tu.input.project_key
-        ? await projectHasLockedSnapshot(String(tu.input.project_key))
-        : false;
+      if (paused) return paused;
 
-      const classification = classifyRisk(tu.name, tu.input, profile.role, hasLocked);
-
-      if (!classification.auto_execute) {
-        // Return a pending_confirmation so the UI can show the proposal card.
-        // Only handle the FIRST write tool per turn; ignore subsequent ones.
-        return ok({
-          type: 'pending_confirmation',
-          tool_name: tu.name,
-          tool_use_id: tu.id,
-          tool_args: tu.input,
-          reason: classification.reason,
-          // Include any text Claude emitted before the tool call.
-          preamble: extractText(firstMsg.content),
-        });
-      }
-
-      // Auto-execute the low-risk write.
-      try {
-        const result = await executeTool(tu.name, tu.input, user);
-        toolResults.push({ tool_use_id: tu.id, content: result.content });
-      } catch (err) {
-        toolResults.push({
-          tool_use_id: tu.id,
-          content: `Error: ${err instanceof Error ? err.message : String(err)}`,
-        });
-      }
+      transcript.push(
+        { role: 'assistant', content },
+        {
+          role: 'user',
+          content: toolResults.map((r) => ({
+            type: 'tool_result',
+            tool_use_id: r.tool_use_id,
+            content: r.content,
+          })),
+        }
+      );
     }
 
-    // All tool calls resolved — feed results back to Claude for final reply.
-    const extendedMessages = [
-      ...anthropicMessages,
-      { role: 'assistant', content: firstMsg.content },
-      {
-        role: 'user',
-        content: toolResults.map((r) => ({
-          type: 'tool_result',
-          tool_use_id: r.tool_use_id,
-          content: r.content,
-        })),
-      },
-    ];
-
-    const finalMsg = await callAnthropic(apiKey, systemPrompt, extendedMessages, false);
-    return ok({ type: 'reply', text: extractText(finalMsg.content) });
+    // Iteration cap.
+    await finishRun('completed');
+    return ok({
+      type: 'reply',
+      text: `I hit the ${MAX_ITERS}-step limit for one turn — tell me to continue and I'll pick up from here.`,
+      executed_writes: executedWrites,
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    return ok({ type: 'error', text: `Juno agent error: ${msg.slice(0, 400)}` });
+    await finishRun('failed', msg.slice(0, 2000));
+    return ok({
+      type: 'error',
+      text: `Juno hit an error: ${msg.slice(0, 400)}`,
+      executed_writes: executedWrites,
+    });
   }
 });

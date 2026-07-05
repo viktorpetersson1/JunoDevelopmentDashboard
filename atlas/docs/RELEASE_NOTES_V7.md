@@ -113,6 +113,39 @@ reachable — schema-only usage), dev-tooling advisories (playwright/esbuild/
 babel), pre-existing Supabase advisor warnings (public-schema SECURITY
 DEFINER fns, V4-era permissive policies, leaked-password protection off).
 
+## Ask Juno v3 — the working pane (5 Jul)
+
+Ask Juno is now a right-docked WORKING PANE (topbar "Ask Juno" button; content
+shifts left on wide screens; conversation survives navigation + refresh via
+sessionStorage; the floating bubble is gone).
+
+What it can do:
+
+- **Answer from live data** — projects, KPIs, pipeline deals, meetings,
+  actuals (READ tools run inline in a real agentic loop, up to 10 chained
+  steps per turn, cost-capped + fully ledgered in agent_llm_calls).
+- **Carry out work** — update figures, create projects/opportunities, log
+  actuals/risks, and **archive ("delete") a project** (new reversible
+  soft-archive service). Every non-trivial write shows a confirmation card;
+  Approve executes through the same validated services + audit log as the
+  UI forms, and Juno KEEPS WORKING after the approval (v1 stopped dead).
+  Role gates enforced server-side on every execution (editor+; viewers get
+  read-only answers).
+- **Ask clarifying questions** — the ask_user protocol renders 2–4 clickable
+  options (with a free-text fallback), Claude-style, instead of guessing.
+- **Ingest Excel/CSV** — attach .xlsx or .csv (2 MB / 500 rows); a NEW
+  zero-dependency xlsx reader (ZIP + DecompressionStream — no vulnerable
+  npm parsers) parses server-side into atlas.chat_attachments (mig 0044,
+  owner-scoped RLS); Juno reads it via read_attachment, maps columns,
+  shows before → after, and proposes the updates one confirmation at a time.
+
+Engine fixes over v1: multi-turn loop with tools throughout (v1 allowed one
+tool round-trip then went tool-less), 4096-token replies (v1: 1024),
+agentModel() config (v1: stale hardcoded chain), the T143 meeting/opportunity
+tools actually registered (v1's hardcoded READ list predated them), declines
+feed back to the model gracefully, and the system prompt now carries the V7
+positioning (D-079) instead of "Atlas replaces Excel".
+
 ## Restore switches
 
 `ATLAS_FEATURE_FLAGS` (CSV, Cloudflare env): `pricing` · `analytics-lab` ·

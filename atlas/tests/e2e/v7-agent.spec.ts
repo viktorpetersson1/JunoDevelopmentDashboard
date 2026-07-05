@@ -17,6 +17,9 @@ test.describe('T142–T145 endpoints (no auth needed)', () => {
     '/api/meetings/sync',
     '/api/agent/review-meeting',
     '/api/opportunities/00000000-0000-0000-0000-000000000001/draft-metrics',
+    // AJ-v3 working pane
+    '/api/ask-juno',
+    '/api/ask-juno/attachments',
   ];
 
   for (const path of POSTS) {

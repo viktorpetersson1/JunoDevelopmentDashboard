@@ -23,7 +23,13 @@ import { getActiveGlobals } from '@/lib/globals/active';
 import { getActiveGlobalsWithCapital } from '@/lib/treasury/capital-position';
 import { flagEnabled } from '@/lib/flags';
 import { listMeetings, findMeetingById } from '@/lib/repos/meetings';
-import { listOpportunities, findOpportunityById } from '@/lib/repos/opportunities';
+import {
+  listOpportunities,
+  findOpportunityById,
+  insertOpportunity,
+  patchOpportunity,
+} from '@/lib/repos/opportunities';
+import { findAttachmentForUser } from '@/lib/repos/chat-attachments';
 import { listActualsByCategory } from '@/lib/services/actuals';
 import { createActualsEntry, type CreateActualsEntryInput } from '@/lib/services/actuals';
 import { insertRisk } from '@/lib/repos/project-risks';
@@ -118,6 +124,52 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       required: ['project_key'],
     },
   },
+  // ── AJ-v3 — interaction protocol ──────────────────────────────────────────
+  {
+    // Never executed server-side: the route intercepts it and renders the
+    // question as clickable options in the pane; the user's pick comes back
+    // as the tool_result. Use whenever a request is ambiguous instead of
+    // guessing (which project? archive or just remove from pipeline? which
+    // column is the sale price?).
+    name: 'ask_user',
+    description:
+      'Ask the user a clarifying question with 2-4 concrete options. Use when a request is ambiguous, when multiple records could match, or before an irreversible step needs a parameter choice. The user may also type a free-form answer. Ask ONE question at a time.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        question: { type: 'string', description: 'The question, one sentence.' },
+        options: {
+          type: 'array',
+          description: '2-4 mutually exclusive choices.',
+          items: {
+            type: 'object',
+            properties: {
+              label: { type: 'string', description: 'Short button label (1-6 words)' },
+              description: { type: 'string', description: 'One-line explanation (optional)' },
+            },
+            required: ['label'],
+          },
+        },
+      },
+      required: ['question', 'options'],
+    },
+  },
+  {
+    name: 'read_attachment',
+    description:
+      'Read rows from a spreadsheet the user attached (they appear as [attachment:<id> <filename>] in the conversation). Returns the header + a page of rows. Page with offset/limit for large sheets; pick a sheet by name when the workbook has several. Numbers arrive as numbers; Excel DATES arrive as raw serial numbers (no style table) — ask the user if a date matters.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        attachment_id: { type: 'string', description: 'The attachment uuid' },
+        sheet: { type: 'string', description: 'Sheet name (default: first sheet)' },
+        offset: { type: 'number', description: 'Row offset into the sheet (default 0)' },
+        limit: { type: 'number', description: 'Max rows to return (default 80, cap 200)' },
+      },
+      required: ['attachment_id'],
+    },
+  },
+
   // ── V7 T143 — meetings + opportunities (READ) ─────────────────────────────
   {
     name: 'list_meetings',
@@ -272,6 +324,70 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       required: ['project_key', 'risk'],
     },
   },
+
+  // ── AJ-v3 write tools ──────────────────────────────────────────────────────
+  {
+    name: 'archive_project',
+    description:
+      'Archive ("delete") a project — removes it from every surface and the engine while keeping the audit trail; reversible by an admin. ALWAYS requires user confirmation. Before proposing, confirm WHICH project via list_projects if there is any ambiguity.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        project_key: { type: 'string', description: 'The project slug (e.g. "p2")' },
+      },
+      required: ['project_key'],
+    },
+  },
+  {
+    name: 'create_opportunity',
+    description:
+      'Add a potential deal to the pipeline (the standardized deal sheet). Requires confirmation.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Deal name (required)' },
+        market: { type: 'string', description: 'e.g. shelter_island, miami' },
+        status: {
+          type: 'string',
+          description: 'researching | contacted | negotiating (default researching)',
+        },
+        owner_name: { type: 'string' },
+        cash_needed_usd: { type: 'number' },
+        timeline_months: { type: 'number' },
+        expected_profit_usd: { type: 'number' },
+        expected_margin_pct: { type: 'number' },
+        next_step: { type: 'string' },
+        notes: { type: 'string' },
+      },
+      required: ['name'],
+    },
+  },
+  {
+    name: 'update_opportunity',
+    description:
+      'Update fields on a pipeline opportunity (metrics, status, next step). Promoted records are read-only. Requires confirmation.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        opportunity_id: {
+          type: 'string',
+          description: 'The opportunity uuid (from list_opportunities)',
+        },
+        status: {
+          type: 'string',
+          description: 'researching | contacted | negotiating | passed',
+        },
+        cash_needed_usd: { type: 'number' },
+        timeline_months: { type: 'number' },
+        expected_profit_usd: { type: 'number' },
+        expected_margin_pct: { type: 'number' },
+        next_step: { type: 'string' },
+        next_step_owner: { type: 'string' },
+        notes: { type: 'string' },
+      },
+      required: ['opportunity_id'],
+    },
+  },
 ];
 
 // ── Executor ──────────────────────────────────────────────────────────────────
@@ -403,6 +519,47 @@ export async function executeTool(
             total_usd: (c.totalCents / 100).toFixed(2),
             entry_count: c.entries.length,
           })),
+        }),
+        is_write: false,
+      };
+    }
+
+    // ── AJ-v3 — attachments (READ, owner-scoped) ──────────────────────────
+
+    case 'read_attachment': {
+      const id = String(args.attachment_id ?? '');
+      const att = await findAttachmentForUser(id, user.id);
+      if (!att) {
+        return {
+          content: `Attachment "${id}" not found (attachments are private to the uploader).`,
+          is_write: false,
+        };
+      }
+      const sheetName = args.sheet ? String(args.sheet) : undefined;
+      const sheet = sheetName
+        ? (att.sheets.find((s) => s.name === sheetName) ?? null)
+        : (att.sheets[0] ?? null);
+      if (!sheet) {
+        return {
+          content: JSON.stringify({
+            error: `Sheet "${sheetName}" not found`,
+            available_sheets: att.sheetNames,
+          }),
+          is_write: false,
+        };
+      }
+      const offset = Math.max(0, Math.floor(Number(args.offset ?? 0)) || 0);
+      const limit = Math.min(Math.max(1, Math.floor(Number(args.limit ?? 80)) || 80), 200);
+      return {
+        content: JSON.stringify({
+          file_name: att.fileName,
+          sheet: sheet.name,
+          available_sheets: att.sheetNames,
+          total_rows: sheet.rows.length,
+          header: sheet.rows[0] ?? [],
+          offset,
+          rows: sheet.rows.slice(offset === 0 ? 1 : offset, (offset === 0 ? 1 : offset) + limit),
+          note: offset === 0 ? 'Row 0 is returned as `header`; `rows` starts at row 1.' : undefined,
         }),
         is_write: false,
       };
@@ -626,8 +783,128 @@ export async function executeTool(
       };
     }
 
+    // ── AJ-v3 opportunity writes (confirm-gated by the route) ─────────────
+
+    case 'create_opportunity': {
+      const name = String(args.name ?? '').trim();
+      if (!name) throw new Error('Opportunity name is required');
+      const statusIn = String(args.status ?? 'researching');
+      const status = ['researching', 'contacted', 'negotiating'].includes(statusIn)
+        ? (statusIn as 'researching' | 'contacted' | 'negotiating')
+        : 'researching';
+      const numOrNull = (v: unknown) =>
+        v === undefined || v === null || !Number.isFinite(Number(v)) ? null : Number(v);
+      const view = await insertOpportunity({
+        name: name.slice(0, 160),
+        market: args.market ? String(args.market).slice(0, 80) : null,
+        status,
+        ownerName: args.owner_name ? String(args.owner_name).slice(0, 120) : null,
+        cashNeededUsd: numOrNull(args.cash_needed_usd),
+        timelineMonths:
+          numOrNull(args.timeline_months) !== null
+            ? Math.round(numOrNull(args.timeline_months)!)
+            : null,
+        expectedProfitUsd: numOrNull(args.expected_profit_usd),
+        expectedMarginPct: numOrNull(args.expected_margin_pct),
+        nextStep: args.next_step ? String(args.next_step).slice(0, 500) : null,
+        notes: args.notes ? String(args.notes).slice(0, 4000) : null,
+        source: 'Ask Juno',
+      });
+      const orgId = await resolveOrgId();
+      const auditId = await recordMutation({
+        orgId,
+        userId: user.id,
+        route: 'service:create_opportunity:ask_juno',
+        method: 'POST',
+        statusCode: 201,
+        source: 'ask_juno_agent',
+        after: { opportunityId: view.id, name: view.name },
+      });
+      return {
+        content: JSON.stringify({
+          success: true,
+          id: view.id,
+          name: view.name,
+          audit_log_id: auditId,
+        }),
+        audit_log_id: auditId,
+        is_write: true,
+      };
+    }
+
+    case 'update_opportunity': {
+      const id = String(args.opportunity_id ?? '');
+      const existing = await findOpportunityById(id);
+      if (!existing) throw new Error(`Opportunity "${id}" not found`);
+      if (existing.status === 'promoted') {
+        throw new Error('Opportunity is promoted — its record is read-only.');
+      }
+      const numOrU = (v: unknown) =>
+        v === undefined ? undefined : v === null || !Number.isFinite(Number(v)) ? null : Number(v);
+      const statusIn = args.status === undefined ? undefined : String(args.status);
+      if (
+        statusIn !== undefined &&
+        !['researching', 'contacted', 'negotiating', 'passed'].includes(statusIn)
+      ) {
+        throw new Error(`Invalid status "${statusIn}" (promotion happens via the Pipeline UI).`);
+      }
+      const view = await patchOpportunity(id, {
+        ...(statusIn !== undefined && {
+          status: statusIn as 'researching' | 'contacted' | 'negotiating' | 'passed',
+        }),
+        ...(args.cash_needed_usd !== undefined && { cashNeededUsd: numOrU(args.cash_needed_usd) }),
+        ...(args.timeline_months !== undefined && {
+          timelineMonths:
+            numOrU(args.timeline_months) === null
+              ? null
+              : Math.round(numOrU(args.timeline_months)!),
+        }),
+        ...(args.expected_profit_usd !== undefined && {
+          expectedProfitUsd: numOrU(args.expected_profit_usd),
+        }),
+        ...(args.expected_margin_pct !== undefined && {
+          expectedMarginPct: numOrU(args.expected_margin_pct),
+        }),
+        ...(args.next_step !== undefined && {
+          nextStep: args.next_step === null ? null : String(args.next_step).slice(0, 500),
+        }),
+        ...(args.next_step_owner !== undefined && {
+          nextStepOwner:
+            args.next_step_owner === null ? null : String(args.next_step_owner).slice(0, 120),
+        }),
+        ...(args.notes !== undefined && {
+          notes: args.notes === null ? null : String(args.notes).slice(0, 4000),
+        }),
+      });
+      const orgId = await resolveOrgId();
+      const auditId = await recordMutation({
+        orgId,
+        userId: user.id,
+        route: `service:update_opportunity:ask_juno:${id}`,
+        method: 'PATCH',
+        statusCode: 200,
+        source: 'ask_juno_agent',
+        before: { status: existing.status },
+        after: {
+          opportunityId: id,
+          fields: Object.keys(args).filter((k) => k !== 'opportunity_id'),
+        },
+      });
+      return {
+        content: JSON.stringify({
+          success: true,
+          id: view.id,
+          name: view.name,
+          audit_log_id: auditId,
+        }),
+        audit_log_id: auditId,
+        is_write: true,
+      };
+    }
+
     case 'create_project':
-    case 'update_project': {
+    case 'update_project':
+    case 'archive_project': {
       // These always go through the confirmation flow — they should never
       // reach executeTool directly. If they do, it means the caller bypassed
       // the risk classifier (which should have rejected auto-execute).
@@ -636,10 +913,36 @@ export async function executeTool(
       );
     }
 
+    case 'ask_user': {
+      // Protocol tool — the ROUTE intercepts ask_user and returns the
+      // question to the pane; execution here means the interception was
+      // bypassed.
+      throw new Error(`Tool 'ask_user' is handled by the conversation loop, not the executor`);
+    }
+
     default:
       throw new Error(`Unknown tool: ${toolName}`);
   }
 }
+
+// ── AJ-v3 shared tool-name sets (the route + runner derive from these) ───────
+
+/** Tools that read only — always safe to execute inline. */
+export const READ_ONLY_TOOL_NAMES: readonly string[] = [
+  'list_projects',
+  'get_project_summary',
+  'get_dashboard_kpis',
+  'search_actuals',
+  'research_comps',
+  'list_meetings',
+  'get_meeting',
+  'list_opportunities',
+  'get_opportunity',
+  'read_attachment',
+];
+
+/** Interaction-protocol tools the loop intercepts (never executed). */
+export const PROTOCOL_TOOL_NAMES: readonly string[] = ['ask_user'];
 
 /**
  * Check whether the target project has a locked approval snapshot.

@@ -33,6 +33,14 @@ export function classifyRisk(
     return { auto_execute: false, reason: 'Viewer role cannot execute write actions' };
   }
 
+  // AJ-v3: destructive action — always an explicit confirmation card.
+  if (toolName === 'archive_project') {
+    return {
+      auto_execute: false,
+      reason: 'Archiving removes the project from every surface — explicit confirmation required',
+    };
+  }
+
   // Only INSERT-eligible tools can auto-execute.
   if (!LOW_RISK_ELIGIBLE.has(toolName)) {
     return {

@@ -70,6 +70,27 @@ export function DashboardShell({
   const actions = (
     <>
       {topbarActions}
+      {/* AJ-v3 — the working pane's opener (the floating bubble is gone). */}
+      <button
+        type="button"
+        onClick={() => window.dispatchEvent(new Event('atlas:open-ask-juno'))}
+        title="Open the Ask Juno working pane"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '6px 12px',
+          fontSize: 12,
+          fontWeight: 600,
+          borderRadius: 999,
+          border: 'none',
+          cursor: 'pointer',
+          background: 'var(--color-cta, #131313)',
+          color: 'var(--color-text-inverse, #ffffff)',
+        }}
+      >
+        Ask Juno
+      </button>
       <UserMenu name={user.name} email={user.email} />
     </>
   );
