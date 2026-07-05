@@ -84,6 +84,35 @@ values against the meeting record.
 - **Seeded test user** — unlocks the skipped authed Playwright flows (scenario
   figure-change, pipeline CRUD/promote, meeting review E2E).
 
+## Post-release QA/QC pass (3 Jul, commits dafd273 + d43a2b0)
+
+Full audit after tagging: fresh gates, two independent adversarial code
+reviews over the whole V7 diff, Supabase advisors, dependency audit, and the
+complete Playwright suite. Found + fixed:
+
+- **Privilege escalation (critical):** the suggestions approve→apply path let
+  an editor mutate capital sources (super_admin-only per D-076). Gated at the
+  route (pre-transition, suggestion stays pending) AND inside the apply path.
+- **DB policy:** `atlas.suggestions` UPDATE tightened from any-authenticated
+  to editor+ (mig 0043) — pending patches are no longer tamperable below the
+  reviewer role.
+- **next 14.2.18 → 14.2.35** — clears the critical middleware authorization
+  bypass (GHSA-f82v-jwr5-mffw) + 3 further Next advisories.
+- **Double-approve race:** suggestion transitions are now compare-and-swap —
+  concurrent approvals can never double-apply.
+- 3 review findings in V7 code: a `0 || null` footgun faking a research gap
+  (draft metrics), promote pre-filling cash-needed as land cost (removed —
+  materially different figures), an Enter-key save race in the research panel.
+- Sign-in now surfaces thrown failures (offline etc.) — previously silent.
+- **Test debt:** ~9 e2e specs had rotted invisibly (CI never ran Playwright).
+  All repaired; a new `e2e` CI job runs the full no-auth suite every push.
+  Suite: 87 passed / 0 failed / 39 auth-skipped.
+
+Documented for a later pass: drizzle-orm upgrade (advisory not runtime-
+reachable — schema-only usage), dev-tooling advisories (playwright/esbuild/
+babel), pre-existing Supabase advisor warnings (public-schema SECURITY
+DEFINER fns, V4-era permissive policies, leaked-password protection off).
+
 ## Restore switches
 
 `ATLAS_FEATURE_FLAGS` (CSV, Cloudflare env): `pricing` · `analytics-lab` ·
