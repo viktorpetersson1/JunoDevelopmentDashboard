@@ -101,11 +101,16 @@ test.describe('V3 §3 — sign-in layout + interaction', () => {
     if (!box) throw new Error('Sign in button has no bounding box');
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.down();
-    // Read computed transform while pressed. Match either `matrix(0.98, …)`
-    // or `scale(0.98)` — browsers may compute either string form.
-    const transform = await btn.evaluate((el) => getComputedStyle(el as HTMLElement).transform);
+    // Poll the computed transform while pressed — a single immediate read
+    // races the CSS transition (flaky on slow CI runners). Match either
+    // `matrix(0.98, …)` or `scale(0.98)` — browsers compute either form.
+    await expect
+      .poll(async () => await btn.evaluate((el) => getComputedStyle(el as HTMLElement).transform), {
+        message: 'computed transform while :active',
+        timeout: 3000,
+      })
+      .toMatch(/0\.98|matrix\(0\.98/);
     await page.mouse.up();
-    expect(transform, 'computed transform while :active').toMatch(/0\.98|matrix\(0\.98/);
   });
 });
 
