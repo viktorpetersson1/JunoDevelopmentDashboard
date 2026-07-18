@@ -55,6 +55,104 @@ function timeoutFor(callSite: AgentCallSite): number {
   return callSite === 'synthesize' ? 120_000 : 60_000;
 }
 
+/**
+ * AJ-v4 — parse an Anthropic streaming (SSE) response body into the same
+ * shape the JSON path returns, invoking `onTextDelta` as text tokens land.
+ * tool_use inputs stream as input_json_delta fragments; they're accumulated
+ * per block and parsed at content_block_stop.
+ */
+async function consumeAnthropicStream(
+  body: ReadableStream<Uint8Array>,
+  onTextDelta: (delta: string) => void
+): Promise<AnthropicResponse> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  const content: Array<AnthropicTextBlock | AnthropicToolUse> = [];
+  const partialJson: Record<number, string> = {};
+  let stopReason = 'end_turn';
+  let inputTokens = 0;
+  let outputTokens = 0;
+
+  const handleEvent = (payload: string) => {
+    let ev: Record<string, unknown>;
+    try {
+      ev = JSON.parse(payload) as Record<string, unknown>;
+    } catch {
+      return; // malformed frame — skip, the message_delta totals still land
+    }
+    const type = ev.type as string;
+    if (type === 'message_start') {
+      const usage = (ev.message as { usage?: { input_tokens?: number } } | undefined)?.usage;
+      inputTokens = usage?.input_tokens ?? 0;
+    } else if (type === 'content_block_start') {
+      const idx = ev.index as number;
+      const block = ev.content_block as { type: string; id?: string; name?: string };
+      if (block.type === 'tool_use') {
+        content[idx] = {
+          type: 'tool_use',
+          id: block.id ?? '',
+          name: block.name ?? '',
+          input: {},
+        };
+        partialJson[idx] = '';
+      } else {
+        content[idx] = { type: 'text', text: '' };
+      }
+    } else if (type === 'content_block_delta') {
+      const idx = ev.index as number;
+      const delta = ev.delta as { type: string; text?: string; partial_json?: string };
+      const block = content[idx];
+      if (delta.type === 'text_delta' && block?.type === 'text') {
+        block.text += delta.text ?? '';
+        if (delta.text) onTextDelta(delta.text);
+      } else if (delta.type === 'input_json_delta' && block?.type === 'tool_use') {
+        partialJson[idx] = (partialJson[idx] ?? '') + (delta.partial_json ?? '');
+      }
+    } else if (type === 'content_block_stop') {
+      const idx = ev.index as number;
+      const block = content[idx];
+      if (block?.type === 'tool_use' && partialJson[idx] !== undefined) {
+        try {
+          block.input = partialJson[idx]
+            ? (JSON.parse(partialJson[idx]!) as Record<string, unknown>)
+            : {};
+        } catch {
+          block.input = {};
+        }
+      }
+    } else if (type === 'message_delta') {
+      const d = ev.delta as { stop_reason?: string } | undefined;
+      if (d?.stop_reason) stopReason = d.stop_reason;
+      const usage = ev.usage as { output_tokens?: number } | undefined;
+      if (usage?.output_tokens !== undefined) outputTokens = usage.output_tokens;
+    }
+  };
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    // SSE frames are separated by a blank line; each frame's data: line is JSON.
+    for (;;) {
+      const sep = buffer.indexOf('\n\n');
+      if (sep === -1) break;
+      const frame = buffer.slice(0, sep);
+      buffer = buffer.slice(sep + 2);
+      for (const line of frame.split('\n')) {
+        if (line.startsWith('data:')) handleEvent(line.slice(5).trim());
+      }
+    }
+  }
+
+  return {
+    content,
+    stop_reason: stopReason,
+    usage: { input_tokens: inputTokens, output_tokens: outputTokens },
+  };
+}
+
 export async function callAgentModel(args: {
   runId: string;
   stepId: string | null;
@@ -64,6 +162,10 @@ export async function callAgentModel(args: {
   system: string;
   messages: unknown[];
   tools?: unknown[];
+  /** AJ-v4: stream text tokens as they land. Presence turns on stream mode. */
+  onTextDelta?: (delta: string) => void;
+  /** AJ-v4: external cancellation (e.g. the user's Stop button). */
+  externalSignal?: AbortSignal;
 }): Promise<AgentCallResult> {
   const model = modelForStep(args.callSite, args.runModel);
   const maxTokens = maxTokensFor(args.callSite);
@@ -82,6 +184,9 @@ export async function callAgentModel(args: {
   const startedAt = Date.now();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutFor(args.callSite));
+  const onExternalAbort = () => controller.abort();
+  args.externalSignal?.addEventListener('abort', onExternalAbort, { once: true });
+  if (args.externalSignal?.aborted) controller.abort();
 
   try {
     const body: Record<string, unknown> = {
@@ -91,6 +196,7 @@ export async function callAgentModel(args: {
       messages: args.messages,
     };
     if (args.tools?.length) body.tools = args.tools;
+    if (args.onTextDelta) body.stream = true;
 
     let res: Response;
     try {
@@ -138,7 +244,10 @@ export async function callAgentModel(args: {
       throw new AgentLlmError(`Agent model HTTP ${res.status}: ${text.slice(0, 200)}`, res.status);
     }
 
-    const data = (await res.json()) as AnthropicResponse;
+    const data: AnthropicResponse =
+      args.onTextDelta && res.body
+        ? await consumeAnthropicStream(res.body, args.onTextDelta)
+        : ((await res.json()) as AnthropicResponse);
     const inTok = data.usage?.input_tokens ?? estIn;
     const outTok = data.usage?.output_tokens ?? 0;
     const cost = actualCostUsd(model, inTok, outTok);
@@ -169,5 +278,6 @@ export async function callAgentModel(args: {
     };
   } finally {
     clearTimeout(timer);
+    args.externalSignal?.removeEventListener('abort', onExternalAbort);
   }
 }

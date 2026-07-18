@@ -130,6 +130,52 @@ describe('AJ-v3 pane wiring (the unmounted-pane regression)', () => {
     expect(resumeBody.resume.answer).toBe('84 Sunset Beach Road');
   });
 
+  it('AJ-v4: streamed turn renders deltas live, then dedupes against the final payload', async () => {
+    render(<Providers>x</Providers>);
+    openPane();
+
+    const events = [
+      { t: 'delta', d: 'Looking' },
+      { t: 'delta', d: ' at projects…' },
+      { t: 'text_end' },
+      { t: 'status', tool: 'list_projects' },
+      { t: 'delta', d: 'The total is $12M.' },
+      { t: 'text_end' },
+      {
+        t: 'final',
+        response: {
+          type: 'reply',
+          text: 'The total is $12M.',
+          executed_writes: [{ tool: 'update_project', audit_log_id: 'audit-98765432' }],
+        },
+      },
+    ];
+    const encoder = new TextEncoder();
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      headers: new Headers({ 'content-type': 'text/event-stream' }),
+      body: new ReadableStream<Uint8Array>({
+        start(c) {
+          for (const ev of events) c.enqueue(encoder.encode(`data: ${JSON.stringify(ev)}\n\n`));
+          c.close();
+        },
+      }),
+      json: async () => null,
+    });
+
+    await send('how big is the portfolio?');
+    await waitFor(() => expect(screen.getByText('The total is $12M.')).toBeTruthy());
+    // Preamble bubble streamed separately and stays.
+    expect(screen.getByText('Looking at projects…')).toBeTruthy();
+    // Final payload must NOT duplicate the streamed text.
+    expect(screen.getAllByText('The total is $12M.')).toHaveLength(1);
+    // The streamed write receipt attached to the final bubble.
+    expect(screen.getByText(/update project · audit audit-98/)).toBeTruthy();
+    // Request advertised stream support.
+    const req = fetchMock.mock.calls[0]![1] as RequestInit;
+    expect((req.headers as Record<string, string>).Accept).toBe('text/event-stream');
+  });
+
   it('conversation persists to sessionStorage and restores on remount', async () => {
     const first = render(<Providers>x</Providers>);
     openPane();

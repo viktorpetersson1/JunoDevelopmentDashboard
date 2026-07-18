@@ -76,6 +76,28 @@ interface AttachmentChip {
 let idSeq = 0;
 const mkId = () => `m${Date.now().toString(36)}${(idSeq++).toString(36)}`;
 
+/** Live-activity labels for the streamed status line (AJ-v4). */
+const TOOL_LABELS: Record<string, string> = {
+  list_projects: 'Reading projects',
+  get_project_summary: 'Reading project detail',
+  get_dashboard_kpis: 'Reading portfolio KPIs',
+  search_actuals: 'Searching actuals',
+  read_attachment: 'Reading the attachment',
+  list_meetings: 'Reading meetings',
+  get_meeting: 'Reading the meeting',
+  list_opportunities: 'Reading the pipeline',
+  get_opportunity: 'Reading the opportunity',
+  research_comps: 'Researching comps (live)',
+  create_project: 'Creating the project',
+  update_project: 'Updating the project',
+  create_actuals_entry: 'Recording actuals',
+  create_risk: 'Recording the risk',
+  archive_project: 'Archiving the project',
+  create_opportunity: 'Creating the opportunity',
+  update_opportunity: 'Updating the opportunity',
+};
+const toolLabel = (tool: string) => TOOL_LABELS[tool] ?? tool.replaceAll('_', ' ');
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function AskJunoWidget() {
@@ -90,6 +112,13 @@ export function AskJunoWidget() {
   const listRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const restoredRef = useRef(false);
+  // AJ-v4 streaming state: the in-flight abort handle, the currently-open
+  // streamed bubble, the last completed streamed bubble (preamble dedupe),
+  // and the live tool-activity line.
+  const abortRef = useRef<AbortController | null>(null);
+  const draftIdRef = useRef<string | null>(null);
+  const lastStreamIdRef = useRef<string | null>(null);
+  const [activity, setActivity] = useState<string | null>(null);
 
   const hidden = useMemo(
     () => HIDDEN_ON.some((p) => pathname === p || pathname.startsWith(`${p}/`)),
@@ -183,53 +212,75 @@ export function AskJunoWidget() {
     []
   );
 
+  interface FinalPayload {
+    type?: string;
+    text?: string;
+    tool_name?: string;
+    tool_use_id?: string;
+    tool_args?: Record<string, unknown>;
+    reason?: string;
+    preamble?: string;
+    question?: string;
+    options?: Array<{ label: string; description?: string }>;
+    executed_writes?: ExecutedWrite[];
+  }
+
   const callAgent = useCallback(
     async (history: ChatMessage[], resume?: Resume) => {
       setPending(true);
-      try {
-        const res = await fetch('/api/ask-juno', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: historyForSend(history), pathname, resume }),
-        });
-        const json = (await res.json().catch(() => null)) as {
-          data?: {
-            type?: string;
-            text?: string;
-            tool_name?: string;
-            tool_use_id?: string;
-            tool_args?: Record<string, unknown>;
-            reason?: string;
-            preamble?: string;
-            question?: string;
-            options?: Array<{ label: string; description?: string }>;
-            executed_writes?: ExecutedWrite[];
-          };
-          error?: { message?: string };
-        } | null;
+      const ac = new AbortController();
+      abortRef.current = ac;
+      draftIdRef.current = null;
+      lastStreamIdRef.current = null;
 
-        if (!res.ok) {
-          push({
-            role: 'system',
-            text: json?.error?.message ?? `Request failed (HTTP ${res.status}).`,
-          });
-          return;
+      // Append streamed text into the currently-open assistant bubble,
+      // opening one on the first token.
+      const appendDelta = (d: string) => {
+        if (!d) return;
+        if (draftIdRef.current === null) {
+          const id = mkId();
+          draftIdRef.current = id;
+          setMessages((m) => [...m, { id, role: 'assistant', text: d, ts: Date.now() }]);
+        } else {
+          const id = draftIdRef.current;
+          setMessages((m) => m.map((x) => (x.id === id ? { ...x, text: x.text + d } : x)));
         }
-        const d = json?.data;
+      };
+      // Patch the open (or most recent) streamed bubble; false if none exists.
+      const attachToStreamBubble = (patch: (msg: ChatMessage) => ChatMessage): boolean => {
+        const id = draftIdRef.current ?? lastStreamIdRef.current;
+        if (!id) return false;
+        setMessages((m) => m.map((x) => (x.id === id ? patch(x) : x)));
+        return true;
+      };
+
+      // The final payload is identical in both transports; `streamed` tells us
+      // whether the text already landed via deltas (dedupe the bubble).
+      const applyFinal = (d: FinalPayload | undefined | null, streamed: boolean) => {
         if (!d) {
           push({ role: 'system', text: '(empty response)' });
           return;
         }
-
         const writes = d.executed_writes?.length ? d.executed_writes : undefined;
+        const hasStreamBubble =
+          streamed && (draftIdRef.current !== null || lastStreamIdRef.current !== null);
 
         if (d.type === 'reply' || d.type === 'error') {
-          push({ role: 'assistant', text: d.text ?? '(no reply)', writes });
+          if (hasStreamBubble) {
+            attachToStreamBubble((x) => ({
+              ...x,
+              text: x.text.trim() ? x.text : (d.text ?? '(no reply)'),
+              writes: writes ?? x.writes,
+            }));
+          } else {
+            push({ role: 'assistant', text: d.text ?? '(no reply)', writes });
+          }
           return;
         }
 
         if (d.type === 'ask_user' && d.tool_use_id) {
-          if (d.preamble) push({ role: 'assistant', text: d.preamble, writes });
+          if (hasStreamBubble) attachToStreamBubble((x) => ({ ...x, writes: writes ?? x.writes }));
+          else if (d.preamble) push({ role: 'assistant', text: d.preamble, writes });
           push({
             role: 'question',
             text: '',
@@ -244,7 +295,8 @@ export function AskJunoWidget() {
         }
 
         if (d.type === 'pending_confirmation' && d.tool_name && d.tool_use_id) {
-          if (d.preamble) push({ role: 'assistant', text: d.preamble, writes });
+          if (hasStreamBubble) attachToStreamBubble((x) => ({ ...x, writes: writes ?? x.writes }));
+          else if (d.preamble) push({ role: 'assistant', text: d.preamble, writes });
           push({
             role: 'confirmation',
             text: '',
@@ -259,13 +311,115 @@ export function AskJunoWidget() {
         }
 
         push({ role: 'assistant', text: d.text ?? '(no reply)', writes });
-      } catch (err) {
-        push({
-          role: 'system',
-          text: `Couldn't reach Juno: ${err instanceof Error ? err.message : 'network error'}`,
+      };
+
+      try {
+        const res = await fetch('/api/ask-juno', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+          body: JSON.stringify({ messages: historyForSend(history), pathname, resume }),
+          signal: ac.signal,
         });
+
+        const ctype = res.headers?.get?.('content-type') ?? '';
+
+        if (res.ok && ctype.includes('text/event-stream') && res.body) {
+          // ── AJ-v4 streamed turn ─────────────────────────────────────────
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+          let gotFinal = false;
+          for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            for (;;) {
+              const sep = buffer.indexOf('\n\n');
+              if (sep === -1) break;
+              const frame = buffer.slice(0, sep);
+              buffer = buffer.slice(sep + 2);
+              for (const line of frame.split('\n')) {
+                if (!line.startsWith('data:')) continue;
+                let ev: {
+                  t?: string;
+                  d?: string;
+                  tool?: string;
+                  write?: ExecutedWrite;
+                  response?: FinalPayload;
+                };
+                try {
+                  ev = JSON.parse(line.slice(5).trim()) as typeof ev;
+                } catch {
+                  continue;
+                }
+                if (ev.t === 'delta' && ev.d) {
+                  appendDelta(ev.d);
+                } else if (ev.t === 'text_end') {
+                  lastStreamIdRef.current = draftIdRef.current ?? lastStreamIdRef.current;
+                  draftIdRef.current = null;
+                } else if (ev.t === 'status' && ev.tool) {
+                  setActivity(`${toolLabel(ev.tool)}…`);
+                } else if (ev.t === 'write' && ev.write) {
+                  setActivity(null);
+                  const w = ev.write;
+                  const attached = attachToStreamBubble((x) => ({
+                    ...x,
+                    writes: [...(x.writes ?? []), w],
+                  }));
+                  if (!attached) {
+                    const id = mkId();
+                    lastStreamIdRef.current = id;
+                    setMessages((m) => [
+                      ...m,
+                      { id, role: 'assistant', text: '', ts: Date.now(), writes: [w] },
+                    ]);
+                  }
+                } else if (ev.t === 'final') {
+                  gotFinal = true;
+                  setActivity(null);
+                  applyFinal(ev.response, true);
+                }
+              }
+            }
+          }
+          if (!gotFinal) {
+            push({
+              role: 'system',
+              text: 'The connection dropped mid-turn — the transcript above is what completed.',
+            });
+          }
+          return;
+        }
+
+        // ── JSON path (error responses, tests, non-stream servers) ────────
+        const json = (await res.json().catch(() => null)) as {
+          data?: FinalPayload;
+          error?: { message?: string };
+        } | null;
+
+        if (!res.ok) {
+          push({
+            role: 'system',
+            text: json?.error?.message ?? `Request failed (HTTP ${res.status}).`,
+          });
+          return;
+        }
+        applyFinal(json?.data, false);
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') {
+          push({ role: 'system', text: 'Stopped.' });
+        } else {
+          push({
+            role: 'system',
+            text: `Couldn't reach Juno: ${err instanceof Error ? err.message : 'network error'}`,
+          });
+        }
       } finally {
         setPending(false);
+        setActivity(null);
+        abortRef.current = null;
+        draftIdRef.current = null;
+        lastStreamIdRef.current = null;
       }
     },
     [historyForSend, pathname, push]
@@ -490,8 +644,11 @@ export function AskJunoWidget() {
         ))}
 
         {pending && (
-          <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', padding: '6px 0' }}>
-            Juno is working…
+          <div
+            aria-live="polite"
+            style={{ fontSize: 12, color: 'var(--color-text-tertiary)', padding: '6px 0' }}
+          >
+            {activity ?? 'Juno is working…'}
           </div>
         )}
       </div>
@@ -589,6 +746,26 @@ export function AskJunoWidget() {
             color: 'var(--color-text-primary)',
           }}
         />
+        {pending && (
+          <button
+            type="button"
+            onClick={() => abortRef.current?.abort()}
+            aria-label="Stop Juno"
+            style={{
+              padding: '9px 14px',
+              fontSize: 13,
+              fontWeight: 600,
+              borderRadius: 10,
+              border: '1px solid var(--color-border-hairline)',
+              cursor: 'pointer',
+              background: 'var(--color-surface-base)',
+              color: 'var(--color-text-primary)',
+              flexShrink: 0,
+            }}
+          >
+            Stop
+          </button>
+        )}
         <button
           type="button"
           onClick={() => void onSend()}
