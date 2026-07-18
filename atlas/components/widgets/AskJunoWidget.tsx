@@ -26,11 +26,67 @@ import Link from 'next/link';
 import { JunoMark } from '@/components/brand';
 import { renderMarkdown } from '@/lib/ask-juno/markdown';
 
-const PANE_WIDTH = 440;
+const PANE_WIDTH_DEFAULT = 440;
+const PANE_WIDTH_MIN = 380;
+const PANE_WIDTH_MAX = 720;
+const WIDTH_KEY = 'aj-v4-pane-width'; // localStorage — a lasting preference
 const SHIFT_MIN_VIEWPORT = 1180; // below this, overlay instead of pushing content
 const STORAGE_KEY = 'aj-v3-conversation';
 const HIDDEN_ON = ['/sign-in', '/sign-up'];
 const HISTORY_SEND_CAP = 40;
+
+/** AJ-v4 — contextual starter chips for the empty state. */
+function starterChips(pathname: string): Array<{ label: string; prompt: string }> {
+  if (/^\/projects\/[^/]+/.test(pathname)) {
+    return [
+      {
+        label: 'Explain this project',
+        prompt:
+          'Give me the exec summary of the project I am viewing — economics, timeline, and open risks.',
+      },
+      {
+        label: 'Update figures here',
+        prompt: 'I want to update figures on this project.',
+      },
+      {
+        label: 'Compare to the approved snapshot',
+        prompt: 'How is this project tracking vs its latest approved snapshot?',
+      },
+    ];
+  }
+  if (pathname.startsWith('/pipeline')) {
+    return [
+      {
+        label: 'Rank the pipeline',
+        prompt: 'Rank the current pipeline opportunities by attractiveness and tell me why.',
+      },
+      { label: 'Add an opportunity', prompt: 'I want to add a new opportunity to the pipeline.' },
+      {
+        label: 'What moved recently?',
+        prompt: 'What changed in the pipeline in the last 30 days?',
+      },
+    ];
+  }
+  return [
+    {
+      label: 'What needs my attention?',
+      prompt:
+        'What needs my attention today across the portfolio? Check pending suggestions, draft capital calls and snapshots, and anything unusual.',
+    },
+    {
+      label: '90-day cash need',
+      prompt: "What's our 90-day cash requirement and which projects drive it?",
+    },
+    {
+      label: 'Update from a spreadsheet',
+      prompt: 'I want to update platform figures from a spreadsheet.',
+    },
+    {
+      label: 'Portfolio margins',
+      prompt: 'Show margin by project as a table, best to worst.',
+    },
+  ];
+}
 
 // ── Message model ─────────────────────────────────────────────────────────────
 
@@ -157,6 +213,11 @@ export function AskJunoWidget() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const creatingConvRef = useRef(false);
   const snapshotTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // AJ-v4 ergonomics: resizable width (persisted), failed-turn retry state.
+  const [paneWidth, setPaneWidth] = useState(PANE_WIDTH_DEFAULT);
+  const [lastFailed, setLastFailed] = useState(false);
+  const lastTurnRef = useRef<{ history: ChatMessage[]; resume?: Resume } | null>(null);
+  const dragRef = useRef(false);
 
   const hidden = useMemo(
     () => HIDDEN_ON.some((p) => pathname === p || pathname.startsWith(`${p}/`)),
@@ -273,6 +334,42 @@ export function AskJunoWidget() {
     [conversationId]
   );
 
+  // ── Pane width (AJ-v4: persisted, drag-resizable) ───────────────────────
+  useEffect(() => {
+    try {
+      const saved = Number(localStorage.getItem(WIDTH_KEY));
+      if (Number.isFinite(saved) && saved >= PANE_WIDTH_MIN && saved <= PANE_WIDTH_MAX) {
+        setPaneWidth(saved);
+      }
+    } catch {
+      /* default width */
+    }
+  }, []);
+  const onDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    dragRef.current = true;
+    const onMove = (ev: MouseEvent) => {
+      if (!dragRef.current) return;
+      const w = Math.min(PANE_WIDTH_MAX, Math.max(PANE_WIDTH_MIN, window.innerWidth - ev.clientX));
+      setPaneWidth(w);
+    };
+    const onUp = () => {
+      dragRef.current = false;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      setPaneWidth((w) => {
+        try {
+          localStorage.setItem(WIDTH_KEY, String(w));
+        } catch {
+          /* noop */
+        }
+        return w;
+      });
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, []);
+
   // ── Content shift (the "pane" behaviour) ────────────────────────────────
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -280,7 +377,7 @@ export function AskJunoWidget() {
     const apply = () => {
       const shift = open && !hidden && window.innerWidth >= SHIFT_MIN_VIEWPORT;
       body.style.transition = 'padding-right 200ms ease';
-      body.style.paddingRight = shift ? `${PANE_WIDTH}px` : '';
+      body.style.paddingRight = shift ? `${paneWidth}px` : '';
     };
     apply();
     window.addEventListener('resize', apply);
@@ -288,7 +385,7 @@ export function AskJunoWidget() {
       window.removeEventListener('resize', apply);
       body.style.paddingRight = '';
     };
-  }, [open, hidden]);
+  }, [open, hidden, paneWidth]);
 
   // ── Open/close plumbing ─────────────────────────────────────────────────
   useEffect(() => {
@@ -296,6 +393,18 @@ export function AskJunoWidget() {
     window.addEventListener('atlas:open-ask-juno', onOpen);
     return () => window.removeEventListener('atlas:open-ask-juno', onOpen);
   }, []);
+  // AJ-v4 — Ctrl/Cmd+J toggles the pane anywhere it's mountable.
+  useEffect(() => {
+    if (hidden) return;
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'j') {
+        e.preventDefault();
+        setOpen((o) => !o);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [hidden]);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -357,6 +466,8 @@ export function AskJunoWidget() {
   const callAgent = useCallback(
     async (history: ChatMessage[], resume?: Resume) => {
       setPending(true);
+      setLastFailed(false);
+      lastTurnRef.current = { history, resume };
       const ac = new AbortController();
       abortRef.current = ac;
       draftIdRef.current = null;
@@ -528,6 +639,7 @@ export function AskJunoWidget() {
             }
           }
           if (!gotFinal) {
+            setLastFailed(true);
             push({
               role: 'system',
               text: 'The connection dropped mid-turn — the transcript above is what completed.',
@@ -543,6 +655,7 @@ export function AskJunoWidget() {
         } | null;
 
         if (!res.ok) {
+          setLastFailed(true);
           push({
             role: 'system',
             text: json?.error?.message ?? `Request failed (HTTP ${res.status}).`,
@@ -554,6 +667,7 @@ export function AskJunoWidget() {
         if (err instanceof Error && err.name === 'AbortError') {
           push({ role: 'system', text: 'Stopped.' });
         } else {
+          setLastFailed(true);
           push({
             role: 'system',
             text: `Couldn't reach Juno: ${err instanceof Error ? err.message : 'network error'}`,
@@ -572,26 +686,43 @@ export function AskJunoWidget() {
 
   // ── Send / resume actions ───────────────────────────────────────────────
 
+  const sendText = useCallback(
+    async (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed || pending) return;
+      const suffix = attachments.length
+        ? attachments
+            .map((a) => `[attachment:${a.id} ${a.fileName} — ${a.rowCount} rows]`)
+            .join('\n')
+        : undefined;
+      const userMsg: ChatMessage = {
+        id: mkId(),
+        role: 'user',
+        text: trimmed,
+        ts: Date.now(),
+        sendSuffix: suffix,
+      };
+      const updated = [...messages, userMsg];
+      setMessages(updated);
+      setInput('');
+      setAttachments([]);
+      setView('chat');
+      void ensureConversation(); // history is best-effort; never blocks the turn
+      await callAgent(updated);
+    },
+    [pending, attachments, messages, callAgent, ensureConversation]
+  );
+
   const onSend = useCallback(async () => {
-    const trimmed = input.trim();
-    if (!trimmed || pending) return;
-    const suffix = attachments.length
-      ? attachments.map((a) => `[attachment:${a.id} ${a.fileName} — ${a.rowCount} rows]`).join('\n')
-      : undefined;
-    const userMsg: ChatMessage = {
-      id: mkId(),
-      role: 'user',
-      text: trimmed,
-      ts: Date.now(),
-      sendSuffix: suffix,
-    };
-    const updated = [...messages, userMsg];
-    setMessages(updated);
-    setInput('');
-    setAttachments([]);
-    void ensureConversation(); // history is best-effort; never blocks the turn
-    await callAgent(updated);
-  }, [input, pending, attachments, messages, callAgent, ensureConversation]);
+    await sendText(input);
+  }, [input, sendText]);
+
+  // AJ-v4 — re-run the last failed turn verbatim.
+  const onRetry = useCallback(async () => {
+    const last = lastTurnRef.current;
+    if (!last || pending) return;
+    await callAgent(last.history, last.resume);
+  }, [pending, callAgent]);
 
   const resolveConfirmation = useCallback(
     async (msgId: string, approved: boolean) => {
@@ -795,7 +926,7 @@ export function AskJunoWidget() {
         top: 0,
         right: 0,
         bottom: 0,
-        width: PANE_WIDTH,
+        width: paneWidth,
         maxWidth: '100vw',
         display: 'flex',
         flexDirection: 'column',
@@ -805,6 +936,22 @@ export function AskJunoWidget() {
         zIndex: 60,
       }}
     >
+      {/* AJ-v4 — drag handle (left edge) for resizing */}
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize Ask Juno pane"
+        onMouseDown={onDragStart}
+        style={{
+          position: 'absolute',
+          left: -3,
+          top: 0,
+          bottom: 0,
+          width: 6,
+          cursor: 'col-resize',
+          zIndex: 61,
+        }}
+      />
       {/* Header */}
       <header
         style={{
@@ -921,19 +1068,47 @@ export function AskJunoWidget() {
 
         {view === 'chat' && messages.length === 0 && (
           <div style={{ fontSize: 12.5, color: 'var(--color-text-tertiary)', lineHeight: 1.6 }}>
-            <p style={{ margin: '0 0 10px' }}>Things you can ask me to do:</p>
-            <ul style={{ margin: 0, paddingLeft: 16 }}>
-              <li>
-                &ldquo;What&rsquo;s our 90-day cash requirement and which project drives it?&rdquo;
-              </li>
-              <li>&ldquo;Update 84 Sunset Beach Road&rsquo;s target sale price to $8.2M&rdquo;</li>
-              <li>&ldquo;Archive the North Haven project&rdquo;</li>
-              <li>Attach an Excel sheet → &ldquo;update the platform with these figures&rdquo;</li>
-              <li>&ldquo;What did we decide about 72 South Ferry in the last meeting?&rdquo;</li>
-            </ul>
+            <p style={{ margin: '0 0 10px' }}>
+              I read the live platform and carry out changes you approve. Start with one of these,
+              or just ask:
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {starterChips(pathname).map((c) => (
+                <button
+                  key={c.label}
+                  type="button"
+                  onClick={() => void sendText(c.prompt)}
+                  disabled={pending}
+                  style={{
+                    textAlign: 'left',
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    border: '1px solid var(--color-border-hairline)',
+                    background: 'var(--color-surface-base)',
+                    cursor: 'pointer',
+                    fontSize: 12.5,
+                    color: 'var(--color-text-primary)',
+                  }}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
             <p style={{ margin: '10px 0 0' }}>
-              Changes always show a confirmation card first. When something&rsquo;s ambiguous,
-              I&rsquo;ll ask with options.
+              Changes always show a confirmation card first (batches get one plan card with before →
+              after). Attach or paste a spreadsheet to update figures in bulk.
+              <kbd
+                style={{
+                  marginLeft: 4,
+                  fontSize: 10.5,
+                  border: '1px solid var(--color-border-hairline)',
+                  borderRadius: 4,
+                  padding: '0 4px',
+                }}
+              >
+                Ctrl+J
+              </kbd>{' '}
+              toggles this pane.
             </p>
           </div>
         )}
@@ -957,6 +1132,14 @@ export function AskJunoWidget() {
             style={{ fontSize: 12, color: 'var(--color-text-tertiary)', padding: '6px 0' }}
           >
             {activity ?? 'Juno is working…'}
+          </div>
+        )}
+
+        {view === 'chat' && lastFailed && !pending && (
+          <div style={{ padding: '4px 0' }}>
+            <button type="button" onClick={() => void onRetry()} style={hdrBtn}>
+              ↻ Retry
+            </button>
           </div>
         )}
       </div>

@@ -339,12 +339,42 @@ interface TurnDeps {
   signal: AbortSignal | null;
 }
 
+/**
+ * AJ-v4 — resolve the pathname into one context line so "this project"
+ * means the page the user is actually looking at.
+ */
+async function pageContextFor(pathname: string | undefined): Promise<string | undefined> {
+  if (!pathname) return undefined;
+  const m = /^\/projects\/([^/?#]+)/.exec(pathname);
+  if (!m) return `The user is currently on the ${pathname} page.`;
+  const key = decodeURIComponent(m[1]!);
+  try {
+    const supabase = createSupabaseServerClient();
+    const { data } = await supabase
+      .schema('atlas')
+      .from('projects')
+      .select('name')
+      .eq('project_key', key)
+      .eq('is_current', true)
+      .limit(1)
+      .maybeSingle();
+    const name = (data as { name?: string } | null)?.name;
+    if (name) {
+      return `The user is currently VIEWING project "${name}" (${key}). When they say "this project" / "here", they mean that one — default tool calls to it.`;
+    }
+  } catch {
+    /* context is best-effort */
+  }
+  return `The user is currently on the ${pathname} page.`;
+}
+
 async function runTurn(deps: TurnDeps): Promise<FinalResponse> {
   const { req, apiKey, user, profile, isEditor, messages, resume, emit, signal } = deps;
 
   const systemPrompt = buildSystemPrompt({
     userName: profile.displayName ?? profile.email ?? user.email ?? 'User',
     userRole: profile.role,
+    pageContext: await pageContextFor(deps.pathname),
   });
 
   // Per-turn agent_run: ledger + budget caps.

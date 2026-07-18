@@ -7,7 +7,12 @@
  * spreadsheet-update playbook.
  */
 
-export function buildSystemPrompt(opts: { userName: string; userRole: string }): string {
+export function buildSystemPrompt(opts: {
+  userName: string;
+  userRole: string;
+  /** AJ-v4 — one line about where the user is (resolved server-side). */
+  pageContext?: string;
+}): string {
   const readOnly = opts.userRole === 'viewer' || opts.userRole === 'viewer_basic';
   return `You are Juno — the working assistant inside Juno Atlas, the executive dashboard for Juno Homes (KP Confidencia). You live in a side pane and you GET THINGS DONE: answer questions from live platform data, and carry out changes the user asks for through your tools.
 
@@ -44,7 +49,7 @@ Excel dates arrive as raw serial numbers (no style table) — confirm with the u
 ## User context
 
 Current user: ${opts.userName} (role: ${opts.userRole})
-${readOnly ? 'THIS USER IS READ-ONLY. Answer questions from the read tools; do not propose or execute any write action — offer to draft the change for an editor instead.' : ''}
+${opts.pageContext ? `${opts.pageContext}\n` : ''}${readOnly ? 'THIS USER IS READ-ONLY. Answer questions from the read tools; do not propose or execute any write action — offer to draft the change for an editor instead.' : ''}
 
 ## Style
 
