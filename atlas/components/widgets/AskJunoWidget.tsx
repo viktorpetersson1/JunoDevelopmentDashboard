@@ -147,6 +147,10 @@ interface ChatMessage {
   question?: QuestionCard;
   plan?: PlanCard;
   writes?: ExecutedWrite[];
+  /** AJ-v4 transparency — tools the turn read (streamed status events). */
+  toolsUsed?: string[];
+  /** AJ-v4 transparency — the turn's model cost (shown to super_admin). */
+  costUsd?: number;
   /** Hidden context appended when sending (e.g. attachment tags). */
   sendSuffix?: string;
 }
@@ -218,6 +222,14 @@ export function AskJunoWidget() {
   const [lastFailed, setLastFailed] = useState(false);
   const lastTurnRef = useRef<{ history: ChatMessage[]; resume?: Resume } | null>(null);
   const dragRef = useRef(false);
+  // AJ-v4 brief + transparency.
+  const [brief, setBrief] = useState<{
+    pending_suggestions: number;
+    draft_capital_calls: number;
+    draft_snapshots: number;
+    show_cost: boolean;
+  } | null>(null);
+  const briefFetchedRef = useRef(false);
 
   const hidden = useMemo(
     () => HIDDEN_ON.some((p) => pathname === p || pathname.startsWith(`${p}/`)),
@@ -274,6 +286,33 @@ export function AskJunoWidget() {
       if (snapshotTimerRef.current) clearTimeout(snapshotTimerRef.current);
     };
   }, [messages, conversationId]);
+
+  // AJ-v4 — one brief fetch per pane-open so the empty state opens with
+  // "what needs attention" instead of silence.
+  useEffect(() => {
+    if (!open || hidden || briefFetchedRef.current) return;
+    briefFetchedRef.current = true;
+    void fetch('/api/ask-juno/brief')
+      .then(async (res) => {
+        const json = (await res.json().catch(() => null)) as {
+          data?: {
+            pending_suggestions?: number;
+            draft_capital_calls?: number;
+            draft_snapshots?: number;
+            show_cost?: boolean;
+          };
+        } | null;
+        if (res.ok && json?.data) {
+          setBrief({
+            pending_suggestions: json.data.pending_suggestions ?? 0,
+            draft_capital_calls: json.data.draft_capital_calls ?? 0,
+            draft_snapshots: json.data.draft_snapshots ?? 0,
+            show_cost: json.data.show_cost ?? false,
+          });
+        }
+      })
+      .catch(() => null);
+  }, [open, hidden]);
 
   /** Create the server conversation lazily on first send (idempotent-ish). */
   const ensureConversation = useCallback(async () => {
@@ -461,6 +500,7 @@ export function AskJunoWidget() {
     title?: string;
     items?: PlanItemView[];
     executed_writes?: ExecutedWrite[];
+    cost_usd?: number;
   }
 
   const callAgent = useCallback(
@@ -472,6 +512,8 @@ export function AskJunoWidget() {
       abortRef.current = ac;
       draftIdRef.current = null;
       lastStreamIdRef.current = null;
+      // AJ-v4 transparency — READ tools this turn touched (from status events).
+      const toolsUsed: string[] = [];
 
       // Append streamed text into the currently-open assistant bubble,
       // opening one on the first token.
@@ -506,14 +548,19 @@ export function AskJunoWidget() {
           streamed && (draftIdRef.current !== null || lastStreamIdRef.current !== null);
 
         if (d.type === 'reply' || d.type === 'error') {
+          const meta = {
+            toolsUsed: toolsUsed.length ? [...toolsUsed] : undefined,
+            costUsd: typeof d.cost_usd === 'number' ? d.cost_usd : undefined,
+          };
           if (hasStreamBubble) {
             attachToStreamBubble((x) => ({
               ...x,
               text: x.text.trim() ? x.text : (d.text ?? '(no reply)'),
               writes: writes ?? x.writes,
+              ...meta,
             }));
           } else {
-            push({ role: 'assistant', text: d.text ?? '(no reply)', writes });
+            push({ role: 'assistant', text: d.text ?? '(no reply)', writes, ...meta });
           }
           return;
         }
@@ -615,6 +662,7 @@ export function AskJunoWidget() {
                   draftIdRef.current = null;
                 } else if (ev.t === 'status' && ev.tool) {
                   setActivity(`${toolLabel(ev.tool)}…`);
+                  if (!toolsUsed.includes(ev.tool)) toolsUsed.push(ev.tool);
                 } else if (ev.t === 'write' && ev.write) {
                   setActivity(null);
                   const w = ev.write;
@@ -1119,6 +1167,29 @@ export function AskJunoWidget() {
 
         {view === 'chat' && messages.length === 0 && (
           <div style={{ fontSize: 12.5, color: 'var(--color-text-tertiary)', lineHeight: 1.6 }}>
+            {brief &&
+              brief.pending_suggestions + brief.draft_capital_calls + brief.draft_snapshots > 0 && (
+                <p
+                  style={{
+                    margin: '0 0 10px',
+                    fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+                    fontSize: 11.5,
+                    color: 'var(--color-text-secondary)',
+                  }}
+                >
+                  ●{' '}
+                  {[
+                    brief.pending_suggestions > 0 &&
+                      `${brief.pending_suggestions} pending suggestion${brief.pending_suggestions === 1 ? '' : 's'}`,
+                    brief.draft_capital_calls > 0 &&
+                      `${brief.draft_capital_calls} draft capital call${brief.draft_capital_calls === 1 ? '' : 's'}`,
+                    brief.draft_snapshots > 0 &&
+                      `${brief.draft_snapshots} draft snapshot${brief.draft_snapshots === 1 ? '' : 's'}`,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </p>
+              )}
             <p style={{ margin: '0 0 10px' }}>
               I read the live platform and carry out changes you approve. Start with one of these,
               or just ask:
@@ -1174,6 +1245,7 @@ export function AskJunoWidget() {
               onAnswer={(answer) => void answerQuestion(m.id, answer)}
               onPlan={(approved, selected) => void resolvePlan(m.id, approved, selected)}
               onRevert={(writeIdx) => void revertWrite(m.id, writeIdx)}
+              showCost={brief?.show_cost ?? false}
             />
           ))}
 
@@ -1356,6 +1428,7 @@ function MessageRow({
   onAnswer,
   onPlan,
   onRevert,
+  showCost,
 }: {
   msg: ChatMessage;
   busy: boolean;
@@ -1363,6 +1436,7 @@ function MessageRow({
   onAnswer: (answer: string) => void;
   onPlan: (approved: boolean, selected: number[]) => void;
   onRevert: (writeIdx: number) => void;
+  showCost: boolean;
 }) {
   const [freeText, setFreeText] = useState('');
   // Plan checkboxes — null means "all ticked" until the user touches one.
@@ -1678,6 +1752,30 @@ function MessageRow({
                 )}
               </div>
             ))}
+          </div>
+        )}
+        {(msg.toolsUsed?.length || (showCost && msg.costUsd !== undefined)) && (
+          <div
+            style={{
+              marginTop: 6,
+              fontSize: 10.5,
+              fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+              color: 'var(--color-text-tertiary)',
+            }}
+          >
+            {msg.toolsUsed?.length ? (
+              <details style={{ display: 'inline-block' }}>
+                <summary style={{ cursor: 'pointer', listStyle: 'none' }}>
+                  data: {msg.toolsUsed.length} source{msg.toolsUsed.length === 1 ? '' : 's'}
+                </summary>
+                {msg.toolsUsed.map((t) => t.replaceAll('_', ' ')).join(' · ')}
+              </details>
+            ) : null}
+            {showCost && msg.costUsd !== undefined && (
+              <span style={{ marginLeft: msg.toolsUsed?.length ? 8 : 0 }}>
+                ${msg.costUsd.toFixed(2)}
+              </span>
+            )}
           </div>
         )}
       </div>
