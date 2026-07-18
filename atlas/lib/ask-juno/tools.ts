@@ -190,7 +190,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     name: 'read_attachment',
     description:
-      'Read rows from a spreadsheet the user attached (they appear as [attachment:<id> <filename>] in the conversation). Returns the header + a page of rows. Page with offset/limit for large sheets; pick a sheet by name when the workbook has several. Numbers arrive as numbers; Excel DATES arrive as raw serial numbers (no style table) — ask the user if a date matters.',
+      'Read rows from a spreadsheet the user attached (they appear as [attachment:<id> <filename>] in the conversation). Returns the header + a page of rows. Page with offset/limit for large sheets; pick a sheet by name when the workbook has several. Numbers arrive as numbers; date-FORMATTED Excel cells arrive as ISO strings (YYYY-MM-DD). A raw 5-digit serial can still appear if the sheet left a date cell unformatted — ask the user if a date matters.',
     input_schema: {
       type: 'object',
       properties: {

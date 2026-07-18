@@ -11,9 +11,10 @@
  *   - sharedStrings.xml (plain + rich-text runs)
  *   - per-sheet cell grid: strings, numbers, booleans, inline strings,
  *     formula cached values
- * Not supported (documented): cell styles/date formatting — Excel stores
- * dates as numeric serials; without the style table they surface as
- * numbers. Fine for figure updates; the assistant is told about this.
+ *   - AJ-v4: xl/styles.xml number formats — cells styled with a DATE
+ *     format convert from Excel serials to ISO strings ('YYYY-MM-DD',
+ *     with ' HH:MM' when the serial carries a time fraction). Unstyled
+ *     serials still surface as plain numbers.
  */
 
 export interface ParsedSheet {
@@ -145,10 +146,71 @@ export function columnIndex(ref: string): number {
   return n - 1;
 }
 
+// ── AJ-v4: date styles ───────────────────────────────────────────────────────
+
+/** Built-in numFmtIds Excel renders as dates/times (ECMA-376 §18.8.30). */
+const BUILTIN_DATE_FMT_IDS = new Set([
+  14, 15, 16, 17, 18, 19, 20, 21, 22, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 45, 46, 47, 50, 51,
+  52, 53, 54, 55, 56, 57, 58,
+]);
+
+/** Heuristic for CUSTOM format codes: date-ish tokens, no numeric tokens. */
+function isDateFormatCode(code: string): boolean {
+  const stripped = code
+    .replace(/"[^"]*"/g, '') // quoted literals
+    .replace(/\[[^\]]*\]/g, '') // [$-409], [Red], [h] sections
+    .toLowerCase();
+  return /[ymdhs]/.test(stripped) && !/[#0?]/.test(stripped) && !stripped.includes('general');
+}
+
+function attr(tag: string, name: string): string | undefined {
+  return tag.match(new RegExp(`${name}="([^"]*)"`))?.[1];
+}
+
+/**
+ * xl/styles.xml → the set of cellXfs STYLE INDEXES that render as dates.
+ * Cells reference these via their s="N" attribute.
+ */
+export function parseDateStyles(xml: string): Set<number> {
+  const customDateIds = new Set<number>();
+  const numFmtRe = /<numFmt\s[^>]*\/?>/g;
+  let fm: RegExpExecArray | null;
+  while ((fm = numFmtRe.exec(xml)) !== null) {
+    const id = Number(attr(fm[0], 'numFmtId'));
+    const code = attr(fm[0], 'formatCode');
+    if (Number.isFinite(id) && code && isDateFormatCode(decodeXml(code))) customDateIds.add(id);
+  }
+
+  const dateStyles = new Set<number>();
+  const cellXfs = xml.match(/<cellXfs[^>]*>([\s\S]*?)<\/cellXfs>/)?.[1];
+  if (!cellXfs) return dateStyles;
+  const xfRe = /<xf\b[^>]*>/g;
+  let xm: RegExpExecArray | null;
+  let idx = 0;
+  while ((xm = xfRe.exec(cellXfs)) !== null) {
+    const id = Number(attr(xm[0], 'numFmtId') ?? '0');
+    if (BUILTIN_DATE_FMT_IDS.has(id) || customDateIds.has(id)) dateStyles.add(idx);
+    idx++;
+  }
+  return dateStyles;
+}
+
+/**
+ * Excel serial (1900 date system; epoch 1899-12-30 absorbs the fake 1900
+ * leap day) → 'YYYY-MM-DD', plus ' HH:MM' when a time fraction is present.
+ */
+export function excelSerialToIso(serial: number): string {
+  const ms = Math.round((serial - 25_569) * 86_400_000); // 25569 = 1970-01-01
+  const iso = new Date(ms).toISOString();
+  const frac = serial - Math.floor(serial);
+  return frac > 1e-6 ? `${iso.slice(0, 10)} ${iso.slice(11, 16)}` : iso.slice(0, 10);
+}
+
 function parseSheet(
   xml: string,
   shared: string[],
-  limits: { maxRows: number; maxCols: number }
+  limits: { maxRows: number; maxCols: number },
+  dateStyles: Set<number>
 ): Array<Array<string | number | boolean | null>> {
   const rows: Array<Array<string | number | boolean | null>> = [];
   const rowRe = /<row(?:\s[^>]*)?>([\s\S]*?)<\/row>/g;
@@ -179,7 +241,16 @@ function parseSheet(
           else if (type === 'str') value = rawV;
           else {
             const n = Number(rawV);
-            value = Number.isFinite(n) ? n : rawV;
+            if (Number.isFinite(n)) {
+              // AJ-v4 — date-styled numerics convert to ISO strings.
+              const styleIdx = Number(attrs.match(/s="(\d+)"/)?.[1] ?? NaN);
+              value =
+                Number.isFinite(styleIdx) && dateStyles.has(styleIdx) && n > 0
+                  ? excelSerialToIso(n)
+                  : n;
+            } else {
+              value = rawV;
+            }
           }
         }
       }
@@ -224,6 +295,11 @@ export async function parseXlsx(
     ? parseSharedStrings(await readEntryText(buf, byName.get('xl/sharedStrings.xml')!))
     : [];
 
+  // AJ-v4 — style table for date detection (absent → no conversion).
+  const dateStyles = byName.has('xl/styles.xml')
+    ? parseDateStyles(await readEntryText(buf, byName.get('xl/styles.xml')!))
+    : new Set<number>();
+
   const sheetEntries = entries
     .filter((e) => /^xl\/worksheets\/sheet\d+\.xml$/.test(e.name))
     .sort(
@@ -239,7 +315,10 @@ export async function parseXlsx(
   const sheets: ParsedSheet[] = [];
   for (let i = 0; i < sheetEntries.length; i++) {
     const xml = await readEntryText(buf, sheetEntries[i]!);
-    sheets.push({ name: names[i] ?? `Sheet${i + 1}`, rows: parseSheet(xml, shared, limits) });
+    sheets.push({
+      name: names[i] ?? `Sheet${i + 1}`,
+      rows: parseSheet(xml, shared, limits, dateStyles),
+    });
   }
   return { sheets };
 }

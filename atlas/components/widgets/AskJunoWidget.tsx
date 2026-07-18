@@ -851,11 +851,8 @@ export function AskJunoWidget() {
 
   // ── Attachments ─────────────────────────────────────────────────────────
 
-  const onFileChange = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      e.target.value = '';
+  const uploadFile = useCallback(
+    async (file: File) => {
       setUploading(true);
       try {
         const form = new FormData();
@@ -890,6 +887,60 @@ export function AskJunoWidget() {
       }
     },
     [push]
+  );
+
+  const onFileChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      e.target.value = '';
+      await uploadFile(file);
+    },
+    [uploadFile]
+  );
+
+  // ── AJ-v4 paste-from-Excel ──────────────────────────────────────────────
+  // A copied Excel/Sheets range lands as text/html (<table>) + TSV. Detect a
+  // grid, convert to CSV, and push it through the normal attachment path —
+  // no file-saving round-trip.
+  const csvCell = (v: string) => (/[",\n]/.test(v) ? `"${v.replaceAll('"', '""')}"` : v);
+  const onPaste = useCallback(
+    (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      if (uploading || pending) return;
+      let grid: string[][] | null = null;
+
+      const html = e.clipboardData.getData('text/html');
+      if (html && html.includes('<table')) {
+        try {
+          const doc = new DOMParser().parseFromString(html, 'text/html');
+          const rows = Array.from(doc.querySelectorAll('table tr'));
+          const parsed = rows.map((tr) =>
+            Array.from(tr.querySelectorAll('td,th')).map((c) => (c.textContent ?? '').trim())
+          );
+          if (parsed.length > 0 && parsed.some((r) => r.length > 1)) grid = parsed;
+        } catch {
+          grid = null;
+        }
+      }
+      if (!grid) {
+        const text = e.clipboardData.getData('text/plain');
+        if (text && text.includes('\t') && text.includes('\n')) {
+          const parsed = text
+            .replace(/\r/g, '')
+            .split('\n')
+            .filter((l, i, arr) => l.length > 0 || i < arr.length - 1)
+            .map((l) => l.split('\t'));
+          if (parsed.length > 1 && parsed.some((r) => r.length > 1)) grid = parsed;
+        }
+      }
+      if (!grid) return; // ordinary paste — let the textarea have it
+
+      e.preventDefault();
+      const csv = grid.map((r) => r.map(csvCell).join(',')).join('\n');
+      const file = new File([csv], 'pasted-table.csv', { type: 'text/csv' });
+      void uploadFile(file);
+    },
+    [uploading, pending, uploadFile]
   );
 
   const newChat = useCallback(() => {
@@ -1222,6 +1273,7 @@ export function AskJunoWidget() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={onKeyInInput}
+          onPaste={onPaste}
           rows={Math.min(5, Math.max(1, input.split('\n').length))}
           placeholder="Ask, or tell me what to change…"
           style={{

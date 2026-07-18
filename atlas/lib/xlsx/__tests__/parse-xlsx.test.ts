@@ -7,7 +7,13 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { parseXlsx, columnIndex, XlsxParseError } from '../parse-xlsx';
+import {
+  parseXlsx,
+  columnIndex,
+  XlsxParseError,
+  parseDateStyles,
+  excelSerialToIso,
+} from '../parse-xlsx';
 
 // ── Minimal ZIP writer (test-only) ───────────────────────────────────────────
 
@@ -156,6 +162,52 @@ describe('parseXlsx (zero-dep)', () => {
     const wb = await parseXlsx(buildZip(files), { maxRows: 2, maxCols: 2 });
     expect(wb.sheets[0]!.rows).toHaveLength(2);
     expect(wb.sheets[0]!.rows[0]).toEqual(['Project', 'Land cost']);
+  });
+
+  it('AJ-v4: date-styled cells convert serials to ISO; unstyled serials stay numeric', async () => {
+    // Style table: xf#0 general, xf#1 builtin date (14 = m/d/yyyy),
+    // xf#2 custom yyyy-mm-dd (164), xf#3 plain number format (#,##0.00).
+    const STYLES_XML = `<?xml version="1.0"?><styleSheet>
+<numFmts count="2"><numFmt numFmtId="164" formatCode="yyyy\\-mm\\-dd"/><numFmt numFmtId="165" formatCode="#,##0.00"/></numFmts>
+<cellXfs count="4"><xf numFmtId="0"/><xf numFmtId="14" applyNumberFormat="1"/><xf numFmtId="164"><alignment horizontal="left"/></xf><xf numFmtId="165"/></cellXfs>
+</styleSheet>`;
+    const DATE_SHEET = `<?xml version="1.0"?><worksheet><sheetData>
+<row r="1"><c r="A1" s="1"><v>45123</v></c><c r="B1" s="2"><v>45123.75</v></c><c r="C1" s="3"><v>45123</v></c><c r="D1"><v>45123</v></c></row>
+</sheetData></worksheet>`;
+    const enc = new TextEncoder();
+    const mk = (name: string, xml: string): FileSpec => ({
+      name,
+      data: enc.encode(xml),
+      method: 0,
+      rawSize: enc.encode(xml).length,
+    });
+    const wb = await parseXlsx(
+      buildZip([
+        mk('xl/workbook.xml', WORKBOOK_XML),
+        mk('xl/styles.xml', STYLES_XML),
+        mk('xl/worksheets/sheet1.xml', DATE_SHEET),
+      ])
+    );
+    const expectedDate = new Date((45_123 - 25_569) * 86_400_000).toISOString().slice(0, 10);
+    const row = wb.sheets[0]!.rows[0]!;
+    expect(row[0]).toBe(expectedDate); // builtin date fmt
+    expect(String(row[1])).toBe(`${expectedDate} 18:00`); // custom date fmt + time fraction
+    expect(row[2]).toBe(45_123); // number-formatted stays numeric
+    expect(row[3]).toBe(45_123); // unstyled stays numeric
+  });
+
+  it('AJ-v4: parseDateStyles heuristics — quoted/bracketed sections ignored', () => {
+    const styles = parseDateStyles(
+      `<styleSheet><numFmts><numFmt numFmtId="164" formatCode="[$-409]d\\-mmm\\-yy"/><numFmt numFmtId="166" formatCode="&quot;dias&quot; #,##0"/></numFmts><cellXfs><xf numFmtId="164"/><xf numFmtId="166"/><xf numFmtId="22"/></cellXfs></styleSheet>`
+    );
+    expect(styles.has(0)).toBe(true); // custom date
+    expect(styles.has(1)).toBe(false); // "dias" is quoted; #0 makes it numeric
+    expect(styles.has(2)).toBe(true); // builtin 22 = m/d/yy h:mm
+  });
+
+  it('AJ-v4: excelSerialToIso date-only vs date-time', () => {
+    expect(excelSerialToIso(25_569)).toBe('1970-01-01');
+    expect(excelSerialToIso(25_569.5)).toBe('1970-01-01 12:00');
   });
 
   it('rejects non-zip bytes with a readable error', async () => {

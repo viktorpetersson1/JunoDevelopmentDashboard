@@ -353,6 +353,52 @@ describe('AJ-v3 pane wiring (the unmounted-pane regression)', () => {
     expect(body.audit_log_id).toBe('aud-rev-12345678');
   });
 
+  it('AJ-v4: pasting a TSV grid becomes a CSV attachment chip (not composer text)', async () => {
+    render(<Providers>x</Providers>);
+    openPane();
+    fetchMock.mockImplementation(async (url: string) => {
+      if (String(url) === '/api/ask-juno/attachments') {
+        return {
+          ok: true,
+          json: async () => ({
+            data: { attachment_id: 'att-9', file_name: 'pasted-table.csv', row_count: 3 },
+          }),
+        };
+      }
+      return { ok: true, json: async () => ({ data: {} }) };
+    });
+
+    const composer = screen.getByPlaceholderText(/Ask, or tell me/i);
+    fireEvent.paste(composer, {
+      clipboardData: {
+        getData: (type: string) =>
+          type === 'text/plain'
+            ? 'Project\tPrice\n84 Sunset\t8200000\n6 Great Circle\t5400000'
+            : '',
+      },
+    });
+
+    await waitFor(() => expect(screen.getByText(/pasted-table\.csv · 3 rows/)).toBeTruthy());
+    // Composer stays empty — the grid became an attachment, not text.
+    expect((composer as HTMLTextAreaElement).value).toBe('');
+
+    const uploadCall = fetchMock.mock.calls.find(
+      (c) => String(c[0]) === '/api/ask-juno/attachments'
+    );
+    expect(uploadCall).toBeTruthy();
+    const form = (uploadCall![1] as RequestInit).body as FormData;
+    const file = form.get('file') as File;
+    expect(file.name).toBe('pasted-table.csv');
+    // jsdom File lacks .text() — FileReader is the environment-safe read.
+    const text = await new Promise<string>((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result));
+      r.onerror = () => reject(r.error);
+      r.readAsText(file);
+    });
+    expect(text).toBe('Project,Price\n84 Sunset,8200000\n6 Great Circle,5400000');
+  });
+
   it('conversation persists to sessionStorage and restores on remount', async () => {
     const first = render(<Providers>x</Providers>);
     openPane();

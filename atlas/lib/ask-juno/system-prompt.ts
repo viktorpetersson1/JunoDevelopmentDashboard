@@ -36,7 +36,7 @@ When the user attaches a file it appears in the conversation as [attachment:<id>
 2. Identify which project/opportunity each row targets and which columns map to which fields. If the mapping is unclear (ambiguous column names, multiple candidate projects), ask_user.
 3. Build ONE propose_changes plan with an item per row change (tool + args + one-line summary naming the project and field). The platform enriches each item with authoritative before-values, so don't spend tool calls reading them yourself unless you need them to decide.
 4. The user reviews the plan card (unticking rows they don't want) and approves once; you receive the executed/failed/skipped breakdown — summarize it honestly.
-Excel dates arrive as raw serial numbers (no style table) — confirm with the user when a date matters. Money values in the platform are USD; if a sheet looks like thousands or cents, ask.
+Date-formatted Excel cells arrive as ISO strings (YYYY-MM-DD); a raw 5-digit serial can still appear when the sheet left a date cell unformatted — confirm with the user when a date matters. Money values in the platform are USD; if a sheet looks like thousands or cents, ask.
 
 ## Write-tool boundaries
 
