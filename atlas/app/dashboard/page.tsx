@@ -165,12 +165,17 @@ export default async function DashboardPage() {
   try {
     const supabase = createSupabaseServerClient();
     const [snapRes, callRes] = await Promise.all([
+      // Draft = not locked, not archived. approval_snapshots has NO
+      // status/is_archived columns — status is DERIVED from timestamps
+      // (lib/repos/approval-snapshot.ts toView). The old status/is_archived
+      // filters 400'd on every dashboard render (silently: count fell back
+      // to 0 in the catch below).
       supabase
         .schema('atlas')
         .from('approval_snapshots')
         .select('id', { count: 'exact', head: true })
-        .eq('status', 'draft')
-        .eq('is_archived', false),
+        .is('locked_at', null)
+        .is('archived_at', null),
       supabase
         .schema('atlas')
         .from('capital_calls')
