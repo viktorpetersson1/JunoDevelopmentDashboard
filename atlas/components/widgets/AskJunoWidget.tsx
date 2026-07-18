@@ -22,7 +22,9 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { JunoMark } from '@/components/brand';
+import { renderMarkdown } from '@/lib/ask-juno/markdown';
 
 const PANE_WIDTH = 440;
 const SHIFT_MIN_VIEWPORT = 1180; // below this, overlay instead of pushing content
@@ -53,6 +55,8 @@ interface QuestionCard {
 interface ExecutedWrite {
   tool: string;
   audit_log_id: string | null;
+  /** AJ-v4 — deep link to the entity the write touched (e.g. /projects/p12). */
+  entity?: { href: string; label?: string } | null;
 }
 
 interface ChatMessage {
@@ -945,7 +949,9 @@ function MessageRow({
           borderRadius: 12,
           fontSize: isMeta ? 11.5 : 13,
           lineHeight: 1.5,
-          whiteSpace: 'pre-wrap',
+          // Assistant bubbles render markdown (the renderer owns breaks);
+          // user + meta text stays literal.
+          whiteSpace: isUser || isMeta ? 'pre-wrap' : 'normal',
           wordBreak: 'break-word',
           background: isUser
             ? 'var(--color-cta, #131313)'
@@ -960,7 +966,7 @@ function MessageRow({
           fontStyle: isMeta ? 'italic' : 'normal',
         }}
       >
-        {msg.text}
+        {isUser || isMeta ? msg.text : renderMarkdown(msg.text)}
         {msg.writes && msg.writes.length > 0 && (
           <div
             style={{
@@ -973,6 +979,17 @@ function MessageRow({
               <div key={i} style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
                 ✓ {w.tool.replaceAll('_', ' ')}
                 {w.audit_log_id ? ` · audit ${w.audit_log_id.slice(0, 8)}` : ''}
+                {w.entity?.href && (
+                  <>
+                    {' · '}
+                    <Link
+                      href={w.entity.href}
+                      style={{ color: 'inherit', textDecoration: 'underline' }}
+                    >
+                      open {w.entity.label ?? ''}
+                    </Link>
+                  </>
+                )}
               </div>
             ))}
           </div>

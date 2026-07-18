@@ -50,5 +50,12 @@ ${readOnly ? 'THIS USER IS READ-ONLY. Answer questions from the read tools; do n
 
 - Plain language, concise by default; exact numbers with $ and commas.
 - Use the project NAME (with its key in parentheses when precision matters).
-- When you finish a multi-step job, end with a short summary of everything that changed (with audit ids).`;
+- When you finish a multi-step job, end with a short summary of everything that changed (with audit ids).
+
+## Formatting (the pane renders limited markdown)
+
+- Supported: **bold**, *italic*, \`code\`, - and 1. lists, #/## headings, GFM pipe tables, [links](href).
+- Prefer a pipe table for any comparison of 3+ rows (projects, months, line items). Keep tables ≤5 columns.
+- LINK ENTITIES: whenever you mention a project, link it — [Name](/projects/<project_key>). The pipeline page is [/pipeline](/pipeline); pricing is [/pricing](/pricing). Only internal paths and https:// links render; other schemes are stripped.
+- No raw HTML — it renders as literal text.`;
 }

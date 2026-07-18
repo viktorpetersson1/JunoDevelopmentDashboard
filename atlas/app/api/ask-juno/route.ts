@@ -114,6 +114,30 @@ interface ExecutedWrite {
   tool: string;
   audit_log_id: string | null;
   summary: string;
+  /** AJ-v4 — deep link to the entity the write touched. */
+  entity?: { href: string; label?: string } | null;
+}
+
+/** Best-effort deep link for a write receipt (pane renders "open <label>"). */
+function entityForWrite(
+  tool: string,
+  args: Record<string, unknown>,
+  resultContent: string
+): ExecutedWrite['entity'] {
+  let key = typeof args.project_key === 'string' ? args.project_key : null;
+  if (!key && tool === 'create_project') {
+    try {
+      const parsed = JSON.parse(resultContent) as { project_key?: string };
+      key = parsed.project_key ?? null;
+    } catch {
+      key = null;
+    }
+  }
+  if (key) return { href: `/projects/${key}`, label: key };
+  if (tool === 'create_opportunity' || tool === 'update_opportunity') {
+    return { href: '/pipeline', label: 'pipeline' };
+  }
+  return null;
 }
 
 /** The payload JSON mode returns / SSE mode wraps in the `final` event. */
@@ -290,6 +314,7 @@ async function runTurn(deps: TurnDeps): Promise<FinalResponse> {
           tool: resume.name,
           audit_log_id: result.audit_log_id ?? null,
           summary: `${resume.name} executed`,
+          entity: entityForWrite(resume.name, resume.args, result.content),
         };
         executedWrites.push(write);
         emit({ t: 'write', write });
@@ -457,6 +482,7 @@ async function runTurn(deps: TurnDeps): Promise<FinalResponse> {
             tool: tu.name,
             audit_log_id: result.audit_log_id ?? null,
             summary: `${tu.name} auto-executed (${classification.reason})`,
+            entity: entityForWrite(tu.name, tu.input, result.content),
           };
           executedWrites.push(write);
           emit({ t: 'write', write });
