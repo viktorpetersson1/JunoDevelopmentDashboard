@@ -25,16 +25,40 @@ import { Providers } from '@/app/providers';
 
 const fetchMock = vi.fn();
 
+/**
+ * The pane now makes SIDE-CHANNEL calls (conversation create + debounced
+ * snapshot PUTs) alongside the chat turn, so the mock routes by URL: only
+ * /api/ask-juno consumes the queued turn responses.
+ */
+const turnQueue: unknown[] = [];
 function mockReply(data: Record<string, unknown>) {
-  fetchMock.mockResolvedValueOnce({
-    ok: true,
-    json: async () => ({ data }),
-  });
+  turnQueue.push({ ok: true, json: async () => ({ data }) });
 }
+function mockTurnResponse(res: unknown) {
+  turnQueue.push(res);
+}
+/** Only the calls that hit the chat engine. */
+const agentCalls = () => fetchMock.mock.calls.filter((c) => String(c[0]) === '/api/ask-juno');
 
 beforeEach(() => {
   sessionStorage.clear();
+  turnQueue.length = 0;
   fetchMock.mockReset();
+  fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+    const u = String(url);
+    if (u === '/api/ask-juno') {
+      return (
+        turnQueue.shift() ?? {
+          ok: true,
+          json: async () => ({ data: { type: 'reply', text: '(default)' } }),
+        }
+      );
+    }
+    if (u === '/api/ask-juno/conversations' && init?.method === 'POST') {
+      return { ok: true, json: async () => ({ data: { id: 'conv-t' } }) };
+    }
+    return { ok: true, json: async () => ({ data: {} }) };
+  });
   global.fetch = fetchMock as unknown as typeof fetch;
 });
 afterEach(() => {
@@ -74,7 +98,7 @@ describe('AJ-v3 pane wiring (the unmounted-pane regression)', () => {
     await waitFor(() => expect(screen.getByText(/90-day requirement/)).toBeTruthy());
     // Receipt line: "✓ create risk · audit <first-8-chars>"
     expect(screen.getByText(/create risk · audit audit-12/)).toBeTruthy();
-    const body = JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string);
+    const body = JSON.parse((agentCalls()[0]![1] as RequestInit).body as string);
     expect(body.messages[0]).toEqual({ role: 'user', content: 'what do we need?' });
   });
 
@@ -96,7 +120,7 @@ describe('AJ-v3 pane wiring (the unmounted-pane regression)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Approve & run/i }));
     await waitFor(() => expect(screen.getByText(/North Haven archived/)).toBeTruthy());
 
-    const resumeBody = JSON.parse((fetchMock.mock.calls[1]![1] as RequestInit).body as string);
+    const resumeBody = JSON.parse((agentCalls()[1]![1] as RequestInit).body as string);
     expect(resumeBody.resume).toEqual({
       kind: 'confirmed_tool',
       tool_use_id: 'toolu_1',
@@ -125,7 +149,7 @@ describe('AJ-v3 pane wiring (the unmounted-pane regression)', () => {
     fireEvent.click(screen.getByRole('button', { name: /84 Sunset Beach Road/ }));
     await waitFor(() => expect(screen.getByText(/Got it/)).toBeTruthy());
 
-    const resumeBody = JSON.parse((fetchMock.mock.calls[1]![1] as RequestInit).body as string);
+    const resumeBody = JSON.parse((agentCalls()[1]![1] as RequestInit).body as string);
     expect(resumeBody.resume.kind).toBe('answered_question');
     expect(resumeBody.resume.answer).toBe('84 Sunset Beach Road');
   });
@@ -171,7 +195,7 @@ describe('AJ-v3 pane wiring (the unmounted-pane regression)', () => {
     fireEvent.click(approve);
     await waitFor(() => expect(screen.getByText('Applied 1 change.')).toBeTruthy());
 
-    const resumeBody = JSON.parse((fetchMock.mock.calls[1]![1] as RequestInit).body as string);
+    const resumeBody = JSON.parse((agentCalls()[1]![1] as RequestInit).body as string);
     expect(resumeBody.resume.kind).toBe('approved_plan');
     expect(resumeBody.resume.name).toBe('propose_changes');
     expect(resumeBody.resume.selected).toEqual([0]);
@@ -198,7 +222,7 @@ describe('AJ-v3 pane wiring (the unmounted-pane regression)', () => {
       },
     ];
     const encoder = new TextEncoder();
-    fetchMock.mockResolvedValueOnce({
+    mockTurnResponse({
       ok: true,
       headers: new Headers({ 'content-type': 'text/event-stream' }),
       body: new ReadableStream<Uint8Array>({
@@ -219,8 +243,88 @@ describe('AJ-v3 pane wiring (the unmounted-pane regression)', () => {
     // The streamed write receipt attached to the final bubble.
     expect(screen.getByText(/update project · audit audit-98/)).toBeTruthy();
     // Request advertised stream support.
-    const req = fetchMock.mock.calls[0]![1] as RequestInit;
+    const req = agentCalls()[0]![1] as RequestInit;
     expect((req.headers as Record<string, string>).Accept).toBe('text/event-stream');
+  });
+
+  it('AJ-v4: send creates a server conversation and snapshots after the turn', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      render(<Providers>x</Providers>);
+      openPane();
+      // POST /conversations (create) then the chat turn then the PUT snapshot.
+      fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+        if (url === '/api/ask-juno/conversations' && init?.method === 'POST') {
+          return { ok: true, json: async () => ({ data: { id: 'conv-1' } }) };
+        }
+        if (url === '/api/ask-juno' && init?.method === 'POST') {
+          return { ok: true, json: async () => ({ data: { type: 'reply', text: 'Answer.' } }) };
+        }
+        return { ok: true, json: async () => ({ data: { saved: 2 } }) };
+      });
+      await send('hello there');
+      await waitFor(() => expect(screen.getByText('Answer.')).toBeTruthy());
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1200);
+      });
+      const putCall = fetchMock.mock.calls.find(
+        (c) =>
+          String(c[0]).startsWith('/api/ask-juno/conversations/conv-1') &&
+          (c[1] as RequestInit | undefined)?.method === 'PUT'
+      );
+      expect(putCall).toBeTruthy();
+      const body = JSON.parse((putCall![1] as RequestInit).body as string) as {
+        messages: Array<{ role: string; text: string }>;
+      };
+      expect(body.messages.some((m) => m.role === 'user' && m.text === 'hello there')).toBe(true);
+      expect(body.messages.some((m) => m.role === 'assistant' && m.text === 'Answer.')).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('AJ-v4: History lists past conversations; picking one loads its messages', async () => {
+    render(<Providers>x</Providers>);
+    openPane();
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === '/api/ask-juno/conversations' && (!init || init.method === undefined)) {
+        return {
+          ok: true,
+          json: async () => ({
+            data: {
+              conversations: [
+                {
+                  id: 'c9',
+                  title: 'Cash requirement review',
+                  last_message_at: '2026-07-18T10:00:00Z',
+                },
+              ],
+            },
+          }),
+        };
+      }
+      if (String(url).startsWith('/api/ask-juno/conversations/c9')) {
+        return {
+          ok: true,
+          json: async () => ({
+            data: {
+              id: 'c9',
+              messages: [
+                { id: 'm1', role: 'user', text: 'what is the 90-day need?', ts: 1 },
+                { id: 'm2', role: 'assistant', text: 'It is $1.2M.', ts: 2 },
+              ],
+            },
+          }),
+        };
+      }
+      return { ok: true, json: async () => ({ data: {} }) };
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'History' }));
+    await waitFor(() => expect(screen.getByText('Cash requirement review')).toBeTruthy());
+    fireEvent.click(screen.getByText('Cash requirement review'));
+    await waitFor(() => expect(screen.getByText('It is $1.2M.')).toBeTruthy());
+    expect(screen.getByText('what is the 90-day need?')).toBeTruthy();
   });
 
   it('conversation persists to sessionStorage and restores on remount', async () => {

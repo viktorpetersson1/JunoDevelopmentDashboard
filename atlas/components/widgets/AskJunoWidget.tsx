@@ -145,6 +145,16 @@ export function AskJunoWidget() {
   const draftIdRef = useRef<string | null>(null);
   const lastStreamIdRef = useRef<string | null>(null);
   const [activity, setActivity] = useState<string | null>(null);
+  // AJ-v4 history: the server-side conversation this chat snapshots into,
+  // and the pane view (chat ↔ history list).
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [view, setView] = useState<'chat' | 'history'>('chat');
+  const [historyItems, setHistoryItems] = useState<
+    Array<{ id: string; title: string; last_message_at: string }>
+  >([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const creatingConvRef = useRef(false);
+  const snapshotTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const hidden = useMemo(
     () => HIDDEN_ON.some((p) => pathname === p || pathname.startsWith(`${p}/`)),
@@ -158,9 +168,14 @@ export function AskJunoWidget() {
     try {
       const raw = sessionStorage.getItem(STORAGE_KEY);
       if (raw) {
-        const saved = JSON.parse(raw) as { messages?: ChatMessage[]; open?: boolean };
+        const saved = JSON.parse(raw) as {
+          messages?: ChatMessage[];
+          open?: boolean;
+          conversationId?: string | null;
+        };
         if (Array.isArray(saved.messages)) setMessages(saved.messages.slice(-120));
         if (saved.open) setOpen(true);
+        if (typeof saved.conversationId === 'string') setConversationId(saved.conversationId);
       }
     } catch {
       /* corrupt state — start fresh */
@@ -168,11 +183,93 @@ export function AskJunoWidget() {
   }, []);
   useEffect(() => {
     try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ messages: messages.slice(-120), open }));
+      sessionStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ messages: messages.slice(-120), open, conversationId })
+      );
     } catch {
       /* quota — non-critical */
     }
-  }, [messages, open]);
+  }, [messages, open, conversationId]);
+
+  // ── AJ-v4 server-side history ───────────────────────────────────────────
+  // Debounced snapshot: after any message change, persist the conversation
+  // (replace-all PUT). 900ms of quiet absorbs streaming deltas.
+  useEffect(() => {
+    if (!conversationId || messages.length === 0) return;
+    if (snapshotTimerRef.current) clearTimeout(snapshotTimerRef.current);
+    const id = conversationId;
+    const snapshot = messages.slice(-120);
+    snapshotTimerRef.current = setTimeout(() => {
+      void fetch(`/api/ask-juno/conversations/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: snapshot }),
+      }).catch(() => null);
+    }, 900);
+    return () => {
+      if (snapshotTimerRef.current) clearTimeout(snapshotTimerRef.current);
+    };
+  }, [messages, conversationId]);
+
+  /** Create the server conversation lazily on first send (idempotent-ish). */
+  const ensureConversation = useCallback(async () => {
+    if (conversationId || creatingConvRef.current) return;
+    creatingConvRef.current = true;
+    try {
+      const res = await fetch('/api/ask-juno/conversations', { method: 'POST' });
+      const json = (await res.json().catch(() => null)) as { data?: { id?: string } } | null;
+      if (res.ok && json?.data?.id) setConversationId(json.data.id);
+    } catch {
+      /* history is best-effort — chat works without it */
+    } finally {
+      creatingConvRef.current = false;
+    }
+  }, [conversationId]);
+
+  const openHistory = useCallback(async () => {
+    setView('history');
+    setHistoryLoading(true);
+    try {
+      const res = await fetch('/api/ask-juno/conversations');
+      const json = (await res.json().catch(() => null)) as {
+        data?: { conversations?: Array<{ id: string; title: string; last_message_at: string }> };
+      } | null;
+      setHistoryItems(json?.data?.conversations ?? []);
+    } catch {
+      setHistoryItems([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  const loadConversation = useCallback(async (id: string) => {
+    setHistoryLoading(true);
+    try {
+      const res = await fetch(`/api/ask-juno/conversations/${id}`);
+      const json = (await res.json().catch(() => null)) as {
+        data?: { id?: string; messages?: ChatMessage[] };
+      } | null;
+      if (res.ok && Array.isArray(json?.data?.messages)) {
+        setMessages(json.data.messages.slice(-120));
+        setConversationId(id);
+        setView('chat');
+      }
+    } catch {
+      /* leave the list open */
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  const archiveConversation = useCallback(
+    async (id: string) => {
+      setHistoryItems((items) => items.filter((x) => x.id !== id));
+      if (conversationId === id) setConversationId(null);
+      void fetch(`/api/ask-juno/conversations/${id}`, { method: 'DELETE' }).catch(() => null);
+    },
+    [conversationId]
+  );
 
   // ── Content shift (the "pane" behaviour) ────────────────────────────────
   useEffect(() => {
@@ -490,8 +587,9 @@ export function AskJunoWidget() {
     setMessages(updated);
     setInput('');
     setAttachments([]);
+    void ensureConversation(); // history is best-effort; never blocks the turn
     await callAgent(updated);
-  }, [input, pending, attachments, messages, callAgent]);
+  }, [input, pending, attachments, messages, callAgent, ensureConversation]);
 
   const resolveConfirmation = useCallback(
     async (msgId: string, approved: boolean) => {
@@ -618,6 +716,8 @@ export function AskJunoWidget() {
     setMessages([]);
     setAttachments([]);
     setInput('');
+    setConversationId(null);
+    setView('chat');
     try {
       sessionStorage.removeItem(STORAGE_KEY);
     } catch {
@@ -676,6 +776,14 @@ export function AskJunoWidget() {
             Reads the platform · carries out changes you approve
           </div>
         </div>
+        <button
+          type="button"
+          onClick={() => (view === 'history' ? setView('chat') : void openHistory())}
+          title={view === 'history' ? 'Back to the conversation' : 'Past conversations'}
+          style={hdrBtn}
+        >
+          {view === 'history' ? 'Back' : 'History'}
+        </button>
         <button type="button" onClick={newChat} title="Start a new conversation" style={hdrBtn}>
           New
         </button>
@@ -689,9 +797,80 @@ export function AskJunoWidget() {
         </button>
       </header>
 
-      {/* Messages */}
+      {/* Messages / history */}
       <div ref={listRef} style={{ flex: 1, overflowY: 'auto', padding: '14px 16px' }}>
-        {messages.length === 0 && (
+        {view === 'history' && (
+          <div>
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: 'var(--color-text-secondary)',
+                marginBottom: 8,
+              }}
+            >
+              Past conversations
+            </div>
+            {historyLoading && (
+              <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>Loading…</div>
+            )}
+            {!historyLoading && historyItems.length === 0 && (
+              <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+                No saved conversations yet — they land here after your first exchange.
+              </div>
+            )}
+            {historyItems.map((h) => (
+              <div
+                key={h.id}
+                style={{ display: 'flex', gap: 6, alignItems: 'center', margin: '4px 0' }}
+              >
+                <button
+                  type="button"
+                  onClick={() => void loadConversation(h.id)}
+                  style={{
+                    flex: 1,
+                    textAlign: 'left',
+                    padding: '8px 10px',
+                    borderRadius: 8,
+                    border: '1px solid var(--color-border-hairline)',
+                    background:
+                      h.id === conversationId
+                        ? 'var(--color-surface-raised, #f7f7f5)'
+                        : 'var(--color-surface-base)',
+                    cursor: 'pointer',
+                    fontSize: 12.5,
+                    color: 'var(--color-text-primary)',
+                    minWidth: 0,
+                  }}
+                >
+                  <span
+                    style={{
+                      display: 'block',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {h.title}
+                  </span>
+                  <span style={{ fontSize: 10.5, color: 'var(--color-text-tertiary)' }}>
+                    {new Date(h.last_message_at).toLocaleString()}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void archiveConversation(h.id)}
+                  aria-label={`Delete ${h.title}`}
+                  style={{ ...hdrBtn, padding: '6px 8px' }}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {view === 'chat' && messages.length === 0 && (
           <div style={{ fontSize: 12.5, color: 'var(--color-text-tertiary)', lineHeight: 1.6 }}>
             <p style={{ margin: '0 0 10px' }}>Things you can ask me to do:</p>
             <ul style={{ margin: 0, paddingLeft: 16 }}>
@@ -710,18 +889,19 @@ export function AskJunoWidget() {
           </div>
         )}
 
-        {messages.map((m) => (
-          <MessageRow
-            key={m.id}
-            msg={m}
-            busy={pending}
-            onConfirm={(approved) => void resolveConfirmation(m.id, approved)}
-            onAnswer={(answer) => void answerQuestion(m.id, answer)}
-            onPlan={(approved, selected) => void resolvePlan(m.id, approved, selected)}
-          />
-        ))}
+        {view === 'chat' &&
+          messages.map((m) => (
+            <MessageRow
+              key={m.id}
+              msg={m}
+              busy={pending}
+              onConfirm={(approved) => void resolveConfirmation(m.id, approved)}
+              onAnswer={(answer) => void answerQuestion(m.id, answer)}
+              onPlan={(approved, selected) => void resolvePlan(m.id, approved, selected)}
+            />
+          ))}
 
-        {pending && (
+        {view === 'chat' && pending && (
           <div
             aria-live="polite"
             style={{ fontSize: 12, color: 'var(--color-text-tertiary)', padding: '6px 0' }}
