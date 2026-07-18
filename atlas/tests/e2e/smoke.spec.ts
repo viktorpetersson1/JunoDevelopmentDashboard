@@ -22,6 +22,17 @@ test.describe('atlas smoke (no auth needed)', () => {
     expect(body.status).toBe('ok');
   });
 
+  test('GET /api/health/db is wired (200 up / 503 down — never 404)', async ({ request }) => {
+    // The DB probe keeps the free-tier Supabase project from auto-pausing
+    // (18 Jul 2026 outage). In env-less CI the service key is a placeholder
+    // so it answers 503; what this pins is that the route EXISTS and stays
+    // schema-stable for the keepalive workflow.
+    const res = await request.get('/api/health/db');
+    expect([200, 503]).toContain(res.status());
+    const body = (await res.json()) as { ok?: boolean };
+    expect(typeof body.ok).toBe('boolean');
+  });
+
   test('unauthenticated / redirects to /sign-in with redirectTo param', async ({ page }) => {
     await page.goto('/');
     await expect(page).toHaveURL(/\/sign-in(\?.*)?$/);

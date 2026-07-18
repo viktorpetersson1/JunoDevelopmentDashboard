@@ -1,0 +1,39 @@
+name: supabase-keepalive
+
+# The free-tier Supabase project (mbehvcfiakjznzqkymse) auto-pauses after
+# ~7 days without API traffic. On 18 Jul 2026 that paused the database and
+# took the whole site down (sign-in + every query fail while paused).
+#
+# This workflow pings /api/health/db — a public probe that performs one
+# head-only count through PostgREST — every 3 days so the project always
+# sees traffic well inside the pause window. If the database is actually
+# down, the run fails and GitHub emails the repo owner.
+#
+# No secrets involved: the endpoint is public and reveals only up/down.
+# Proper fix if this ever gets annoying: upgrade Supabase to Pro, which
+# never pauses, then delete this file.
+
+on:
+  schedule:
+    # Every 3 days at 06:17 UTC (odd minute avoids the top-of-hour cron rush).
+    - cron: '17 6 */3 * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping database health probe
+        run: |
+          for attempt in 1 2 3; do
+            code=$(curl -s -o /tmp/body -w '%{http_code}' --max-time 30 \
+              https://juno-atlas.pages.dev/api/health/db) || code=000
+            echo "attempt $attempt: HTTP $code $(cat /tmp/body 2>/dev/null)"
+            if [ "$code" = "200" ]; then
+              exit 0
+            fi
+            # A paused project can take ~60s to resume on first touch.
+            sleep 45
+          done
+          echo "Database health probe failed after 3 attempts — Supabase may be paused or down."
+          exit 1
