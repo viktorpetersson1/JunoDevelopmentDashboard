@@ -57,6 +57,9 @@ beforeEach(() => {
     if (u === '/api/ask-juno/conversations' && init?.method === 'POST') {
       return { ok: true, json: async () => ({ data: { id: 'conv-t' } }) };
     }
+    if (u === '/api/ask-juno/revert') {
+      return { ok: true, json: async () => ({ data: { reverted: true, project_key: 'p12' } }) };
+    }
     return { ok: true, json: async () => ({ data: {} }) };
   });
   global.fetch = fetchMock as unknown as typeof fetch;
@@ -325,6 +328,29 @@ describe('AJ-v3 pane wiring (the unmounted-pane regression)', () => {
     fireEvent.click(screen.getByText('Cash requirement review'));
     await waitFor(() => expect(screen.getByText('It is $1.2M.')).toBeTruthy());
     expect(screen.getByText('what is the 90-day need?')).toBeTruthy();
+  });
+
+  it('AJ-v4: update_project receipt reverts via two-step confirm', async () => {
+    render(<Providers>x</Providers>);
+    openPane();
+    mockReply({
+      type: 'reply',
+      text: 'Updated the sale price.',
+      executed_writes: [{ tool: 'update_project', audit_log_id: 'aud-rev-12345678' }],
+    });
+    await send('set sale price to 8.2');
+    await waitFor(() => expect(screen.getByText(/Updated the sale price/)).toBeTruthy());
+
+    // Two-step: revert → confirm revert → POST /api/ask-juno/revert.
+    fireEvent.click(screen.getByRole('button', { name: 'revert' }));
+    fireEvent.click(screen.getByRole('button', { name: 'confirm revert' }));
+    await waitFor(() => expect(screen.getByText(/· reverted/)).toBeTruthy());
+    expect(screen.getByText(/Reverted p12/)).toBeTruthy();
+
+    const revertCall = fetchMock.mock.calls.find((c) => String(c[0]) === '/api/ask-juno/revert');
+    expect(revertCall).toBeTruthy();
+    const body = JSON.parse((revertCall![1] as RequestInit).body as string);
+    expect(body.audit_log_id).toBe('aud-rev-12345678');
   });
 
   it('conversation persists to sessionStorage and restores on remount', async () => {

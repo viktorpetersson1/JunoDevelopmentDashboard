@@ -277,6 +277,9 @@ async function executeWrite(
   if (name === 'update_project') {
     const key = String(args.project_key ?? '');
     const { project_key: _k, ...fields } = args;
+    // AJ-v4: capture authoritative before-values (API units) so the receipt's
+    // Revert can restore them — and the audit row shows a true diff.
+    const before = await beforeValuesFor('update_project', args).catch(() => null);
     const res = await fetch(`${base}/api/projects/${key}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Cookie: cookie },
@@ -291,6 +294,7 @@ async function executeWrite(
       method: 'PATCH',
       statusCode: 200,
       source: 'ask_juno_agent',
+      before: before ? { projectKey: key, fields: before } : undefined,
       after: { projectKey: key, fields },
     });
     return {

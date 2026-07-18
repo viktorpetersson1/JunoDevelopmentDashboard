@@ -57,6 +57,8 @@ interface ExecutedWrite {
   audit_log_id: string | null;
   /** AJ-v4 — deep link to the entity the write touched (e.g. /projects/p12). */
   entity?: { href: string; label?: string } | null;
+  /** AJ-v4 — set client-side once the receipt's Revert succeeded. */
+  reverted?: boolean;
 }
 
 // AJ-v4 — batch plan card (propose_changes).
@@ -619,6 +621,53 @@ export function AskJunoWidget() {
     [messages, pending, callAgent, push]
   );
 
+  // AJ-v4 — undo an update_project receipt: re-applies the captured
+  // before-values server-side; the revert is itself audited.
+  const revertWrite = useCallback(
+    async (msgId: string, writeIdx: number) => {
+      const msg = messages.find((m) => m.id === msgId);
+      const w = msg?.writes?.[writeIdx];
+      if (!w?.audit_log_id || w.reverted || pending) return;
+      try {
+        const res = await fetch('/api/ask-juno/revert', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ audit_log_id: w.audit_log_id }),
+        });
+        const json = (await res.json().catch(() => null)) as {
+          data?: { reverted?: boolean; project_key?: string };
+          error?: { message?: string };
+        } | null;
+        if (!res.ok || !json?.data?.reverted) {
+          push({
+            role: 'system',
+            text: json?.error?.message ?? `Revert failed (HTTP ${res.status}).`,
+          });
+          return;
+        }
+        setMessages((m) =>
+          m.map((x) =>
+            x.id === msgId
+              ? {
+                  ...x,
+                  writes: x.writes?.map((ww, i) =>
+                    i === writeIdx ? { ...ww, reverted: true } : ww
+                  ),
+                }
+              : x
+          )
+        );
+        push({
+          role: 'tool_status',
+          text: `Reverted ${json.data.project_key ?? ''} to its previous figures.`,
+        });
+      } catch {
+        push({ role: 'system', text: 'Revert failed — network error.' });
+      }
+    },
+    [messages, pending, push]
+  );
+
   // AJ-v4 — resolve a batch plan: approve the ticked subset or decline all.
   const resolvePlan = useCallback(
     async (msgId: string, approved: boolean, selected: number[]) => {
@@ -898,6 +947,7 @@ export function AskJunoWidget() {
               onConfirm={(approved) => void resolveConfirmation(m.id, approved)}
               onAnswer={(answer) => void answerQuestion(m.id, answer)}
               onPlan={(approved, selected) => void resolvePlan(m.id, approved, selected)}
+              onRevert={(writeIdx) => void revertWrite(m.id, writeIdx)}
             />
           ))}
 
@@ -1070,16 +1120,20 @@ function MessageRow({
   onConfirm,
   onAnswer,
   onPlan,
+  onRevert,
 }: {
   msg: ChatMessage;
   busy: boolean;
   onConfirm: (approved: boolean) => void;
   onAnswer: (answer: string) => void;
   onPlan: (approved: boolean, selected: number[]) => void;
+  onRevert: (writeIdx: number) => void;
 }) {
   const [freeText, setFreeText] = useState('');
   // Plan checkboxes — null means "all ticked" until the user touches one.
   const [unticked, setUnticked] = useState<Set<number>>(new Set());
+  // Two-step revert arming (which receipt row is asking "confirm?").
+  const [armedRevert, setArmedRevert] = useState<number | null>(null);
 
   if (msg.role === 'plan' && msg.plan) {
     const p = msg.plan;
@@ -1344,8 +1398,9 @@ function MessageRow({
           >
             {msg.writes.map((w, i) => (
               <div key={i} style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-                ✓ {w.tool.replaceAll('_', ' ')}
+                {w.reverted ? '↩' : '✓'} {w.tool.replaceAll('_', ' ')}
                 {w.audit_log_id ? ` · audit ${w.audit_log_id.slice(0, 8)}` : ''}
+                {w.reverted ? ' · reverted' : ''}
                 {w.entity?.href && (
                   <>
                     {' · '}
@@ -1355,6 +1410,35 @@ function MessageRow({
                     >
                       open {w.entity.label ?? ''}
                     </Link>
+                  </>
+                )}
+                {!w.reverted && w.tool === 'update_project' && w.audit_log_id && (
+                  <>
+                    {' · '}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (armedRevert === i) {
+                          setArmedRevert(null);
+                          onRevert(i);
+                        } else {
+                          setArmedRevert(i);
+                        }
+                      }}
+                      disabled={busy}
+                      style={{
+                        border: 'none',
+                        background: 'none',
+                        padding: 0,
+                        cursor: 'pointer',
+                        fontSize: 11,
+                        color: 'inherit',
+                        textDecoration: 'underline',
+                        fontWeight: armedRevert === i ? 700 : 400,
+                      }}
+                    >
+                      {armedRevert === i ? 'confirm revert' : 'revert'}
+                    </button>
                   </>
                 )}
               </div>
