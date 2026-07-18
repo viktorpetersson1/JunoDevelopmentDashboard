@@ -43,6 +43,7 @@ import {
   executeTool,
   READ_ONLY_TOOL_NAMES,
   PROTOCOL_TOOL_NAMES,
+  PLAN_ELIGIBLE_TOOL_NAMES,
 } from '@/lib/ask-juno/tools';
 import { classifyRisk } from '@/lib/ask-juno/risk-classifier';
 import type { User } from '@supabase/supabase-js';
@@ -82,6 +83,20 @@ describe('AJ-v3 tool registry', () => {
     for (const n of PROTOCOL_TOOL_NAMES) expect(names.has(n)).toBe(true);
     // No overlap: a protocol tool must never be in the READ set.
     for (const n of PROTOCOL_TOOL_NAMES) expect(READ_ONLY_TOOL_NAMES).not.toContain(n);
+  });
+
+  it('AJ-v4: propose_changes is protocol, plan-eligible tools are real writes', async () => {
+    expect(PROTOCOL_TOOL_NAMES).toContain('propose_changes');
+    const names = new Set(availableToolDefinitions().map((t) => t.name));
+    expect(names.has('propose_changes')).toBe(true);
+    for (const n of PLAN_ELIGIBLE_TOOL_NAMES) {
+      expect(names.has(n), `plan tool ${n} missing a definition`).toBe(true);
+      expect(READ_ONLY_TOOL_NAMES).not.toContain(n);
+      expect(PROTOCOL_TOOL_NAMES).not.toContain(n);
+    }
+    // archive_project keeps its dedicated single-confirmation card.
+    expect(PLAN_ELIGIBLE_TOOL_NAMES).not.toContain('archive_project');
+    await expect(executeTool('propose_changes', {}, user)).rejects.toThrow(/conversation loop/);
   });
 
   it('archive_project never auto-executes; ask_user/archive throw if executed directly', async () => {

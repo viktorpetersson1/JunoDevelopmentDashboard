@@ -47,6 +47,7 @@ import {
   executeTool,
   projectHasLockedSnapshot,
   READ_ONLY_TOOL_NAMES,
+  PLAN_ELIGIBLE_TOOL_NAMES,
   type ToolResult,
 } from '@/lib/ask-juno/tools';
 import { archiveProject } from '@/lib/services/project-archive';
@@ -71,12 +72,14 @@ const MessageSchema = z.object({
 });
 
 const ResumeSchema = z.object({
-  kind: z.enum(['confirmed_tool', 'declined_tool', 'answered_question']),
+  kind: z.enum(['confirmed_tool', 'declined_tool', 'answered_question', 'approved_plan']),
   tool_use_id: z.string().max(128),
   name: z.string().max(128),
   args: z.record(z.unknown()),
   /** answered_question: the user's picked/typed answer. */
   answer: z.string().max(4000).optional(),
+  /** approved_plan: indices of the plan items the user kept ticked. */
+  selected: z.array(z.number().int().min(0).max(19)).max(20).optional(),
 });
 
 const BodySchema = z.object({
@@ -118,6 +121,81 @@ interface ExecutedWrite {
   entity?: { href: string; label?: string } | null;
 }
 
+// ── AJ-v4 batch plans (propose_changes) ──────────────────────────────────────
+
+interface PlanChange {
+  field: string;
+  before: unknown;
+  after: unknown;
+}
+interface PlanItem {
+  tool: string;
+  args: Record<string, unknown>;
+  summary: string;
+  changes: PlanChange[];
+}
+
+/**
+ * update_project args are DOLLAR/decimal-denominated API fields while the
+ * projects table stores cents/bps — map explicitly so before-values in the
+ * plan card are truthful. Unmapped fields show '—' rather than a wrong unit.
+ */
+const PROJECT_BEFORE_MAP: Record<string, { column: string; scale?: number }> = {
+  purchase_date: { column: 'purchase_date' },
+  villa_sqft_ag: { column: 'villa_sqft_ag' },
+  land_cost_usd: { column: 'land_cost_cents', scale: 1 / 100 },
+  build_cost_per_sqft: { column: 'build_cost_per_sqft_cents', scale: 1 / 100 },
+  soft_costs_lump_sum: { column: 'soft_costs_lump_sum_cents', scale: 1 / 100 },
+  senior_ltv_pct: { column: 'senior_ltv_bps', scale: 1 / 10_000 },
+  interest_rate_apr: { column: 'interest_rate_bps', scale: 1 / 10_000 },
+  sale_price_override_usd: { column: 'sale_price_override_cents', scale: 1 / 100 },
+  target_margin: { column: 'target_margin_bps', scale: 1 / 10_000 },
+  tax_rate_pct: { column: 'tax_rate_bps', scale: 1 / 100 },
+};
+
+/** Authoritative before-values for an update_project item (others: after-only). */
+async function beforeValuesFor(
+  tool: string,
+  args: Record<string, unknown>
+): Promise<Record<string, unknown> | null> {
+  if (tool !== 'update_project' || typeof args.project_key !== 'string') return null;
+  const supabase = createSupabaseServerClient();
+  const { data } = await supabase
+    .schema('atlas')
+    .from('projects')
+    .select('*')
+    .eq('project_key', args.project_key)
+    .eq('is_current', true)
+    .limit(1)
+    .maybeSingle();
+  if (!data) return null;
+  const row = data as Record<string, unknown>;
+  const before: Record<string, unknown> = {};
+  for (const field of Object.keys(args)) {
+    if (field === 'project_key') continue;
+    const map = PROJECT_BEFORE_MAP[field];
+    if (!map || !(map.column in row)) continue;
+    const raw = row[map.column];
+    before[field] =
+      typeof raw === 'number' && map.scale !== undefined ? raw * map.scale : (raw ?? null);
+  }
+  return before;
+}
+
+function planChangesFor(
+  tool: string,
+  args: Record<string, unknown>,
+  before: Record<string, unknown> | null
+): PlanChange[] {
+  return Object.entries(args)
+    .filter(([field]) => field !== 'project_key' && field !== 'opportunity_id')
+    .map(([field, after]) => ({
+      field,
+      before: before && field in before ? before[field] : null,
+      after,
+    }));
+}
+
 /** Best-effort deep link for a write receipt (pane renders "open <label>"). */
 function entityForWrite(
   tool: string,
@@ -142,7 +220,7 @@ function entityForWrite(
 
 /** The payload JSON mode returns / SSE mode wraps in the `final` event. */
 type FinalResponse = Record<string, unknown> & {
-  type: 'reply' | 'ask_user' | 'pending_confirmation' | 'error';
+  type: 'reply' | 'ask_user' | 'pending_confirmation' | 'pending_plan' | 'error';
 };
 
 /** AJ-v4 stream events. `final` always closes the stream. */
@@ -297,6 +375,70 @@ async function runTurn(deps: TurnDeps): Promise<FinalResponse> {
       });
     } else if (resume.kind === 'answered_question') {
       resultContent = JSON.stringify({ answer: resume.answer ?? '' });
+    } else if (resume.kind === 'approved_plan') {
+      // AJ-v4 — execute the ticked plan items sequentially, each through the
+      // same gated write path as a single confirmation.
+      if (!isEditor) {
+        await finishRun('failed', 'viewer attempted plan execution');
+        return {
+          type: 'reply',
+          text: 'Your role is read-only — an editor or super admin has to approve and run changes.',
+        };
+      }
+      const rawItems = Array.isArray((resume.args as { items?: unknown }).items)
+        ? ((resume.args as { items: unknown[] }).items as Array<Record<string, unknown>>)
+        : [];
+      const selected = new Set(resume.selected ?? rawItems.map((_, i) => i));
+      const executed: Array<Record<string, unknown>> = [];
+      const failed: Array<Record<string, unknown>> = [];
+      let skipped = 0;
+
+      for (let i = 0; i < rawItems.length && i < 20; i++) {
+        if (!selected.has(i)) {
+          skipped++;
+          continue;
+        }
+        const item = rawItems[i]!;
+        const tool = typeof item.tool === 'string' ? item.tool : '';
+        const itemArgs =
+          item.args && typeof item.args === 'object'
+            ? (item.args as Record<string, unknown>)
+            : null;
+        if (!tool || !itemArgs || !PLAN_ELIGIBLE_TOOL_NAMES.includes(tool)) {
+          failed.push({ index: i, tool, error: 'not a plan-eligible write tool' });
+          continue;
+        }
+        emit({ t: 'status', tool });
+        try {
+          const result = await executeWrite(req, tool, itemArgs, user);
+          const write: ExecutedWrite = {
+            tool,
+            audit_log_id: result.audit_log_id ?? null,
+            summary: String(item.summary ?? `${tool} executed`),
+            entity: entityForWrite(tool, itemArgs, result.content),
+          };
+          executedWrites.push(write);
+          emit({ t: 'write', write });
+          executed.push({
+            index: i,
+            tool,
+            summary: item.summary ?? null,
+            audit_log_id: result.audit_log_id ?? null,
+          });
+        } catch (err) {
+          failed.push({
+            index: i,
+            tool,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+      resultContent = JSON.stringify({
+        executed,
+        failed,
+        skipped_by_user: skipped,
+        note: 'Summarize what changed (with audit ids); mention failures and skipped rows explicitly.',
+      });
     } else {
       // confirmed_tool — execute NOW (editor+ enforced server-side).
       if (!isEditor) {
@@ -424,6 +566,62 @@ async function runTurn(deps: TurnDeps): Promise<FinalResponse> {
                   }))
                   .filter((o) => o.label)
               : [],
+            preamble,
+            executed_writes: executedWrites,
+          };
+          break;
+        }
+
+        // 1b. AJ-v4 batch plan — enrich with authoritative before-values and
+        // pause on ONE reviewable card.
+        if (tu.name === 'propose_changes') {
+          const input = tu.input as { title?: unknown; items?: unknown };
+          const rawItems = (Array.isArray(input.items) ? input.items : []).slice(0, 20);
+          const valid = rawItems
+            .map((it) => it as Record<string, unknown>)
+            .filter(
+              (it) =>
+                typeof it.tool === 'string' &&
+                PLAN_ELIGIBLE_TOOL_NAMES.includes(it.tool) &&
+                it.args !== null &&
+                typeof it.args === 'object'
+            );
+          if (valid.length === 0) {
+            toolResults.push({
+              tool_use_id: tu.id,
+              content: `Error: propose_changes had no valid items. Allowed tools: ${PLAN_ELIGIBLE_TOOL_NAMES.join(', ')}.`,
+            });
+            continue;
+          }
+          if (!isEditor) {
+            toolResults.push({
+              tool_use_id: tu.id,
+              content:
+                'Error: this user has a read-only role — plans cannot be proposed. Summarize the changes for an editor instead.',
+            });
+            continue;
+          }
+          const items: PlanItem[] = await Promise.all(
+            valid.map(async (it) => {
+              const args = it.args as Record<string, unknown>;
+              const tool = it.tool as string;
+              const before = await beforeValuesFor(tool, args).catch(() => null);
+              return {
+                tool,
+                args,
+                summary: String(it.summary ?? tool),
+                changes: planChangesFor(tool, args, before),
+              };
+            })
+          );
+          await finishRun('completed');
+          paused = {
+            type: 'pending_plan',
+            tool_use_id: tu.id,
+            // The pane replays items in resume.args — keep the validated set.
+            tool_args: { title: input.title ?? null, items },
+            title: typeof input.title === 'string' ? input.title : 'Proposed changes',
+            items,
             preamble,
             executed_writes: executedWrites,
           };

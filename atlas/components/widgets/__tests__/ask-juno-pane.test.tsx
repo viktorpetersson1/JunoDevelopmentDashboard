@@ -130,6 +130,53 @@ describe('AJ-v3 pane wiring (the unmounted-pane regression)', () => {
     expect(resumeBody.resume.answer).toBe('84 Sunset Beach Road');
   });
 
+  it('AJ-v4: pending_plan renders the diff card; unticking a row narrows the approved set', async () => {
+    render(<Providers>x</Providers>);
+    openPane();
+    const items = [
+      {
+        tool: 'update_project',
+        args: { project_key: 'p12', sale_price_override_usd: 8_200_000 },
+        summary: '84 Sunset: sale price → $8.2M',
+        changes: [{ field: 'sale_price_override_usd', before: 7_900_000, after: 8_200_000 }],
+      },
+      {
+        tool: 'update_project',
+        args: { project_key: 'p9', target_margin: 0.22 },
+        summary: '6 Great Circle: target margin → 22%',
+        changes: [{ field: 'target_margin', before: 0.2, after: 0.22 }],
+      },
+    ];
+    mockReply({
+      type: 'pending_plan',
+      tool_use_id: 'toolu_plan',
+      tool_args: { title: 'Update 2 figures', items },
+      title: 'Update 2 figures',
+      items,
+    });
+    await send('apply the spreadsheet');
+    await waitFor(() => expect(screen.getByText('Update 2 figures')).toBeTruthy());
+    // Diff rows show authoritative before → after.
+    expect(screen.getByText(/7,900,000 → 8,200,000/)).toBeTruthy();
+
+    // Untick the second row → the approve button narrows to 1.
+    fireEvent.click(screen.getByLabelText(/Include: 6 Great Circle/));
+    const approve = screen.getByRole('button', { name: 'Apply 1 change' });
+
+    mockReply({
+      type: 'reply',
+      text: 'Applied 1 change.',
+      executed_writes: [{ tool: 'update_project', audit_log_id: 'audit-11112222' }],
+    });
+    fireEvent.click(approve);
+    await waitFor(() => expect(screen.getByText('Applied 1 change.')).toBeTruthy());
+
+    const resumeBody = JSON.parse((fetchMock.mock.calls[1]![1] as RequestInit).body as string);
+    expect(resumeBody.resume.kind).toBe('approved_plan');
+    expect(resumeBody.resume.name).toBe('propose_changes');
+    expect(resumeBody.resume.selected).toEqual([0]);
+  });
+
   it('AJ-v4: streamed turn renders deltas live, then dedupes against the final payload', async () => {
     render(<Providers>x</Providers>);
     openPane();

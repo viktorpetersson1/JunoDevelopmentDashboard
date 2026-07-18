@@ -155,6 +155,39 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     },
   },
   {
+    // AJ-v4 — batch plan. Never executed server-side: the route intercepts,
+    // enriches each item with authoritative BEFORE values, and renders ONE
+    // approval card with a diff table + per-row checkboxes. The user's
+    // selection comes back as the tool_result and the loop continues.
+    name: 'propose_changes',
+    description:
+      'Propose a BATCH of related write actions as one reviewable plan (use for 2+ writes, ALWAYS for spreadsheet-driven updates — never fire update tools one by one for a batch). Each item is one write-tool call with a one-line summary. The user approves the whole plan or unticks rows; you receive what executed. Allowed item tools: create_project, update_project, create_actuals_entry, create_risk, create_opportunity, update_opportunity.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', description: 'Plan title, e.g. "Update 6 figures from Q3.xlsx"' },
+        items: {
+          type: 'array',
+          description: '1-20 write actions.',
+          items: {
+            type: 'object',
+            properties: {
+              tool: { type: 'string', description: 'The write tool to call' },
+              args: { type: 'object', description: 'The exact args for that tool' },
+              summary: {
+                type: 'string',
+                description:
+                  'One line: what this changes and why (e.g. "84 Sunset: sale price → $8.2M")',
+              },
+            },
+            required: ['tool', 'args', 'summary'],
+          },
+        },
+      },
+      required: ['items'],
+    },
+  },
+  {
     name: 'read_attachment',
     description:
       'Read rows from a spreadsheet the user attached (they appear as [attachment:<id> <filename>] in the conversation). Returns the header + a page of rows. Page with offset/limit for large sheets; pick a sheet by name when the workbook has several. Numbers arrive as numbers; Excel DATES arrive as raw serial numbers (no style table) — ask the user if a date matters.',
@@ -913,11 +946,11 @@ export async function executeTool(
       );
     }
 
-    case 'ask_user': {
-      // Protocol tool — the ROUTE intercepts ask_user and returns the
-      // question to the pane; execution here means the interception was
-      // bypassed.
-      throw new Error(`Tool 'ask_user' is handled by the conversation loop, not the executor`);
+    case 'ask_user':
+    case 'propose_changes': {
+      // Protocol tools — the ROUTE intercepts these and renders pane cards;
+      // execution here means the interception was bypassed.
+      throw new Error(`Tool '${toolName}' is handled by the conversation loop, not the executor`);
     }
 
     default:
@@ -942,7 +975,21 @@ export const READ_ONLY_TOOL_NAMES: readonly string[] = [
 ];
 
 /** Interaction-protocol tools the loop intercepts (never executed). */
-export const PROTOCOL_TOOL_NAMES: readonly string[] = ['ask_user'];
+export const PROTOCOL_TOOL_NAMES: readonly string[] = ['ask_user', 'propose_changes'];
+
+/**
+ * AJ-v4 — write tools a propose_changes plan may contain. archive_project is
+ * deliberately EXCLUDED (irreversible-feeling actions keep their dedicated
+ * single confirmation card), as is anything read/protocol.
+ */
+export const PLAN_ELIGIBLE_TOOL_NAMES: readonly string[] = [
+  'create_project',
+  'update_project',
+  'create_actuals_entry',
+  'create_risk',
+  'create_opportunity',
+  'update_opportunity',
+];
 
 /**
  * Check whether the target project has a locked approval snapshot.

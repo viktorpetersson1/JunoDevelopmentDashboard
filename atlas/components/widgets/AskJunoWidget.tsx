@@ -59,13 +59,35 @@ interface ExecutedWrite {
   entity?: { href: string; label?: string } | null;
 }
 
+// AJ-v4 — batch plan card (propose_changes).
+interface PlanChange {
+  field: string;
+  before: unknown;
+  after: unknown;
+}
+interface PlanItemView {
+  tool: string;
+  args: Record<string, unknown>;
+  summary: string;
+  changes: PlanChange[];
+}
+interface PlanCard {
+  tool_use_id: string;
+  tool_args: Record<string, unknown>;
+  title: string;
+  items: PlanItemView[];
+  resolved?: 'approved' | 'declined';
+  approvedCount?: number;
+}
+
 interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant' | 'system' | 'tool_status' | 'confirmation' | 'question';
+  role: 'user' | 'assistant' | 'system' | 'tool_status' | 'confirmation' | 'question' | 'plan';
   text: string;
   ts: number;
   confirmation?: ConfirmationCard;
   question?: QuestionCard;
+  plan?: PlanCard;
   writes?: ExecutedWrite[];
   /** Hidden context appended when sending (e.g. attachment tags). */
   sendSuffix?: string;
@@ -197,11 +219,13 @@ export function AskJunoWidget() {
   // ── Server round-trip ───────────────────────────────────────────────────
 
   type Resume = {
-    kind: 'confirmed_tool' | 'declined_tool' | 'answered_question';
+    kind: 'confirmed_tool' | 'declined_tool' | 'answered_question' | 'approved_plan';
     tool_use_id: string;
     name: string;
     args: Record<string, unknown>;
     answer?: string;
+    /** approved_plan: indices of the items the user kept ticked. */
+    selected?: number[];
   };
 
   const historyForSend = useCallback(
@@ -226,6 +250,8 @@ export function AskJunoWidget() {
     preamble?: string;
     question?: string;
     options?: Array<{ label: string; description?: string }>;
+    title?: string;
+    items?: PlanItemView[];
     executed_writes?: ExecutedWrite[];
   }
 
@@ -309,6 +335,22 @@ export function AskJunoWidget() {
               tool_use_id: d.tool_use_id,
               tool_args: d.tool_args ?? {},
               reason: d.reason ?? '',
+            },
+          });
+          return;
+        }
+
+        if (d.type === 'pending_plan' && d.tool_use_id && d.items?.length) {
+          if (hasStreamBubble) attachToStreamBubble((x) => ({ ...x, writes: writes ?? x.writes }));
+          else if (d.preamble) push({ role: 'assistant', text: d.preamble, writes });
+          push({
+            role: 'plan',
+            text: '',
+            plan: {
+              tool_use_id: d.tool_use_id,
+              tool_args: d.tool_args ?? {},
+              title: d.title ?? 'Proposed changes',
+              items: d.items,
             },
           });
           return;
@@ -479,6 +521,37 @@ export function AskJunoWidget() {
     [messages, pending, callAgent, push]
   );
 
+  // AJ-v4 — resolve a batch plan: approve the ticked subset or decline all.
+  const resolvePlan = useCallback(
+    async (msgId: string, approved: boolean, selected: number[]) => {
+      const msg = messages.find((m) => m.id === msgId);
+      const card = msg?.plan;
+      if (!card || pending) return;
+      setMessages((m) =>
+        m.map((x) =>
+          x.id === msgId
+            ? {
+                ...x,
+                plan: {
+                  ...card,
+                  resolved: approved ? 'approved' : 'declined',
+                  approvedCount: approved ? selected.length : 0,
+                },
+              }
+            : x
+        )
+      );
+      await callAgent(messages, {
+        kind: approved ? 'approved_plan' : 'declined_tool',
+        tool_use_id: card.tool_use_id,
+        name: 'propose_changes',
+        args: card.tool_args,
+        selected: approved ? selected : undefined,
+      });
+    },
+    [messages, pending, callAgent]
+  );
+
   const answerQuestion = useCallback(
     async (msgId: string, answer: string) => {
       const msg = messages.find((m) => m.id === msgId);
@@ -644,6 +717,7 @@ export function AskJunoWidget() {
             busy={pending}
             onConfirm={(approved) => void resolveConfirmation(m.id, approved)}
             onAnswer={(answer) => void answerQuestion(m.id, answer)}
+            onPlan={(approved, selected) => void resolvePlan(m.id, approved, selected)}
           />
         ))}
 
@@ -801,18 +875,131 @@ export function AskJunoWidget() {
 
 // ── Message renderer ──────────────────────────────────────────────────────────
 
+/** Compact value formatting for plan diff rows. */
+function fmtPlanVal(v: unknown): string {
+  if (v === null || v === undefined || v === '') return '—';
+  if (typeof v === 'number') return v.toLocaleString('en-US', { maximumFractionDigits: 4 });
+  if (typeof v === 'boolean') return v ? 'yes' : 'no';
+  if (typeof v === 'object') return JSON.stringify(v);
+  return String(v);
+}
+
 function MessageRow({
   msg,
   busy,
   onConfirm,
   onAnswer,
+  onPlan,
 }: {
   msg: ChatMessage;
   busy: boolean;
   onConfirm: (approved: boolean) => void;
   onAnswer: (answer: string) => void;
+  onPlan: (approved: boolean, selected: number[]) => void;
 }) {
   const [freeText, setFreeText] = useState('');
+  // Plan checkboxes — null means "all ticked" until the user touches one.
+  const [unticked, setUnticked] = useState<Set<number>>(new Set());
+
+  if (msg.role === 'plan' && msg.plan) {
+    const p = msg.plan;
+    const selectedCount = p.items.length - unticked.size;
+    const toggle = (i: number) =>
+      setUnticked((s) => {
+        const next = new Set(s);
+        if (next.has(i)) next.delete(i);
+        else next.add(i);
+        return next;
+      });
+    return (
+      <div style={cardBox}>
+        <div style={cardLabel}>
+          Plan
+          {p.resolved
+            ? ` — ${p.resolved}${p.resolved === 'approved' ? ` (${p.approvedCount})` : ''}`
+            : ''}
+        </div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+          {p.title}
+        </div>
+        <div style={{ margin: '8px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {p.items.map((item, i) => (
+            <label
+              key={i}
+              style={{
+                display: 'flex',
+                gap: 8,
+                alignItems: 'flex-start',
+                padding: '8px 10px',
+                borderRadius: 8,
+                border: '1px solid var(--color-border-hairline)',
+                opacity: !p.resolved || !unticked.has(i) ? 1 : 0.45,
+                cursor: p.resolved ? 'default' : 'pointer',
+              }}
+            >
+              {!p.resolved && (
+                <input
+                  type="checkbox"
+                  checked={!unticked.has(i)}
+                  onChange={() => toggle(i)}
+                  disabled={busy}
+                  aria-label={`Include: ${item.summary}`}
+                  style={{ marginTop: 2 }}
+                />
+              )}
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span
+                  style={{ display: 'block', fontSize: 12.5, color: 'var(--color-text-primary)' }}
+                >
+                  {item.summary}
+                </span>
+                {item.changes.map((c) => (
+                  <span
+                    key={c.field}
+                    style={{
+                      display: 'block',
+                      fontSize: 11,
+                      fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+                      color: 'var(--color-text-tertiary)',
+                      marginTop: 2,
+                      wordBreak: 'break-word',
+                    }}
+                  >
+                    {c.field}: {fmtPlanVal(c.before)} → {fmtPlanVal(c.after)}
+                  </span>
+                ))}
+              </span>
+            </label>
+          ))}
+        </div>
+        {!p.resolved && (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={() =>
+                onPlan(
+                  true,
+                  p.items.map((_, i) => i).filter((i) => !unticked.has(i))
+                )
+              }
+              disabled={busy || selectedCount === 0}
+              style={approveBtn}
+            >
+              Apply {selectedCount} change{selectedCount === 1 ? '' : 's'}
+            </button>
+            <button
+              type="button"
+              onClick={() => onPlan(false, [])}
+              disabled={busy}
+              style={ghostBtn}
+            >
+              Decline
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   if (msg.role === 'confirmation' && msg.confirmation) {
     const c = msg.confirmation;
