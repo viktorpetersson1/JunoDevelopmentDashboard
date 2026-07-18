@@ -85,6 +85,21 @@ describe('AJ-v3 tool registry', () => {
     for (const n of PROTOCOL_TOOL_NAMES) expect(READ_ONLY_TOOL_NAMES).not.toContain(n);
   });
 
+  it('AJ-v4: capital-call + scenario tools exist and NEVER auto-execute', () => {
+    const names = new Set(availableToolDefinitions().map((t) => t.name));
+    expect(names.has('create_capital_call')).toBe(true);
+    expect(names.has('create_scenario')).toBe(true);
+    // Not in the low-risk set — the classifier must demand confirmation,
+    // even for a tiny amount.
+    expect(
+      classifyRisk('create_capital_call', { amount_usd: 100 }, 'super_admin').auto_execute
+    ).toBe(false);
+    expect(classifyRisk('create_scenario', { name: 'x' }, 'editor').auto_execute).toBe(false);
+    // And they stay out of batch plans.
+    expect(PLAN_ELIGIBLE_TOOL_NAMES).not.toContain('create_capital_call');
+    expect(PLAN_ELIGIBLE_TOOL_NAMES).not.toContain('create_scenario');
+  });
+
   it('AJ-v4: propose_changes is protocol, plan-eligible tools are real writes', async () => {
     expect(PROTOCOL_TOOL_NAMES).toContain('propose_changes');
     const names = new Set(availableToolDefinitions().map((t) => t.name));

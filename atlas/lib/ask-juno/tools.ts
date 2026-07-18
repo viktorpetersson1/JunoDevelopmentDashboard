@@ -33,6 +33,8 @@ import { findAttachmentForUser } from '@/lib/repos/chat-attachments';
 import { listActualsByCategory } from '@/lib/services/actuals';
 import { createActualsEntry, type CreateActualsEntryInput } from '@/lib/services/actuals';
 import { insertRisk } from '@/lib/repos/project-risks';
+import { createCapitalCall } from '@/lib/services/capital-call';
+import { insertScenario, type ScenarioClass } from '@/lib/repos/scenarios';
 import { recordMutation } from '@/lib/services/audit';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { researchComps } from '@/lib/pricing/comp-researcher';
@@ -419,6 +421,55 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
         notes: { type: 'string' },
       },
       required: ['opportunity_id'],
+    },
+  },
+
+  // ── AJ-v4 write tools ─────────────────────────────────────────────────────
+  {
+    name: 'create_capital_call',
+    description:
+      'Draft a capital call for a project, split across owners per the CURRENT cap table. Creates a DRAFT only — issuing (and manual splits) happens in the Capital UI. ALWAYS requires confirmation.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        project_key: { type: 'string', description: 'The project slug (e.g. "p2")' },
+        amount_usd: { type: 'number', description: 'Total call amount in USD (positive)' },
+        due_date: { type: 'string', description: 'Optional YYYY-MM-DD funding due date' },
+        notes: { type: 'string', description: 'Optional note shown on the call' },
+      },
+      required: ['project_key', 'amount_usd'],
+    },
+  },
+  {
+    name: 'create_scenario',
+    description:
+      'Create a saved what-if scenario (layered on the base case) the user can toggle on Home. Deltas only — omitted knobs stay neutral. ALWAYS requires confirmation.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Scenario name (e.g. "Rates +200bps")' },
+        class: {
+          type: 'string',
+          description: 'lender | upside | downside | custom (default custom)',
+        },
+        interest_rate_delta_bps: {
+          type: 'number',
+          description: 'Interest delta in basis points (e.g. 200 = +2%)',
+        },
+        build_cost_multiplier: {
+          type: 'number',
+          description: 'Build-cost multiplier (1 = unchanged, 1.1 = +10%)',
+        },
+        sale_price_multiplier: {
+          type: 'number',
+          description: 'Sale-price multiplier (1 = unchanged, 0.9 = −10%)',
+        },
+        timing_shift_months: {
+          type: 'number',
+          description: 'Whole months of schedule slip (positive = later)',
+        },
+      },
+      required: ['name'],
     },
   },
 ];
@@ -928,6 +979,101 @@ export async function executeTool(
           success: true,
           id: view.id,
           name: view.name,
+          audit_log_id: auditId,
+        }),
+        audit_log_id: auditId,
+        is_write: true,
+      };
+    }
+
+    // ── AJ-v4 writes (confirm-gated by the route) ─────────────────────────
+
+    case 'create_capital_call': {
+      const key = String(args.project_key ?? '');
+      const uuid = await findCurrentProjectUuidByKey(key);
+      if (!uuid) throw new Error(`Project "${key}" not found`);
+      const amountUsd = Number(args.amount_usd);
+      if (!Number.isFinite(amountUsd) || amountUsd <= 0) {
+        throw new Error('amount_usd must be a positive number');
+      }
+      // DRAFT only, cap-table split only — issuing + manual splits live in
+      // the Capital UI where the full share editor exists.
+      const result = await createCapitalCall(
+        {
+          projectId: uuid,
+          totalAmountCents: Math.round(amountUsd * 100),
+          split: 'cap_table',
+          issue: false,
+          dueDate: args.due_date ? String(args.due_date).slice(0, 10) : null,
+          notes: args.notes ? String(args.notes).slice(0, 2000) : null,
+        },
+        user
+      );
+      const auditId = await recordMutation({
+        orgId: await resolveOrgId(),
+        userId: user.id,
+        route: 'service:create_capital_call:ask_juno',
+        method: 'POST',
+        statusCode: 201,
+        source: 'ask_juno_agent',
+        after: {
+          capitalCallId: result.id,
+          callNumber: result.callNumber,
+          projectKey: key,
+          amountUsd,
+          status: result.status,
+        },
+      });
+      return {
+        content: JSON.stringify({
+          success: true,
+          id: result.id,
+          call_number: result.callNumber,
+          status: result.status,
+          note: 'Draft only — issue it from the Capital surface.',
+          audit_log_id: auditId,
+        }),
+        audit_log_id: auditId,
+        is_write: true,
+      };
+    }
+
+    case 'create_scenario': {
+      const name = String(args.name ?? '').trim();
+      if (!name) throw new Error('Scenario name is required');
+      const classIn = String(args.class ?? 'custom');
+      const cls: ScenarioClass = ['lender', 'upside', 'downside', 'custom'].includes(classIn)
+        ? (classIn as ScenarioClass)
+        : 'custom';
+      const num = (v: unknown, dflt: number) => (Number.isFinite(Number(v)) ? Number(v) : dflt);
+      const view = await insertScenario(
+        {
+          name: name.slice(0, 120),
+          class: cls,
+          interest_rate_delta_bps: Math.round(num(args.interest_rate_delta_bps, 0)),
+          build_cost_multiplier: num(args.build_cost_multiplier, 1),
+          sale_price_multiplier: num(args.sale_price_multiplier, 1),
+          margin_override: null,
+          timing_shift_months: Math.round(num(args.timing_shift_months, 0)),
+          excluded_project_ids: [],
+        },
+        user.id
+      );
+      const auditId = await recordMutation({
+        orgId: await resolveOrgId(),
+        userId: user.id,
+        route: 'service:create_scenario:ask_juno',
+        method: 'POST',
+        statusCode: 201,
+        source: 'ask_juno_agent',
+        after: { scenarioId: view.id, name: view.name, class: view.class },
+      });
+      return {
+        content: JSON.stringify({
+          success: true,
+          id: view.id,
+          name: view.name,
+          note: 'Toggle it from the scenario switcher on Home.',
           audit_log_id: auditId,
         }),
         audit_log_id: auditId,
