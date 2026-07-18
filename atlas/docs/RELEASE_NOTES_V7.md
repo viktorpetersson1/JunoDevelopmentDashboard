@@ -113,6 +113,47 @@ reachable — schema-only usage), dev-tooling advisories (playwright/esbuild/
 babel), pre-existing Supabase advisor warnings (public-schema SECURITY
 DEFINER fns, V4-era permissive policies, leaked-password protection off).
 
+## Ask Juno v4 — the colleague upgrade (18 Jul)
+
+Everything below ships across commits 136cfdc..HEAD (one slice per commit).
+
+- **Live streaming.** The turn streams over SSE: token deltas render as they
+  land, a humanized activity line shows each tool as it runs ("Reading
+  projects…"), receipts appear the moment a write executes, and a **Stop**
+  button aborts mid-turn (server honours the signal between iterations AND
+  mid-model-call; the JSON contract is unchanged for non-stream clients).
+- **Batch plans.** 2+ related changes arrive as ONE plan card with
+  authoritative before → after diffs (server-enriched; explicit
+  dollars↔cents/bps mapping) and per-row checkboxes — approve once,
+  everything executes through the same gated path with per-row receipts.
+  The Excel flow now needs one click, not fifteen.
+- **Rich replies.** Hand-rolled safe markdown (tables, lists, bold, code;
+  React elements only — no innerHTML, unsafe link schemes stripped);
+  projects render as deep links; receipts link "open <entity>".
+- **Conversation history.** Mig 0045: chats snapshot server-side
+  (owner-only RLS), History view lists/resumes/archives them; titles derive
+  from the first message.
+- **Undo.** update_project receipts get two-step revert — the captured
+  before-values re-apply through the same validated PATCH, audited
+  (a revert is itself revertible).
+- **Context + chips.** The system prompt knows which page (and which
+  project) you're viewing; the empty state opens with a quiet
+  needs-attention line + contextual starter chips.
+- **Excel, properly.** Date-styled cells convert serials → ISO strings
+  (styles.xml numFmts; ECMA-376 builtin ids + custom-code heuristic).
+  Pasting a copied Excel/Sheets range becomes a CSV attachment directly.
+- **New write tools.** create_capital_call (DRAFT, cap-table split only)
+  and create_scenario — both always-confirm, both excluded from batch
+  plans.
+- **Ergonomics + transparency.** Ctrl/Cmd+J toggles; drag-resize 380–720px
+  (persisted); Retry re-runs a failed turn; assistant bubbles carry a
+  collapsible "data: N sources" line and (super_admin only) the turn's
+  model cost.
+
+Deferred: SCHEDULED digests (needs a secrets channel for the cron caller —
+gh auth is currently logged out on the dev box, and secrets never go in the
+repo). The on-open brief covers the daily-awareness value meanwhile.
+
 ## Ask Juno v3 — the working pane (5 Jul)
 
 Ask Juno is now a right-docked WORKING PANE (topbar "Ask Juno" button; content
