@@ -172,14 +172,32 @@ export async function callAgentModel(args: {
   const estIn = estimateInputTokens(args.system + JSON.stringify(args.messages));
   const est = estimateCostUsd(model, estIn, maxTokens);
 
-  // Ledger row FIRST (pending, estimated cost) — a crash now over-counts, never under.
-  const callId = await insertPendingAgentLlmCall({
-    runId: args.runId,
-    stepId: args.stepId,
-    callSite: args.callSite,
-    model,
-    estCostUsd: est,
-  });
+  // Ledger row FIRST (pending, estimated cost) — a crash now over-counts,
+  // never under. AJ-v5.1: a ledger-insert failure (e.g. Cloudflare's
+  // subrequest cap) degrades to lost telemetry instead of killing the turn —
+  // the budget gate accumulates costs in-memory from each call's result.
+  let callId: string | null = null;
+  try {
+    callId = await insertPendingAgentLlmCall({
+      runId: args.runId,
+      stepId: args.stepId,
+      callSite: args.callSite,
+      model,
+      estCostUsd: est,
+    });
+  } catch {
+    callId = null;
+  }
+  /** True-up is telemetry — never let it kill a turn (or count a subrequest
+   *  against a turn that's already at Cloudflare's cap). */
+  const trueUp = async (patch: Omit<Parameters<typeof trueUpAgentLlmCall>[0], 'id'>) => {
+    if (!callId) return;
+    try {
+      await trueUpAgentLlmCall({ id: callId, ...patch });
+    } catch {
+      /* lost telemetry only */
+    }
+  };
 
   const startedAt = Date.now();
   const controller = new AbortController();
@@ -226,8 +244,7 @@ export async function callAgentModel(args: {
       } catch (err) {
         const aborted = err instanceof Error && err.name === 'AbortError';
         if (!aborted && attempt < MAX_ATTEMPTS) continue; // transient network — retry
-        await trueUpAgentLlmCall({
-          id: callId,
+        await trueUp({
           status: aborted ? 'timeout' : 'failed',
           httpStatus: null,
           errorMessage: aborted ? `timed out after ${timeoutFor(args.callSite)}ms` : String(err),
@@ -247,8 +264,7 @@ export async function callAgentModel(args: {
     }
 
     if (!res || (controller.signal.aborted && !res.ok)) {
-      await trueUpAgentLlmCall({
-        id: callId,
+      await trueUp({
         status: 'timeout',
         httpStatus: null,
         errorMessage: `aborted during retry backoff`,
@@ -263,8 +279,7 @@ export async function callAgentModel(args: {
     if (!res.ok) {
       const text = await res.text().catch(() => '');
       const status = res.status === 429 ? 'rate_limited' : 'failed';
-      await trueUpAgentLlmCall({
-        id: callId,
+      await trueUp({
         status,
         httpStatus: res.status,
         errorMessage: `HTTP ${res.status} after ${MAX_ATTEMPTS} attempts: ${text.slice(0, 300)}`,
@@ -283,8 +298,7 @@ export async function callAgentModel(args: {
     const inTok = data.usage?.input_tokens ?? estIn;
     const outTok = data.usage?.output_tokens ?? 0;
     const cost = actualCostUsd(model, inTok, outTok);
-    await trueUpAgentLlmCall({
-      id: callId,
+    await trueUp({
       status: 'success',
       httpStatus: 200,
       errorMessage: null,

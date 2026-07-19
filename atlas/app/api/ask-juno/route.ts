@@ -55,7 +55,6 @@ import { createProject, CreateProjectSchema } from '@/lib/services/project';
 import { updateProject } from '@/lib/services/project-update';
 import { UpdateProjectSchema } from '@/lib/services/project-schema';
 import { createRun, updateRun } from '@/lib/repos/agent-runs';
-import { sumAgentCostUsd } from '@/lib/repos/agent-llm-calls';
 import { callAgentModel, AgentLlmError, type AnthropicToolUse } from '@/lib/agent/llm';
 import { agentModel } from '@/lib/agent/config';
 import { recordMutation } from '@/lib/services/audit';
@@ -407,6 +406,17 @@ async function runTurn(deps: TurnDeps): Promise<FinalResponse> {
     content: m.content,
   }));
   const executedWrites: ExecutedWrite[] = [];
+  // Local cost accumulator (per-turn run) — see the budget-gate note below.
+  let spentUsd = 0;
+  // Snapshot-lock lookups cached per project within the turn (subrequest diet).
+  const lockedSnapshotCache = new Map<string, boolean>();
+  const hasLockedSnapshot = async (projectKey: string): Promise<boolean> => {
+    const hit = lockedSnapshotCache.get(projectKey);
+    if (hit !== undefined) return hit;
+    const v = await projectHasLockedSnapshot(projectKey).catch(() => false);
+    lockedSnapshotCache.set(projectKey, v);
+    return v;
+  };
 
   if (resume) {
     let resultContent: string;
@@ -554,8 +564,13 @@ async function runTurn(deps: TurnDeps): Promise<FinalResponse> {
       });
       if (sawDelta) emit({ t: 'text_end' });
 
-      // Budget gate — the ledger is authoritative (estimate-then-true-up).
-      const spent = await sumAgentCostUsd(run.id).catch(() => 0);
+      // Budget gate — accumulate locally from each call's trued-up cost.
+      // (Was a per-iteration sumAgentCostUsd query; on Cloudflare every DB
+      // round-trip counts against the 50-subrequest Worker limit, and heavy
+      // plan turns were dying on "Too many subrequests". Same numbers — the
+      // ledger rows remain the durable record.)
+      spentUsd += res.costUsd;
+      const spent = spentUsd;
       const overBudget = spent >= run.costHardCapUsd;
 
       const content = res.toolUses.length
@@ -696,7 +711,7 @@ async function runTurn(deps: TurnDeps): Promise<FinalResponse> {
         }
 
         const hasLocked = tu.input.project_key
-          ? await projectHasLockedSnapshot(String(tu.input.project_key))
+          ? await hasLockedSnapshot(String(tu.input.project_key))
           : false;
         const classification = classifyRisk(tu.name, tu.input, profile.role, hasLocked);
 
@@ -772,6 +787,10 @@ async function runTurn(deps: TurnDeps): Promise<FinalResponse> {
       } else if (err.httpStatus === 529 || err.httpStatus === 500) {
         friendly = "Anthropic's API is overloaded right now — wait a moment and resend.";
       }
+    }
+    if (msg.includes('Too many subrequests')) {
+      friendly =
+        'This turn did more work than one Cloudflare request allows (the free plan caps outbound calls at 50 per invocation). Everything listed below DID execute — start a fresh message to continue, and keep plans to a few changes at a time. Upgrading Cloudflare Workers to the paid plan raises this ceiling 20×.';
     }
     // The error bubble is an ASSISTANT message, so it re-enters the model's
     // context next turn. Enumerating what already ran prevents the model
