@@ -19,6 +19,8 @@ import { withErrorBoundary } from '@/lib/api/handler';
 import { requireAuth } from '@/lib/auth/requireAuth';
 import { requireEditor } from '@/lib/auth/requireRole';
 import { recordMutation } from '@/lib/services/audit';
+import { updateProject } from '@/lib/services/project-update';
+import { UpdateProjectSchema } from '@/lib/services/project-schema';
 import { createSupabaseServerClient, createSupabaseServiceRoleClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -80,17 +82,29 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
     .maybeSingle();
   if (!proj) return notFound(`Project ${projectKey} no longer exists`);
 
-  const res = await fetch(`${req.nextUrl.origin}/api/projects/${projectKey}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', Cookie: req.headers.get('cookie') ?? '' },
-    body: JSON.stringify(fields),
-  });
-  const patchJson = (await res.json().catch(() => null)) as {
-    error?: { message?: string };
-  } | null;
-  if (!res.ok) {
+  // FIX (19 Jul): apply the before-values via the service DIRECTLY — the
+  // previous internal fetch to /api/projects fails in production because
+  // Cloudflare blocks a Pages Function from fetching its own hostname.
+  // Same validation, same versioning/snapshot guards, same audit trail.
+  const revertPatch = UpdateProjectSchema.safeParse(fields);
+  if (!revertPatch.success) {
     return badRequest(
-      `Revert failed: ${patchJson?.error?.message ?? `HTTP ${res.status}`}`,
+      `Revert failed: captured before-values no longer validate — ${revertPatch.error.issues
+        .map((i) => `${i.path.join('.')} — ${i.message}`)
+        .join('; ')}`,
+      'REVERT_FAILED'
+    );
+  }
+  try {
+    await updateProject({
+      projectKey,
+      patch: revertPatch.data,
+      user,
+      source: 'ask_juno_agent',
+    });
+  } catch (err) {
+    return badRequest(
+      `Revert failed: ${err instanceof Error ? err.message : 'unknown error'}`,
       'REVERT_FAILED'
     );
   }

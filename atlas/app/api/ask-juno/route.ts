@@ -51,6 +51,9 @@ import {
   type ToolResult,
 } from '@/lib/ask-juno/tools';
 import { archiveProject } from '@/lib/services/project-archive';
+import { createProject, CreateProjectSchema } from '@/lib/services/project';
+import { updateProject } from '@/lib/services/project-update';
+import { UpdateProjectSchema } from '@/lib/services/project-schema';
 import { createRun, updateRun } from '@/lib/repos/agent-runs';
 import { sumAgentCostUsd } from '@/lib/repos/agent-llm-calls';
 import { callAgentModel, type AnthropicToolUse } from '@/lib/agent/llm';
@@ -234,26 +237,30 @@ type TurnEvent =
 type Emit = (ev: TurnEvent) => void;
 
 /** Execute a WRITE tool via the same validated paths the UI uses. */
+/**
+ * FIX (19 Jul): create/update previously round-tripped through an internal
+ * HTTP fetch to /api/projects — which works locally but FAILS in production:
+ * Cloudflare blocks a Pages Function from fetching its own hostname, so
+ * every confirmed/plan update_project died with a server error while
+ * archive_project (direct service call) worked. Now every branch calls the
+ * SAME service the route handlers use, with the same Zod validation; the
+ * editor+ gate is enforced by every caller before reaching here.
+ */
 async function executeWrite(
-  req: NextRequest,
   name: string,
   args: Record<string, unknown>,
-  user: { id: string }
+  user: User
 ): Promise<ToolResult> {
-  const base = req.nextUrl.origin;
-  const cookie = req.headers.get('cookie') ?? '';
-
   if (name === 'create_project') {
-    const res = await fetch(`${base}/api/projects`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Cookie: cookie },
-      body: JSON.stringify({ stage: 'tbc', ...args }),
-    });
-    const data = (await res.json().catch(() => null)) as {
-      data?: { projectKey?: string };
-      error?: { message?: string };
-    } | null;
-    if (!res.ok) throw new Error(data?.error?.message ?? `Create failed (HTTP ${res.status})`);
+    const parsed = CreateProjectSchema.safeParse({ stage: 'tbc', ...args });
+    if (!parsed.success) {
+      throw new Error(
+        `Validation failed: ${parsed.error.issues
+          .map((i) => `${i.path.join('.')} — ${i.message}`)
+          .join('; ')}`
+      );
+    }
+    const result = await createProject(parsed.data, user);
     const auditId = await recordMutation({
       orgId: await resolveOrgId(),
       userId: user.id,
@@ -261,12 +268,12 @@ async function executeWrite(
       method: 'POST',
       statusCode: 201,
       source: 'ask_juno_agent',
-      after: { projectKey: data?.data?.projectKey, args },
+      after: { projectKey: result.projectKey, args },
     });
     return {
       content: JSON.stringify({
         success: true,
-        project_key: data?.data?.projectKey,
+        project_key: result.projectKey,
         audit_log_id: auditId,
       }),
       audit_log_id: auditId,
@@ -277,16 +284,18 @@ async function executeWrite(
   if (name === 'update_project') {
     const key = String(args.project_key ?? '');
     const { project_key: _k, ...fields } = args;
+    const parsed = UpdateProjectSchema.safeParse(fields);
+    if (!parsed.success) {
+      throw new Error(
+        `Validation failed: ${parsed.error.issues
+          .map((i) => `${i.path.join('.')} — ${i.message}`)
+          .join('; ')}`
+      );
+    }
     // AJ-v4: capture authoritative before-values (API units) so the receipt's
     // Revert can restore them — and the audit row shows a true diff.
     const before = await beforeValuesFor('update_project', args).catch(() => null);
-    const res = await fetch(`${base}/api/projects/${key}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', Cookie: cookie },
-      body: JSON.stringify(fields),
-    });
-    const data = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
-    if (!res.ok) throw new Error(data?.error?.message ?? `Update failed (HTTP ${res.status})`);
+    await updateProject({ projectKey: key, patch: parsed.data, user, source: 'ask_juno_agent' });
     const auditId = await recordMutation({
       orgId: await resolveOrgId(),
       userId: user.id,
@@ -327,7 +336,6 @@ async function executeWrite(
 // ── The turn ──────────────────────────────────────────────────────────────────
 
 interface TurnDeps {
-  req: NextRequest;
   apiKey: string;
   user: User;
   profile: { role: string; displayName?: string | null; email?: string | null };
@@ -369,7 +377,7 @@ async function pageContextFor(pathname: string | undefined): Promise<string | un
 }
 
 async function runTurn(deps: TurnDeps): Promise<FinalResponse> {
-  const { req, apiKey, user, profile, isEditor, messages, resume, emit, signal } = deps;
+  const { apiKey, user, profile, isEditor, messages, resume, emit, signal } = deps;
 
   const systemPrompt = buildSystemPrompt({
     userName: profile.displayName ?? profile.email ?? user.email ?? 'User',
@@ -444,7 +452,7 @@ async function runTurn(deps: TurnDeps): Promise<FinalResponse> {
         }
         emit({ t: 'status', tool });
         try {
-          const result = await executeWrite(req, tool, itemArgs, user);
+          const result = await executeWrite(tool, itemArgs, user);
           const write: ExecutedWrite = {
             tool,
             audit_log_id: result.audit_log_id ?? null,
@@ -484,7 +492,7 @@ async function runTurn(deps: TurnDeps): Promise<FinalResponse> {
       }
       try {
         emit({ t: 'status', tool: resume.name });
-        const result = await executeWrite(req, resume.name, resume.args, user);
+        const result = await executeWrite(resume.name, resume.args, user);
         resultContent = result.content;
         const write: ExecutedWrite = {
           tool: resume.name,
@@ -709,7 +717,7 @@ async function runTurn(deps: TurnDeps): Promise<FinalResponse> {
         // Auto-execute the low-risk write.
         emit({ t: 'status', tool: tu.name });
         try {
-          const result = await executeWrite(req, tu.name, tu.input, user);
+          const result = await executeWrite(tu.name, tu.input, user);
           const write: ExecutedWrite = {
             tool: tu.name,
             audit_log_id: result.audit_log_id ?? null,
@@ -784,7 +792,6 @@ export const POST = withErrorBoundary(async (req: NextRequest) => {
   const isEditor = hasRole(profile, ['super_admin', 'editor']);
 
   const deps: Omit<TurnDeps, 'emit'> = {
-    req,
     apiKey,
     user,
     profile,
