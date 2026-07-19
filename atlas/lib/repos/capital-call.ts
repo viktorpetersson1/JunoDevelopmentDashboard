@@ -13,7 +13,7 @@
  * inside a transaction stay valid until commit.
  */
 
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient, createSupabaseServiceRoleClient } from '@/lib/supabase/server';
 
 // ────────────────────────────────────────────────────────────────────────────
 // View types — what the service + UI consume.
@@ -296,7 +296,7 @@ export interface InsertPaymentRow {
 }
 
 export async function insertCapitalCall(row: InsertCallRow): Promise<string> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseServiceRoleClient();
   const { data, error } = await supabase
     .schema('atlas')
     .from('capital_calls')
@@ -318,7 +318,7 @@ export async function insertCapitalCall(row: InsertCallRow): Promise<string> {
 
 export async function insertCapitalCallShares(rows: InsertShareRow[]): Promise<void> {
   if (rows.length === 0) return;
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseServiceRoleClient();
   const { error } = await supabase
     .schema('atlas')
     .from('capital_call_owner_shares')
@@ -336,7 +336,7 @@ export async function insertCapitalCallShares(rows: InsertShareRow[]): Promise<v
 }
 
 export async function insertCapitalCallPayment(row: InsertPaymentRow): Promise<string> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseServiceRoleClient();
   const { data, error } = await supabase
     .schema('atlas')
     .from('capital_call_payments')
@@ -359,7 +359,7 @@ export async function updateCapitalCallStatus(
   callId: string,
   status: CapitalCallStatus
 ): Promise<void> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseServiceRoleClient();
   const { error } = await supabase
     .schema('atlas')
     .from('capital_calls')
@@ -373,7 +373,7 @@ export async function updateOwnerShareStatus(
   status: OwnerShareStatus,
   notes?: string | null
 ): Promise<void> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseServiceRoleClient();
   const patch: Record<string, unknown> = { status };
   if (notes !== undefined) patch.notes = notes;
   const { error } = await supabase
@@ -385,7 +385,7 @@ export async function updateOwnerShareStatus(
 }
 
 export async function archiveCapitalCall(callId: string): Promise<void> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseServiceRoleClient();
   const { error } = await supabase
     .schema('atlas')
     .from('capital_calls')

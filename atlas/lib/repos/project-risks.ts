@@ -6,7 +6,7 @@
  * for this table's simple CRUD pattern.
  */
 
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient, createSupabaseServiceRoleClient } from '@/lib/supabase/server';
 
 export interface ProjectRiskView {
   id: string;
@@ -80,7 +80,7 @@ export async function findRisksByProject(projectId: string): Promise<ProjectRisk
 
 /** Insert one risk row. Returns the new row id. */
 export async function insertRisk(row: InsertRiskRow): Promise<string> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseServiceRoleClient();
   const { data, error } = await supabase
     .schema('atlas')
     .from('project_risks')
@@ -100,7 +100,7 @@ export async function insertRisk(row: InsertRiskRow): Promise<string> {
 
 /** Apply a partial update to an existing risk row. */
 export async function patchRisk(id: string, patch: PatchRiskRow): Promise<void> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseServiceRoleClient();
   const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (patch.risk !== undefined) payload.risk = patch.risk;
   if (patch.severity !== undefined) payload.severity = patch.severity;
@@ -116,7 +116,7 @@ export async function patchRisk(id: string, patch: PatchRiskRow): Promise<void> 
 
 /** Hard-delete a risk row. */
 export async function deleteRisk(id: string): Promise<void> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseServiceRoleClient();
   const { error } = await supabase.schema('atlas').from('project_risks').delete().eq('id', id);
   if (error) throw new Error(`deleteRisk: ${error.message}`);
 }

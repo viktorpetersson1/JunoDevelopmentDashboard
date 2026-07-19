@@ -7,7 +7,7 @@
  * paths land with later tickets.
  */
 
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient, createSupabaseServiceRoleClient } from '@/lib/supabase/server';
 import { toCents } from '@/lib/utils/money';
 import type { User } from '@supabase/supabase-js';
 import { CreateProjectSchema, type CreateProjectInput } from './project-schema';
@@ -78,7 +78,7 @@ export async function createProject(
   const parsed = CreateProjectSchema.parse(input);
 
   const projectKey = await pickUniqueKey(slugify(parsed.name));
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseServiceRoleClient();
 
   const row = {
     project_key: projectKey,

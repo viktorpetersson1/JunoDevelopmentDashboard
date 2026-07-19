@@ -9,7 +9,7 @@
  * layer for any authenticated user.
  */
 
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient, createSupabaseServiceRoleClient } from '@/lib/supabase/server';
 import type { Scenario } from '@/lib/calc/project/types';
 
 export type ScenarioClass = 'base' | 'lender' | 'upside' | 'downside' | 'custom';
@@ -96,7 +96,7 @@ export async function insertScenario(
   input: ScenarioInput,
   createdBy: string
 ): Promise<ScenarioView> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseServiceRoleClient();
   const { data, error } = await supabase
     .schema('atlas')
     .from('scenarios')
@@ -112,7 +112,7 @@ export async function updateScenario(
   patch: Partial<ScenarioInput>,
   updatedBy: string
 ): Promise<ScenarioView> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseServiceRoleClient();
   const { data, error } = await supabase
     .schema('atlas')
     .from('scenarios')
@@ -125,7 +125,7 @@ export async function updateScenario(
 }
 
 export async function deleteScenario(id: string): Promise<void> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseServiceRoleClient();
   const { error } = await supabase.schema('atlas').from('scenarios').delete().eq('id', id);
   if (error) throw new Error(`deleteScenario: ${error.message}`);
 }

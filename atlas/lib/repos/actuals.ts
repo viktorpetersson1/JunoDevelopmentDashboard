@@ -5,7 +5,7 @@
  * audit emission; UI talks to the service through the API route.
  */
 
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient, createSupabaseServiceRoleClient } from '@/lib/supabase/server';
 
 export type ActualsCategory = 'land' | 'build' | 'soft' | 'kingshaus' | 'financing' | 'other';
 export type ActualsSource = 'manual' | 'csv' | 'api';
@@ -97,7 +97,7 @@ export interface InsertActualsRow {
 }
 
 export async function insertActualsEntry(row: InsertActualsRow): Promise<string> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseServiceRoleClient();
   const { data, error } = await supabase
     .schema('atlas')
     .from('actuals_entries')
@@ -128,7 +128,7 @@ export async function insertActualsEntry(row: InsertActualsRow): Promise<string>
  */
 export async function bulkInsertActualsEntries(rows: InsertActualsRow[]): Promise<string[]> {
   if (rows.length === 0) return [];
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseServiceRoleClient();
   const payload = rows.map((row) => ({
     project_id: row.projectId,
     entry_date: row.entryDate,
@@ -151,7 +151,7 @@ export async function bulkInsertActualsEntries(rows: InsertActualsRow[]): Promis
 }
 
 export async function archiveActualsEntry(entryId: string): Promise<void> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseServiceRoleClient();
   const { error } = await supabase
     .schema('atlas')
     .from('actuals_entries')

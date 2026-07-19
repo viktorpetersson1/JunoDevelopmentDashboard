@@ -10,7 +10,7 @@
  * `findVersionById` for audit drilldown.
  */
 
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient, createSupabaseServiceRoleClient } from '@/lib/supabase/server';
 import { log } from '@/lib/utils/log';
 import type { ProjectInput } from '@/lib/calc/project/types';
 import type { WaterfrontType, ViewPremium, TownProximity } from '@/lib/pricing/location-factors';
@@ -240,7 +240,7 @@ export async function updateProjectLocationFactors(
   if (Object.keys(update).length === 0) return;
   update.updated_at = new Date().toISOString();
 
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseServiceRoleClient();
   const { error } = await supabase
     .schema('atlas')
     .from('projects')
@@ -290,7 +290,7 @@ export async function updateProjectPricingPremium(
   projectUuid: string,
   premium: ProjectPricingPremium
 ): Promise<void> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseServiceRoleClient();
   const { error } = await supabase
     .schema('atlas')
     .from('projects')
@@ -384,7 +384,7 @@ export async function applyProjectEdit(
   params: ApplyProjectEditParams
 ): Promise<{ id: string; version: number }> {
   const { projectKey, columnPatch, editedBy, editSource } = params;
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseServiceRoleClient();
 
   // 1. Read the full current row so we can archive its pre-edit state.
   const current = await findCurrentProjectFullRowByKey(projectKey);
