@@ -479,6 +479,8 @@ export function AskJunoWidget() {
     if (pinnedRef.current) el.scrollTop = el.scrollHeight;
     else setShowJump(true);
   }, [messages, pending]);
+  // AJ-v5 — composer focus lives on the container border, not the field.
+  const [composerFocus, setComposerFocus] = useState(false);
   // AJ-v5 — overlay mode (viewport too narrow to shift content): scrim
   // behind the pane; clicking it closes.
   const [isOverlay, setIsOverlay] = useState(false);
@@ -1109,6 +1111,8 @@ export function AskJunoWidget() {
         #ask-juno-panel .aj-scroll::-webkit-scrollbar-thumb { background: var(--color-border-hairline); border-radius: 99px; }
         #ask-juno-panel .aj-scroll::-webkit-scrollbar-track { background: transparent; }
         #ask-juno-panel .aj-msg { animation: ajMsgIn 160ms cubic-bezier(0.16, 1, 0.3, 1); }
+        #ask-juno-panel .aj-composer textarea:focus,
+        #ask-juno-panel .aj-composer textarea:focus-visible { box-shadow: none; outline: none; }
         @media (prefers-reduced-motion: reduce) {
           #ask-juno-panel, #ask-juno-panel * { animation: none !important; }
         }
@@ -1558,30 +1562,58 @@ export function AskJunoWidget() {
           </div>
         )}
 
-        {/* Composer — one soft container: field on top, action row beneath */}
-        <div style={{ padding: '10px 12px 12px', flexShrink: 0 }}>
+        {/* Composer — one tight row: attach · field · send/stop. The field is
+            borderless; focus lives on the CONTAINER border (the global
+            focus-ring on the inner textarea is suppressed in the style block). */}
+        <div style={{ padding: '8px 12px 12px', flexShrink: 0 }}>
           <div
+            className="aj-composer"
             style={{
-              border: '1px solid var(--color-border-hairline)',
-              borderRadius: 12,
-              padding: '9px 10px 8px',
+              border: `1px solid ${
+                composerFocus
+                  ? 'var(--color-border-focus, #0d0d0d)'
+                  : 'var(--color-border-hairline)'
+              }`,
+              borderRadius: 14,
+              padding: 5,
               background: 'var(--color-surface-base)',
               display: 'flex',
-              flexDirection: 'column',
-              gap: 8,
+              alignItems: 'flex-end',
+              gap: 4,
+              transition: 'border-color 120ms ease',
             }}
           >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.csv"
+              onChange={onFileChange}
+              style={{ display: 'none' }}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading || pending}
+              title="Attach a spreadsheet (.xlsx or .csv)"
+              aria-label="Attach a spreadsheet"
+              style={{ ...iconBtn, width: 28, height: 28 }}
+            >
+              {uploading ? <span style={{ fontSize: 11 }}>…</span> : <IconPaperclip />}
+            </button>
             <textarea
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={onKeyInInput}
               onPaste={onPaste}
+              onFocus={() => setComposerFocus(true)}
+              onBlur={() => setComposerFocus(false)}
               rows={Math.min(6, Math.max(1, input.split('\n').length))}
               placeholder="Ask, or tell Juno what to change…"
               style={{
+                flex: 1,
                 resize: 'none',
-                padding: '0 2px',
+                padding: '5px 2px 6px',
                 fontSize: 13.5,
                 fontFamily: 'inherit',
                 lineHeight: 1.5,
@@ -1591,77 +1623,56 @@ export function AskJunoWidget() {
                 color: 'var(--color-text-primary)',
               }}
             />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx,.csv"
-                onChange={onFileChange}
-                style={{ display: 'none' }}
-              />
+            {pending ? (
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading || pending}
-                title="Attach a spreadsheet (.xlsx or .csv)"
-                aria-label="Attach a spreadsheet"
-                style={{ ...iconBtn, width: 26, height: 26 }}
+                onClick={() => abortRef.current?.abort()}
+                aria-label="Stop Juno"
+                title="Stop"
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 999,
+                  border: 'none',
+                  background: 'var(--color-accent-lime, #ddec65)',
+                  color: 'var(--color-text-on-lime, #0d0d0d)',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
               >
-                {uploading ? <span style={{ fontSize: 11 }}>…</span> : <IconPaperclip />}
+                <IconStop />
               </button>
-              {pending ? (
-                <button
-                  type="button"
-                  onClick={() => abortRef.current?.abort()}
-                  aria-label="Stop Juno"
-                  title="Stop"
-                  style={{
-                    marginLeft: 'auto',
-                    width: 28,
-                    height: 28,
-                    borderRadius: 999,
-                    border: '1px solid var(--color-border-hairline)',
-                    background: 'var(--color-surface-base)',
-                    color: 'var(--color-text-primary)',
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  <IconStop />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => void onSend()}
-                  disabled={!input.trim()}
-                  aria-label="Send"
-                  title="Send"
-                  style={{
-                    marginLeft: 'auto',
-                    width: 28,
-                    height: 28,
-                    borderRadius: 999,
-                    border: 'none',
-                    cursor: !input.trim() ? 'default' : 'pointer',
-                    background: !input.trim()
-                      ? 'var(--color-surface-muted, #f4f4f2)'
-                      : 'var(--color-accent-lime, #ddec65)',
-                    color: !input.trim()
-                      ? 'var(--color-text-quaternary)'
-                      : 'var(--color-text-on-lime, #0d0d0d)',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  <IconArrowUp />
-                </button>
-              )}
-            </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => void onSend()}
+                disabled={!input.trim()}
+                aria-label="Send"
+                title="Send"
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 999,
+                  border: 'none',
+                  cursor: !input.trim() ? 'default' : 'pointer',
+                  background: !input.trim()
+                    ? 'var(--color-surface-muted, #f4f4f2)'
+                    : 'var(--color-accent-lime, #ddec65)',
+                  color: !input.trim()
+                    ? 'var(--color-text-quaternary)'
+                    : 'var(--color-text-on-lime, #0d0d0d)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <IconArrowUp />
+              </button>
+            )}
           </div>
         </div>
       </aside>
