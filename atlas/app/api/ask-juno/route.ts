@@ -56,7 +56,7 @@ import { updateProject } from '@/lib/services/project-update';
 import { UpdateProjectSchema } from '@/lib/services/project-schema';
 import { createRun, updateRun } from '@/lib/repos/agent-runs';
 import { sumAgentCostUsd } from '@/lib/repos/agent-llm-calls';
-import { callAgentModel, type AnthropicToolUse } from '@/lib/agent/llm';
+import { callAgentModel, AgentLlmError, type AnthropicToolUse } from '@/lib/agent/llm';
 import { agentModel } from '@/lib/agent/config';
 import { recordMutation } from '@/lib/services/audit';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -760,9 +760,22 @@ async function runTurn(deps: TurnDeps): Promise<FinalResponse> {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     await finishRun('failed', msg.slice(0, 2000));
+    // AJ-v5.1 — persistent model-API failures get a human sentence instead
+    // of raw JSON. Any work already executed still ships with the receipts.
+    let friendly = `Juno hit an error: ${msg.slice(0, 400)}`;
+    if (err instanceof AgentLlmError) {
+      if (err.httpStatus === 403) {
+        friendly =
+          "Anthropic's API refused the request three times in a row (a transient edge block on their side). Any changes shown below DID execute — just send your message again.";
+      } else if (err.httpStatus === 429) {
+        friendly = "Anthropic's API is rate-limiting right now — wait a moment and resend.";
+      } else if (err.httpStatus === 529 || err.httpStatus === 500) {
+        friendly = "Anthropic's API is overloaded right now — wait a moment and resend.";
+      }
+    }
     return {
       type: 'error',
-      text: `Juno hit an error: ${msg.slice(0, 400)}`,
+      text: friendly,
       executed_writes: executedWrites,
     };
   }

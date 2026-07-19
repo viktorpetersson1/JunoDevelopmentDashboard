@@ -198,34 +198,66 @@ export async function callAgentModel(args: {
     if (args.tools?.length) body.tools = args.tools;
     if (args.onTextDelta) body.stream = true;
 
-    let res: Response;
-    try {
-      res = await fetch(ANTHROPIC_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': args.apiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      });
-    } catch (err) {
-      const aborted = err instanceof Error && err.name === 'AbortError';
+    // AJ-v5.1 — Anthropic's edge occasionally refuses a single request from
+    // Cloudflare egress IPs (sporadic 403 "Request not allowed"; seen 16 Jun
+    // and 19 Jul between fully-successful calls). Those, plus rate limits and
+    // 5xx/overloaded, get up to two quiet retries with backoff before the
+    // turn fails loud. Real auth failures (401) still throw immediately.
+    const RETRYABLE = new Set([403, 429, 500, 502, 503, 529]);
+    const MAX_ATTEMPTS = 3;
+    let res: Response | null = null;
+
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      if (attempt > 1) {
+        await new Promise((r) => setTimeout(r, attempt === 2 ? 800 : 2000));
+        if (controller.signal.aborted) break; // timeout/stop while backing off
+      }
+      try {
+        res = await fetch(ANTHROPIC_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': args.apiKey,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        });
+      } catch (err) {
+        const aborted = err instanceof Error && err.name === 'AbortError';
+        if (!aborted && attempt < MAX_ATTEMPTS) continue; // transient network — retry
+        await trueUpAgentLlmCall({
+          id: callId,
+          status: aborted ? 'timeout' : 'failed',
+          httpStatus: null,
+          errorMessage: aborted ? `timed out after ${timeoutFor(args.callSite)}ms` : String(err),
+          latencyMs: Date.now() - startedAt,
+          inputTokens: 0,
+          outputTokens: 0,
+          costUsd: est,
+        });
+        throw new AgentLlmError(
+          aborted ? 'Agent model timed out' : `Agent model network error`,
+          null
+        );
+      }
+      if (res.ok || !RETRYABLE.has(res.status) || attempt === MAX_ATTEMPTS) break;
+      // retryable HTTP status with attempts left — drain the body and go again
+      await res.text().catch(() => '');
+    }
+
+    if (!res || (controller.signal.aborted && !res.ok)) {
       await trueUpAgentLlmCall({
         id: callId,
-        status: aborted ? 'timeout' : 'failed',
+        status: 'timeout',
         httpStatus: null,
-        errorMessage: aborted ? `timed out after ${timeoutFor(args.callSite)}ms` : String(err),
+        errorMessage: `aborted during retry backoff`,
         latencyMs: Date.now() - startedAt,
         inputTokens: 0,
         outputTokens: 0,
         costUsd: est,
       });
-      throw new AgentLlmError(
-        aborted ? 'Agent model timed out' : `Agent model network error`,
-        null
-      );
+      throw new AgentLlmError('Agent model timed out', null);
     }
 
     if (!res.ok) {
@@ -235,7 +267,7 @@ export async function callAgentModel(args: {
         id: callId,
         status,
         httpStatus: res.status,
-        errorMessage: `HTTP ${res.status}: ${text.slice(0, 300)}`,
+        errorMessage: `HTTP ${res.status} after ${MAX_ATTEMPTS} attempts: ${text.slice(0, 300)}`,
         latencyMs: Date.now() - startedAt,
         inputTokens: 0,
         outputTokens: 0,
