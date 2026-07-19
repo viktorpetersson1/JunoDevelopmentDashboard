@@ -773,6 +773,16 @@ async function runTurn(deps: TurnDeps): Promise<FinalResponse> {
         friendly = "Anthropic's API is overloaded right now — wait a moment and resend.";
       }
     }
+    // The error bubble is an ASSISTANT message, so it re-enters the model's
+    // context next turn. Enumerating what already ran prevents the model
+    // from re-proposing (and double-applying) the same changes after a
+    // mid-turn API failure.
+    if (executedWrites.length > 0) {
+      const applied = executedWrites
+        .map((w) => (w.entity?.label ? `${w.tool} → ${w.entity.label}` : w.tool))
+        .join('; ');
+      friendly += ` Already applied this turn (do not re-apply): ${applied}.`;
+    }
     return {
       type: 'error',
       text: friendly,
