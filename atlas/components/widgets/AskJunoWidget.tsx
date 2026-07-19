@@ -455,9 +455,48 @@ export function AskJunoWidget() {
   useEffect(() => {
     if (open && inputRef.current) inputRef.current.focus();
   }, [open]);
+  // AJ-v5 — follow the stream only while pinned to the bottom; otherwise
+  // offer a quiet "New reply" jump pill instead of yanking the reader down.
+  const pinnedRef = useRef(true);
+  const [showJump, setShowJump] = useState(false);
+  const onListScroll = useCallback(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const pinned = el.scrollHeight - el.scrollTop - el.clientHeight < 48;
+    pinnedRef.current = pinned;
+    if (pinned) setShowJump(false);
+  }, []);
+  const jumpToLatest = useCallback(() => {
+    const el = listRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+    pinnedRef.current = true;
+    setShowJump(false);
+  }, []);
   useEffect(() => {
-    if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
-  }, [messages.length, pending]);
+    const el = listRef.current;
+    if (!el) return;
+    if (pinnedRef.current) el.scrollTop = el.scrollHeight;
+    else setShowJump(true);
+  }, [messages, pending]);
+  // AJ-v5 — overlay mode (viewport too narrow to shift content): scrim
+  // behind the pane; clicking it closes.
+  const [isOverlay, setIsOverlay] = useState(false);
+  useEffect(() => {
+    const check = () => setIsOverlay(window.innerWidth < SHIFT_MIN_VIEWPORT);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+  // AJ-v5 — elapsed-seconds ticker for the live activity strip.
+  const [elapsedS, setElapsedS] = useState(0);
+  useEffect(() => {
+    if (!pending) return;
+    const start = Date.now();
+    setElapsedS(0);
+    const t = setInterval(() => setElapsedS(Math.floor((Date.now() - start) / 1000)), 1000);
+    return () => clearInterval(t);
+  }, [pending]);
 
   const push = useCallback((msg: Omit<ChatMessage, 'id' | 'ts'>) => {
     setMessages((m) => [...m, { ...msg, id: mkId(), ts: Date.now() }]);
@@ -1015,408 +1054,704 @@ export function AskJunoWidget() {
 
   // ── Render ──────────────────────────────────────────────────────────────
 
+  // AJ-v5 — the active conversation's derived title (first user message).
+  const firstUser = messages.find((m) => m.role === 'user');
+  const convTitle = firstUser
+    ? firstUser.text.length > 44
+      ? `${firstUser.text.slice(0, 44)}…`
+      : firstUser.text
+    : 'Reads the platform · acts with your approval';
+
   return (
-    <aside
-      id="ask-juno-panel"
-      role="complementary"
-      aria-label="Ask Juno working pane"
-      style={{
-        position: 'fixed',
-        top: 0,
-        right: 0,
-        bottom: 0,
-        width: paneWidth,
-        maxWidth: '100vw',
-        display: 'flex',
-        flexDirection: 'column',
-        background: 'var(--color-surface-base, #ffffff)',
-        borderLeft: '1px solid var(--color-border-hairline, #e5e5e2)',
-        boxShadow: '-8px 0 24px rgba(0,0,0,0.06)',
-        zIndex: 60,
-      }}
-    >
-      {/* AJ-v4 — drag handle (left edge) for resizing */}
-      <div
-        role="separator"
-        aria-orientation="vertical"
-        aria-label="Resize Ask Juno pane"
-        onMouseDown={onDragStart}
+    <>
+      {isOverlay && (
+        <div
+          aria-hidden="true"
+          onClick={() => setOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(17,17,17,0.28)',
+            zIndex: 59,
+          }}
+        />
+      )}
+      <aside
+        id="ask-juno-panel"
+        role="complementary"
+        aria-label="Ask Juno working pane"
         style={{
-          position: 'absolute',
-          left: -3,
+          position: 'fixed',
           top: 0,
+          right: 0,
           bottom: 0,
-          width: 6,
-          cursor: 'col-resize',
-          zIndex: 61,
-        }}
-      />
-      {/* Header */}
-      <header
-        style={{
+          width: paneWidth,
+          maxWidth: '100vw',
           display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          padding: '12px 16px',
-          borderBottom: '1px solid var(--color-border-hairline, #e5e5e2)',
-          flexShrink: 0,
+          flexDirection: 'column',
+          background: 'var(--color-surface-base, #ffffff)',
+          // AJ-v5 — the pane is its own material: hairline seam + soft cast,
+          // no hard border.
+          boxShadow: '0 0 0 1px rgba(17,17,17,0.06), -12px 0 32px rgba(17,17,17,0.07)',
+          zIndex: 60,
+          animation: 'ajPaneIn 180ms cubic-bezier(0.16, 1, 0.3, 1)',
         }}
       >
-        <JunoMark size={22} ariaLabel="Juno" />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text-primary)' }}>
-            Ask Juno
-          </div>
-          <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-            Reads the platform · carries out changes you approve
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => (view === 'history' ? setView('chat') : void openHistory())}
-          title={view === 'history' ? 'Back to the conversation' : 'Past conversations'}
-          style={hdrBtn}
+        {/* AJ-v5 — component-scoped keyframes + the few things inline styles
+          can't do (thin scrollbar, reduced-motion). Single instance per pane. */}
+        <style>{`
+        @keyframes ajPaneIn { from { transform: translateX(24px); opacity: 0.6; } to { transform: none; opacity: 1; } }
+        @keyframes ajMsgIn { from { transform: translateY(4px); opacity: 0; } to { transform: none; opacity: 1; } }
+        @keyframes ajShimmer { from { left: -40%; } to { left: 100%; } }
+        @keyframes ajBlink { 50% { opacity: 0; } }
+        #ask-juno-panel .aj-scroll { scrollbar-width: thin; scrollbar-color: var(--color-border-hairline) transparent; }
+        #ask-juno-panel .aj-scroll::-webkit-scrollbar { width: 7px; }
+        #ask-juno-panel .aj-scroll::-webkit-scrollbar-thumb { background: var(--color-border-hairline); border-radius: 99px; }
+        #ask-juno-panel .aj-scroll::-webkit-scrollbar-track { background: transparent; }
+        #ask-juno-panel .aj-msg { animation: ajMsgIn 160ms cubic-bezier(0.16, 1, 0.3, 1); }
+        @media (prefers-reduced-motion: reduce) {
+          #ask-juno-panel, #ask-juno-panel * { animation: none !important; }
+        }
+      `}</style>
+        {/* AJ-v4 — drag handle (left edge) for resizing */}
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize Ask Juno pane"
+          onMouseDown={onDragStart}
+          style={{
+            position: 'absolute',
+            left: -3,
+            top: 0,
+            bottom: 0,
+            width: 6,
+            cursor: 'col-resize',
+            zIndex: 61,
+          }}
+        />
+        {/* Header — mark + living title + quiet icon cluster */}
+        <header
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '11px 14px',
+            borderBottom: '1px solid var(--color-border-subtle, #f0f0ee)',
+            flexShrink: 0,
+          }}
         >
-          {view === 'history' ? 'Back' : 'History'}
-        </button>
-        <button type="button" onClick={newChat} title="Start a new conversation" style={hdrBtn}>
-          New
-        </button>
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          aria-label="Close Ask Juno"
-          style={hdrBtn}
-        >
-          ✕
-        </button>
-      </header>
-
-      {/* Messages / history */}
-      <div ref={listRef} style={{ flex: 1, overflowY: 'auto', padding: '14px 16px' }}>
-        {view === 'history' && (
-          <div>
+          <JunoMark size={22} ariaLabel="Juno" />
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div
               style={{
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: 600,
-                color: 'var(--color-text-secondary)',
-                marginBottom: 8,
+                letterSpacing: '-0.011em',
+                color: 'var(--color-text-primary)',
               }}
             >
-              Past conversations
+              Juno
             </div>
-            {historyLoading && (
-              <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>Loading…</div>
-            )}
-            {!historyLoading && historyItems.length === 0 && (
-              <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
-                No saved conversations yet — they land here after your first exchange.
-              </div>
-            )}
-            {historyItems.map((h) => (
+            <div
+              style={{
+                fontSize: 11,
+                color: 'var(--color-text-tertiary)',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {convTitle}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => (view === 'history' ? setView('chat') : void openHistory())}
+            title={view === 'history' ? 'Back to the conversation' : 'Past conversations'}
+            aria-label={view === 'history' ? 'Back to the conversation' : 'History'}
+            style={iconBtn}
+          >
+            {view === 'history' ? <IconChevronLeft /> : <IconClock />}
+          </button>
+          <button
+            type="button"
+            onClick={newChat}
+            title="Start a new conversation"
+            aria-label="New conversation"
+            style={iconBtn}
+          >
+            <IconPlus />
+          </button>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label="Close Ask Juno"
+            style={iconBtn}
+          >
+            <IconX />
+          </button>
+        </header>
+
+        {/* Messages / history */}
+        <div
+          ref={listRef}
+          onScroll={onListScroll}
+          className="aj-scroll"
+          style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 8px', position: 'relative' }}
+        >
+          {view === 'history' && (
+            <div>
               <div
-                key={h.id}
-                style={{ display: 'flex', gap: 6, alignItems: 'center', margin: '4px 0' }}
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: 'var(--color-text-secondary)',
+                  marginBottom: 8,
+                }}
               >
-                <button
-                  type="button"
-                  onClick={() => void loadConversation(h.id)}
-                  style={{
-                    flex: 1,
-                    textAlign: 'left',
-                    padding: '8px 10px',
-                    borderRadius: 8,
-                    border: '1px solid var(--color-border-hairline)',
-                    background:
-                      h.id === conversationId
-                        ? 'var(--color-surface-raised, #f7f7f5)'
-                        : 'var(--color-surface-base)',
-                    cursor: 'pointer',
-                    fontSize: 12.5,
-                    color: 'var(--color-text-primary)',
-                    minWidth: 0,
-                  }}
+                Past conversations
+              </div>
+              {historyLoading && (
+                <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>Loading…</div>
+              )}
+              {!historyLoading && historyItems.length === 0 && (
+                <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+                  No saved conversations yet — they land here after your first exchange.
+                </div>
+              )}
+              {historyItems.map((h) => (
+                <div
+                  key={h.id}
+                  style={{ display: 'flex', gap: 6, alignItems: 'center', margin: '4px 0' }}
                 >
-                  <span
+                  <button
+                    type="button"
+                    onClick={() => void loadConversation(h.id)}
                     style={{
-                      display: 'block',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
+                      flex: 1,
+                      textAlign: 'left',
+                      padding: '8px 10px',
+                      borderRadius: 8,
+                      border: '1px solid var(--color-border-hairline)',
+                      background:
+                        h.id === conversationId
+                          ? 'var(--color-surface-raised, #f7f7f5)'
+                          : 'var(--color-surface-base)',
+                      cursor: 'pointer',
+                      fontSize: 12.5,
+                      color: 'var(--color-text-primary)',
+                      minWidth: 0,
                     }}
                   >
-                    {h.title}
-                  </span>
-                  <span style={{ fontSize: 10.5, color: 'var(--color-text-tertiary)' }}>
-                    {new Date(h.last_message_at).toLocaleString()}
-                  </span>
-                </button>
+                    <span
+                      style={{
+                        display: 'block',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {h.title}
+                    </span>
+                    <span style={{ fontSize: 10.5, color: 'var(--color-text-tertiary)' }}>
+                      {new Date(h.last_message_at).toLocaleString()}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void archiveConversation(h.id)}
+                    aria-label={`Delete ${h.title}`}
+                    style={iconBtn}
+                  >
+                    <IconX />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {view === 'chat' && messages.length === 0 && (
+            <div
+              style={{ position: 'relative', paddingTop: 10, overflow: 'hidden', minHeight: 300 }}
+            >
+              {/* brand-sand watermark — presence, not noise */}
+              <div
+                aria-hidden="true"
+                style={{
+                  position: 'absolute',
+                  right: -40,
+                  top: 150,
+                  width: 180,
+                  height: 180,
+                  borderRadius: 44,
+                  background: 'var(--color-brand-sand, #e8dfcc)',
+                  opacity: 0.2,
+                  transform: 'rotate(8deg)',
+                  pointerEvents: 'none',
+                }}
+              />
+              <div
+                style={{
+                  fontSize: 16,
+                  fontWeight: 600,
+                  letterSpacing: '-0.02em',
+                  color: 'var(--color-text-primary)',
+                }}
+              >
+                {(() => {
+                  const h = new Date().getHours();
+                  return h < 12 ? 'Good morning.' : h < 18 ? 'Good afternoon.' : 'Good evening.';
+                })()}
+              </div>
+              <p
+                style={{
+                  margin: '6px 0 16px',
+                  fontSize: 12.5,
+                  lineHeight: 1.6,
+                  color: 'var(--color-text-secondary)',
+                  maxWidth: '42ch',
+                }}
+              >
+                {brief &&
+                brief.pending_suggestions + brief.draft_capital_calls + brief.draft_snapshots > 0
+                  ? [
+                      brief.pending_suggestions > 0 &&
+                        `${brief.pending_suggestions} suggestion${brief.pending_suggestions === 1 ? '' : 's'} wait${brief.pending_suggestions === 1 ? 's' : ''} for review`,
+                      brief.draft_capital_calls > 0 &&
+                        `${brief.draft_capital_calls} draft capital call${brief.draft_capital_calls === 1 ? '' : 's'}`,
+                      brief.draft_snapshots > 0 &&
+                        `${brief.draft_snapshots} draft snapshot${brief.draft_snapshots === 1 ? '' : 's'}`,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ') + '.'
+                  : 'I read the live platform and carry out changes you approve — ask, or start from one of these.'}
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, position: 'relative' }}>
+                {starterChips(pathname).map((c) => {
+                  const count =
+                    c.label === 'What needs my attention?' && brief
+                      ? brief.pending_suggestions +
+                        brief.draft_capital_calls +
+                        brief.draft_snapshots
+                      : 0;
+                  return (
+                    <button
+                      key={c.label}
+                      type="button"
+                      onClick={() => void sendText(c.prompt)}
+                      disabled={pending}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 7,
+                        padding: '7px 13px',
+                        borderRadius: 999,
+                        border: '1px solid var(--color-border-subtle, #f0f0ee)',
+                        background: 'var(--color-surface-base)',
+                        boxShadow: '0 1px 2px rgba(17,17,17,0.04)',
+                        cursor: 'pointer',
+                        fontSize: 12.5,
+                        color: 'var(--color-text-primary)',
+                      }}
+                    >
+                      {c.label}
+                      {count > 0 && (
+                        <span
+                          style={{
+                            fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+                            fontSize: 10,
+                            background: 'var(--color-surface-muted, #f4f4f2)',
+                            borderRadius: 99,
+                            padding: '1px 6px',
+                            color: 'var(--color-text-secondary)',
+                          }}
+                        >
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              <p
+                style={{
+                  margin: '18px 0 0',
+                  fontSize: 11,
+                  fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+                  color: 'var(--color-text-quaternary)',
+                }}
+              >
+                <kbd
+                  style={{
+                    fontFamily: 'inherit',
+                    border: '1px solid var(--color-border-subtle, #f0f0ee)',
+                    borderBottomWidth: 2,
+                    borderRadius: 5,
+                    padding: '1px 5px',
+                    marginRight: 2,
+                  }}
+                >
+                  Ctrl
+                </kbd>
+                <kbd
+                  style={{
+                    fontFamily: 'inherit',
+                    border: '1px solid var(--color-border-subtle, #f0f0ee)',
+                    borderBottomWidth: 2,
+                    borderRadius: 5,
+                    padding: '1px 5px',
+                    marginRight: 6,
+                  }}
+                >
+                  J
+                </kbd>
+                opens Juno anywhere · paste a spreadsheet to update figures
+              </p>
+            </div>
+          )}
+
+          {view === 'chat' &&
+            messages.map((m) => (
+              <MessageRow
+                key={m.id}
+                msg={m}
+                busy={pending}
+                onConfirm={(approved) => void resolveConfirmation(m.id, approved)}
+                onAnswer={(answer) => void answerQuestion(m.id, answer)}
+                onPlan={(approved, selected) => void resolvePlan(m.id, approved, selected)}
+                onRevert={(writeIdx) => void revertWrite(m.id, writeIdx)}
+                showCost={brief?.show_cost ?? false}
+              />
+            ))}
+
+          {view === 'chat' && pending && (
+            <div
+              aria-live="polite"
+              className="aj-msg"
+              style={{
+                margin: '10px 0 6px 28px',
+                maxWidth: 320,
+                padding: '8px 11px 9px',
+                borderRadius: 9,
+                border: '1px solid var(--color-border-subtle, #f0f0ee)',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+                  fontSize: 10.5,
+                  color: 'var(--color-text-secondary)',
+                }}
+              >
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  {(activity ?? 'thinking…').toLowerCase()}
+                </span>
+                <span style={{ color: 'var(--color-text-quaternary)' }}>{elapsedS}s</span>
+              </div>
+              <div
+                style={{
+                  marginTop: 7,
+                  height: 2,
+                  borderRadius: 99,
+                  overflow: 'hidden',
+                  background: 'var(--color-border-subtle, #f0f0ee)',
+                  position: 'relative',
+                }}
+              >
+                <i
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    bottom: 0,
+                    width: '40%',
+                    borderRadius: 99,
+                    background: 'var(--color-accent-lime-pressed, #c5d44c)',
+                    animation: 'ajShimmer 1.3s cubic-bezier(0.4, 0, 0.2, 1) infinite',
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          {view === 'chat' && lastFailed && !pending && (
+            <div style={{ padding: '4px 0 4px 28px' }}>
+              <button type="button" onClick={() => void onRetry()} style={ghostBtn}>
+                ↻ Retry
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* AJ-v5 — jump pill: new content landed while scrolled up */}
+        {showJump && view === 'chat' && (
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <button
+              type="button"
+              onClick={jumpToLatest}
+              style={{
+                position: 'absolute',
+                bottom: 8,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                fontSize: 11.5,
+                padding: '5px 12px',
+                borderRadius: 999,
+                border: '1px solid var(--color-border-hairline)',
+                background: 'var(--color-surface-base)',
+                color: 'var(--color-text-secondary)',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(17,17,17,0.08)',
+                zIndex: 2,
+              }}
+            >
+              ↓ New reply
+            </button>
+          </div>
+        )}
+
+        {/* Attachment chips */}
+        {attachments.length > 0 && (
+          <div
+            style={{
+              display: 'flex',
+              gap: 6,
+              flexWrap: 'wrap',
+              padding: '8px 16px 0',
+              flexShrink: 0,
+            }}
+          >
+            {attachments.map((a) => (
+              <span
+                key={a.id}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 11.5,
+                  padding: '3px 10px',
+                  borderRadius: 999,
+                  border: '1px solid var(--color-border-hairline)',
+                  color: 'var(--color-text-secondary)',
+                }}
+              >
+                <IconPaperclip /> {a.fileName} · {a.rowCount} rows
                 <button
                   type="button"
-                  onClick={() => void archiveConversation(h.id)}
-                  aria-label={`Delete ${h.title}`}
-                  style={{ ...hdrBtn, padding: '6px 8px' }}
+                  onClick={() => setAttachments((x) => x.filter((y) => y.id !== a.id))}
+                  aria-label={`Remove ${a.fileName}`}
+                  style={{
+                    border: 'none',
+                    background: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--color-text-tertiary)',
+                    padding: 0,
+                    display: 'inline-flex',
+                  }}
                 >
-                  ✕
+                  <IconX />
                 </button>
-              </div>
+              </span>
             ))}
           </div>
         )}
 
-        {view === 'chat' && messages.length === 0 && (
-          <div style={{ fontSize: 12.5, color: 'var(--color-text-tertiary)', lineHeight: 1.6 }}>
-            {brief &&
-              brief.pending_suggestions + brief.draft_capital_calls + brief.draft_snapshots > 0 && (
-                <p
-                  style={{
-                    margin: '0 0 10px',
-                    fontFamily: 'var(--font-mono, ui-monospace, monospace)',
-                    fontSize: 11.5,
-                    color: 'var(--color-text-secondary)',
-                  }}
-                >
-                  ●{' '}
-                  {[
-                    brief.pending_suggestions > 0 &&
-                      `${brief.pending_suggestions} pending suggestion${brief.pending_suggestions === 1 ? '' : 's'}`,
-                    brief.draft_capital_calls > 0 &&
-                      `${brief.draft_capital_calls} draft capital call${brief.draft_capital_calls === 1 ? '' : 's'}`,
-                    brief.draft_snapshots > 0 &&
-                      `${brief.draft_snapshots} draft snapshot${brief.draft_snapshots === 1 ? '' : 's'}`,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </p>
-              )}
-            <p style={{ margin: '0 0 10px' }}>
-              I read the live platform and carry out changes you approve. Start with one of these,
-              or just ask:
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {starterChips(pathname).map((c) => (
-                <button
-                  key={c.label}
-                  type="button"
-                  onClick={() => void sendText(c.prompt)}
-                  disabled={pending}
-                  style={{
-                    textAlign: 'left',
-                    padding: '8px 12px',
-                    borderRadius: 8,
-                    border: '1px solid var(--color-border-hairline)',
-                    background: 'var(--color-surface-base)',
-                    cursor: 'pointer',
-                    fontSize: 12.5,
-                    color: 'var(--color-text-primary)',
-                  }}
-                >
-                  {c.label}
-                </button>
-              ))}
-            </div>
-            <p style={{ margin: '10px 0 0' }}>
-              Changes always show a confirmation card first (batches get one plan card with before →
-              after). Attach or paste a spreadsheet to update figures in bulk.
-              <kbd
-                style={{
-                  marginLeft: 4,
-                  fontSize: 10.5,
-                  border: '1px solid var(--color-border-hairline)',
-                  borderRadius: 4,
-                  padding: '0 4px',
-                }}
-              >
-                Ctrl+J
-              </kbd>{' '}
-              toggles this pane.
-            </p>
-          </div>
-        )}
-
-        {view === 'chat' &&
-          messages.map((m) => (
-            <MessageRow
-              key={m.id}
-              msg={m}
-              busy={pending}
-              onConfirm={(approved) => void resolveConfirmation(m.id, approved)}
-              onAnswer={(answer) => void answerQuestion(m.id, answer)}
-              onPlan={(approved, selected) => void resolvePlan(m.id, approved, selected)}
-              onRevert={(writeIdx) => void revertWrite(m.id, writeIdx)}
-              showCost={brief?.show_cost ?? false}
-            />
-          ))}
-
-        {view === 'chat' && pending && (
+        {/* Composer — one soft container: field on top, action row beneath */}
+        <div style={{ padding: '10px 12px 12px', flexShrink: 0 }}>
           <div
-            aria-live="polite"
-            style={{ fontSize: 12, color: 'var(--color-text-tertiary)', padding: '6px 0' }}
-          >
-            {activity ?? 'Juno is working…'}
-          </div>
-        )}
-
-        {view === 'chat' && lastFailed && !pending && (
-          <div style={{ padding: '4px 0' }}>
-            <button type="button" onClick={() => void onRetry()} style={hdrBtn}>
-              ↻ Retry
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Attachment chips */}
-      {attachments.length > 0 && (
-        <div
-          style={{
-            display: 'flex',
-            gap: 6,
-            flexWrap: 'wrap',
-            padding: '8px 16px 0',
-            flexShrink: 0,
-          }}
-        >
-          {attachments.map((a) => (
-            <span
-              key={a.id}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                fontSize: 11.5,
-                padding: '3px 10px',
-                borderRadius: 999,
-                border: '1px solid var(--color-border-hairline)',
-                color: 'var(--color-text-secondary)',
-              }}
-            >
-              📎 {a.fileName} · {a.rowCount} rows
-              <button
-                type="button"
-                onClick={() => setAttachments((x) => x.filter((y) => y.id !== a.id))}
-                aria-label={`Remove ${a.fileName}`}
-                style={{
-                  border: 'none',
-                  background: 'none',
-                  cursor: 'pointer',
-                  color: 'var(--color-text-tertiary)',
-                  padding: 0,
-                }}
-              >
-                ✕
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Composer */}
-      <div
-        style={{
-          display: 'flex',
-          gap: 8,
-          alignItems: 'flex-end',
-          padding: '10px 16px 14px',
-          borderTop: '1px solid var(--color-border-hairline, #e5e5e2)',
-          flexShrink: 0,
-        }}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".xlsx,.csv"
-          onChange={onFileChange}
-          style={{ display: 'none' }}
-        />
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading || pending}
-          title="Attach a spreadsheet (.xlsx or .csv)"
-          aria-label="Attach a spreadsheet"
-          style={{ ...hdrBtn, fontSize: 15, padding: '8px 10px' }}
-        >
-          {uploading ? '…' : '📎'}
-        </button>
-        <textarea
-          ref={inputRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={onKeyInInput}
-          onPaste={onPaste}
-          rows={Math.min(5, Math.max(1, input.split('\n').length))}
-          placeholder="Ask, or tell me what to change…"
-          style={{
-            flex: 1,
-            resize: 'none',
-            padding: '9px 12px',
-            fontSize: 13,
-            fontFamily: 'inherit',
-            lineHeight: 1.45,
-            borderRadius: 10,
-            border: '1px solid var(--color-border-hairline)',
-            background: 'var(--color-surface-base)',
-            color: 'var(--color-text-primary)',
-          }}
-        />
-        {pending && (
-          <button
-            type="button"
-            onClick={() => abortRef.current?.abort()}
-            aria-label="Stop Juno"
             style={{
-              padding: '9px 14px',
-              fontSize: 13,
-              fontWeight: 600,
-              borderRadius: 10,
               border: '1px solid var(--color-border-hairline)',
-              cursor: 'pointer',
+              borderRadius: 12,
+              padding: '9px 10px 8px',
               background: 'var(--color-surface-base)',
-              color: 'var(--color-text-primary)',
-              flexShrink: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
             }}
           >
-            Stop
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={() => void onSend()}
-          disabled={pending || !input.trim()}
-          style={{
-            padding: '9px 14px',
-            fontSize: 13,
-            fontWeight: 600,
-            borderRadius: 10,
-            border: 'none',
-            cursor: pending || !input.trim() ? 'default' : 'pointer',
-            background:
-              pending || !input.trim()
-                ? 'var(--color-border-hairline)'
-                : 'var(--color-cta, #131313)',
-            color:
-              pending || !input.trim()
-                ? 'var(--color-text-tertiary)'
-                : 'var(--color-text-inverse, #fff)',
-            flexShrink: 0,
-          }}
-        >
-          Send
-        </button>
-      </div>
-    </aside>
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={onKeyInInput}
+              onPaste={onPaste}
+              rows={Math.min(6, Math.max(1, input.split('\n').length))}
+              placeholder="Ask, or tell Juno what to change…"
+              style={{
+                resize: 'none',
+                padding: '0 2px',
+                fontSize: 13.5,
+                fontFamily: 'inherit',
+                lineHeight: 1.5,
+                border: 'none',
+                outline: 'none',
+                background: 'transparent',
+                color: 'var(--color-text-primary)',
+              }}
+            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.csv"
+                onChange={onFileChange}
+                style={{ display: 'none' }}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading || pending}
+                title="Attach a spreadsheet (.xlsx or .csv)"
+                aria-label="Attach a spreadsheet"
+                style={{ ...iconBtn, width: 26, height: 26 }}
+              >
+                {uploading ? <span style={{ fontSize: 11 }}>…</span> : <IconPaperclip />}
+              </button>
+              {pending ? (
+                <button
+                  type="button"
+                  onClick={() => abortRef.current?.abort()}
+                  aria-label="Stop Juno"
+                  title="Stop"
+                  style={{
+                    marginLeft: 'auto',
+                    width: 28,
+                    height: 28,
+                    borderRadius: 999,
+                    border: '1px solid var(--color-border-hairline)',
+                    background: 'var(--color-surface-base)',
+                    color: 'var(--color-text-primary)',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <IconStop />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void onSend()}
+                  disabled={!input.trim()}
+                  aria-label="Send"
+                  title="Send"
+                  style={{
+                    marginLeft: 'auto',
+                    width: 28,
+                    height: 28,
+                    borderRadius: 999,
+                    border: 'none',
+                    cursor: !input.trim() ? 'default' : 'pointer',
+                    background: !input.trim()
+                      ? 'var(--color-surface-muted, #f4f4f2)'
+                      : 'var(--color-accent-lime, #ddec65)',
+                    color: !input.trim()
+                      ? 'var(--color-text-quaternary)'
+                      : 'var(--color-text-on-lime, #0d0d0d)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <IconArrowUp />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </aside>
+    </>
   );
 }
 
+// ── AJ-v5 inline icon set — 16px / 1.5px stroke (AppShell convention) ────────
+
+function iconSvg(paths: React.ReactNode, size = 15) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {paths}
+    </svg>
+  );
+}
+const IconClock = () => (
+  <>
+    {iconSvg(
+      <>
+        <circle cx="10" cy="10" r="7.2" />
+        <path d="M10 6.2v3.8l2.6 1.6" />
+      </>
+    )}
+  </>
+);
+const IconPlus = () => <>{iconSvg(<path d="M10 4.5v11M4.5 10h11" />)}</>;
+const IconX = () => <>{iconSvg(<path d="M5.5 5.5l9 9M14.5 5.5l-9 9" />)}</>;
+const IconChevronLeft = () => <>{iconSvg(<path d="M12 5l-6 5 6 5" />)}</>;
+const IconPaperclip = () => (
+  <>{iconSvg(<path d="M14.5 8.5l-5 5a2.5 2.5 0 01-3.5-3.5l6-6a1.8 1.8 0 012.5 2.5l-6 6" />, 14)}</>
+);
+const IconArrowUp = () => <>{iconSvg(<path d="M10 15V5M5.5 9.5L10 5l4.5 4.5" />, 14)}</>;
+const IconStop = () => (
+  <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+    <rect x="1" y="1" width="8" height="8" rx="1.5" fill="currentColor" />
+  </svg>
+);
+
 // ── Message renderer ──────────────────────────────────────────────────────────
 
-/** Compact value formatting for plan diff rows. */
-function fmtPlanVal(v: unknown): string {
+/** AJ-v5 — humanized field labels for plan/confirmation rows. */
+const FIELD_LABELS: Record<string, string> = {
+  sale_price_override_usd: 'Sale price override',
+  build_cost_per_sqft: 'Build cost / sqft',
+  land_cost_usd: 'Land cost',
+  soft_costs_lump_sum: 'Soft costs (lump sum)',
+  senior_ltv_pct: 'Senior LTV',
+  interest_rate_apr: 'Interest rate',
+  target_margin: 'Target margin',
+  tax_rate_pct: 'Tax rate',
+  villa_sqft_ag: 'Villa sqft (above grade)',
+  villa_sqft_bg: 'Villa sqft (below grade)',
+  purchase_date: 'Purchase date',
+  project_key: 'Project',
+  name: 'Name',
+  address: 'Address',
+  status: 'Status',
+  stage: 'Stage',
+};
+const fieldLabel = (f: string) => FIELD_LABELS[f] ?? f.replaceAll('_', ' ');
+
+const isMoneyField = (f: string) => /_usd$|_cents$|(^|_)(price|cost|costs)(_|$)/.test(f);
+const isPctField = (f: string) => /_pct$|_apr$|margin|ltv/.test(f);
+
+/** Compact value formatting for plan diff rows — money/percent aware. */
+function fmtPlanVal(field: string, v: unknown): string {
   if (v === null || v === undefined || v === '') return '—';
-  if (typeof v === 'number') return v.toLocaleString('en-US', { maximumFractionDigits: 4 });
   if (typeof v === 'boolean') return v ? 'yes' : 'no';
+  if (typeof v === 'number') {
+    if (isMoneyField(field)) {
+      if (Math.abs(v) >= 1_000_000) return `$${(v / 1_000_000).toFixed(2)}M`;
+      return `$${v.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+    }
+    if (isPctField(field)) {
+      const pct = Math.abs(v) <= 1.5 ? v * 100 : v;
+      return `${pct.toLocaleString('en-US', { maximumFractionDigits: 2 })}%`;
+    }
+    return v.toLocaleString('en-US', { maximumFractionDigits: 4 });
+  }
   if (typeof v === 'object') return JSON.stringify(v);
   return String(v);
 }
@@ -1500,15 +1835,27 @@ function MessageRow({
                   <span
                     key={c.field}
                     style={{
-                      display: 'block',
-                      fontSize: 11,
-                      fontFamily: 'var(--font-mono, ui-monospace, monospace)',
-                      color: 'var(--color-text-tertiary)',
-                      marginTop: 2,
+                      display: 'flex',
+                      alignItems: 'baseline',
+                      gap: 6,
+                      fontSize: 12,
+                      marginTop: 3,
                       wordBreak: 'break-word',
+                      fontVariantNumeric: 'tabular-nums',
                     }}
                   >
-                    {c.field}: {fmtPlanVal(c.before)} → {fmtPlanVal(c.after)}
+                    <span style={{ flex: 1, minWidth: 0, color: 'var(--color-text-secondary)' }}>
+                      {fieldLabel(c.field)}
+                    </span>
+                    <s style={{ color: 'var(--color-text-quaternary)' }}>
+                      {fmtPlanVal(c.field, c.before)}
+                    </s>
+                    <span aria-hidden="true" style={{ color: 'var(--color-text-quaternary)' }}>
+                      →
+                    </span>
+                    <strong style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>
+                      {fmtPlanVal(c.field, c.after)}
+                    </strong>
                   </span>
                 ))}
               </span>
@@ -1551,23 +1898,47 @@ function MessageRow({
         <div style={cardLabel}>Proposed action{c.resolved ? ` — ${c.resolved}` : ''}</div>
         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)' }}>
           {c.tool_name.replaceAll('_', ' ')}
+          {typeof c.tool_args.project_key === 'string' ? ` · ${c.tool_args.project_key}` : ''}
         </div>
-        <pre
-          style={{
-            margin: '6px 0',
-            padding: '8px 10px',
-            fontSize: 11.5,
-            lineHeight: 1.5,
-            background: 'var(--color-surface-raised, #f7f7f5)',
-            borderRadius: 8,
-            overflowX: 'auto',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-            color: 'var(--color-text-secondary)',
-          }}
-        >
-          {JSON.stringify(c.tool_args, null, 1)}
-        </pre>
+        <div style={{ margin: '6px 0 8px', display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {Object.entries(c.tool_args)
+            .filter(([k]) => k !== 'project_key')
+            .map(([k, v]) =>
+              v !== null && typeof v === 'object' ? (
+                <pre
+                  key={k}
+                  style={{
+                    margin: 0,
+                    fontSize: 11,
+                    fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    color: 'var(--color-text-tertiary)',
+                  }}
+                >
+                  {k}: {JSON.stringify(v)}
+                </pre>
+              ) : (
+                <span
+                  key={k}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'baseline',
+                    gap: 6,
+                    fontSize: 12,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  <span style={{ flex: 1, minWidth: 0, color: 'var(--color-text-secondary)' }}>
+                    {fieldLabel(k)}
+                  </span>
+                  <strong style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>
+                    {fmtPlanVal(k, v)}
+                  </strong>
+                </span>
+              )
+            )}
+        </div>
         <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginBottom: 8 }}>
           {c.reason}
         </div>
@@ -1664,118 +2035,119 @@ function MessageRow({
 
   const isUser = msg.role === 'user';
   const isMeta = msg.role === 'system' || msg.role === 'tool_status';
-  return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: isUser ? 'flex-end' : 'flex-start',
-        margin: '6px 0',
-      }}
-    >
+
+  // ── User: compact tinted bubble, right-aligned ──────────────────────────
+  if (isUser) {
+    return (
       <div
+        className="aj-msg"
+        style={{ display: 'flex', justifyContent: 'flex-end', margin: '8px 0 2px' }}
+      >
+        <div
+          style={{
+            maxWidth: '85%',
+            padding: '8px 12px',
+            borderRadius: '12px 12px 3px 12px',
+            fontSize: 13.5,
+            lineHeight: 1.5,
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            background: 'var(--color-surface-muted, #f4f4f2)',
+            color: 'var(--color-text-primary)',
+          }}
+        >
+          {msg.text}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Meta: quiet mono line ───────────────────────────────────────────────
+  if (isMeta) {
+    return (
+      <div
+        className="aj-msg"
         style={{
-          maxWidth: '92%',
-          padding: isMeta ? '4px 2px' : '8px 12px',
-          borderRadius: 12,
-          fontSize: isMeta ? 11.5 : 13,
-          lineHeight: 1.5,
-          // Assistant bubbles render markdown (the renderer owns breaks);
-          // user + meta text stays literal.
-          whiteSpace: isUser || isMeta ? 'pre-wrap' : 'normal',
+          margin: '4px 0 4px 28px',
+          fontSize: 11,
+          fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+          color: 'var(--color-text-tertiary)',
+          whiteSpace: 'pre-wrap',
           wordBreak: 'break-word',
-          background: isUser
-            ? 'var(--color-cta, #131313)'
-            : isMeta
-              ? 'transparent'
-              : 'var(--color-surface-raised, #f7f7f5)',
-          color: isUser
-            ? 'var(--color-text-inverse, #fff)'
-            : isMeta
-              ? 'var(--color-text-tertiary)'
-              : 'var(--color-text-primary)',
-          fontStyle: isMeta ? 'italic' : 'normal',
         }}
       >
-        {isUser || isMeta ? msg.text : renderMarkdown(msg.text)}
+        {msg.text}
+      </div>
+    );
+  }
+
+  // ── Juno: full-width on the surface, small mark on the first line ───────
+  const worked = msg.toolsUsed?.length ?? 0;
+  return (
+    <div className="aj-msg" style={{ display: 'flex', gap: 9, margin: '10px 0 2px' }}>
+      <span style={{ flexShrink: 0, marginTop: 3 }} aria-hidden="true">
+        <JunoMark size={19} ariaLabel="" />
+      </span>
+      <div style={{ flex: 1, minWidth: 0, fontSize: 13.5, lineHeight: 1.55 }}>
+        {worked > 0 && (
+          <details style={{ margin: '0 0 4px' }}>
+            <summary
+              style={{
+                cursor: 'pointer',
+                listStyle: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+                fontSize: 10.5,
+                color: 'var(--color-text-tertiary)',
+              }}
+            >
+              <span aria-hidden="true">›</span> worked · {worked} step{worked === 1 ? '' : 's'}
+            </summary>
+            <span
+              style={{
+                fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+                fontSize: 10.5,
+                color: 'var(--color-text-tertiary)',
+              }}
+            >
+              {msg.toolsUsed!.map((t) => t.replaceAll('_', ' ')).join(' · ')}
+              {showCost && msg.costUsd !== undefined ? ` · $${msg.costUsd.toFixed(2)}` : ''}
+            </span>
+          </details>
+        )}
+        <div style={{ wordBreak: 'break-word', color: 'var(--color-text-primary)' }}>
+          {renderMarkdown(msg.text)}
+        </div>
         {msg.writes && msg.writes.length > 0 && (
-          <div
-            style={{
-              marginTop: 8,
-              paddingTop: 6,
-              borderTop: '1px solid var(--color-border-subtle, #ececea)',
-            }}
-          >
+          <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
             {msg.writes.map((w, i) => (
-              <div key={i} style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
-                {w.reverted ? '↩' : '✓'} {w.tool.replaceAll('_', ' ')}
-                {w.audit_log_id ? ` · audit ${w.audit_log_id.slice(0, 8)}` : ''}
-                {w.reverted ? ' · reverted' : ''}
-                {w.entity?.href && (
-                  <>
-                    {' · '}
-                    <Link
-                      href={w.entity.href}
-                      style={{ color: 'inherit', textDecoration: 'underline' }}
-                    >
-                      open {w.entity.label ?? ''}
-                    </Link>
-                  </>
-                )}
-                {!w.reverted && w.tool === 'update_project' && w.audit_log_id && (
-                  <>
-                    {' · '}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (armedRevert === i) {
-                          setArmedRevert(null);
-                          onRevert(i);
-                        } else {
-                          setArmedRevert(i);
-                        }
-                      }}
-                      disabled={busy}
-                      style={{
-                        border: 'none',
-                        background: 'none',
-                        padding: 0,
-                        cursor: 'pointer',
-                        fontSize: 11,
-                        color: 'inherit',
-                        textDecoration: 'underline',
-                        fontWeight: armedRevert === i ? 700 : 400,
-                      }}
-                    >
-                      {armedRevert === i ? 'confirm revert' : 'revert'}
-                    </button>
-                  </>
-                )}
-              </div>
+              <Receipt
+                key={i}
+                write={w}
+                ts={msg.ts}
+                busy={busy}
+                armed={armedRevert === i}
+                onArm={() => setArmedRevert(armedRevert === i ? null : i)}
+                onRevert={() => {
+                  setArmedRevert(null);
+                  onRevert(i);
+                }}
+              />
             ))}
           </div>
         )}
-        {(msg.toolsUsed?.length || (showCost && msg.costUsd !== undefined)) && (
+        {worked === 0 && showCost && msg.costUsd !== undefined && (
           <div
             style={{
               marginTop: 6,
               fontSize: 10.5,
               fontFamily: 'var(--font-mono, ui-monospace, monospace)',
-              color: 'var(--color-text-tertiary)',
+              color: 'var(--color-text-quaternary)',
             }}
           >
-            {msg.toolsUsed?.length ? (
-              <details style={{ display: 'inline-block' }}>
-                <summary style={{ cursor: 'pointer', listStyle: 'none' }}>
-                  data: {msg.toolsUsed.length} source{msg.toolsUsed.length === 1 ? '' : 's'}
-                </summary>
-                {msg.toolsUsed.map((t) => t.replaceAll('_', ' ')).join(' · ')}
-              </details>
-            ) : null}
-            {showCost && msg.costUsd !== undefined && (
-              <span style={{ marginLeft: msg.toolsUsed?.length ? 8 : 0 }}>
-                ${msg.costUsd.toFixed(2)}
-              </span>
-            )}
+            ${msg.costUsd.toFixed(2)}
           </div>
         )}
       </div>
@@ -1783,45 +2155,198 @@ function MessageRow({
   );
 }
 
-// ── Shared inline styles ──────────────────────────────────────────────────────
+// ── AJ-v5 receipt: a sentence, a timestamp, the machinery behind ⋯ ──────────
 
-const hdrBtn: React.CSSProperties = {
-  border: '1px solid var(--color-border-hairline)',
-  background: 'var(--color-surface-base)',
-  color: 'var(--color-text-secondary)',
-  borderRadius: 8,
-  padding: '5px 10px',
-  fontSize: 12,
-  cursor: 'pointer',
-  flexShrink: 0,
+const WRITE_VERBS: Record<string, string> = {
+  update_project: 'Updated',
+  create_project: 'Created',
+  archive_project: 'Archived',
+  create_actuals_entry: 'Recorded actuals for',
+  create_risk: 'Recorded a risk on',
+  create_opportunity: 'Added opportunity',
+  update_opportunity: 'Updated opportunity',
+  create_capital_call: 'Drafted a capital call for',
+  create_scenario: 'Created scenario',
 };
 
+function Receipt({
+  write: w,
+  ts,
+  busy,
+  armed,
+  onArm,
+  onRevert,
+}: {
+  write: ExecutedWrite;
+  ts: number;
+  busy: boolean;
+  armed: boolean;
+  onArm: () => void;
+  onRevert: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const verb = WRITE_VERBS[w.tool] ?? w.tool.replaceAll('_', ' ');
+  const when = new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const canRevert = !w.reverted && w.tool === 'update_project' && !!w.audit_log_id;
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        fontSize: 12,
+        color: 'var(--color-text-secondary)',
+        opacity: w.reverted ? 0.6 : 1,
+      }}
+    >
+      <span
+        aria-hidden="true"
+        style={{
+          width: 16,
+          height: 16,
+          borderRadius: 999,
+          flexShrink: 0,
+          border: `1px solid ${w.reverted ? 'var(--color-text-quaternary)' : 'var(--color-positive, #15803d)'}`,
+          color: w.reverted ? 'var(--color-text-quaternary)' : 'var(--color-positive, #15803d)',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 9,
+          lineHeight: 1,
+        }}
+      >
+        {w.reverted ? '↩' : '✓'}
+      </span>
+      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        {verb}{' '}
+        {w.entity?.href ? (
+          <Link
+            href={w.entity.href}
+            style={{
+              color: 'var(--color-text-primary)',
+              textDecoration: 'none',
+              borderBottom: '1px solid var(--color-border-hairline)',
+            }}
+          >
+            {w.entity.label ?? w.entity.href}
+          </Link>
+        ) : (
+          <span>{w.entity?.label ?? ''}</span>
+        )}
+        {w.reverted ? ' · reverted' : ''}
+        {expanded && w.audit_log_id && (
+          <span
+            style={{
+              marginLeft: 6,
+              fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+              fontSize: 10.5,
+              color: 'var(--color-text-quaternary)',
+            }}
+          >
+            audit {w.audit_log_id.slice(0, 8)}
+          </span>
+        )}
+        {expanded && canRevert && (
+          <button
+            type="button"
+            onClick={armed ? onRevert : onArm}
+            disabled={busy}
+            style={{
+              marginLeft: 8,
+              border: 'none',
+              background: 'none',
+              padding: 0,
+              cursor: 'pointer',
+              fontSize: 11,
+              color: 'var(--color-text-secondary)',
+              textDecoration: 'underline',
+              fontWeight: armed ? 700 : 400,
+            }}
+          >
+            {armed ? 'confirm revert' : 'revert'}
+          </button>
+        )}
+      </span>
+      <span
+        style={{
+          fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+          fontSize: 10.5,
+          color: 'var(--color-text-quaternary)',
+          flexShrink: 0,
+        }}
+      >
+        {when}
+      </span>
+      <button
+        type="button"
+        onClick={() => setExpanded((e) => !e)}
+        aria-label={expanded ? 'Hide receipt detail' : 'Receipt detail'}
+        aria-expanded={expanded}
+        style={{
+          border: 'none',
+          background: 'none',
+          cursor: 'pointer',
+          padding: '0 2px',
+          color: 'var(--color-text-quaternary)',
+          fontSize: 13,
+          letterSpacing: 1,
+          flexShrink: 0,
+          lineHeight: 1,
+        }}
+      >
+        ⋯
+      </button>
+    </div>
+  );
+}
+
+// ── Shared inline styles ──────────────────────────────────────────────────────
+
+/** AJ-v5 — quiet 28px icon targets (header + composer chrome). */
+const iconBtn: React.CSSProperties = {
+  width: 28,
+  height: 28,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  border: 'none',
+  background: 'transparent',
+  color: 'var(--color-text-tertiary)',
+  borderRadius: 8,
+  cursor: 'pointer',
+  flexShrink: 0,
+  padding: 0,
+};
+
+/** AJ-v5 card family — one DNA for plan / confirmation / question cards. */
 const cardBox: React.CSSProperties = {
-  margin: '8px 0',
+  margin: '8px 0 8px 28px',
   padding: '10px 12px',
-  borderRadius: 12,
-  border: '1px solid var(--color-border-hairline)',
+  borderRadius: 10,
+  border: '1px solid var(--color-border-subtle, #f0f0ee)',
   background: 'var(--color-surface-base)',
+  boxShadow: '0 1px 2px rgba(17,17,17,0.04)',
 };
 
 const cardLabel: React.CSSProperties = {
   fontSize: 10,
-  fontWeight: 700,
+  fontWeight: 500,
+  fontFamily: 'var(--font-mono, ui-monospace, monospace)',
   textTransform: 'uppercase',
-  letterSpacing: '0.06em',
+  letterSpacing: '0.08em',
   color: 'var(--color-text-tertiary)',
-  marginBottom: 4,
+  marginBottom: 6,
 };
 
 const approveBtn: React.CSSProperties = {
-  padding: '7px 12px',
+  padding: '7px 14px',
   fontSize: 12.5,
-  fontWeight: 600,
+  fontWeight: 500,
   borderRadius: 8,
   border: 'none',
   cursor: 'pointer',
-  background: 'var(--color-cta, #131313)',
-  color: 'var(--color-text-inverse, #fff)',
+  background: 'var(--color-accent-lime, #ddec65)',
+  color: 'var(--color-text-on-lime, #0d0d0d)',
 };
 
 const ghostBtn: React.CSSProperties = {
