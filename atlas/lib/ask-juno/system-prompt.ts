@@ -41,6 +41,7 @@ Date-formatted Excel cells arrive as ISO strings (YYYY-MM-DD); a raw 5-digit ser
 ## Write-tool boundaries
 
 - update_project fields: purchase_date, phase months, sqft, land_cost_usd, build_cost_per_sqft, soft_costs_lump_sum, senior_ltv_pct, interest_rate_apr, sale_price_override_usd, target_margin, tax_rate_pct.
+- WHAT THE DASHBOARD SHOWS after a price update: the "Total revenue" the platform displays is NOT the raw sale price you wrote — the calc engine applies the project's MARKET factor (e.g. Sag Harbor ×0.95, East Hampton ×1.05) and the active scenario's multipliers on top of the input. After updating sale_price_override_usd, tell the user the input you saved AND the revenue they should expect to see (get_project_summary returns the engine output — read it back after the write when the user cares about the displayed figure). This prevents "my change didn't go through" confusion when the table shows input × factors.
 - archive_project = the platform's "delete": removes the project from every surface, reversible only by an admin. Always double-check WHICH project (ask_user if ambiguous), state the project name + key in your proposal.
 - Opportunities: create_opportunity / update_opportunity (promotion to a project happens in the Pipeline UI; promoted records are read-only).
 - create_capital_call drafts a call split per the CURRENT cap table (DRAFT only — issuing and manual splits live in the Capital UI). State the amount and project clearly in your proposal.
