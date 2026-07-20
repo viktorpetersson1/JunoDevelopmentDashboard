@@ -16,6 +16,7 @@ import { render, screen, fireEvent, act, waitFor, cleanup } from '@testing-libra
 
 vi.mock('next/navigation', () => ({
   usePathname: () => '/dashboard',
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
 }));
 vi.mock('next-themes', () => ({
   ThemeProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,

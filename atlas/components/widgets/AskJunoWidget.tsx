@@ -21,7 +21,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { JunoMark } from '@/components/brand';
 import { renderMarkdown } from '@/lib/ask-juno/markdown';
@@ -190,6 +190,11 @@ const toolLabel = (tool: string) => TOOL_LABELS[tool] ?? tool.replaceAll('_', ' 
 
 export function AskJunoWidget() {
   const pathname = usePathname();
+  // AJ-v5.2 — the pane lives NEXT TO the pages it changes. After any executed
+  // write, refresh the router so the page behind re-renders with the new
+  // figures (without this, the user approves a change and stares at a page
+  // that never updates — "the engine is not picking up the changes").
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [pending, setPending] = useState(false);
@@ -585,6 +590,7 @@ export function AskJunoWidget() {
           return;
         }
         const writes = d.executed_writes?.length ? d.executed_writes : undefined;
+        if (writes) router.refresh(); // covers the JSON path + confirmed writes
         const hasStreamBubble =
           streamed && (draftIdRef.current !== null || lastStreamIdRef.current !== null);
 
@@ -719,6 +725,7 @@ export function AskJunoWidget() {
                       { id, role: 'assistant', text: '', ts: Date.now(), writes: [w] },
                     ]);
                   }
+                  router.refresh(); // the page behind shows the new figures live
                 } else if (ev.t === 'final') {
                   gotFinal = true;
                   setActivity(null);
@@ -770,7 +777,7 @@ export function AskJunoWidget() {
         lastStreamIdRef.current = null;
       }
     },
-    [historyForSend, pathname, push]
+    [historyForSend, pathname, push, router]
   );
 
   // ── Send / resume actions ───────────────────────────────────────────────
@@ -881,11 +888,12 @@ export function AskJunoWidget() {
           role: 'tool_status',
           text: `Reverted ${json.data.project_key ?? ''} to its previous figures.`,
         });
+        router.refresh(); // the page behind reflects the restored figures
       } catch {
         push({ role: 'system', text: 'Revert failed — network error.' });
       }
     },
-    [messages, pending, push]
+    [messages, pending, push, router]
   );
 
   // AJ-v4 — resolve a batch plan: approve the ticked subset or decline all.
